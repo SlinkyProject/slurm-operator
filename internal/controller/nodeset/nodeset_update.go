@@ -368,7 +368,7 @@ func (nsc *defaultNodeSetControl) syncSlurm(
 		_ = slurmtypes.NodeInfoParse(node.Comment, &nodeInfo)
 		noPodInfo := nodeInfo.Equal(slurmtypes.NodeInfo{})
 		if kubeNodes.Has(node.Name) || !hasCommunicationFailure || noPodInfo {
-			slurmNodes.Insert(node.Name)
+			slurmNodes.Insert(getSafeNodeName(node.Name))
 			continue
 		}
 		logger.Info("Deleting Slurm Node without a corresponding Pod", "Node", node.Name, "Pod", node.Comment)

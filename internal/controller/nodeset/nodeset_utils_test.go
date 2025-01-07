@@ -1497,3 +1497,39 @@ func Test_findUpdatedPodsOnNode(t *testing.T) {
 		})
 	}
 }
+
+func Test_getSafeNodeName(t *testing.T) {
+	type args struct {
+		nodeName          string
+		correctedNodeName string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Non-FQDN Node Name",
+			args: args{
+				nodeName:          "node1",
+				correctedNodeName: "node1",
+			},
+			want: true,
+		},
+		{
+			name: "FQDN NodeName",
+			args: args{
+				nodeName:          "node1.us-west-2.compute.internal",
+				correctedNodeName: "node1",
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getSafeNodeName(tt.args.nodeName); got != tt.args.correctedNodeName {
+				t.Errorf("safeNodeName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -373,7 +374,7 @@ func newNodeSetPod(set *slinkyv1alpha1.NodeSet, nodeName, hash string) *corev1.P
 
 	// Set pod hostname to match the targeted node name to let user
 	// better correlate the Slurm node with the Kubernetes node.
-	pod.Spec.Hostname = nodeName
+	pod.Spec.Hostname = getSafeNodeName(nodeName)
 
 	setPodRevision(pod, hash)
 	updateIdentity(set, pod)
@@ -636,4 +637,9 @@ func findUpdatedPodsOnNode(
 		}
 	}
 	return newPod, oldPod, true
+}
+
+// Ensure we don't use FQDN for nodeName as setting it as the hostName is not supported yet
+func getSafeNodeName(nodeName string) string {
+	return strings.Split(nodeName, ".")[0]
 }
