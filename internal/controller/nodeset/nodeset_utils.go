@@ -639,7 +639,7 @@ func findUpdatedPodsOnNode(
 	return newPod, oldPod, true
 }
 
-// Ensure we don't use FQDN for nodeName as setting it as the hostName is not supported yet
+// Ensure we don't use FQDN for nodeName as setting it as the hostName is not supported yet.
 func getSafeNodeName(nodeName string) string {
-	return strings.Split(nodeName, ".")[0]
+	return strings.ReplaceAll(nodeName, ".", "-")
 }

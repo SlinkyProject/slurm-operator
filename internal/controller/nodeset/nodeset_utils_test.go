@@ -1506,29 +1506,26 @@ func Test_getSafeNodeName(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
 	}{
 		{
-			name: "Non-FQDN Node Name",
+			name: "Non-FQDN nodeName",
 			args: args{
 				nodeName:          "node1",
 				correctedNodeName: "node1",
 			},
-			want: true,
 		},
 		{
-			name: "FQDN NodeName",
+			name: "FQDN nodeName escaped",
 			args: args{
 				nodeName:          "node1.us-west-2.compute.internal",
-				correctedNodeName: "node1",
+				correctedNodeName: "node1-us-west-2-compute-internal",
 			},
-			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getSafeNodeName(tt.args.nodeName); got != tt.args.correctedNodeName {
-				t.Errorf("safeNodeName() = %v, want %v", got, tt.want)
+				t.Errorf("safeNodeName() = %v, wanted %v", got, tt.args.correctedNodeName)
 			}
 		})
 	}
