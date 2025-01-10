@@ -196,35 +196,6 @@ func (spc *NodeSetPodControl) updateSlurmNode(
 		return err
 	}
 
-	if spc.isNodeSetPodDrain(ctx, set, pod) {
-		clusterName := types.NamespacedName{
-			Namespace: set.GetNamespace(),
-			Name:      set.Spec.ClusterName,
-		}
-		slurmClient := spc.slurmClusters.Get(clusterName)
-		if slurmClient != nil && !isNodeSetPodDelete(pod) {
-			objectKey := object.ObjectKey(pod.Spec.Hostname)
-			slurmNode := &slurmtypes.Node{}
-			if err := slurmClient.Get(ctx, objectKey, slurmNode); err != nil {
-				if err.Error() == http.StatusText(http.StatusNotFound) {
-					return nil
-				}
-				return err
-			}
-
-			logger.Info("Undrain Slurm Node", "slurmNode", slurmNode, "Pod", pod)
-			slurmNode.State.Insert(slurmtypes.NodeStateUNDRAIN)
-			if err := slurmClient.Update(ctx, slurmNode); err != nil {
-				if err.Error() == http.StatusText(http.StatusNotFound) {
-					return nil
-				}
-				return err
-			}
-
-			return nil
-		}
-	}
-
 	return nil
 }
 

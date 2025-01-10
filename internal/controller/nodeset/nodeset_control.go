@@ -427,7 +427,7 @@ func (nsc *defaultNodeSetControl) processNodeSetPod(
 	}
 
 	stateMatch := true
-	if isNodeSetPodCordon(pods[i]) || nsc.podControl.isNodeSetPodDrain(ctx, set, pods[i]) {
+	if isNodeSetPodCordon(pods[i]) {
 		stateMatch = false
 	}
 
