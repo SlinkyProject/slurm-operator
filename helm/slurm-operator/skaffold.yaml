@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # https://skaffold.dev/docs/references/yaml/
-apiVersion: skaffold/v4beta1
+apiVersion: skaffold/v4beta11
 kind: Config
 profiles:
   - name: dev
     build:
       artifacts:
+        # substitute the image repository with your own
         - image: slinky.slurm.net/slurm-operator
+          runtimeType: go
           context: ../../
           docker:
             dockerfile: Dockerfile.dev
@@ -21,7 +23,10 @@ profiles:
       tagPolicy:
         inputDigest: {}
       local:
+        # only push the image if the current Kubernetes context connects to a remote cluster
         push: false
+        # in certain cases you may need this to authenticate with your registry
+        # useDockerCLI: true
     deploy:
       helm:
         releases:
@@ -30,8 +35,8 @@ profiles:
             valuesFiles:
               - ./values-dev.yaml
             setValueTemplates:
-              image.repository: '{{.IMAGE_REPO_slinky_slurm_net_slurm_operator}}'
-              image.tag: '{{.IMAGE_TAG_slinky_slurm_net_slurm_operator}}'
+              image.repository: '{{.IMAGE_REPO}}'
+              image.tag: '{{.IMAGE_TAG}}'
             namespace: slinky
             createNamespace: true
 deploy:

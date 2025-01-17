@@ -27,6 +27,26 @@
       "request": "launch",
       "mode": "test",
       "program": "${workspaceFolder}/${relativeFileDirname}"
+    },
+    {
+      "name": "Skaffold Debug slurm-operator",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "localhost",
+      "port": 56268,
+      "cwd": "${workspaceFolder}",
+      "remotePath": "/workspace"
+    },
+    {
+      "name": "Skaffold Debug slurm-operator-webhook",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "localhost",
+      "port": 56269,
+      "cwd": "${workspaceFolder}",
+      "remotePath": "/workspace"
     }
   ]
 }
