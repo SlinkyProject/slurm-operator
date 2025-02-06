@@ -98,7 +98,7 @@ Determine operator image reference (repo:tag)
 Common imagePullPolicy
 */}}
 {{- define "slurm-operator.imagePullPolicy" -}}
-{{ .Values.image.PullPolicy | default "IfNotPresent" }}
+{{ .Values.imagePullPolicy | default "IfNotPresent" }}
 {{- end }}
 
 {{/*
