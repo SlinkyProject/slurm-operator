@@ -4,4 +4,4 @@ appVersion: "24.11"
 description: Helm Chart for Slurm HPC Workload Manager Operator
 name: slurm-operator
 type: application
-version: 0.2.0
+version: 0.1.0
