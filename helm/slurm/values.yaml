@@ -550,6 +550,10 @@ compute:
           cpu: 1
           memory: 1Gi
       #
+      # -- (bool)
+      # Mirror the container resource limits to slurmd.
+      enableSlurmdResourceLimits: true
+      #
       # -- (map)
       # Selector which must match a node's labels for the pod to be scheduled on that node.
       nodeSelector:

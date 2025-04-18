@@ -134,6 +134,10 @@ spec:
               Gres={{- $nodeset.nodeGres }}
               {{- end }}
               Weight={{- default 1 $nodeset.nodeWeight }}
+              {{- if $nodeset.enableSlurmdResourceLimits }}
+              CPUs={{- $nodeset.resources.limits.cpu }}
+              RealMemory={{- include "slurm.convertToMB" $nodeset.resources.limits.memory }}
+              {{- end }}{{- /* if $nodeset.enableSlurmdResourceLimits */}}
           ports:
             - name: slurmd
               containerPort: {{ include "slurm.compute.port" $ }}
