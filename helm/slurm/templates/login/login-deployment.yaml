@@ -60,6 +60,9 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - SYS_CHROOT
           env:
             - name: SACKD_OPTIONS
               value: --conf-server={{- printf "%s:%s" (include "slurm.controller.name" .) (include "slurm.controller.port" .) }}
@@ -83,8 +86,8 @@ spec:
               subPath: authorized_keys
               readOnly: true
             - name: ssh-config
-              mountPath: /etc/nsswitchConf.conf
-              subPath: nsswitchConf.conf
+              mountPath: /etc/nsswitch.conf
+              subPath: nsswitch.conf
               readOnly: true
             - name: sssd-config
               mountPath: /etc/sssd/sssd.conf
@@ -119,7 +122,16 @@ spec:
         - name: ssh-config
           configMap:
             name: {{ include "slurm.login.name" . }}-config
-            defaultMode: 0600
+            items:
+              - key: nsswitch.conf
+                path: nsswitch.conf
+                mode: 0644
+              - key: authorized_keys
+                path: authorized_keys
+                mode: 0600
+              - key: sshd_config
+                path: sshd_config
+                mode: 0600
         - name: sssd-config
           secret:
             secretName: {{ include "slurm.login.name" . }}-config
