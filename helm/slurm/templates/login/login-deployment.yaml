@@ -28,6 +28,7 @@ spec:
     spec:
       priorityClassName: {{ .Values.login.priorityClassName | default .Values.priorityClassName }}
       automountServiceAccountToken: false
+      enableServiceLinks: false
       dnsConfig:
         {{- include "slurm.dnsConfig" . | nindent 8 }}
       initContainers:
