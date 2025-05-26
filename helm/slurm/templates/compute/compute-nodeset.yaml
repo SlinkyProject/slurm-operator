@@ -170,6 +170,8 @@ spec:
           projected:
             defaultMode: 0600
             sources:
+              - configMap:
+                  name: {{ include "slurm.configMapName" $ }}
               - secret:
                   name: {{ include "slurm.auth.secretName" $ }}
         - name: slurm-spool
