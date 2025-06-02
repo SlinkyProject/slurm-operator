@@ -137,6 +137,17 @@ spec:
             - name: {{ $vct.metadata.name }}
               mountPath: {{ $vct.spec.mountPath | default (printf "/mnt/%s" $vct.metadata.name ) }}
             {{- end }}{{- /* range $vct := $nodeset.volumeClaimTemplates */}}
+<<<<<<< Updated upstream
+=======
+            - mountPath: /dev/shm
+              name: dshm
+            {{- if and $nodeset.persistence $nodeset.persistence.existingDataClaims }}
+            {{- range $nodeset.persistence.existingDataClaims }}
+            - name: {{ .name }}
+                mountPath: {{ .mountPath }}
+              {{- end }}{{- /* range $nodeset.persistence.existingDataClaims */}}
+            {{- end }}{{- /* if $nodeset.persistence.existingDataClaims */}}
+>>>>>>> Stashed changes
       volumes:
         {{- include "slurm.volumes" $ | nindent 8 }}
         - name: slurm-config
@@ -145,6 +156,20 @@ spec:
             sources:
               - secret:
                   name: {{ include "slurm.auth.secretName" $ }}
+<<<<<<< Updated upstream
+=======
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+          name: dshm
+        {{- if and $nodeset.persistence $nodeset.persistence.existingDataClaims }}
+        {{- range $nodeset.persistence.existingDataClaims }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ .name }}
+        {{- end }}{{- /* range $nodeset.persistence.existingDataClaims */}}
+        {{- end }}{{- /* if $nodeset.persistence.existingDataClaims */}}
+>>>>>>> Stashed changes
   {{- if $nodeset.volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- $nodeset.volumeClaimTemplates | toYaml | nindent 4 }}

@@ -422,12 +422,21 @@ compute:
         whenDeleted: Retain
         #
         # -- (string)
+<<<<<<< Updated upstream
         # WhenScaled specifies what happens to PVCs created from NodeSet
         # VolumeClaimTemplates when the NodeSet is scaled down. The default
         # policy of `Retain` causes PVCs to not be affected by a scale-in. The
         # `Delete` policy causes the associated PVCs for any excess pods to be
         # deleted.
         whenScaled: Retain
+=======
+        # Name of an existing `PersistentVolumeClaim` to use instead of creating one from definition.
+        existingDataClaims: []
+        # - name: data-cpu-pv
+        #   mountPath: /data
+        # - name: scratch-gpu-pv
+        #   mountPath: /scratch
+>>>>>>> Stashed changes
       #
       # --(list)
       # List of claims that pods are allowed to reference.
