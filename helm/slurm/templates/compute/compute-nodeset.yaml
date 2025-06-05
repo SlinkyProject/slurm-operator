@@ -8,6 +8,16 @@ SPDX-License-Identifier: Apache-2.0
 {{- $repository := $nodeset.image.repository | default (include "slurm.compute.image.repository" $) }}
 {{- $tag := $nodeset.image.tag | default (include "slurm.compute.image.tag" $) }}
 {{- $imageRef := printf "%s:%s" $repository $tag }}
+{{- $authcredRepository := "" }}
+{{- $authcredTag := "" }}
+{{- if $nodeset.authcred }}
+{{- $authcredRepository = $nodeset.authcred.image.repository | default (include "slurm.authcred.image.repository" $) }}
+{{- $authcredTag = $nodeset.authcred.image.tag | default (include "slurm.authcred.image.tag" $) }}
+{{- else }}
+{{- $authcredRepository = include "slurm.authcred.image.repository" $ }}
+{{- $authcredTag = include "slurm.authcred.image.tag" $ }}
+{{- end }}
+{{- $authcredImageRef := printf "%s:%s" $authcredRepository $authcredTag }}
 {{- $name := printf "%s-%s" (include "slurm.compute.name" $) $nodeset.name }}
 ---
 apiVersion: slinky.slurm.net/v1alpha1
