@@ -284,7 +284,7 @@ controller:
     #
     # -- (string)
     # Create a `PersistentVolumeClaim` with this storage class.
-    storageClass: standard
+    storageClass:
     #
     # -- (list)
     # Create a `PersistentVolumeClaim` with these access modes.
@@ -608,7 +608,7 @@ compute:
         #     name: scratch
         #   spec:
         #     mountPath: /mnt/scratch
-        #     storageClassName: standard
+        #     storageClassName:
         #     accessModes:
         #       - ReadWriteOnce
         #     resources:
@@ -849,7 +849,7 @@ mariadb:
     persistence:
       enabled: true
       existingClaim: ""
-      storageClass: standard
+      storageClass:
       labels: {}
       annotations: {}
       accessModes:
