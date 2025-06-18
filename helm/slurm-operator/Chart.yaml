@@ -5,3 +5,13 @@ description: Helm Chart for Slurm HPC Workload Manager Operator
 name: slurm-operator
 type: application
 version: 0.3.0
+
+dependencies:
+  - name: cert-manager
+    repository: https://charts.jetstack.io
+    version: ">1.15.0"
+    condition: cert-manager.enabled
+  - name: kube-prometheus-stack
+    repository: https://prometheus-community.github.io/helm-charts
+    version: ">=75.0.0"
+    condition: prometheus.enabled

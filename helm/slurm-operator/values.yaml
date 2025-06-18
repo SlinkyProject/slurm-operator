@@ -184,3 +184,34 @@ certManager:
   # -- (string)
   # Certificate renewal time. Should be before the expiration.
   renewBefore: 8760h0m0s # 1 year
+
+#
+# Cert-Manager Dependencies configuration.
+cert-manager:
+  #
+  # -- (bool)
+  # Enables cert-manager.
+  enabled: false
+  #
+  # crd configurations.
+  crds:
+    #
+    # -- (bool)
+    # This option decides if the CRDs should be installed
+    enabled: true
+  #
+  # -- (string)
+  # The namespace where cert-manager is installed.
+  namespace: cert-manager
+
+#
+# Prometheus Stack Dependencies configurations.
+kube-prometheus-stack:
+  #
+  # -- (bool)
+  # Enables kube-prometheus-stack.
+  enabled: false
+  #
+  # -- (string)
+  # The namespace where kube-prometheus-stack is installed.
+  namespaceOverride: "prometheus"
