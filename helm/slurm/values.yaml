@@ -34,7 +34,8 @@ namespaceOverride: ""
 # -- (list)
 # Set the secrets for image pull.
 # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-imagePullSecrets: []
+imagePullSecrets:
+  []
   # - name: regcred
 
 #
@@ -70,40 +71,6 @@ slurm:
     # The existing secret containing the slurm.key, otherwise one will be generated.
     secretName: ""
   #
-  # -- (map[string]string | map[string][]string)
-  # Extra slurmdbd configuration lines to append to `slurmdbd.conf`.
-  # WARNING: Values can override existing ones.
-  # Ref: https://slurm.schedmd.com/slurmdbd.conf.html
-  extraSlurmdbdConf: {}
-    # CommitDelay: 1
-    ### LOGGING ###
-    # DebugLevel: debug2
-    # DebugFlags: []
-    ### PURGE ###
-    # PurgeEventAfter: 12month
-    # PurgeJobAfter: 12month
-    # PurgeResvAfter: 2month
-    # PurgeStepAfter: 2month
-    # PurgeSuspendAfter: 1month
-    # PurgeTXNAfter: 12month
-    # PurgeUsageAfter: 12month
-  #
-  # -- (map[string]string | map[string][]string)
-  # Extra slurm configuration lines to append to `slurm.conf`, represetned as a string or a map.
-  # WARNING: Values can override existing ones.
-  # Ref: https://slurm.schedmd.com/slurm.conf.html
-  extraSlurmConf: {}
-    # MinJobAge: 2
-    # MaxNodeCount: 1024
-    ### LOGGING ###
-    # SlurmctldDebug: debug2
-    # SlurmSchedLogLevel: 1
-    # SlurmdDebug: debug2
-    # DebugFlags: []
-    ### PLUGINS & PARAMETERS ###
-    # SchedulerParameters:
-    #   - defer_batch
-  #
   # -- (map[string]string)
   # Optional raw Slurm configuration files, as a map.
   # The map key represents the config file by name; the map value represents config file contents as a string.
@@ -137,6 +104,44 @@ slurm:
     #   # Ref: https://slurm.schedmd.com/plugstack.conf.html
     # topology.conf: |
     #   # Ref: https://slurm.schedmd.com/topology.conf.html
+    # Extra slurm configuration to append to chart-generated slurm.conf
+    # Ref: https://slurm.schedmd.com/slurm.conf.html
+    slurm_extra.conf: |
+      ### CLUSTER ###
+      GresTypes=gpu
+      ReturnToService=2
+      MaxNodeCount=1024
+      ### LOGGING ###
+      LogTimeFormat=iso8601_ms,format_stderr
+      ### PLUGINS & PARAMETERS ###
+      SelectTypeParameters=CR_Core_Memory
+      CommunicationParameters=block_null_hash
+      LaunchParameters=enable_nss_slurm,use_interactive_step,ulimit_pam_adopt
+      JobAcctGatherFrequency=task=30
+      AccountingStorageTRES=gres/gpu
+      # MinJobAge=2
+      ### LOGGING ###
+      # SlurmctldDebug=debug2
+      # SlurmSchedLogLevel=1
+      # SlurmdDebug=debug2
+      # DebugFlags=
+      ### PLUGINS & PARAMETERS ###
+      # SchedulerParameters=defer_batch
+    # Extra slurmdbd configuration to append to chart-generated slurmdbd.conf
+    # Ref: https://slurm.schedmd.com/slurmdbd.conf.html
+    slurmdbd_extra.conf: |
+      # CommitDelay=1
+      ### LOGGING ###
+      # DebugLevel=debug2
+      # DebugFlags=
+      ### PURGE ###
+      # PurgeEventAfter=12month
+      # PurgeJobAfter=12month
+      # PurgeResvAfter=2month
+      # PurgeStepAfter=2month
+      # PurgeSuspendAfter=1month
+      # PurgeTXNAfter=12month
+      # PurgeUsageAfter=12month
   #
   # -- (map[string]string)
   # The Prolog scripts for compute nodesets, as a map.
@@ -145,7 +150,8 @@ slurm:
   # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Prolog
   # Ref: https://slurm.schedmd.com/prolog_epilog.html
   # Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
-  prologScripts: {}
+  prologScripts:
+    {}
     # 00-empty.sh: |
     #   #!/usr/bin/env bash
     #   set -euo pipefail
@@ -158,7 +164,8 @@ slurm:
   # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Epilog
   # Ref: https://slurm.schedmd.com/prolog_epilog.html
   # Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
-  epilogScripts: {}
+  epilogScripts:
+    {}
     # 00-empty.sh: |
     #   #!/usr/bin/env bash
     #   set -euo pipefail
@@ -185,7 +192,8 @@ authcred:
   # -- (object)
   # Set container resource requests and limits for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-  resources: {}
+  resources:
+    {}
     # requests:
     #   cpu: 1
     #   memory: 1Gi
@@ -215,7 +223,8 @@ controller:
   # -- (object)
   # The controller service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
+  service:
+    {}
     # type: LoadBalancer
     # externalIPs: []
     # externalName: my.slurmctld.example.com
@@ -253,7 +262,8 @@ controller:
   # -- (object)
   # Set container resource requests and limits for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-  resources: {}
+  resources:
+    {}
     # requests:
     #   cpu: 1
     #   memory: 1Gi
@@ -297,7 +307,8 @@ controller:
     #
     # -- (object)
     # Selector to match an existing `PersistentVolume`.
-    selector: {}
+    selector:
+      {}
       # matchLabels:
       #   app: foo
 
@@ -347,7 +358,8 @@ login:
   #
   # -- (list)
   # The `/root/.ssh/authorized_keys` file to write, represented as a list.
-  rootSshAuthorizedKeys: []
+  rootSshAuthorizedKeys:
+    []
     # - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@example.com
   #
   # -- (map)
@@ -396,7 +408,8 @@ login:
     # -- (map)
     # The `/etc/sssd/sssd.conf` [pam] section, represented as a map.
     # Ref: https://man.archlinux.org/man/sssd.conf.5#PAM_configuration_options
-    pam: {}
+    pam:
+      {}
       # debug_level: 9
   #
   # -- (object)
@@ -411,7 +424,8 @@ login:
   # --(list)
   # List of volume mounts.
   # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-  extraVolumeMounts: []
+  extraVolumeMounts:
+    []
     # - name: nfs-home
     #   mountPath: /home
     # - name: nfs-data
@@ -420,7 +434,8 @@ login:
   # --(list)
   # Define list of pod volumes.
   # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-  extraVolumes: []
+  extraVolumes:
+    []
     # - name: nfs-home
     #   nfs:
     #     server: nfs-server.example.com
@@ -453,7 +468,8 @@ login:
   # -- (object)
   # Set container resource requests and limits for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-  resources: {}
+  resources:
+    {}
     # requests:
     #   cpu: 1
     #   memory: 1Gi
@@ -484,9 +500,9 @@ compute:
   # -- (list)
   # Slurm NodeSets by object list.
   nodesets:
-      #
-      # -- (string)
-      # Name of NodeSet. Must be unique.
+    #
+    # -- (string)
+    # Name of NodeSet. Must be unique.
     - name: debug
       #
       # -- (bool)
@@ -514,7 +530,8 @@ compute:
       #
       # -- (object)
       # NodeSet specific authcred configuration, otherwise global authcred is used.
-      authcred: {}
+      authcred:
+        {}
         # imagePullPolicy: IfNotPresent
         # image:
         #   repository: ghcr.io/slinkyproject/sackd
@@ -535,7 +552,8 @@ compute:
       # -- (object)
       # Set affinity for Kubernetes Pod scheduling.
       # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-      affinity: {}
+      affinity:
+        {}
         # podAntiAffinity:
         #   preferredDuringSchedulingIgnoredDuringExecution:
         #     - weight: 100
@@ -559,7 +577,8 @@ compute:
       # -- (object)
       # Set container resource requests and limits for Kubernetes Pod scheduling.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
+      resources:
+        {}
         # limits:
         #   cpu: 1
         #   memory: 1Gi
@@ -612,7 +631,8 @@ compute:
       # List of PVCs to be created from template and mounted on each NodeSet pod.
       # PVCs are given a unique identity relative to each NodeSet pod.
       # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#volume-claim-templates
-      volumeClaimTemplates: []
+      volumeClaimTemplates:
+        []
         # - metadata:
         #     name: scratch
         #   spec:
@@ -627,7 +647,8 @@ compute:
       # --(list)
       # List of volume mounts.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      extraVolumeMounts: []
+      extraVolumeMounts:
+        []
         # - name: nfs-home
         #   mountPath: /home
         # - name: nfs-data
@@ -636,7 +657,8 @@ compute:
       # --(list)
       # Define list of pod volumes.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      extraVolumes: []
+      extraVolumes:
+        []
         # - name: nfs-home
         #   nfs:
         #     server: nfs-server.example.com
@@ -664,7 +686,8 @@ compute:
       # Extra Slurm node configuration appended into the --conf arguments.
       # WARNING: Values can override existing ones.
       # Ref: https://slurm.schedmd.com/slurm.conf.html#lbAE
-      nodeConfig: {}
+      nodeConfig:
+        {}
         # Features: []
         # Gres: []
         # Weight: 1
@@ -672,9 +695,9 @@ compute:
   # -- (list)
   # Slurm Partitions by object list.
   partitions:
-      #
-      # -- (string)
-      # Name of Partition. Must be unique.
+    #
+    # -- (string)
+    # Name of Partition. Must be unique.
     - name: all
       #
       # -- (bool)
@@ -760,7 +783,8 @@ accounting:
   # -- (object)
   # Set affinity for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
+  affinity:
+    {}
     # podAffinity:
     #   requiredDuringSchedulingIgnoredDuringExecution:
     #     - topologyKey: kubernetes.io/hostname
@@ -779,7 +803,8 @@ accounting:
   # -- (object)
   # Set container resource requests and limits for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-  resources: {}
+  resources:
+    {}
     # requests:
     #   cpu: 1
     #   memory: 1Gi
@@ -906,7 +931,8 @@ restapi:
   # -- (object)
   # The restapi service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
+  service:
+    {}
     # type: LoadBalancer
     # externalIPs: []
     # externalName: my.slurmrestd.example.com
@@ -934,7 +960,8 @@ restapi:
   # -- (object)
   # Set affinity for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: {}
+  affinity:
+    {}
     # podAffinity:
     #   requiredDuringSchedulingIgnoredDuringExecution:
     #     - topologyKey: kubernetes.io/hostname
@@ -954,7 +981,8 @@ restapi:
   # -- (object)
   # Set container resource requests and limits for Kubernetes Pod scheduling.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-  resources: {}
+  resources:
+    {}
     # requests:
     #   cpu: 1
     #   memory: 1Gi
@@ -970,7 +998,8 @@ slurm-exporter:
   exporter:
     enabled: true
     secretName: "slurm-token-exporter"
-    affinity: {}
+    affinity:
+      {}
       # podAffinity:
       #   requiredDuringSchedulingIgnoredDuringExecution:
       #     - topologyKey: kubernetes.io/hostname
