@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 {{- $nodesetList := list "ALL" -}}
 {{- $failList := list "slurm.conf" "slurmdbd.conf" -}}
-{{- $allowList := list "acct_gather.conf" "burst_buffer.conf" "cgroup.conf" "gres.conf" "helpers.conf" "job_container.conf" "mpi.conf" "oci.conf" "plugstack.conf" "topology.conf" -}}
+{{- $allowList := list "acct_gather.conf" "burst_buffer.conf" "cgroup.conf" "gres.conf" "helpers.conf" "job_container.conf" "mpi.conf" "oci.conf" "plugstack.conf" "topology.conf" "topology.yaml" -}}
 {{- $partitionList := list -}}
 apiVersion: v1
 kind: ConfigMap
