@@ -41,9 +41,22 @@ data:
     {{- end }}{{- /* if .Values.accounting.external.enabled */}}
     StoragePass=$MARIADB_PASSWORD
     #
-    {{- with index .Values.slurm.configFiles "slurmdbd_extra.conf" }}
+    ### LOGGING ###
+    LogFile=/dev/null
+    LogTimeFormat=iso8601_ms,format_stderr
+    {{- if .Values.accounting.extraConf }}
     #
     ### EXTRA CONFIG ###
-    {{- . | nindent 4 }}
-    {{- end }}{{- /* with index .Values.slurm.configFiles "slurmdbd_extra.conf" */}}
+    {{- .Values.accounting.extraConf | nindent 4 }}
+    {{- else if .Values.accounting.extraConfMap }}
+    #
+    ### EXTRA CONFIG ###
+    {{- range $key, $value := .Values.accounting.extraConfMap }}
+    {{- if kindIs "slice" $value }}
+    {{ $key }}={{ join "," $value }}
+    {{- else }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
 {{- end }}{{- /* if and .Values.accounting.enabled */}}

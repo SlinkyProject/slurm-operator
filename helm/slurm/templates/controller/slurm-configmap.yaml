@@ -28,6 +28,9 @@ data:
     SlurmUser={{- include "slurm.user" . }}
     SlurmdUser=root
     StateSaveLocation={{- include "slurm.controller.statesavePath" . }}
+    GresTypes=gpu
+    ReturnToService=2
+    MaxNodeCount=1024
     {{- if or .Values.slurm.prologScripts .Values.slurm.epilogScripts }}
     #
     ### PROLOG & EPILOG ###
@@ -43,6 +46,7 @@ data:
     SlurmctldLogFile={{- include "slurm.controller.logFile" . }}
     SlurmSchedLogFile={{- include "slurm.controller.logFile" . }}
     SlurmdLogFile={{- include "slurm.compute.logFile" . }}
+    LogTimeFormat=iso8601_ms,format_stderr
     #
     ### PLUGINS & PARAMETERS ###
     AuthType=auth/slurm
@@ -50,7 +54,10 @@ data:
     AuthInfo=use_client_ids
     AuthAltTypes=auth/jwt
     AuthAltParameters=jwt_key={{- include "slurm.jwt.hs256.fullPath" . }}
+    CommunicationParameters=block_null_hash
+    LaunchParameters=enable_nss_slurm,use_interactive_step,ulimit_pam_adopt
     ProctrackType=proctrack/cgroup
+    SelectTypeParameters=CR_Core_Memory
     SlurmctldParameters=enable_configless,enable_stepmgr
     TaskPlugin=task/cgroup,task/affinity
     PrologFlags=Contain
@@ -58,6 +65,8 @@ data:
     ### ACCOUNTING ###
     {{- if .Values.accounting.enabled }}
     JobAcctGatherType=jobacct_gather/cgroup
+    JobAcctGatherFrequency=task=30
+    AccountingStorageTRES=gres/gpu
     AccountingStorageType=accounting_storage/slurmdbd
     AccountingStorageHost={{- include "slurm.accounting.name" . }}
     AccountingStoragePort={{- include "slurm.accounting.port" . }}
@@ -105,19 +114,27 @@ data:
     PartitionName={{- $part.name }} Nodes={{- join "," $part.nodesets }} {{ join " " $partConfig }}
     {{- end }}{{- /* if and $part.enabled $part.nodesets */}}
     {{- end }}{{- /* range $part := .Values.compute.partitions */}}
-    {{- with index .Values.slurm.configFiles "slurm_extra.conf" }}
+    {{- if .Values.controller.extraConf }}
     #
     ### EXTRA CONFIG ###
-    {{- . | nindent 4 }}
-    {{- end }}{{- /* with index .Values.slurm.configFiles "slurm_extra.conf" */}}
+    {{- .Values.controller.extraConf | nindent 4 }}
+    {{- else if .Values.controller.extraConfMap }}
+    #
+    ### EXTRA CONFIG ###
+    {{- range $key, $value := .Values.controller.extraConfMap }}
+    {{- if kindIs "slice" $value }}
+    {{ $key }}={{ join "," $value }}
+    {{- else }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
   {{- range $key, $val := .Values.slurm.configFiles -}}
-  {{- if and (ne $key "slurm_extra.conf") (ne $key "slurmdbd_extra.conf") }}
   {{- if or (has $key $failList) (not (has $key $allowList)) }}
   {{- fail (printf "configFiles cannot contain `%s`: either is not a valid config file or is reserved for chart use" $key) }}
   {{- end }}{{- /* if or (has $key $failList) (not has $key $allowList) */}}
   {{ $key -}}: |
     {{- $val | nindent 4 }}
-  {{- end }}{{- /* if and (ne $key "slurm_extra.conf") (ne $key "slurmdbd_extra.conf") */}}
   {{- end }}{{- /* range $key, $val := .Values.slurm.configFiles */}}
   {{- range $filename, $script := .Values.slurm.prologScripts }}
   {{ printf "prolog-%s" $filename }}: |

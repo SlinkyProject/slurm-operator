@@ -104,44 +104,6 @@ slurm:
     #   # Ref: https://slurm.schedmd.com/plugstack.conf.html
     # topology.conf: |
     #   # Ref: https://slurm.schedmd.com/topology.conf.html
-    # Extra slurm configuration to append to chart-generated slurm.conf
-    # Ref: https://slurm.schedmd.com/slurm.conf.html
-    slurm_extra.conf: |
-      ### CLUSTER ###
-      GresTypes=gpu
-      ReturnToService=2
-      MaxNodeCount=1024
-      ### LOGGING ###
-      LogTimeFormat=iso8601_ms,format_stderr
-      ### PLUGINS & PARAMETERS ###
-      SelectTypeParameters=CR_Core_Memory
-      CommunicationParameters=block_null_hash
-      LaunchParameters=enable_nss_slurm,use_interactive_step,ulimit_pam_adopt
-      JobAcctGatherFrequency=task=30
-      AccountingStorageTRES=gres/gpu
-      # MinJobAge=2
-      ### LOGGING ###
-      # SlurmctldDebug=debug2
-      # SlurmSchedLogLevel=1
-      # SlurmdDebug=debug2
-      # DebugFlags=
-      ### PLUGINS & PARAMETERS ###
-      # SchedulerParameters=defer_batch
-    # Extra slurmdbd configuration to append to chart-generated slurmdbd.conf
-    # Ref: https://slurm.schedmd.com/slurmdbd.conf.html
-    slurmdbd_extra.conf: |
-      # CommitDelay=1
-      ### LOGGING ###
-      # DebugLevel=debug2
-      # DebugFlags=
-      ### PURGE ###
-      # PurgeEventAfter=12month
-      # PurgeJobAfter=12month
-      # PurgeResvAfter=2month
-      # PurgeStepAfter=2month
-      # PurgeSuspendAfter=1month
-      # PurgeTXNAfter=12month
-      # PurgeUsageAfter=12month
   #
   # -- (map[string]string)
   # The Prolog scripts for compute nodesets, as a map.
@@ -219,6 +181,34 @@ controller:
     # -- (string)
     # Set the image tag to use.
     tag: 25.05-ubuntu24.04
+  #
+  # -- (string)
+  # Raw Slurm configuration content to append to slurm.conf.
+  # This allows direct specification of configuration in native Slurm format.
+  #
+  # When specified, completely overrides extraConfMap (no merging).
+  # Use this for: configuration management systems, complex node definitions, direct copy-paste from existing configs.
+  # Leverages Slurm's native top-to-bottom precedence - can override any template default.
+  # Example:
+  #   extraConf: |
+  #     ReturnToService=2
+  #     MaxNodeCount=1024
+  #     AuthType=auth/munge
+  #     NodeName=gpu[001-100] NodeAddr=gpu[001-100] CPUs=40 RealMemory=128000 Gres=gpu:tesla:4
+  extraConf: ""
+  #
+  # -- (map[string]string | map[string][]string)
+  # Structured Slurm configuration as key-value pairs to append to slurm.conf.
+  #
+  # Only used when extraConf is empty (string format takes complete precedence).
+  # Use this for: simple key-value configs, Helm templating, dynamic configuration.
+  # Values can be strings or arrays (arrays will be comma-separated).
+  # Example:
+  #   extraConfMap:
+  #     ReturnToService: "2"
+  #     MaxNodeCount: "1024"
+  #     GresTypes: ["gpu", "network"]
+  extraConfMap: {}
   #
   # -- (object)
   # The controller service configuration.
@@ -740,6 +730,33 @@ accounting:
     # -- (string)
     # Set the image tag to use.
     tag: 25.05-ubuntu24.04
+  #
+  # -- (string)
+  # Raw Slurm accounting configuration content to append to slurmdbd.conf.
+  # This allows direct specification of configuration in native Slurm format.
+  #
+  # When specified, completely overrides extraConfMap (no merging).
+  # Use this for: configuration management systems, direct copy-paste from existing configs.
+  # Example:
+  #   extraConf: |
+  #     CommitDelay=1
+  #     PurgeJobAfter=12month
+  #     PurgeEventAfter=12month
+  #     DebugLevel=debug2
+  extraConf: ""
+  #
+  # -- (map[string]string | map[string][]string)
+  # Structured Slurm accounting configuration as key-value pairs to append to slurmdbd.conf.
+  #
+  # Only used when extraConf is empty (string format takes complete precedence).
+  # Use this for: simple key-value configs, Helm templating, dynamic configuration.
+  # Values can be strings or arrays (arrays will be comma-separated).
+  # Example:
+  #   extraConfMap:
+  #     CommitDelay: "1"
+  #     PurgeJobAfter: "12month"
+  #     DebugFlags: ["DB_EVENT", "DB_JOB"]
+  extraConfMap: {}
   #
   # Configuration for an external database (e.g. mariadb, mysql).
   external:
