@@ -23,6 +23,8 @@ function reconfigure() {
 	eval "$rsync_cmd"
 	find "${SLURM_DIR}" -type f -name "*.conf" -print0 | xargs -0r chown -v "${SLURM_USER}:${SLURM_USER}"
 	find "${SLURM_DIR}" -type f -name "*.conf" -print0 | xargs -0r chmod -v 644
+	find "${SLURM_DIR}" -type f -name "*.yaml" -print0 | xargs -0r chown -v "${SLURM_USER}:${SLURM_USER}"
+	find "${SLURM_DIR}" -type f -name "*.yaml" -print0 | xargs -0r chmod -v 644
 	find "${SLURM_DIR}" -type f -regextype posix-extended -regex "^.*/(pro|epi)log-.*$" -print0 | xargs -0r chown -v "${SLURM_USER}:${SLURM_USER}"
 	find "${SLURM_DIR}" -type f -regextype posix-extended -regex "^.*/(pro|epi)log-.*$" -print0 | xargs -0r chmod -v 755
 
