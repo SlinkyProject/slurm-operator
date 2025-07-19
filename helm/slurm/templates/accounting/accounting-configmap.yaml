@@ -44,9 +44,19 @@ data:
     ### LOGGING ###
     LogFile=/dev/null
     LogTimeFormat=iso8601_ms,format_stderr
-    {{- with .Values.slurm.extraSlurmdbdConf }}
+    {{- if .Values.accounting.extraConf }}
     #
     ### EXTRA CONFIG ###
-    {{- include "expand-map" . | nindent 4 }}
-    {{- end }}{{- /* with .Values.slurm.extraSlurmdbdConf */}}
+    {{- .Values.accounting.extraConf | nindent 4 }}
+    {{- else if .Values.accounting.extraConfMap }}
+    #
+    ### EXTRA CONFIG ###
+    {{- range $key, $value := .Values.accounting.extraConfMap }}
+    {{- if kindIs "slice" $value }}
+    {{ $key }}={{ join "," $value }}
+    {{- else }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
 {{- end }}{{- /* if and .Values.accounting.enabled */}}
