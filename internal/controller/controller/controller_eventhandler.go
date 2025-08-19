@@ -149,3 +149,66 @@ func (e *secretEventHandler) enqueueRequest(
 		objects.EnqueueRequest(q, &controller)
 	}
 }
+
+var _ handler.EventHandler = &nodesetEventHandler{}
+
+type nodesetEventHandler struct {
+	client.Reader
+	refResolver *refresolver.RefResolver
+}
+
+func (e *nodesetEventHandler) Create(
+	ctx context.Context,
+	evt event.CreateEvent,
+	q workqueue.TypedRateLimitingInterface[reconcile.Request],
+) {
+	e.enqueueRequest(ctx, evt.Object, q)
+}
+
+func (e *nodesetEventHandler) Update(
+	ctx context.Context,
+	evt event.UpdateEvent,
+	q workqueue.TypedRateLimitingInterface[reconcile.Request],
+) {
+	e.enqueueRequest(ctx, evt.ObjectOld, q)
+	e.enqueueRequest(ctx, evt.ObjectNew, q)
+}
+
+func (e *nodesetEventHandler) Delete(
+	ctx context.Context,
+	evt event.DeleteEvent,
+	q workqueue.TypedRateLimitingInterface[reconcile.Request],
+) {
+	e.enqueueRequest(ctx, evt.Object, q)
+}
+
+func (e *nodesetEventHandler) Generic(
+	ctx context.Context,
+	evt event.GenericEvent,
+	q workqueue.TypedRateLimitingInterface[reconcile.Request],
+) {
+	// Intentionally blank
+}
+
+func (e *nodesetEventHandler) enqueueRequest(
+	ctx context.Context,
+	obj client.Object,
+	q workqueue.TypedRateLimitingInterface[reconcile.Request],
+) {
+	logger := log.FromContext(ctx)
+
+	nodeset, ok := obj.(*slinkyv1alpha1.NodeSet)
+	if !ok {
+		return
+	}
+
+	list, err := e.refResolver.GetControllersForNodeSet(ctx, nodeset)
+	if err != nil {
+		logger.Error(err, "failed to list Controllers referencing NodeSet")
+		return
+	}
+
+	for _, item := range list.Items {
+		objects.EnqueueRequest(q, &item)
+	}
+}

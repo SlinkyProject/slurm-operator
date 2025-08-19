@@ -107,6 +107,22 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 	return out, nil
 }
 
+func (r *RefResolver) GetControllersForNodeSet(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet) (*slinkyv1alpha1.ControllerList, error) {
+	list := &slinkyv1alpha1.ControllerList{}
+	if err := r.client.List(ctx, list); err != nil {
+		return nil, err
+	}
+
+	out := &slinkyv1alpha1.ControllerList{}
+	for _, item := range list.Items {
+		if nodeset.Spec.ControllerRef.IsMatch(utils.NamespacedName(&item)) {
+			out.Items = append(out.Items, item)
+		}
+	}
+
+	return out, nil
+}
+
 func (r *RefResolver) GetSecretKeyRef(ctx context.Context, selector *slinkyv1alpha1.SecretKeySelector, namespace string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{

@@ -121,6 +121,10 @@ func (r *ControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.Secret{}, &secretEventHandler{
 			Reader: r.Client,
 		}).
+		Watches(&slinkyv1alpha1.NodeSet{}, &nodesetEventHandler{
+			Reader:      r.Client,
+			refResolver: r.refResolver,
+		}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).
