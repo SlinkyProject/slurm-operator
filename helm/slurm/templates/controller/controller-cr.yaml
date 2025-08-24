@@ -41,14 +41,21 @@ spec:
   configFiles:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.configFiles */}}
-  {{- with .Values.prologScripts }}
+  {{- $prologScripts := .Values.prologScripts | default dict }}
+  {{- $epilogScripts := .Values.epilogScripts | default dict }}
+  {{- if (include "slurm.dcgm.enabled" .) }}
+    {{- $scriptPriority := .Values.vendor.nvidia.dcgm.scriptPriority | default "90" }}
+    {{- $prologScripts = merge $prologScripts (dict (printf "%s-prolog-dcgm.sh" $scriptPriority) (include "slurm.dcgm.prologScript" .)) }}
+    {{- $epilogScripts = merge $epilogScripts (dict (printf "%s-epilog-dcgm.sh" $scriptPriority) (include "slurm.dcgm.epilogScript" .)) }}
+  {{- end }}
+  {{- with $prologScripts }}
   prologScripts:
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* with .Values.prologScripts */}}
-  {{- with .Values.epilogScripts }}
+  {{- end }}{{- /* with $prologScripts */}}
+  {{- with $epilogScripts }}
   epilogScripts:
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* with .Values.epilogScripts */}}
+  {{- end }}{{- /* with $epilogScripts */}}
   template:
     metadata:
       labels:
