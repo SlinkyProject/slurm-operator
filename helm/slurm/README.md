@@ -115,4 +115,8 @@ Helm Chart for Slurm HPC Workload Manager
 | slurm-exporter.exporter.secretName | string | `"slurm-token-exporter"` |  |
 | slurm-exporter.exporter.tolerations | list | `[]` |  |
 | slurmKeyRef | secretKeyRef | `{}` | Slurm shared authentication key. If empty, one will be generated and used. Ref: https://slurm.schedmd.com/authentication.html#slurm |
+| vendor.nvidia.dcgm.autoDetect | bool | `true` | Auto-detect NVIDIA GPU nodesets based on nvidia.com/gpu resource limits |
+| vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |
+| vendor.nvidia.dcgm.jobMappingDir | string | `"/var/lib/dcgm-exporter/job-mapping"` | Directory path where GPU-to-job mapping files will be stored |
+| vendor.nvidia.dcgm.scriptPriority | string | `"90"` | Script execution priority (lower numbers run first) |
 
