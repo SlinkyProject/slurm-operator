@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8scontroller "k8s.io/kubernetes/pkg/controller"
-	daemonutil "k8s.io/kubernetes/pkg/controller/daemon/util"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
@@ -48,9 +47,6 @@ func NewNodeSetPod(
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
 	// be avoided and priorityClass will not be honored.
 	pod.Spec.NodeName = ""
-
-	// Adopt DaemonSet pod tolerations.
-	daemonutil.AddOrUpdateDaemonPodTolerations(&pod.Spec)
 
 	return pod
 }
