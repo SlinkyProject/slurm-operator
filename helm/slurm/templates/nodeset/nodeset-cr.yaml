@@ -58,10 +58,15 @@ spec:
       resources:
         {{- toYaml . | nindent 8 }}
       {{- end }}{{- /* with $nodeset.resources */}}
-      {{- with $nodeset.volumeMounts }}
+      {{- $volumeMounts := $nodeset.volumeMounts | default list }}
+      {{- if and (include "slurm.dcgm.enabled" $) (include "slurm.dcgm.nodesetHasGPU" $nodeset | eq "true") }}
+        {{- $dcgmVolumeMount := dict "name" "dcgm-job-mapping" "mountPath" (include "slurm.dcgm.jobMappingDir" $) }}
+        {{- $volumeMounts = append $volumeMounts $dcgmVolumeMount }}
+      {{- end }}
+      {{- with $volumeMounts }}
       volumeMounts:
         {{- toYaml . | nindent 8 }}
-      {{- end }}{{- /* with $nodeset.volumeMounts */}}
+      {{- end }}{{- /* with $volumeMounts */}}
     logfile:
       image: {{ include "format-image" $nodeset.logfile.image }}
       imagePullPolicy: {{ $.Values.imagePullPolicy }}
@@ -82,10 +87,15 @@ spec:
       {{- toYaml . | nindent 6 }}
     {{- end }}{{- /* with $nodeset.tolerations */}}
     priorityClassName: {{ $.Values.priorityClassName }}
-    {{- with $nodeset.volumes }}
+    {{- $volumes := $nodeset.volumes | default list }}
+    {{- if and (include "slurm.dcgm.enabled" $) (include "slurm.dcgm.nodesetHasGPU" $nodeset | eq "true") }}
+      {{- $dcgmVolume := dict "name" "dcgm-job-mapping" "hostPath" (dict "path" (include "slurm.dcgm.jobMappingDir" $) "type" "DirectoryOrCreate") }}
+      {{- $volumes = append $volumes $dcgmVolume }}
+    {{- end }}
+    {{- with $volumes }}
     volumes:
       {{- toYaml . | nindent 6 }}
-    {{- end }}{{- /* with $nodeset.volumes */}}
+    {{- end }}{{- /* with $volumes */}}
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:

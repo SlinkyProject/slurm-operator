@@ -1,0 +1,26 @@
+# Example configuration for DCGM GPU-to-job mapping integration
+
+# Enable DCGM integration
+vendor:
+  nvidia:
+    dcgm:
+      enabled: true
+      jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
+      scriptPriority: "90"
+
+# Example GPU nodeset that will be automatically detected
+nodesets:
+  gpu-nodes:
+    enabled: true
+    replicas: 1
+    image:
+      repository: ghcr.io/slinkyproject/slurmd
+      tag: 25.05-ubuntu24.04
+    resources:
+      limits:
+        nvidia.com/gpu: 2 # This triggers automatic DCGM integration
+        memory: 16Gi
+    logfile:
+      image:
+        repository: docker.io/library/alpine
+        tag: latest
