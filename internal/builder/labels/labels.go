@@ -108,7 +108,7 @@ func (b *Builder) WithAccountingSelectorLabels(obj *slinkyv1alpha1.Accounting) *
 func (b *Builder) WithAccountingLabels(obj *slinkyv1alpha1.Accounting) *Builder {
 	return b.
 		WithAccountingSelectorLabels(obj).
-		WithComponent(RestapiComp)
+		WithComponent(AccountingComp)
 }
 
 func (b *Builder) WithComputeSelectorLabels(obj *slinkyv1alpha1.NodeSet) *Builder {

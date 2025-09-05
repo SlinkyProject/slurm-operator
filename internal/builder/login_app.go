@@ -115,12 +115,9 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	selectorLabels := labels.NewBuilder().
-		WithLoginSelectorLabels(loginset).
-		Build()
 	objectMeta := metadata.NewBuilder(key).
 		WithMetadata(loginset.Spec.Template.PodMetadata).
-		WithLabels(selectorLabels).
+		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
 		WithAnnotations(hashMap).
 		WithAnnotations(map[string]string{
 			annotationDefaultContainer: labels.LoginApp,
