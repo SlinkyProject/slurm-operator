@@ -164,6 +164,7 @@ func slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *slinkyv1alpha1
 			{Name: slurmLogFileVolume, MountPath: slurmLogFileDir},
 		},
 	}
+	out.VolumeMounts = append(out.VolumeMounts, template.Container.VolumeMounts...)
 	return out
 }
 

@@ -293,6 +293,7 @@ func loginContainer(container slinkyv1alpha1.Container, controller *slinkyv1alph
 			{Name: sssdConfVolume, MountPath: sssdConfFilePath, SubPath: sssdConfFile, ReadOnly: true},
 		},
 	}
+	out.VolumeMounts = append(out.VolumeMounts, container.VolumeMounts...)
 	return out
 }
 
