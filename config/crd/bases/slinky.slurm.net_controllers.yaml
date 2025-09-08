@@ -709,6 +709,27 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              external:
+                default: false
+                description: |-
+                  external indicates if this component is external to Kubernetes or not.
+                  If true, then externalConfig is used and other fields are ignored.
+                type: boolean
+              externalConfig:
+                description: ExternalConfig describes how to communicate with this
+                  external component.
+                properties:
+                  host:
+                    description: Host defines the hostname or IP address to communicate
+                      with.
+                    type: string
+                  port:
+                    description: Port defines the port to communicate over.
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
               extraConf:
                 description: |-
                   ExtraConf is appended onto the end of the `slurm.conf` file.
@@ -1187,6 +1208,9 @@ spec:
             - jwtHs256KeyRef
             - slurmKeyRef
             type: object
+            x-kubernetes-validations:
+            - message: externalConfig must be set when external is true
+              rule: 'self.external ? has(self.externalConfig) : true'
           status:
             description: ControllerStatus defines the observed state of Controller
             properties:

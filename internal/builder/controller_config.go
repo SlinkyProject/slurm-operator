@@ -293,3 +293,60 @@ func isCgroupEnabled(cgroupConf string) bool {
 	found := r.FindStringSubmatch(cgroupConf)
 	return len(found) == 0
 }
+
+// BuildControllerConfigExternal returns a minimal slurm.conf for slurmrestd (lacks configless).
+func (b *Builder) BuildControllerConfigExternal(controller *slinkyv1beta1.Controller) (*corev1.ConfigMap, error) {
+	ctx := context.TODO()
+
+	accounting, err := b.refResolver.GetAccounting(ctx, controller.Spec.AccountingRef)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	opts := ConfigMapOpts{
+		Key:      controller.ConfigKey(),
+		Metadata: controller.Spec.Template.PodMetadata,
+		Data: map[string]string{
+			slurmConfFile: buildSlurmConfMinimal(controller, accounting),
+		},
+	}
+
+	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build())
+
+	return b.BuildConfigMap(opts, controller)
+}
+
+// https://slurm.schedmd.com/slurm.conf.html
+func buildSlurmConfMinimal(
+	controller *slinkyv1beta1.Controller,
+	accounting *slinkyv1beta1.Accounting,
+) string {
+	conf := config.NewBuilder()
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
+	conf.AddProperty(config.NewProperty("ClusterName", controller.ClusterName()))
+	conf.AddProperty(config.NewProperty("SlurmUser", slurmUser))
+	conf.AddProperty(config.NewProperty("SlurmctldHost", controller.PrimaryName()))
+	conf.AddProperty(config.NewProperty("SlurmctldPort", SlurmctldPort))
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### PLUGINS & PARAMETERS ###"))
+	conf.AddProperty(config.NewProperty("AuthType", authType))
+	conf.AddProperty(config.NewProperty("CredType", credType))
+	conf.AddProperty(config.NewProperty("AuthAltTypes", authAltTypes))
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### ACCOUNTING ###"))
+	if accounting != nil {
+		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/slurmdbd"))
+		conf.AddProperty(config.NewProperty("AccountingStorageHost", accounting.ServiceKey().Name))
+		conf.AddProperty(config.NewProperty("AccountingStoragePort", SlurmdbdPort))
+	} else {
+		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/none"))
+	}
+
+	return conf.Build()
+}

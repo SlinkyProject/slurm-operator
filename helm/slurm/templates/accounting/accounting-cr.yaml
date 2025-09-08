@@ -19,6 +19,13 @@ metadata:
   labels:
     {{- include "slurm.labels" . | nindent 4 }}
 spec:
+{{- if .Values.accounting.external }}
+  external: {{ .Values.accounting.external }}
+  {{- with .Values.accounting.externalConfig }}
+  externalConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with .Values.accounting.externalConfig */}}
+{{- else }}{{- /* if .Values.accounting.external */}}
   slurmKeyRef:
     {{- if .Values.slurmKeyRef }}
     {{- toYaml .Values.slurmKeyRef | nindent 4 }}
@@ -47,3 +54,4 @@ spec:
   {{- end }}{{- /* with .Values.accounting.storageConfig */}}
   {{- include "format-service" .Values.accounting.service | nindent 2 }}
 {{- end }}{{- /* if .Values.accounting.enabled */}}
+{{- end }}{{- /* if .Values.accounting.external */}}

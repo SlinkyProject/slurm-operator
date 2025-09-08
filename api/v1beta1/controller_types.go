@@ -18,6 +18,7 @@ var (
 )
 
 // ControllerSpec defines the desired state of Controller
+// +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
 type ControllerSpec struct {
 	// The Slurm ClusterName, which uniquely identifies the Slurm Cluster to
 	// itself and accounting.
@@ -36,6 +37,16 @@ type ControllerSpec struct {
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
 	AccountingRef ObjectReference `json:"accountingRef"`
+
+	// external indicates if this component is external to Kubernetes or not.
+	// If true, then externalConfig is used and other fields are ignored.
+	// +optional
+	// +default:=false
+	External bool `json:"external,omitzero"`
+
+	// ExternalConfig describes how to communicate with this external component.
+	// +optional
+	ExternalConfig ExternalConfig `json:"externalConfig,omitzero"`
 
 	// The slurmctld container configuration.
 	// See corev1.Container spec.

@@ -27,6 +27,9 @@ func (o *Controller) Key() types.NamespacedName {
 }
 
 func (o *Controller) PrimaryName() string {
+	if o.Spec.External {
+		return o.Spec.ExternalConfig.Host
+	}
 	key := o.Key()
 	return fmt.Sprintf("%s-0", key.Name)
 }

@@ -37,6 +37,13 @@ spec:
     name: {{ include "slurm.authJwtHs256Ref.name" . }}
     key: {{ include "slurm.authJwtHs256Ref.key" . }}
     {{- end }}{{- /* if .Values.jwtHs256KeyRef */}}
+{{- if .Values.controller.external }}
+  external: {{ .Values.controller.external }}
+  {{- with .Values.controller.externalConfig }}
+  externalConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with .Values.controller.externalConfig */}}
+{{- else }}{{- /* if .Values.controller.external */}}
   {{- with .Values.clusterName }}
   clusterName: {{ . }}
   {{- end }}{{- /* with .Values.clusterName */}}
@@ -89,3 +96,4 @@ spec:
   metrics:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.controller.metrics */}}
+{{- end }}{{- /* if .Values.controller.external */}}

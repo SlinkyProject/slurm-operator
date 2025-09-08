@@ -53,9 +53,16 @@ const (
 )
 
 func configlessArgs(controller *slinkyv1beta1.Controller) []string {
+	host := controller.ServiceFQDNShort()
+	port := SlurmctldPort
+	if controller.Spec.External {
+		externalConfig := controller.Spec.ExternalConfig
+		host = externalConfig.Host
+		port = externalConfig.Port
+	}
 	args := []string{
 		"--conf-server",
-		fmt.Sprintf("%s:%d", controller.ServiceFQDNShort(), SlurmctldPort),
+		fmt.Sprintf("%s:%d", host, port),
 	}
 	return args
 }

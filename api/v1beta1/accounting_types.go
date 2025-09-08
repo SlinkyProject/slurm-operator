@@ -18,14 +18,27 @@ var (
 )
 
 // AccountingSpec defines the desired state of Accounting
+// +kubebuilder:validation:XValidation:rule="!self.external ? has(self.slurmKeyRef) : true", message="slurmKeyRef must be set when external is false"
+// +kubebuilder:validation:XValidation:rule="!self.external ? has(self.jwtHs256KeyRef) : true", message="jwtHs256KeyRef must be set when external is false"
+// +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
 type AccountingSpec struct {
 	// Slurm `auth/slurm` key authentication.
-	// +required
+	// +optional
 	SlurmKeyRef corev1.SecretKeySelector `json:"slurmKeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT HS256 key authentication.
-	// +required
+	// +optional
 	JwtHs256KeyRef corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
+
+	// external indicates if this component is external to Kubernetes or not.
+	// If true, then externalConfig is used and other fields are ignored.
+	// +optional
+	// +default:=false
+	External bool `json:"external,omitzero"`
+
+	// ExternalConfig describes how to communicate with this external component.
+	// +optional
+	ExternalConfig ExternalConfig `json:"externalConfig,omitzero"`
 
 	// The slurmdbd container configuration.
 	// See corev1.Container spec.

@@ -120,6 +120,15 @@ epilogScripts: {}
 
 # Slurm controller (slurmctld) configuration.
 controller:
+  # -- Configures this component as external (not in Kubernetes).
+  external: false
+  # Details required to communicate with an external slurmdbd.
+  # When `external=true`, `externalConfig` is used and all other fields are ignored.
+  externalConfig:
+    # -- The slurmdbd host address or IP.
+    host: slurmdbd.example.com
+    # -- The slurmdbd port. Default is 6819.
+    port: null
   # slurmctld container configurations.
   slurmctld:
     # -- The image to use, `${repository}:${tag}`.
@@ -346,6 +355,15 @@ accounting:
   # -- Enables Slurm accounting subsystem, stores job/step historical records.
   # Ref: https://slurm.schedmd.com/accounting.html#Overview
   enabled: false
+  # -- Configures this component as external (not in Kubernetes).
+  external: false
+  # Details required to communicate with an external slurmdbd.
+  # When `external=true`, `externalConfig` is used and all other fields are ignored.
+  externalConfig:
+    # -- The slurmdbd host address or IP.
+    host: slurmdbd.example.com
+    # -- The slurmdbd port. Default is 6819.
+    port: null
   # slurmdbd container configurations.
   slurmdbd:
     # -- The image to use, `${repository}:${tag}`.

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -39,6 +40,9 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		{
 			Name: "Service",
 			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+				if controller.Spec.External {
+					return nil
+				}
 				object, err := r.builder.BuildControllerService(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -52,7 +56,13 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		{
 			Name: "Config",
 			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
-				object, err := r.builder.BuildControllerConfig(controller)
+				var object *corev1.ConfigMap
+				var err error
+				if controller.Spec.External {
+					object, err = r.builder.BuildControllerConfigExternal(controller)
+				} else {
+					object, err = r.builder.BuildControllerConfig(controller)
+				}
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
 				}
@@ -65,6 +75,9 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		{
 			Name: "StatefulSet",
 			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+				if controller.Spec.External {
+					return nil
+				}
 				object, err := r.builder.BuildController(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)

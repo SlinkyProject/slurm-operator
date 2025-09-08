@@ -355,6 +355,27 @@ spec:
           spec:
             description: AccountingSpec defines the desired state of Accounting
             properties:
+              external:
+                default: false
+                description: |-
+                  external indicates if this component is external to Kubernetes or not.
+                  If true, then externalConfig is used and other fields are ignored.
+                type: boolean
+              externalConfig:
+                description: ExternalConfig describes how to communicate with this
+                  external component.
+                properties:
+                  host:
+                    description: Host defines the hostname or IP address to communicate
+                      with.
+                    type: string
+                  port:
+                    description: Port defines the port to communicate over.
+                    type: integer
+                required:
+                - host
+                - port
+                type: object
               extraConf:
                 description: |-
                   ExtraConf is appended onto the end of the `slurmdbd.conf` file.
@@ -556,10 +577,14 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
-            required:
-            - jwtHs256KeyRef
-            - slurmKeyRef
             type: object
+            x-kubernetes-validations:
+            - message: slurmKeyRef must be set when external is false
+              rule: '!self.external ? has(self.slurmKeyRef) : true'
+            - message: jwtHs256KeyRef must be set when external is false
+              rule: '!self.external ? has(self.jwtHs256KeyRef) : true'
+            - message: externalConfig must be set when external is true
+              rule: 'self.external ? has(self.externalConfig) : true'
           status:
             description: AccountingStatus defines the observed state of Accounting
             properties:

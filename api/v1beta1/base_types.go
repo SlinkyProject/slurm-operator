@@ -236,3 +236,14 @@ type MetricEndpoint struct {
 	// +optional
 	ScrapeTimeout monitoringv1.Duration `json:"scrapeTimeout,omitzero"`
 }
+
+// ExternalConfig describes how to communicate with an external service.
+type ExternalConfig struct {
+	// Host defines the hostname or IP address to communicate with.
+	// +required
+	Host string `json:"host,omitzero"`
+
+	// Port defines the port to communicate over.
+	// +required
+	Port int `json:"port,omitzero"`
+}

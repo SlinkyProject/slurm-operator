@@ -16,7 +16,6 @@ import (
 )
 
 // BuildClusterWorkerService creates a single headless service for ALL worker NodeSets in the same Slurm cluster
-// The service name is derived from the Slurm cluster name to support hybrid deployments
 func (b *Builder) BuildClusterWorkerService(nodeset *slinkyv1beta1.NodeSet) (*corev1.Service, error) {
 	selectorLabels := labels.NewBuilder().
 		WithApp(labels.WorkerApp).

@@ -102,7 +102,7 @@ zero can be best paired with LoginSets.
 ### Hybrid Support
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRD are designed support these use cases.
+Kubernetes. The operator and its CRDs are designed support these use cases.
 
 ### Slurm
 

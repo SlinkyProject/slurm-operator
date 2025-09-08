@@ -151,8 +151,11 @@ func GetPodName(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
 	return fmt.Sprintf("%s-%d", nodeset.Name, ordinal)
 }
 
-// GetPodName gets the name of nodeset's child Pod with an ordinal index of ordinal
+// GetNodeName returns the Slurm node name
 func GetNodeName(pod *corev1.Pod) string {
+	if pod.Spec.HostNetwork {
+		return pod.Spec.NodeName
+	}
 	if pod.Spec.Hostname != "" {
 		return pod.Spec.Hostname
 	}
