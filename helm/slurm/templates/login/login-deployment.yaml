@@ -28,6 +28,7 @@ spec:
       enableServiceLinks: false
       dnsConfig:
         {{- include "slurm.dnsConfig" . | nindent 8 }}
+        {{- include "slurm.imagePullSecrets" . | nindent 6 }}
       initContainers:
         - name: init
           image: {{ include "slurm.authcred.imageRef" . }}
