@@ -6,6 +6,7 @@ package builder
 import (
 	"context"
 	"fmt"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -93,11 +94,41 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1alpha1.Controller) (
 		epilogScripts = filenames
 	}
 
+	prologSlurmctldScripts := []string{}
+	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
+		cm := &corev1.ConfigMap{}
+		key := types.NamespacedName{
+			Namespace: controller.Namespace,
+			Name:      ref.Name,
+		}
+		if err := b.client.Get(ctx, key, cm); err != nil {
+			return nil, err
+		}
+		filenames := structutils.Keys(cm.Data)
+		sort.Strings(filenames)
+		prologSlurmctldScripts = filenames
+	}
+
+	epilogSlurmctldScripts := []string{}
+	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
+		cm := &corev1.ConfigMap{}
+		key := types.NamespacedName{
+			Namespace: controller.Namespace,
+			Name:      ref.Name,
+		}
+		if err := b.client.Get(ctx, key, cm); err != nil {
+			return nil, err
+		}
+		filenames := structutils.Keys(cm.Data)
+		sort.Strings(filenames)
+		epilogSlurmctldScripts = filenames
+	}
+
 	opts := ConfigMapOpts{
 		Key:      controller.ConfigKey(),
 		Metadata: controller.Spec.Template.PodMetadata,
 		Data: map[string]string{
-			slurmConfFile: buildSlurmConf(controller, accounting, nodesetList, prologScripts, epilogScripts, cgroupEnabled),
+			slurmConfFile: buildSlurmConf(controller, accounting, nodesetList, prologScripts, epilogScripts, prologSlurmctldScripts, epilogSlurmctldScripts, cgroupEnabled),
 		},
 	}
 	if !hasCgroupConfFile {
@@ -115,6 +146,7 @@ func buildSlurmConf(
 	accounting *slinkyv1alpha1.Accounting,
 	nodesetList *slinkyv1alpha1.NodeSetList,
 	prologScripts, epilogScripts []string,
+	prologSlurmctldScripts, epilogSlurmctldScripts []string,
 	cgroupEnabled bool,
 ) string {
 	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.PrimaryFQDN())
@@ -173,6 +205,19 @@ func buildSlurmConf(
 	} else {
 		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/none"))
 		conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/none"))
+	}
+
+	if len(prologSlurmctldScripts) > 0 || len(epilogSlurmctldScripts) > 0 {
+		conf.AddProperty(config.NewPropertyRaw("#"))
+		conf.AddProperty(config.NewPropertyRaw("### SLURMCTLD PROLOG & EPILOG ###"))
+	}
+	for _, filename := range prologSlurmctldScripts {
+		scriptPath := path.Join(slurmEtcDir, filename)
+		conf.AddProperty(config.NewProperty("PrologSlurmctld", scriptPath))
+	}
+	for _, filename := range epilogSlurmctldScripts {
+		scriptPath := path.Join(slurmEtcDir, filename)
+		conf.AddProperty(config.NewProperty("EpilogSlurmctld", scriptPath))
 	}
 
 	if len(prologScripts) > 0 || len(epilogScripts) > 0 {

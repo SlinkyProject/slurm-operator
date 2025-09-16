@@ -70,6 +70,30 @@ configFiles: {}
   # plugstack.conf: |
   #   include /usr/share/pyxis/*
 
+# -- (map[string]string) The Slurm PrologSlurmctld scripts run on slurmctld at job allocation.
+# The map key represents the filename; the map value represents the script contents.
+# WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm.
+# Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
+# Ref: https://slurm.schedmd.com/prolog_epilog.html
+# Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
+prologSlurmctldScripts: {}
+  # 00-empty.sh: |
+  #   #!/usr/bin/env bash
+  #   set -euo pipefail
+  #   exit 0
+
+# -- (map[string]string) The Slurm EpilogSlurmctld scripts ran on slurmctld at job completion.
+# The map key represents the filename; the map value represents the script contents.
+# WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm.
+# Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
+# Ref: https://slurm.schedmd.com/prolog_epilog.html
+# Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
+epilogSlurmctldScripts: {}
+  # 00-empty.sh: |
+  #   #!/usr/bin/env bash
+  #   set -euo pipefail
+  #   exit 0
+
 # -- (map[string]string) The Slurm Prolog scripts ran on all NodeSets.
 # The map key represents the filename; the map value represents the script contents.
 # WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm.

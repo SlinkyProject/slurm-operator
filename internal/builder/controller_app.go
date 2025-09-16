@@ -108,7 +108,7 @@ func (b *Builder) BuildController(controller *slinkyv1alpha1.Controller) (*appsv
 func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (corev1.PodTemplateSpec, error) {
 	key := controller.Key()
 
-	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs)
+	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
 	extraConfigMapNames := make([]string, 0, size)
 	for _, ref := range controller.Spec.ConfigFileRefs {
 		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
@@ -117,6 +117,12 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (
 		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
 	}
 	for _, ref := range controller.Spec.EpilogScriptRefs {
+		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+	}
+	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
+		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+	}
+	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
 		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
 	}
 
@@ -174,7 +180,7 @@ func controllerVolumes(controller *slinkyv1alpha1.Controller, extra []string) []
 			Name: slurmEtcVolume,
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: ptr.To[int32](0o600),
+					DefaultMode: ptr.To[int32](0o610),
 					Sources: []corev1.VolumeProjection{
 						{
 							ConfigMap: &corev1.ConfigMapProjection{

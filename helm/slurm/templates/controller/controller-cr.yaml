@@ -64,6 +64,14 @@ spec:
     {{- if (include "vendor.dcgm.enabled" .) }}
     - name: {{ include "vendor.dcgm.epilogName" . }}
     {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+  prologSlurmctldScriptRefs:
+    {{- with .Values.prologSlurmctldScripts }}
+    - name: {{ include "slurm.controller.prologSlurmctldName" $ }}
+    {{- end }}{{- /* with .Values.prologSlurmctldScripts */}}
+  epilogSlurmctldScriptRefs:
+    {{- with .Values.epilogSlurmctldScripts }}
+    - name: {{ include "slurm.controller.epilogSlurmctldName" $ }}
+    {{- end }}{{- /* with .Values.epilogSlurmctldScripts */}}
   slurmctld:
     {{- include "format-container" .Values.controller.slurmctld | nindent 4 }}
   reconfigure:

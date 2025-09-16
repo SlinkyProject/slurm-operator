@@ -83,6 +83,16 @@ type ControllerSpec struct {
 	// +optional
 	EpilogScriptRefs []ObjectReference `json:"epilogScriptRefs,omitzero"`
 
+	// PrologSlurmctldScriptRefs is a list of PrologSlurmctld scripts to be mounted in `/etc/slurm`.
+	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
+	// +optional
+	PrologSlurmctldScriptRefs []ObjectReference `json:"prologSlurmctldScriptRefs,omitzero"`
+
+	// EpilogSlurmctldScriptRefs is a list of EpilogSlurmctld scripts to be mounted in `/etc/slurm`.
+	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
+	// +optional
+	EpilogSlurmctldScriptRefs []ObjectReference `json:"epilogSlurmctldScriptRefs,omitzero"`
+
 	// Persistence defines a persistent volume for the slurm controller to store its save-state.
 	// Used to recover from system failures or from pod upgrades.
 	// +optional

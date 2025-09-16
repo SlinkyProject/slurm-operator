@@ -239,6 +239,16 @@ func (in *ControllerSpec) DeepCopyInto(out *ControllerSpec) {
 		*out = make([]ObjectReference, len(*in))
 		copy(*out, *in)
 	}
+	if in.PrologSlurmctldScriptRefs != nil {
+		in, out := &in.PrologSlurmctldScriptRefs, &out.PrologSlurmctldScriptRefs
+		*out = make([]ObjectReference, len(*in))
+		copy(*out, *in)
+	}
+	if in.EpilogSlurmctldScriptRefs != nil {
+		in, out := &in.EpilogSlurmctldScriptRefs, &out.EpilogSlurmctldScriptRefs
+		*out = make([]ObjectReference, len(*in))
+		copy(*out, *in)
+	}
 	in.Persistence.DeepCopyInto(&out.Persistence)
 	in.Service.DeepCopyInto(&out.Service)
 }

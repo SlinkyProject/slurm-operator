@@ -91,3 +91,17 @@ Worker epilog scripts.
 {{- define "slurm.controller.epilogName" -}}
 {{- printf "%s-epilog-scripts" (include "slurm.fullname" .) -}}
 {{- end }}
+
+{{/*
+Worker prolog slurmctld scripts.
+*/}}
+{{- define "slurm.controller.prologSlurmctldName" -}}
+{{- printf "%s-prolog-slurmctld-scripts" (include "slurm.fullname" .) -}}
+{{- end }}
+
+{{/*
+Worker epilog slurmctld scripts.
+*/}}
+{{- define "slurm.controller.epilogSlurmctldName" -}}
+{{- printf "%s-epilog-slurmctld-scripts" (include "slurm.fullname" .) -}}
+{{- end }}
