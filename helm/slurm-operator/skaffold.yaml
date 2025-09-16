@@ -19,6 +19,8 @@ profiles:
           docker:
             dockerfile: Dockerfile
             target: webhook
+      local:
+        useDockerCLI: true
     deploy:
       helm:
         releases:

@@ -9,12 +9,14 @@ workflow:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
 
 stages:
+  - build
   - test
   - release
 
 variables:
   VERSION: 0.4.0
   CI_JOB_USER: gitlab-ci-token
+  DOCKER_TLS_CERTDIR: '' # disable TLS
   FF_SCRIPT_SECTIONS: true
 
 .template:
@@ -25,5 +27,6 @@ variables:
     - schedmd-slc
 
 include:
+  - local: .gitlab/ci/build.yml
   - local: .gitlab/ci/test.yml
   - local: .gitlab/ci/release.yml

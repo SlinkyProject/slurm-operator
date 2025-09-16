@@ -1,0 +1,20 @@
+---
+
+.build-template:
+  extends: .template
+  stage: build
+  variables:
+    REGISTRY: $CI_REGISTRY_IMAGE
+  before_script:
+    - set -euo pipefail
+    - docker info
+    - apk update && apk upgrade
+    - apk add --no-cache bash make
+  rules:
+    - changes:
+        - ./**/*.go
+
+build-images:
+  extends: .build-template
+  script:
+    - make build-images

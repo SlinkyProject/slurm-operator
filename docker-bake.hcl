@@ -34,6 +34,13 @@ target "_common" {
   }
 }
 
+target "_multiarch" {
+  platforms = [
+    "linux/amd64",
+    "linux/arm64"
+  ]
+}
+
 ################################################################################
 
 group "default" {
@@ -46,7 +53,7 @@ group "default" {
 ################################################################################
 
 target "operator" {
-  inherits = ["_common"]
+  inherits = ["_common", "_multiarch"]
   dockerfile = "Dockerfile"
   target = "manager"
   labels = {
@@ -66,7 +73,7 @@ target "operator" {
 ################################################################################
 
 target "webhook" {
-  inherits = ["_common"]
+  inherits = ["_common", "_multiarch"]
   dockerfile = "Dockerfile"
   target = "webhook"
   labels = {

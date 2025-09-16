@@ -54,15 +54,29 @@ help: ## Display this help.
 all: build ## Build slurm-operator.
 
 REGISTRY ?= slinky.slurm.net
+BUILDER ?= project-v3-builder
 
 .PHONY: build
-build: ## Build container images.
-	REGISTRY=$(REGISTRY) VERSION=$(VERSION) docker buildx bake
+build: build-images build-chart ## Build OCI packages.
+
+.PHONY: build-images
+build-images: ## Build container images.
+	- $(CONTAINER_TOOL) buildx create --name $(BUILDER)
+	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER)
+
+.PHONY: build-chart
+build-chart: ## Build charts.
 	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), helm package --dependency-update helm/$(shell basename "$(shell dirname "${chart}")") ;)
 
 .PHONY: push
-push: build ## Push container images.
-	REGISTRY=$(REGISTRY) VERSION=$(VERSION) docker buildx bake --push
+push: push-images push-charts ## Push OCI packages.
+
+.PHONY: push-images
+push-images: build-images ## Push container images.
+	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push
+
+.PHONY: push-charts
+push-charts: build-chart ## Push OCI packages.
 	$(foreach chart, $(wildcard ./*.tgz), helm push ${chart} oci://$(REGISTRY)/charts ;)
 
 .PHONY: clean
@@ -72,38 +86,11 @@ clean: ## Clean executable files.
 	rm -rf vendor/
 	rm -f cover.out cover.html
 	rm -f *.tgz
+	$(CONTAINER_TOOL) buildx rm $(BUILDER)
 
 .PHONY: run
 run: manifests generate fmt tidy vet ## Run a controller from your host.
 	go run ./cmd/manager/main.go
-
-# If you wish built the manager image targeting other platforms you can use the --platform flag.
-# (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
-# More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-.PHONY: docker-build
-docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build $(CONTAINER_BUILD_FLAGS) -f ${DOCKERFILE_PATH} -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	$(CONTAINER_TOOL) push ${IMG}
-
-# PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
-# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
-# - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
-# - have enable BuildKit, More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-# - be able to push the image for your registry (i.e. if you do not inform a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
-# To properly provided solutions that supports more than one platform you should use this option.
-PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
-.PHONY: docker-buildx
-docker-buildx: test ## Build and push docker image for the manager for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name project-v3-builder
-	$(CONTAINER_TOOL) buildx use project-v3-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm project-v3-builder
-	rm Dockerfile.cross
 
 ##@ Deployment
 
