@@ -18,9 +18,9 @@ variables:
   FF_SCRIPT_SECTIONS: true
 
 .template:
-  image: docker:28.1.1
+  image: docker:latest
   services:
-    - docker:28.1.1-dind
+    - docker:dind
 
 include:
   - local: .gitlab/ci/test.yml
