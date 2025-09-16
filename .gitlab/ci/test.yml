@@ -3,9 +3,23 @@
 include:
   - template: Jobs/Secret-Detection.gitlab-ci.yml
 
+.test-template:
+  extends: .template
+  before_script:
+    - set -euo pipefail
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - apk update && apk upgrade
+    - apk add --no-cache bash git make helm
+    - export PATH=$PATH:$HOME/go/bin/
+    - wget -O go.tgz https://go.dev/dl/go1.24.3.linux-amd64.tar.gz
+    - tar -C /usr/local -xzf go.tgz
+    - export PATH=$PATH:/usr/local/go/bin
+    - go env -w GOPRIVATE=github.com/SlinkyProject/*
+
 test:
   stage: test
-  extends: .docker
+  extends: .test-template
   script:
     - set -euo pipefail
     - apk update && apk upgrade
@@ -19,7 +33,7 @@ test:
 
 audit:
   stage: test
-  extends: .docker
+  extends: .test-template
   script:
     - make govulncheck
   allow_failure: true

@@ -17,21 +17,10 @@ variables:
   CI_JOB_USER: gitlab-ci-token
   FF_SCRIPT_SECTIONS: true
 
-.docker:
+.template:
   image: docker:28.1.1
   services:
     - docker:28.1.1-dind
-  before_script:
-    - set -euo pipefail
-    - docker info
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-    - apk update && apk upgrade
-    - apk add --no-cache bash git make helm
-    - export PATH=$PATH:$HOME/go/bin/
-    - wget -O go.tgz https://go.dev/dl/go1.24.3.linux-amd64.tar.gz
-    - tar -C /usr/local -xzf go.tgz
-    - export PATH=$PATH:/usr/local/go/bin
-    - go env -w GOPRIVATE=github.com/SlinkyProject/*
 
 include:
   - local: .gitlab/ci/test.yml

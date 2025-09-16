@@ -1,8 +1,17 @@
 ---
 
+.release-template:
+  extends: .template
+  before_script:
+    - set -euo pipefail
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - apk update && apk upgrade
+    - apk add --no-cache bash make helm
+
 release-oci:
   stage: release
-  extends: .docker
+  extends: .release-template
   variables:
     REGISTRY: ${DOCKER_REGISTRY}
   script:
