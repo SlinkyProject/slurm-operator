@@ -13,10 +13,9 @@ stages:
   - release
 
 variables:
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: /certs
   VERSION: 0.4.0
   CI_JOB_USER: gitlab-ci-token
+  FF_SCRIPT_SECTIONS: true
 
 .docker:
   image: docker:28.1.1
@@ -34,100 +33,6 @@ variables:
     - export PATH=$PATH:/usr/local/go/bin
     - go env -w GOPRIVATE=github.com/SlinkyProject/*
 
-test:
-  stage: test
-  extends: .docker
-  script:
-    - set -euo pipefail
-    - apk update && apk upgrade
-    - apk add --no-cache shellcheck shfmt pre-commit curl
-    - pre-commit run --verbose --all-files --show-diff-on-failure
-  coverage: /total:\s+\(statements\)\s+\d+.\d+%/
-  artifacts:
-    expire_in: 7 days
-    paths:
-      - cover.html
-
-audit:
-  stage: test
-  extends: .docker
-  script:
-    - make govulncheck
-  allow_failure: true
-
 include:
-  - template: Jobs/Secret-Detection.gitlab-ci.yml
-secret_detection:
-  stage: test
-  allow_failure: false
-  artifacts:
-    when: on_failure
-    expire_in: 7 days
-    paths:
-      - gl-secret-detection-report.json
-
-release-oci:
-  stage: release
-  extends: .docker
-  variables:
-    REGISTRY: ${DOCKER_REGISTRY}
-  script:
-    - set -euo pipefail
-    - |
-      if [ -z $DOCKER_REGISTRY_PASSWORD ] || [ -z $DOCKER_REGISTRY ] || [ -z $DOCKER_REGISTRY_USER ]; then
-        echo "Runner lacks login info. Either environment variables are not defined, or runner is on an unprotected branch/tag.";
-        exit 1;
-      fi
-    - echo "$DOCKER_REGISTRY_PASSWORD" | docker login $DOCKER_REGISTRY -u $DOCKER_REGISTRY_USER --password-stdin
-    - make clean
-    - make push
-  rules:
-    - if: $CI_COMMIT_REF_PROTECTED == "true"
-      when: manual
-
-.git:
-  image: alpine:latest
-  before_script:
-    - set -euo pipefail
-    - apk update && apk upgrade
-    - apk add --no-cache git
-    - git version
-    - |
-      if [ -z $CI_AUTH_TOKEN ]; then
-        echo "Runner lacks auth token. Either environment variables are not defined, or runner is on an unprotected branch/tag.";
-        exit 1;
-      fi
-    - git remote set-url origin ${CI_PROJECT_URL/gitlab.com/oauth2:${CI_AUTH_TOKEN}@gitlab.com}.git
-    - git remote -v
-    - |
-      if [ -z "$(echo "$VERSION" | grep -Eo "^[0-9]+\.[0-9]+\.[0-9]+$")" ]; then
-        echo "VERSION is not semver: `$VERSION`"
-        exit 1
-      fi
-
-release-tag:
-  stage: release
-  extends: .git
-  script:
-    - set -euo pipefail
-    - tag_version="v${VERSION}"
-    - echo "tag_version=${tag_version}"
-    - git tag ${tag_version}
-    - git push origin ${tag_version}
-  rules:
-    - if: $CI_COMMIT_REF_PROTECTED == "true"
-      when: manual
-
-release-branch:
-  stage: release
-  extends: .git
-  script:
-    - set -euo pipefail
-    - major_minor="$(echo ${VERSION} | grep -Eo "^[0-9]+\.[0-9]+")"
-    - branch_name="release-${major_minor}"
-    - echo "branch_name=${branch_name}"
-    - git branch ${branch_name}
-    - git push --set-upstream origin ${branch_name}
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
+  - local: .gitlab/ci/test.yml
+  - local: .gitlab/ci/release.yml

@@ -1,0 +1,34 @@
+---
+
+include:
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+
+test:
+  stage: test
+  extends: .docker
+  script:
+    - set -euo pipefail
+    - apk update && apk upgrade
+    - apk add --no-cache shellcheck shfmt pre-commit curl
+    - pre-commit run --verbose --all-files --show-diff-on-failure
+  coverage: /total:\s+\(statements\)\s+\d+.\d+%/
+  artifacts:
+    expire_in: 7 days
+    paths:
+      - cover.html
+
+audit:
+  stage: test
+  extends: .docker
+  script:
+    - make govulncheck
+  allow_failure: true
+
+secret_detection:
+  stage: test
+  allow_failure: false
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - gl-secret-detection-report.json
