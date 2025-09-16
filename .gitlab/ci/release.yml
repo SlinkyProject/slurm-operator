@@ -30,6 +30,8 @@ release-oci:
 
 .git:
   image: alpine:latest
+  tags:
+    - schedmd-internal
   before_script:
     - set -euo pipefail
     - apk update && apk upgrade

@@ -21,6 +21,8 @@ variables:
   image: docker:latest
   services:
     - docker:dind
+  tags:
+    - schedmd-slc
 
 include:
   - local: .gitlab/ci/test.yml
