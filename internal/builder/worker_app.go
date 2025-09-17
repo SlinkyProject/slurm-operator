@@ -57,7 +57,13 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 			Containers: []corev1.Container{
 				b.slurmdContainer(nodeset, controller),
 			},
-			Hostname:         template.Hostname,
+			Hostname:  template.Hostname,
+			Subdomain: slurmClusterWorkerServiceName(spec.ControllerRef.Name),
+			DNSConfig: &corev1.PodDNSConfig{
+				Searches: []string{
+					slurmClusterWorkerService(spec.ControllerRef.Name, nodeset.Namespace),
+				},
+			},
 			ImagePullSecrets: template.ImagePullSecrets,
 			InitContainers: []corev1.Container{
 				b.logfileContainer(spec.LogFile, slurmdLogFilePath),

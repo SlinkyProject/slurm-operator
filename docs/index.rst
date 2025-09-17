@@ -118,6 +118,11 @@ The operator supports NodeSet scale to zero, scaling the resource down
 to zero replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also
 support scale to zero can be best paired with NodeSets.
 
+NodeSets can be resolved by hostname. This enables hostname-based
+resolution between login pods and worker pods, enabling direct
+pod-to-pod communication using predictable hostnames (e.g., ``cpu-1-0``,
+``gpu-2-1``).
+
 LoginSets
 ~~~~~~~~~
 

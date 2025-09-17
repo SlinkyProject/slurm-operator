@@ -53,6 +53,15 @@ func (b *Builder) WithManagedBy(component string) *Builder {
 	return b
 }
 
+const (
+	clusterLabel = "slinky.slurm.net/cluster"
+)
+
+func (b *Builder) WithCluster(cluster string) *Builder {
+	b.labels[clusterLabel] = cluster
+	return b
+}
+
 func (b *Builder) WithLabels(labels map[string]string) *Builder {
 	maps.Copy(b.labels, labels)
 	return b
@@ -120,7 +129,8 @@ func (b *Builder) WithWorkerSelectorLabels(obj *slinkyv1alpha1.NodeSet) *Builder
 func (b *Builder) WithWorkerLabels(obj *slinkyv1alpha1.NodeSet) *Builder {
 	return b.
 		WithWorkerSelectorLabels(obj).
-		WithComponent(WorkerComp)
+		WithComponent(WorkerComp).
+		WithCluster(obj.Spec.ControllerRef.Name)
 }
 
 func (b *Builder) WithLoginSelectorLabels(obj *slinkyv1alpha1.LoginSet) *Builder {

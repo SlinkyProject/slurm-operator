@@ -88,6 +88,7 @@ type NodeSetReconciler struct {
 //+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=pods/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apps,resources=controllerrevisions,verbs=get;list;watch;create;update;patch;delete
@@ -145,6 +146,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named(ControllerName).
 		For(&slinkyv1alpha1.NodeSet{}).
 		Owns(&corev1.Pod{}).
+		Owns(&corev1.Service{}).
 		Watches(&corev1.Pod{}, podEventHandler).
 		WatchesRawSource(source.Channel(r.EventCh, podEventHandler)).
 		Watches(&slinkyv1alpha1.Controller{}, &controllerEventHandler{

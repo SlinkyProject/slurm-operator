@@ -21,6 +21,7 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -216,12 +217,54 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
+	if err := r.syncClusterWorkerService(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncSlurm(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
 	if err := r.syncNodeSet(ctx, nodeset, pods, hash); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.
+func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet) error {
+	service, err := r.builder.BuildClusterWorkerService(nodeset)
+	if err != nil {
+		return fmt.Errorf("failed to build cluster worker service: %w", err)
+	}
+
+	serviceKey := client.ObjectKeyFromObject(service)
+	if err := r.Get(ctx, serviceKey, service); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	nodesetList := &slinkyv1alpha1.NodeSetList{}
+	if err := r.List(ctx, nodesetList); err != nil {
+		return err
+	}
+	clusterName := nodeset.Spec.ControllerRef.Name
+	opts := []controllerutil.OwnerReferenceOption{
+		controllerutil.WithBlockOwnerDeletion(true),
+	}
+	for _, nodeset := range nodesetList.Items {
+		if nodeset.Spec.ControllerRef.Name != clusterName {
+			continue
+		}
+		if err := controllerutil.SetOwnerReference(&nodeset, service, r.Scheme, opts...); err != nil {
+			return fmt.Errorf("failed to set owner: %w", err)
+		}
+	}
+
+	if err := objectutils.SyncObject(r.Client, ctx, service, true); err != nil {
+		return fmt.Errorf("failed to sync service (%s): %w", klog.KObj(service), err)
 	}
 
 	return nil

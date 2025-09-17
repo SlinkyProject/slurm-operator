@@ -140,7 +140,12 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 			Containers: []corev1.Container{
 				b.loginContainer(spec.Login.Container, controller),
 			},
-			Hostname:          template.Hostname,
+			Hostname: template.Hostname,
+			DNSConfig: &corev1.PodDNSConfig{
+				Searches: []string{
+					slurmClusterWorkerService(spec.ControllerRef.Name, loginset.Namespace),
+				},
+			},
 			ImagePullSecrets:  template.ImagePullSecrets,
 			NodeSelector:      template.NodeSelector,
 			PriorityClassName: template.PriorityClassName,

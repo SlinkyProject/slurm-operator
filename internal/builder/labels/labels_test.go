@@ -76,6 +76,16 @@ func TestNewBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "WithCluster",
+			args: args{
+				builder: NewBuilder().
+					WithCluster("slurm"),
+			},
+			want: map[string]string{
+				clusterLabel: "slurm",
+			},
+		},
+		{
 			name: "WithLabels",
 			args: args{
 				builder: NewBuilder().
