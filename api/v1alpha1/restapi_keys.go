@@ -6,6 +6,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -26,10 +27,10 @@ func (o *RestApi) ServiceKey() types.NamespacedName {
 
 func (o *RestApi) ServiceFQDN() string {
 	s := o.ServiceKey()
-	return fqdn(s.Name, s.Namespace)
+	return domainname.Fqdn(s.Name, s.Namespace)
 }
 
 func (o *RestApi) ServiceFQDNShort() string {
 	s := o.ServiceKey()
-	return fqdnShort(s.Name, s.Namespace)
+	return domainname.FqdnShort(s.Name, s.Namespace)
 }

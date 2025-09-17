@@ -6,6 +6,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -45,12 +46,12 @@ func (o *Controller) ServiceKey() types.NamespacedName {
 
 func (o *Controller) ServiceFQDN() string {
 	s := o.ServiceKey()
-	return fqdn(s.Name, s.Namespace)
+	return domainname.Fqdn(s.Name, s.Namespace)
 }
 
 func (o *Controller) ServiceFQDNShort() string {
 	s := o.ServiceKey()
-	return fqdnShort(s.Name, s.Namespace)
+	return domainname.FqdnShort(s.Name, s.Namespace)
 }
 
 func (o *Controller) AuthSlurmKey() types.NamespacedName {
