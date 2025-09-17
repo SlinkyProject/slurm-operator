@@ -218,17 +218,17 @@ You will need to configure the Slurm chart such that the login pods can
 communicate with an identity service via [sssd].
 
 > [!WARNING]
-> In this example, you will need to supply an `sssd.conf` (at `~/sssd.conf`)
-> that is configured for your environment.
+> In this example, you will need to supply an `sssd.conf` (at
+> `${HOME}/sssd.conf`) that is configured for your environment.
 
 Install a Slurm cluster via helm chart with the
 `--set 'loginsets.slinky.enabled=true'` and
-`--set-file "loginsets.slinky.sssdConf=~/sssd.conf"` arguments.
+`--set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf"` arguments.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'loginsets.slinky.enabled=true' \
-  --set-file "loginsets.slinky.sssdConf=~/sssd.conf" \
+  --set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf" \
   --namespace=slurm --create-namespace
 ```
 
@@ -240,13 +240,13 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 
 Install a Slurm cluster via helm chart with the
 `--set 'loginsets.slinky.enabled=true'` and
-`--set-file "loginsets.slinky.rootSshAuthorizedKeys=~/.ssh/id_ed25519.pub"`
+`--set-file "loginsets.slinky.rootSshAuthorizedKeys=${HOME}/.ssh/id_ed25519.pub"`
 arguments.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'loginsets.slinky.enabled=true' \
-  --set-file "loginsets.slinky.rootSshAuthorizedKeys=~/.ssh/id_ed25519.pub" \
+  --set-file "loginsets.slinky.rootSshAuthorizedKeys=${HOME}/.ssh/id_ed25519.pub" \
   --namespace=slurm --create-namespace
 ```
 
