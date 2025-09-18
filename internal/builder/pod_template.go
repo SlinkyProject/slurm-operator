@@ -9,6 +9,7 @@ import (
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
@@ -24,107 +25,50 @@ func (b *Builder) buildPodTemplate(opts PodTemplateOpts) corev1.PodTemplateSpec 
 		WithMetadata(opts.Metadata).
 		Build()
 
-	o := corev1.PodTemplateSpec{
+	out := corev1.PodTemplateSpec{
 		ObjectMeta: objectMeta,
 		Spec:       opts.base,
 	}
 
-	o.Spec.Volumes = structutils.MergeList(o.Spec.Volumes, opts.merge.Volumes)
-	o.Spec.InitContainers = structutils.MergeList(o.Spec.InitContainers, opts.merge.InitContainers)
-	o.Spec.Containers = structutils.MergeList(o.Spec.Containers, opts.merge.Containers)
-	o.Spec.EphemeralContainers = structutils.MergeList(o.Spec.EphemeralContainers, opts.merge.EphemeralContainers)
-	o.Spec.NodeSelector = structutils.MergeMaps(o.Spec.NodeSelector, opts.merge.NodeSelector)
-	o.Spec.ImagePullSecrets = structutils.MergeList(o.Spec.ImagePullSecrets, opts.merge.ImagePullSecrets)
-	o.Spec.Tolerations = structutils.MergeList(o.Spec.Tolerations, opts.merge.Tolerations)
-	o.Spec.ReadinessGates = structutils.MergeList(o.Spec.ReadinessGates, opts.merge.ReadinessGates)
-	o.Spec.TopologySpreadConstraints = structutils.MergeList(o.Spec.TopologySpreadConstraints, opts.merge.TopologySpreadConstraints)
-	o.Spec.SchedulingGates = structutils.MergeList(o.Spec.SchedulingGates, opts.merge.SchedulingGates)
-	o.Spec.ResourceClaims = structutils.MergeList(o.Spec.ResourceClaims, opts.merge.ResourceClaims)
+	out.Spec.Volumes = structutils.MergeList(out.Spec.Volumes, opts.merge.Volumes)
+	out.Spec.InitContainers = structutils.MergeList(out.Spec.InitContainers, opts.merge.InitContainers)
+	out.Spec.Containers = structutils.MergeList(out.Spec.Containers, opts.merge.Containers)
+	out.Spec.EphemeralContainers = structutils.MergeList(out.Spec.EphemeralContainers, opts.merge.EphemeralContainers)
+	out.Spec.RestartPolicy = reflectutils.UseNonZeroOrDefault(opts.merge.RestartPolicy, opts.base.RestartPolicy)
+	out.Spec.TerminationGracePeriodSeconds = reflectutils.UseNonZeroOrDefault(opts.merge.TerminationGracePeriodSeconds, opts.base.TerminationGracePeriodSeconds)
+	out.Spec.ActiveDeadlineSeconds = reflectutils.UseNonZeroOrDefault(opts.merge.ActiveDeadlineSeconds, opts.base.ActiveDeadlineSeconds)
+	out.Spec.DNSPolicy = reflectutils.UseNonZeroOrDefault(opts.merge.DNSPolicy, opts.base.DNSPolicy)
+	out.Spec.NodeSelector = structutils.MergeMaps(out.Spec.NodeSelector, opts.merge.NodeSelector)
+	out.Spec.ServiceAccountName = reflectutils.UseNonZeroOrDefault(opts.merge.ServiceAccountName, opts.base.ServiceAccountName)
+	out.Spec.DeprecatedServiceAccount = reflectutils.UseNonZeroOrDefault(opts.merge.DeprecatedServiceAccount, opts.base.DeprecatedServiceAccount)
+	out.Spec.AutomountServiceAccountToken = reflectutils.UseNonZeroOrDefault(opts.merge.AutomountServiceAccountToken, opts.base.AutomountServiceAccountToken)
+	out.Spec.NodeName = reflectutils.UseNonZeroOrDefault(opts.merge.NodeName, opts.base.NodeName)
+	out.Spec.HostNetwork = reflectutils.UseNonZeroOrDefault(opts.merge.HostNetwork, opts.base.HostNetwork)
+	out.Spec.HostPID = reflectutils.UseNonZeroOrDefault(opts.merge.HostPID, opts.base.HostPID)
+	out.Spec.HostIPC = reflectutils.UseNonZeroOrDefault(opts.merge.HostIPC, opts.base.HostIPC)
+	out.Spec.ShareProcessNamespace = reflectutils.UseNonZeroOrDefault(opts.merge.ShareProcessNamespace, opts.base.ShareProcessNamespace)
+	out.Spec.SecurityContext = reflectutils.UseNonZeroOrDefault(opts.merge.SecurityContext, opts.base.SecurityContext)
+	out.Spec.ImagePullSecrets = structutils.MergeList(out.Spec.ImagePullSecrets, opts.merge.ImagePullSecrets)
+	out.Spec.Hostname = reflectutils.UseNonZeroOrDefault(opts.merge.Hostname, opts.base.Hostname)
+	out.Spec.Subdomain = reflectutils.UseNonZeroOrDefault(opts.merge.Subdomain, opts.base.Subdomain)
+	out.Spec.Affinity = reflectutils.UseNonZeroOrDefault(opts.merge.Affinity, opts.base.Affinity)
+	out.Spec.Tolerations = structutils.MergeList(out.Spec.Tolerations, opts.merge.Tolerations)
+	out.Spec.PriorityClassName = reflectutils.UseNonZeroOrDefault(opts.merge.PriorityClassName, opts.base.PriorityClassName)
+	out.Spec.Priority = reflectutils.UseNonZeroOrDefault(opts.merge.Priority, opts.base.Priority)
+	out.Spec.DNSConfig = reflectutils.UseNonZeroOrDefault(opts.merge.DNSConfig, opts.base.DNSConfig)
+	out.Spec.ReadinessGates = structutils.MergeList(out.Spec.ReadinessGates, opts.merge.ReadinessGates)
+	out.Spec.RuntimeClassName = reflectutils.UseNonZeroOrDefault(opts.merge.RuntimeClassName, opts.base.RuntimeClassName)
+	out.Spec.EnableServiceLinks = reflectutils.UseNonZeroOrDefault(opts.merge.EnableServiceLinks, opts.base.EnableServiceLinks)
+	out.Spec.PreemptionPolicy = reflectutils.UseNonZeroOrDefault(opts.merge.PreemptionPolicy, opts.base.PreemptionPolicy)
+	out.Spec.Overhead = reflectutils.UseNonZeroOrDefault(opts.merge.Overhead, opts.base.Overhead)
+	out.Spec.TopologySpreadConstraints = structutils.MergeList(out.Spec.TopologySpreadConstraints, opts.merge.TopologySpreadConstraints)
+	out.Spec.SetHostnameAsFQDN = reflectutils.UseNonZeroOrDefault(opts.merge.SetHostnameAsFQDN, opts.base.SetHostnameAsFQDN)
+	out.Spec.OS = reflectutils.UseNonZeroOrDefault(opts.merge.OS, opts.base.OS)
+	out.Spec.HostUsers = reflectutils.UseNonZeroOrDefault(opts.merge.HostUsers, opts.base.HostUsers)
+	out.Spec.SchedulingGates = structutils.MergeList(out.Spec.SchedulingGates, opts.merge.SchedulingGates)
+	out.Spec.ResourceClaims = structutils.MergeList(out.Spec.ResourceClaims, opts.merge.ResourceClaims)
+	out.Spec.Resources = reflectutils.UseNonZeroOrDefault(opts.merge.Resources, opts.base.Resources)
+	out.Spec.HostnameOverride = reflectutils.UseNonZeroOrDefault(opts.merge.HostnameOverride, opts.base.HostnameOverride)
 
-	if opts.merge.RestartPolicy != "" {
-		o.Spec.RestartPolicy = opts.merge.RestartPolicy
-	}
-	if opts.merge.TerminationGracePeriodSeconds != nil {
-		o.Spec.TerminationGracePeriodSeconds = opts.merge.TerminationGracePeriodSeconds
-	}
-	if opts.merge.ActiveDeadlineSeconds != nil {
-		o.Spec.ActiveDeadlineSeconds = opts.merge.ActiveDeadlineSeconds
-	}
-	if opts.merge.DNSPolicy != "" {
-		o.Spec.DNSPolicy = opts.merge.DNSPolicy
-	}
-	if opts.merge.ServiceAccountName != "" {
-		o.Spec.ServiceAccountName = opts.merge.ServiceAccountName
-	}
-	if opts.merge.DeprecatedServiceAccount != "" {
-		o.Spec.DeprecatedServiceAccount = opts.merge.DeprecatedServiceAccount
-	}
-	if opts.merge.AutomountServiceAccountToken != nil {
-		o.Spec.AutomountServiceAccountToken = opts.merge.AutomountServiceAccountToken
-	}
-	if opts.merge.NodeName != "" {
-		o.Spec.NodeName = opts.merge.NodeName
-	}
-	if opts.merge.HostNetwork != o.Spec.HostNetwork {
-		o.Spec.HostNetwork = opts.merge.HostNetwork
-	}
-	if opts.merge.HostPID != o.Spec.HostPID {
-		o.Spec.HostPID = opts.merge.HostPID
-	}
-	if opts.merge.HostIPC != o.Spec.HostIPC {
-		o.Spec.HostIPC = opts.merge.HostIPC
-	}
-	if opts.merge.ShareProcessNamespace != nil {
-		o.Spec.ShareProcessNamespace = opts.merge.ShareProcessNamespace
-	}
-	if opts.merge.SecurityContext != nil {
-		o.Spec.SecurityContext = opts.merge.SecurityContext
-	}
-	if opts.merge.Hostname != "" {
-		o.Spec.Hostname = opts.merge.Hostname
-	}
-	if opts.merge.Subdomain != "" {
-		o.Spec.Subdomain = opts.merge.Subdomain
-	}
-	if opts.merge.Affinity != nil {
-		o.Spec.Affinity = opts.merge.Affinity
-	}
-	if opts.merge.SchedulerName != "" {
-		o.Spec.SchedulerName = opts.merge.SchedulerName
-	}
-	if opts.merge.PriorityClassName != "" {
-		o.Spec.PriorityClassName = opts.merge.PriorityClassName
-	}
-	if opts.merge.Priority != nil {
-		o.Spec.Priority = opts.merge.Priority
-	}
-	if opts.merge.DNSConfig != nil {
-		o.Spec.DNSConfig = opts.merge.DNSConfig
-	}
-	if opts.merge.RuntimeClassName != nil {
-		o.Spec.RuntimeClassName = opts.merge.RuntimeClassName
-	}
-	if opts.merge.EnableServiceLinks != nil {
-		o.Spec.EnableServiceLinks = opts.merge.EnableServiceLinks
-	}
-	if opts.merge.PreemptionPolicy != nil {
-		o.Spec.PreemptionPolicy = opts.merge.PreemptionPolicy
-	}
-	if opts.merge.Overhead != nil {
-		o.Spec.Overhead = opts.merge.Overhead
-	}
-	if opts.merge.SetHostnameAsFQDN != nil {
-		o.Spec.SetHostnameAsFQDN = opts.merge.SetHostnameAsFQDN
-	}
-	if opts.merge.OS != nil {
-		o.Spec.OS = opts.merge.OS
-	}
-	if opts.merge.HostUsers != nil {
-		o.Spec.HostUsers = opts.merge.HostUsers
-	}
-	if opts.merge.Resources != nil {
-		o.Spec.Resources = opts.merge.Resources
-	}
-
-	return o
+	return out
 }
