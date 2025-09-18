@@ -148,7 +148,6 @@ make uninstall
 ```
 
 > [!WARNING]
->
 > CRDs do not upgrade! The old ones must be uninstalled first so the new ones
 > can be installed. This should only be done in development.
 
@@ -171,7 +170,6 @@ make generate
 ```
 
 > [!NOTE]
->
 > Update code interacting with the API in accordance with the
 > [slurmrestd plugin lifecycle][plugin-lifecycle].
 

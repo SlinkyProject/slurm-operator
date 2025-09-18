@@ -174,7 +174,6 @@ EOF
 ```
 
 > [!NOTE]
->
 > The mariadb database example above aligns with the Slurm chart's default
 > `accounting.storageConfig`. If your actual database configuration is
 > different, then you will have to update the `accounting.storageConfig` to work
@@ -217,7 +216,6 @@ You will need to configure the Slurm chart such that the login pods can
 communicate with an identity service via [sssd].
 
 > [!WARNING]
->
 > In this example, you will need to supply an `sssd.conf` (at `~/sssd.conf`)
 > that is configured for your environment.
 
@@ -235,7 +233,6 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 #### With root Authorized Keys
 
 > [!NOTE]
->
 > Even if [sssd] is misconfigured, this method can still be used to SSH into the
 > pod.
 

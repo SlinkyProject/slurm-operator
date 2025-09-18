@@ -1,5 +1,5 @@
 sphinx
-myst-parser
+myst-parser >= 4.0.1
 sphinx-autobuild
 sphinx-design
 sphinx-copybutton

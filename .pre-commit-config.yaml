@@ -46,6 +46,7 @@ repos:
         additional_dependencies:
           - mdformat-toc
           - mdformat-tables
+          - mdformat-gfm-alerts
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
