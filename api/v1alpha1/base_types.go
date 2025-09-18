@@ -151,7 +151,7 @@ type ContainerMinimal struct {
 type ServiceSpec struct {
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// +optional
-	ServiceSpecWrapper `json:",inline"`
+	ServiceSpecWrapper ServiceSpecWrapper `json:"spec,omitempty"`
 
 	// The external service port number.
 	// +optional

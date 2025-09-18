@@ -17,7 +17,7 @@ func (b *Builder) BuildControllerService(controller *slinkyv1alpha1.Controller) 
 	opts := ServiceOpts{
 		Key:         controller.ServiceKey(),
 		Metadata:    controller.Spec.Template.PodMetadata,
-		ServiceSpec: controller.Spec.Service.ServiceSpec,
+		ServiceSpec: controller.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithControllerSelectorLabels(controller).
 			Build(),

@@ -95,7 +95,7 @@ Kubernetes: `>= 1.29`
 | loginsets.slinky.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | loginsets.slinky.replicas | int | `1` | Number of replicas to deploy. |
 | loginsets.slinky.rootSshAuthorizedKeys | string | `nil` | SSH public keys to write into `/root/.ssh/authorized_keys`. |
-| loginsets.slinky.service | object | `{"type":"LoadBalancer"}` | The service configuration. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
+| loginsets.slinky.service | object | `{"spec":{"type":"LoadBalancer"}}` | The service configuration. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | loginsets.slinky.sssdConf | string | `"[sssd]\nconfig_file_version = 2\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nauth_provider = ldap\nid_provider = ldap\nldap_uri = ldap://ldap.example.com\nldap_search_base = dc=example,dc=com\nldap_user_search_base = ou=Users,dc=example,dc=com\nldap_group_search_base = ou=Groups,dc=example,dc=com\n"` | The `sssd.conf` to use. Ref: https://man.archlinux.org/man/sssd.conf.5 |
 | nameOverride | string | `nil` | Overrides the name of the release. |
 | namespaceOverride | string | `nil` | Overrides the namespace of the release. |

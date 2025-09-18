@@ -17,7 +17,7 @@ func (b *Builder) BuildAccountingService(accounting *slinkyv1alpha1.Accounting) 
 	opts := ServiceOpts{
 		Key:         accounting.ServiceKey(),
 		Metadata:    accounting.Spec.Template.PodMetadata,
-		ServiceSpec: accounting.Spec.Service.ServiceSpec,
+		ServiceSpec: accounting.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithAccountingSelectorLabels(accounting).
 			Build(),

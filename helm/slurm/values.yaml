@@ -224,11 +224,12 @@ controller:
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
   service: {}
-    # type: LoadBalancer
+    # spec:
+      # type: LoadBalancer
+      # loadBalancerIP: ""
+      # externalIPs: []
+      # externalName: ""
     # port: 6817
-    # loadBalancerIP: ""
-    # externalIPs: []
-    # externalName: ""
 
 # Slurm REST API (slurmrestd) configuration.
 restapi:
@@ -284,11 +285,12 @@ restapi:
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
   service: {}
-    # type: ClusterIP
+    # spec:
+      # type: ClusterIP
+      # loadBalancerIP: ""
+      # externalIPs: []
+      # externalName: ""
     # port: 6820
-    # loadBalancerIP: ""
-    # externalIPs: []
-    # externalName: ""
 
 # `slinky/slurm-exporter` subchart configurations.
 # Ref: https://github.com/SlinkyProject/slurm-exporter/blob/main/helm/slurm-exporter/values.yaml
@@ -401,10 +403,12 @@ accounting:
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
   service: {}
-    # type: LoadBalancer
-    # loadBalancerIP: ""
-    # externalIPs: []
-    # externalName: ""
+    # spec:
+      # type: LoadBalancer
+      # loadBalancerIP: ""
+      # externalIPs: []
+      # externalName: ""
+
 
 # Slurm LoginSet (sackd, sshd, sssd) configurations.
 loginsets:
@@ -504,11 +508,12 @@ loginsets:
     # -- The service configuration.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     service:
-      type: LoadBalancer
+      spec:
+        type: LoadBalancer
+        # loadBalancerIP: ""
+        # externalIPs: []
+        # externalName: ""
       # port: 22
-      # loadBalancerIP: ""
-      # externalIPs: []
-      # externalName: ""
 
 # Slurm NodeSet (slurmd) configurations.
 nodesets:
