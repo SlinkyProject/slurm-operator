@@ -1,6 +1,6 @@
 ---
 apiVersion: v2
-kubeVersion: ">= 1.29"
+kubeVersion: ">= 1.29.0-0"
 
 name: slurm-operator
 description: Slurm Operator

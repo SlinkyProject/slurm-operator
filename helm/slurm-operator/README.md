@@ -18,7 +18,7 @@ Slurm Operator
 
 ## Requirements
 
-Kubernetes: `>= 1.29`
+Kubernetes: `>= 1.29.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
