@@ -30,6 +30,7 @@ func (b *Builder) BuildLoginService(loginset *slinkyv1alpha1.LoginSet) (*corev1.
 		Protocol:   corev1.ProtocolTCP,
 		Port:       defaultPort(int32(spec.Port), LoginPort),
 		TargetPort: intstr.FromString(labels.LoginApp),
+		NodePort:   int32(spec.NodePort),
 	}
 	opts.Ports = append(opts.Ports, port)
 

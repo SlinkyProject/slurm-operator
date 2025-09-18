@@ -71,11 +71,24 @@ spec:
               service:
                 description: Service defines a template for a Kubernetes Service object.
                 properties:
+                  nodePort:
+                    description: |-
+                      The port on each node on which this service is exposed when type is
+                      NodePort or LoadBalancer.  Usually assigned by the system. If a value is
+                      specified, in-range, and not in use it will be used, otherwise the
+                      operation will fail.  If not specified, a port will be allocated if this
+                      Service requires one.  If this field is specified when creating a
+                      Service which does not need it, creation will fail.
+                    type: integer
                   port:
                     description: The external service port number.
                     type: integer
+                  spec:
+                    description: ServiceSpec describes the attributes that a user
+                      creates on a service.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 type: object
-                x-kubernetes-preserve-unknown-fields: true
               slurmrestd:
                 description: |-
                   The slurmrestd container configuration.

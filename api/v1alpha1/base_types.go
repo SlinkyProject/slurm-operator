@@ -156,6 +156,15 @@ type ServiceSpec struct {
 	// The external service port number.
 	// +optional
 	Port int `json:"port"`
+
+	// The port on each node on which this service is exposed when type is
+	// NodePort or LoadBalancer.  Usually assigned by the system. If a value is
+	// specified, in-range, and not in use it will be used, otherwise the
+	// operation will fail.  If not specified, a port will be allocated if this
+	// Service requires one.  If this field is specified when creating a
+	// Service which does not need it, creation will fail.
+	// +optional
+	NodePort int `json:"nodePort,omitempty"`
 }
 
 // ServiceSpecWrapper is a wrapper around corev1.Container with a custom implementation
