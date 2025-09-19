@@ -122,8 +122,8 @@ func TestBuilder_BuildService(t *testing.T) {
 			case !set.KeySet(got.Spec.Selector).HasAll(set.KeySet(tt.args.opts.Selector).UnsortedList()...):
 				t.Errorf("Selector = %v , want = %v", got.Spec.Selector, tt.args.opts.Selector)
 
-			case tt.args.opts.Headless && got.Spec.ClusterIP != "None":
-				t.Error("Headless enabled but `Cluster != None`")
+			case tt.args.opts.Headless && got.Spec.ClusterIP != corev1.ClusterIPNone:
+				t.Errorf("Headless enabled but `ClusterIP != %s`", corev1.ClusterIPNone)
 			}
 		})
 	}

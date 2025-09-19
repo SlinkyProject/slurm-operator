@@ -35,23 +35,23 @@ func (b *Builder) BuildService(opts ServiceOpts, owner metav1.Object) (*corev1.S
 		WithMetadata(opts.Metadata).
 		Build()
 
-	o := &corev1.Service{
+	out := &corev1.Service{
 		ObjectMeta: objectMeta,
 		Spec:       opts.ServiceSpec,
 	}
 
-	o.Spec.Selector = structutils.MergeMaps(o.Spec.Selector, opts.Selector)
+	out.Spec.Selector = structutils.MergeMaps(out.Spec.Selector, opts.Selector)
 
 	if opts.Headless {
-		o.Spec.ClusterIP = "None"
-		o.Spec.PublishNotReadyAddresses = true
+		out.Spec.ClusterIP = corev1.ClusterIPNone
+		out.Spec.PublishNotReadyAddresses = true
 	}
 
-	if err := controllerutil.SetControllerReference(owner, o, b.client.Scheme()); err != nil {
+	if err := controllerutil.SetControllerReference(owner, out, b.client.Scheme()); err != nil {
 		return nil, fmt.Errorf("failed to set owner controller: %w", err)
 	}
 
-	return o, nil
+	return out, nil
 }
 
 func validateServicePorts(ports []corev1.ServicePort) error {
