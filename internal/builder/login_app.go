@@ -141,6 +141,8 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 				b.loginContainer(spec.Login.Container, controller),
 			},
 			Hostname:          template.Hostname,
+			Subdomain:         b.getSubdomainForLoginHostnameServices(loginset),
+			DNSConfig:         b.getDNSConfigForLoginHostnameServices(loginset),
 			ImagePullSecrets:  template.ImagePullSecrets,
 			NodeSelector:      template.NodeSelector,
 			PriorityClassName: template.PriorityClassName,
@@ -350,4 +352,24 @@ func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1alpha1.L
 	}
 
 	return hashMap, nil
+}
+
+// getDNSConfigForLoginHostnameServices returns DNS configuration for hostname services
+func (b *Builder) getDNSConfigForLoginHostnameServices(loginset *slinkyv1alpha1.LoginSet) *corev1.PodDNSConfig {
+	serviceName := slurmClusterWorkerServiceName(loginset.Spec.ControllerRef.Name)
+	searches := []string{
+		fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, loginset.Namespace),
+		fmt.Sprintf("%s.svc.cluster.local", loginset.Namespace),
+		"svc.cluster.local",
+		"cluster.local",
+	}
+
+	return &corev1.PodDNSConfig{
+		Searches: searches,
+	}
+}
+
+// getSubdomainForLoginHostnameServices returns subdomain for hostname services
+func (b *Builder) getSubdomainForLoginHostnameServices(loginset *slinkyv1alpha1.LoginSet) string {
+	return slurmClusterWorkerServiceName(loginset.Spec.ControllerRef.Name)
 }

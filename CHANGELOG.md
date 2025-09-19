@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Added `NVIDIA/dcgm-exporter` integration to Slurm helm chart.
 - Added conditions to slurmd pods to reflect Slurm node state
 - Added helm chart `kubeVersion` requirements.
+- Added cluster-wide hostname services for NodeSets to enable direct pod-to-pod communication using predictable hostnames
 
 ### Fixed
 

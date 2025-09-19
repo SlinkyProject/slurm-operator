@@ -11,11 +11,12 @@ import (
 
 // Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels
 const (
-	appLabel       = "app.kubernetes.io/name"
-	instanceLabel  = "app.kubernetes.io/instance"
-	componentLabel = "app.kubernetes.io/component"
-	partOfLabel    = "app.kubernetes.io/part-of"
-	managedbyLabel = "app.kubernetes.io/managed-by"
+	appLabel        = "app.kubernetes.io/name"
+	instanceLabel   = "app.kubernetes.io/instance"
+	componentLabel  = "app.kubernetes.io/component"
+	partOfLabel     = "app.kubernetes.io/part-of"
+	managedbyLabel  = "app.kubernetes.io/managed-by"
+	controllerLabel = "slinky.slurm.net/controller"
 )
 
 type Builder struct {
@@ -50,6 +51,11 @@ func (b *Builder) WithPartOf(instance string) *Builder {
 
 func (b *Builder) WithManagedBy(component string) *Builder {
 	b.labels[managedbyLabel] = component
+	return b
+}
+
+func (b *Builder) WithController(controller string) *Builder {
+	b.labels[controllerLabel] = controller
 	return b
 }
 
@@ -120,7 +126,8 @@ func (b *Builder) WithWorkerSelectorLabels(obj *slinkyv1alpha1.NodeSet) *Builder
 func (b *Builder) WithWorkerLabels(obj *slinkyv1alpha1.NodeSet) *Builder {
 	return b.
 		WithWorkerSelectorLabels(obj).
-		WithComponent(WorkerComp)
+		WithComponent(WorkerComp).
+		WithController(obj.Spec.ControllerRef.Name)
 }
 
 func (b *Builder) WithLoginSelectorLabels(obj *slinkyv1alpha1.LoginSet) *Builder {

@@ -14,6 +14,7 @@ import (
 	clientutils "github.com/SlinkyProject/slurm-client/pkg/utils"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 const (
@@ -209,4 +210,12 @@ func mergeEnvVar(envVarList1, envVarList2 []corev1.EnvVar, sep string) []corev1.
 		envVarList = append(envVarList, envVar)
 	}
 	return envVarList
+}
+
+// slurmClusterWorkerServiceName returns the service name for all worker nodes in a Slurm cluster
+// Format: "slurm-workers-{controller-name}"
+func slurmClusterWorkerServiceName(controllerName string) string {
+	// Derive service name dynamically from component constants
+	componentPlural := labels.WorkerComp + "s"
+	return fmt.Sprintf("slurm-%s-%s", componentPlural, controllerName)
 }

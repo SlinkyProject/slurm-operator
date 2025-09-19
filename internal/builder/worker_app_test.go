@@ -42,6 +42,9 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 						Name: "slurm-foo",
 					},
 					Spec: slinkyv1alpha1.NodeSetSpec{
+						ControllerRef: slinkyv1alpha1.ObjectReference{
+							Name: "slurm",
+						},
 						ExtraConf: strings.Join([]string{
 							"features=bar",
 							"weight=5",
@@ -89,6 +92,15 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 			case got.Spec.Containers[0].Ports[0].ContainerPort != SlurmdPort:
 				t.Errorf("Containers[0].Ports[0].ContainerPort = %v , want = %v",
 					got.Spec.Containers[0].Ports[0].Name, SlurmdPort)
+
+			case got.Spec.Subdomain == "":
+				t.Errorf("Subdomain = %v , want = non-empty", got.Spec.Subdomain)
+
+			case got.Spec.DNSConfig == nil:
+				t.Errorf("DNSConfig = %v , want = non-nil", got.Spec.DNSConfig)
+
+			case len(got.Spec.DNSConfig.Searches) == 0:
+				t.Errorf("len(DNSConfig.Searches) = %v , want = > 0", len(got.Spec.DNSConfig.Searches))
 			}
 		})
 	}

@@ -37,6 +37,7 @@ import (
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
@@ -59,6 +60,7 @@ func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) 
 		slurmControl:   slurmcontrol.NewSlurmControl(clientMap),
 		expectations:   kubecontroller.NewUIDTrackingControllerExpectations(kubecontroller.NewControllerExpectations()),
 	}
+	r.builder = builder.New(r.Client)
 	return r
 }
 
@@ -1877,6 +1879,48 @@ func Test_findUpdatedPods(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.wantOldPods, gotOldPodsOrdered); diff != "" {
 				t.Errorf("gotOldPods (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncClusterWideHostnameService(t *testing.T) {
+	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1alpha1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	type fields struct {
+		Client client.Client
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1alpha1.NodeSet
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "success",
+			fields: fields{
+				Client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("gpu-1", controller.Name, 2),
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newNodeSetController(tt.fields.Client, nil)
+			if err := r.syncClusterWideHostnameService(tt.args.ctx, tt.args.nodeset); (err != nil) != tt.wantErr {
+				t.Errorf("NodeSetReconciler.syncClusterWideHostnameService() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

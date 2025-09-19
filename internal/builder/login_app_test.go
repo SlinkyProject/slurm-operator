@@ -94,6 +94,15 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != LoginPort:
 				t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
 					got.Spec.Template.Spec.Containers[0].Ports[0].Name, LoginPort)
+
+			case got.Spec.Template.Spec.Subdomain == "":
+				t.Errorf("Template.Spec.Subdomain = %v , want = non-empty", got.Spec.Template.Spec.Subdomain)
+
+			case got.Spec.Template.Spec.DNSConfig == nil:
+				t.Errorf("Template.Spec.DNSConfig = %v , want = non-nil", got.Spec.Template.Spec.DNSConfig)
+
+			case len(got.Spec.Template.Spec.DNSConfig.Searches) == 0:
+				t.Errorf("len(Template.Spec.DNSConfig.Searches) = %v , want = > 0", len(got.Spec.Template.Spec.DNSConfig.Searches))
 			}
 		})
 	}

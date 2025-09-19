@@ -76,6 +76,16 @@ func TestNewBuilder(t *testing.T) {
 			},
 		},
 		{
+			name: "WithController",
+			args: args{
+				builder: NewBuilder().
+					WithController("slurm"),
+			},
+			want: map[string]string{
+				controllerLabel: "slurm",
+			},
+		},
+		{
 			name: "WithLabels",
 			args: args{
 				builder: NewBuilder().

@@ -21,6 +21,7 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -216,6 +217,11 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
+	// Sync cluster-wide hostname service early to enable hostname resolution
+	if err := r.syncClusterWideHostnameService(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncSlurm(ctx, nodeset, pods); err != nil {
 		return err
 	}
@@ -224,6 +230,76 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	return nil
+}
+
+// syncClusterWideHostnameService manages the cluster-wide hostname service for the Slurm cluster
+func (r *NodeSetReconciler) syncClusterWideHostnameService(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet) error {
+	logger := log.FromContext(ctx)
+
+	// Get service name from builder
+	service, err := r.builder.BuildClusterWideWorkerService(nodeset)
+	if err != nil {
+		return fmt.Errorf("failed to build cluster-wide service: %w", err)
+	}
+	serviceName := service.Name
+	logger.V(2).Info("Syncing cluster-wide hostname service", "service", serviceName)
+
+	// Create/update the cluster-wide headless service with multi-owner support
+	existingService := &corev1.Service{}
+	key := client.ObjectKeyFromObject(service)
+	err = r.Get(ctx, key, existingService)
+
+	switch {
+	case apierrors.IsNotFound(err):
+		// Service doesn't exist, create it
+		logger.V(2).Info("Creating new cluster-wide service", "service", key)
+		if err := r.Create(ctx, service); err != nil {
+			return fmt.Errorf("failed to create cluster-wide worker service (%s): %w", klog.KObj(service), err)
+		}
+	case err != nil:
+		return fmt.Errorf("failed to get existing service: %w", err)
+	default:
+		// Service exists, add this NodeSet as an additional owner if not already present
+		// Check if this NodeSet is already an owner
+		nodesetUID := nodeset.GetUID()
+		alreadyOwner := false
+		for _, existingOwner := range existingService.OwnerReferences {
+			if existingOwner.UID == nodesetUID {
+				logger.V(2).Info("NodeSet is already an owner of the service")
+				alreadyOwner = true
+				break
+			}
+		}
+
+		if !alreadyOwner {
+			// Create a patch from the current state
+			patch := client.MergeFrom(existingService.DeepCopy())
+
+			// Add this NodeSet as a non-controller owner using controllerutil
+			if err := controllerutil.SetOwnerReference(nodeset, existingService, r.Scheme, controllerutil.WithBlockOwnerDeletion(true)); err != nil {
+				return fmt.Errorf("failed to set NodeSet as owner reference: %w", err)
+			}
+
+			// Ensure it's marked as non-controller owner for multi-owner pattern
+			for i := range existingService.OwnerReferences {
+				if existingService.OwnerReferences[i].UID == nodesetUID {
+					existingService.OwnerReferences[i].Controller = ptr.To(false)
+					break
+				}
+			}
+
+			logger.V(2).Info("Adding NodeSet as owner of cluster-wide service",
+				"service", client.ObjectKeyFromObject(existingService),
+				"nodeset", nodeset.GetName())
+
+			if err := r.Patch(ctx, existingService, patch); err != nil {
+				return fmt.Errorf("failed to add NodeSet as owner of cluster-wide service (%s): %w", klog.KObj(service), err)
+			}
+		}
+	}
+
+	logger.V(2).Info("Successfully synced cluster-wide hostname service", "service", klog.KObj(service))
 	return nil
 }
 

@@ -58,6 +58,8 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 				b.slurmdContainer(nodeset, controller),
 			},
 			Hostname:         template.Hostname,
+			Subdomain:        b.getSubdomainForHostnameServices(nodeset),
+			DNSConfig:        b.getDNSConfigForHostnameServices(nodeset),
 			ImagePullSecrets: template.ImagePullSecrets,
 			InitContainers: []corev1.Container{
 				b.logfileContainer(spec.LogFile, slurmdLogFilePath),
@@ -73,6 +75,33 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 	o := b.buildPodTemplate(opts)
 
 	return o
+}
+
+// getClusterWideServiceName returns the cluster-wide service name for hostname services
+func (b *Builder) getClusterWideServiceName(nodeset *slinkyv1alpha1.NodeSet) string {
+	return slurmClusterWorkerServiceName(nodeset.Spec.ControllerRef.Name)
+}
+
+// getSubdomainForHostnameServices returns the subdomain for hostname services
+func (b *Builder) getSubdomainForHostnameServices(nodeset *slinkyv1alpha1.NodeSet) string {
+	return b.getClusterWideServiceName(nodeset)
+}
+
+// getDNSConfigForHostnameServices returns DNS configuration for hostname services
+func (b *Builder) getDNSConfigForHostnameServices(nodeset *slinkyv1alpha1.NodeSet) *corev1.PodDNSConfig {
+	clusterServiceName := b.getClusterWideServiceName(nodeset)
+	searches := []string{
+		// Cluster-wide worker service (all worker pods in this Slurm cluster)
+		fmt.Sprintf("%s.%s.svc.cluster.local", clusterServiceName, nodeset.Namespace),
+		// Standard search domains
+		fmt.Sprintf("%s.svc.cluster.local", nodeset.Namespace),
+		"svc.cluster.local",
+		"cluster.local",
+	}
+
+	return &corev1.PodDNSConfig{
+		Searches: searches,
+	}
 }
 
 func nodesetVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {
