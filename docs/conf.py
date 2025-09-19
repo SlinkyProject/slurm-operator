@@ -27,6 +27,10 @@ html_theme = "sphinx_rtd_theme"
 html_logo = "_static/images/slinky.svg"
 html_show_sourcelink = False
 html_static_path = ['_static']
+html_theme_options = {
+    "show_nav_level": 3,
+    "navigation_depth": 4
+}
 
 # Issue https://github.com/executablebooks/MyST-Parser/issues/845
 # GitHub admonitions with Sphinx/MyST

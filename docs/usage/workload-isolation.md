@@ -110,5 +110,5 @@ kubectl describe NodeSet --namespace slurm
 <!-- links -->
 
 [anti-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-[quickstart guide]: ./quickstart.md
+[quickstart guide]: ../installation.md
 [taints and tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/

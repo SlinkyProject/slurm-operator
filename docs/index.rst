@@ -298,15 +298,24 @@ limitations under the License.
 
 .. toctree::
     :maxdepth: 2
+    :glob:
     :hidden:
+    :caption: Getting started
 
-    architecture.md
-    autoscaling.md
-    develop.md
     installation.md
-    nodeset-controller.md
-    override-config-file.md
-    pyxis.md
-    slurm.md
-    slurmclient-controller.md
-    workload-isolation.md
+
+.. toctree::
+    :maxdepth: 2
+    :glob:
+    :hidden:
+    :caption: Usage & Configuration
+
+    usage/*
+
+.. toctree::
+    :maxdepth: 2
+    :glob:
+    :hidden:
+    :caption: Concepts & Design
+
+    concepts/*

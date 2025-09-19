@@ -257,9 +257,8 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: generate-docs
 generate-docs: pandoc-bin
 	$(PANDOC) --quiet README.md -o docs/index.rst
-	cat ./docs/_static/toc.rst >> docs/index.rst
 	printf '\n' >> docs/index.rst
-	find docs -type f -name "*.md" -exec basename {} \; | awk '{print "    "$$1}' | env LC_ALL=C sort >> docs/index.rst
+	cat ./docs/_static/toc.rst >> docs/index.rst
 	sed -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
 	sed -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
 	sed -i -E '/<[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst

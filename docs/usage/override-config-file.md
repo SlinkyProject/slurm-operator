@@ -165,6 +165,6 @@ from the ConfigMap.
 <!-- Links -->
 
 [configmap]: https://kubernetes.io/docs/concepts/configuration/configmap/
-[quickstart guide]: ./quickstart.md
+[quickstart guide]: ../installation.md
 [slinky images]: https://github.com/SlinkyProject/containers/tree/main
 [volume]: https://kubernetes.io/docs/concepts/storage/volumes/

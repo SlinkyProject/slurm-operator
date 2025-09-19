@@ -137,7 +137,7 @@ Each webhook is named after the Custom Resource Definition (CRD) it manages.
 
 <!-- Links -->
 
-[autoscaling]: ./autoscaling.md
+[autoscaling]: ../usage/autoscaling.md
 [golang-layout]: https://go.dev/doc/modules/layout
 [helm]: https://helm.sh/
 [kubebuilder]: https://book.kubebuilder.io/
