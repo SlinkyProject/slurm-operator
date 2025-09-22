@@ -19,8 +19,11 @@ profiles:
           docker:
             dockerfile: Dockerfile
             target: webhook
+      tagPolicy:
+        inputDigest: {}
       local:
         useDockerCLI: true
+        push: false
     deploy:
       helm:
         releases:
