@@ -57,8 +57,10 @@ spec:
   {{- end }}{{- /* with $nodeset.partition */}}
   replicas: {{ $nodeset.replicas }}
   slurmd:
+    {{- $_ := set $nodeset.slurmd "imagePullPolicy" (default $.Values.imagePullPolicy $nodeset.slurmd.imagePullPolicy) -}}
     {{- include "format-container" $nodeset.slurmd | nindent 4 }}
   logfile:
+    {{- $_ := set $nodeset.logfile "imagePullPolicy" (default $.Values.imagePullPolicy $nodeset.logfile.imagePullPolicy) -}}
     {{- include "format-container" $nodeset.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   updateStrategy:

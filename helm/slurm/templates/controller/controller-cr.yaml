@@ -73,10 +73,13 @@ spec:
     - name: {{ include "slurm.controller.epilogSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.epilogSlurmctldScripts */}}
   slurmctld:
+    {{- $_ := set .Values.controller.slurmctld "imagePullPolicy" (default $.Values.imagePullPolicy .Values.controller.slurmctld.imagePullPolicy) -}}
     {{- include "format-container" .Values.controller.slurmctld | nindent 4 }}
   reconfigure:
+    {{- $_ := set .Values.controller.reconfigure "imagePullPolicy" (default $.Values.imagePullPolicy .Values.controller.reconfigure.imagePullPolicy) -}}
     {{- include "format-container" .Values.controller.reconfigure | nindent 4 }}
   logfile:
+    {{- $_ := set .Values.controller.logfile "imagePullPolicy" (default $.Values.imagePullPolicy .Values.controller.logfile.imagePullPolicy) -}}
     {{- include "format-container" .Values.controller.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.controller.persistence }}

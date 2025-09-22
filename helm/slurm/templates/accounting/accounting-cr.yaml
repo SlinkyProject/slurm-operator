@@ -40,6 +40,7 @@ spec:
     {{- include "slurm.accounting.extraConf" . | nindent 4 }}
   {{- end }}{{- /* if (include "slurm.accounting.extraConf" .) */}}
   slurmdbd:
+    {{- $_ := set .Values.accounting.slurmdbd "imagePullPolicy" (default $.Values.imagePullPolicy .Values.accounting.slurmdbd.imagePullPolicy) -}}
     {{- include "format-container" .Values.accounting.slurmdbd | nindent 4 }}
   initconf:
     {{- include "format-container" .Values.accounting.initconf | nindent 4 }}
