@@ -225,6 +225,10 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncClusterWorkerPDB(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncSlurmDeadline(ctx, nodeset, pods); err != nil {
 		return err
 	}
@@ -976,4 +980,48 @@ func findUpdatedPods(pods []*corev1.Pod, hash string) (newPods, oldPods []*corev
 		}
 	}
 	return newPods, oldPods
+}
+
+// syncClusterWorkerPDB will reconcile the cluster's PodDisruptionBudget
+func (r *NodeSetReconciler) syncClusterWorkerPDB(
+	ctx context.Context,
+	nodeset *slinkyv1alpha1.NodeSet,
+) error {
+
+	podDisruptionBudget, err := r.builder.BuildClusterWorkerPodDisruptionBudget(nodeset)
+	if err != nil {
+		return fmt.Errorf("failed to build cluster worker PDB: %w", err)
+	}
+
+	pdbKey := client.ObjectKeyFromObject(podDisruptionBudget)
+	if err := r.Get(ctx, pdbKey, podDisruptionBudget); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	nodesetList := &slinkyv1alpha1.NodeSetList{}
+	if err := r.List(ctx, nodesetList); err != nil {
+		return err
+	}
+	clusterName := nodeset.Spec.ControllerRef.Name
+	opts := []controllerutil.OwnerReferenceOption{
+		controllerutil.WithBlockOwnerDeletion(true),
+	}
+
+	for _, nodeset := range nodesetList.Items {
+		if nodeset.Spec.ControllerRef.Name != clusterName {
+			continue
+		}
+		if err := controllerutil.SetOwnerReference(&nodeset, podDisruptionBudget, r.Scheme, opts...); err != nil {
+			return fmt.Errorf("failed to set owner: %w", err)
+		}
+	}
+
+	// Sync the PodDisruptionBudget for each cluster
+	if err := objectutils.SyncObject(r.Client, ctx, podDisruptionBudget, true); err != nil {
+		return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(podDisruptionBudget), err)
+	}
+
+	return nil
 }

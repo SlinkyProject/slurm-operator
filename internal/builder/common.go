@@ -224,3 +224,11 @@ func slurmClusterWorkerServiceName(controllerName string) string {
 	componentPlural := labels.WorkerComp + "s"
 	return fmt.Sprintf("slurm-%s-%s", componentPlural, controllerName)
 }
+
+// slurmClusterWorkerPodDisruptionBudgetName returns the PDB name for all worker nodes in a Slurm cluster
+// Format: "slurm-workers-pdb-{controller-name}"
+func slurmClusterWorkerPodDisruptionBudgetName(controllerName string) string {
+	// Derive service name dynamically from component constants
+	componentPlural := labels.WorkerComp + "s"
+	return fmt.Sprintf("slurm-%s-pdb-%s", componentPlural, controllerName)
+}

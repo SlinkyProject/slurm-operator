@@ -145,6 +145,11 @@ func (b *Builder) WithLoginLabels(obj *slinkyv1alpha1.LoginSet) *Builder {
 		WithComponent(LoginComp)
 }
 
+func (b *Builder) WithPodProtect() *Builder {
+	b.labels[slinkyv1alpha1.LabelNodeSetPodProtect] = "true"
+	return b
+}
+
 func (b *Builder) Build() map[string]string {
 	return b.labels
 }

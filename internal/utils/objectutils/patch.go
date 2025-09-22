@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,6 +45,8 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		oldObj = &slinkyv1alpha1.NodeSet{}
 	case *slinkyv1alpha1.LoginSet:
 		oldObj = &slinkyv1alpha1.LoginSet{}
+	case *policyv1.PodDisruptionBudget:
+		oldObj = &policyv1.PodDisruptionBudget{}
 	default:
 		return errors.New("unhandled object, this is a bug")
 	}
@@ -154,6 +157,14 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
 		obj.Spec.Replicas = o.Spec.Replicas
 		obj.Spec.Template = o.Spec.Template
+	case *policyv1.PodDisruptionBudget:
+		obj := oldObj.(*policyv1.PodDisruptionBudget)
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
+		obj.Spec.MinAvailable = o.Spec.MinAvailable
+		obj.Spec.Selector = o.Spec.Selector
 	default:
 		return errors.New("unhandled patch object, this is a bug")
 	}

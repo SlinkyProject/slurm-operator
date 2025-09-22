@@ -6,6 +6,7 @@ package labels
 import (
 	"testing"
 
+	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
@@ -83,6 +84,16 @@ func TestNewBuilder(t *testing.T) {
 			},
 			want: map[string]string{
 				clusterLabel: "slurm",
+			},
+		},
+		{
+			name: "WithPodProtect",
+			args: args{
+				builder: NewBuilder().
+					WithPodProtect(),
+			},
+			want: map[string]string{
+				slinkyv1alpha1.LabelNodeSetPodProtect: "true",
 			},
 		},
 		{

@@ -30,6 +30,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
@@ -205,6 +206,10 @@ func (r *NodeSetReconciler) syncNodeSetPodStatus(
 		return err
 	}
 
+	if err := r.updateNodeSetPodPDBLabels(ctx, pods); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -285,4 +290,47 @@ func (r *NodeSetReconciler) updateNodeSetStatus(
 		toUpdate.Status = *newStatus
 		return r.Status().Update(ctx, toUpdate)
 	})
+}
+
+// updateNodeSetPodPDBLabels handles updating the NodeSet labels
+func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
+	ctx context.Context,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	syncPodPDBLabelsFn := func(i int) error {
+		pod := pods[i]
+
+		// Refresh Pod to get current Pod Conditions
+		podKey := client.ObjectKeyFromObject(pod)
+		if err := r.Get(ctx, podKey, pod); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		podProtect := slurmconditions.IsNodeBusy(&pod.Status)
+		logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
+		toUpdate := pod.DeepCopy()
+
+		if podProtect {
+			podLabel := labels.NewBuilder().WithPodProtect().Build()
+			toUpdate.Labels = structutils.MergeMaps(toUpdate.Labels, podLabel)
+		} else {
+			delete(toUpdate.Labels, slinkyv1alpha1.LabelNodeSetPodProtect)
+		}
+
+		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(toUpdate))
+			return err
+		}
+		return r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
+	}
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncPodPDBLabelsFn); err != nil {
+		return err
+	}
+
+	return nil
 }

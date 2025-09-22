@@ -42,4 +42,8 @@ const (
 	// LabelNodeSetPodHostname indicates the pod hostname (used as Slurm node name).
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetPodHostname = NodeSetPrefix + "pod-hostname"
+
+	// LabelNodeSetPodProtect indicates whether the pod is protected against eviction using a PodDisruptionBudget
+	// NOTE: Set by the NodeSet controller
+	LabelNodeSetPodProtect = NodeSetPrefix + "pod-protect"
 )
