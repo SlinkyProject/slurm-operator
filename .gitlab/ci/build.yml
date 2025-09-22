@@ -13,6 +13,8 @@
   rules:
     - changes:
         - ./**/*.go
+        - docker-bake.hcl
+        - Dockerfile
 
 build-images:
   extends: .build-template
