@@ -86,7 +86,7 @@ clean: ## Clean executable files.
 	rm -rf vendor/
 	rm -f cover.out cover.html
 	rm -f *.tgz
-	$(CONTAINER_TOOL) buildx rm $(BUILDER)
+	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
 
 .PHONY: run
 run: manifests generate fmt tidy vet ## Run a controller from your host.
