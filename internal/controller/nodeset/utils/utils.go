@@ -59,6 +59,7 @@ func initIdentity(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
 	} else {
 		pod.Spec.Hostname = pod.Name
 	}
+	pod.Labels[slinkyv1alpha1.LabelNodeSetPodHostname] = GetNodeName(pod)
 }
 
 // UpdateIdentity updates pod's name, hostname, and subdomain, and StatefulSetPodNameLabel to conform to nodeset's name
@@ -72,6 +73,7 @@ func UpdateIdentity(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
 	}
 	pod.Labels[slinkyv1alpha1.LabelNodeSetPodName] = pod.Name
 	pod.Labels[slinkyv1alpha1.LabelNodeSetPodIndex] = strconv.Itoa(ordinal)
+	pod.Labels[slinkyv1alpha1.LabelNodeSetPodHostname] = GetNodeName(pod)
 }
 
 // UpdateStorage updates pod's Volumes to conform with the PersistentVolumeClaim of nodeset's templates. If pod has

@@ -38,4 +38,8 @@ const (
 	// LabelNodeSetPodIndex indicates the pod's ordinal.
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetPodIndex = NodeSetPrefix + "pod-index"
+
+	// LabelNodeSetPodHostname indicates the pod hostname (used as Slurm node name).
+	// NOTE: Set by the NodeSet controller.
+	LabelNodeSetPodHostname = NodeSetPrefix + "pod-hostname"
 )
