@@ -73,6 +73,7 @@ func newPod(now metav1.Time, ready bool, beforeSec int) *corev1.Pod {
 		},
 	}
 }
+
 func TestIsRunningAndAvailable(t *testing.T) {
 	type args struct {
 		pod             *corev1.Pod

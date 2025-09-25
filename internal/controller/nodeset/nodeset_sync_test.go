@@ -969,6 +969,32 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "success with drain state annotations",
+			fields: fields{
+				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name:  ptr.To(nodesetutils.GetNodeName(pod)),
+									State: ptr.To([]api.V0043NodeState{api.V0043NodeStateDRAIN}),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     pod.DeepCopy(),
+			},
+			wantErr: false,
+		},
+		{
 			name: "kubernetes update failure",
 			fields: fields{
 				Client: fake.NewClientBuilder().
@@ -1930,6 +1956,240 @@ func TestNodeSetReconciler_syncClusterWorkerService(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
 			if err := r.syncClusterWorkerService(tt.args.ctx, tt.args.nodeset); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.syncClusterWorkerService() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_shouldSkipUncordon(t *testing.T) {
+	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+
+	type fields struct {
+		Client client.Client
+	}
+	type args struct {
+		ctx context.Context
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "Pod not cordoned - should not skip",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: false,
+						},
+					},
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-pod",
+						Annotations: map[string]string{
+							// No cordon annotation
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Pod cordoned but node not cordoned - should not skip",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: false,
+						},
+					},
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-pod",
+						Annotations: map[string]string{
+							slinkyv1alpha1.AnnotationPodCordon: "true",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Pod cordoned and node cordoned - should skip",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: true, // Node is cordoned
+						},
+					},
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-pod",
+						Annotations: map[string]string{
+							slinkyv1alpha1.AnnotationPodCordon: "true",
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newNodeSetController(tt.fields.Client, nil)
+			if got := r.shouldSkipUncordon(tt.args.ctx, tt.args.pod); got != tt.want {
+				t.Errorf("shouldSkipUncordon() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_syncPodUncordon(t *testing.T) {
+	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1alpha1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 2)
+	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod.Annotations[slinkyv1alpha1.AnnotationPodCordon] = "true"
+
+	type fields struct {
+		Client    client.Client
+		ClientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1alpha1.NodeSet
+		pod     *corev1.Pod
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "success - pod uncordoned when node not cordoned",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodeset.DeepCopy(),
+					pod.DeepCopy(),
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: false, // Node not cordoned
+						},
+					},
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name: ptr.To(nodesetutils.GetNodeName(pod)),
+									State: ptr.To([]api.V0043NodeState{
+										api.V0043NodeStateIDLE,
+										api.V0043NodeStateDRAIN,
+									}),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     pod.DeepCopy(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "skip - pod not uncordoned when node is cordoned",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodeset.DeepCopy(),
+					pod.DeepCopy(),
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: true, // Node is cordoned
+						},
+					},
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name: ptr.To(nodesetutils.GetNodeName(pod)),
+									State: ptr.To([]api.V0043NodeState{
+										api.V0043NodeStateIDLE,
+										api.V0043NodeStateDRAIN,
+									}),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     pod.DeepCopy(),
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
+			if err := r.syncPodUncordon(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
+				t.Errorf("syncPodUncordon() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
