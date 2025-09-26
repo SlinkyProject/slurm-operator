@@ -50,5 +50,5 @@ func (b *Builder) BuildClusterWorkerService(nodeset *slinkyv1alpha1.NodeSet) (*c
 		return nil, fmt.Errorf("failed to remove owner controller: %w", err)
 	}
 
-	return b.BuildService(opts, nodeset)
+	return out, nil
 }

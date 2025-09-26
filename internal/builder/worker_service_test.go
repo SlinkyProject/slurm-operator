@@ -62,6 +62,9 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 			case got.Name != slurmClusterWorkerServiceName(tt.args.nodeset.Spec.ControllerRef.Name):
 				t.Errorf("Service.Name = %v, want %v", got.Name, slurmClusterWorkerServiceName(tt.args.nodeset.Spec.ControllerRef.Name))
 
+			case len(got.OwnerReferences) != 0:
+				t.Errorf("Service.OwnerReferences = length %v, want zero", len(got.OwnerReferences))
+
 			case got.Spec.ClusterIP != corev1.ClusterIPNone:
 				t.Errorf("Service.Spec.ClusterIP = %v, want headless service", got.Spec.ClusterIP)
 
