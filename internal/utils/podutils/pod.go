@@ -5,7 +5,6 @@ package podutils
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
@@ -16,6 +15,16 @@ func IsPodCordon(pod *corev1.Pod) bool {
 	return pod.GetAnnotations()[slinkyv1alpha1.AnnotationPodCordon] == "true"
 }
 
+// GetSlurmNodeDrainState returns the current drain state of the underlying Slurm node.
+func GetSlurmNodeDrainState(pod *corev1.Pod) string {
+	return pod.GetAnnotations()[slinkyv1alpha1.AnnotationSlurmNodeDrainState]
+}
+
+// GetSlurmNodeDrainReason returns the reason why the underlying Slurm node was drained.
+func GetSlurmNodeDrainReason(pod *corev1.Pod) string {
+	return pod.GetAnnotations()[slinkyv1alpha1.AnnotationSlurmNodeDrainReason]
+}
+
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.
 func IsRunningAndReady(pod *corev1.Pod) bool {
 	return IsRunning(pod) && podutil.IsPodReady(pod)
@@ -24,10 +33,6 @@ func IsRunningAndReady(pod *corev1.Pod) bool {
 // isRunning returns true if pod is in the PodRunning Phase.
 func IsRunning(pod *corev1.Pod) bool {
 	return pod.Status.Phase == corev1.PodRunning
-}
-
-func IsRunningAndAvailable(pod *corev1.Pod, minReadySeconds int32) bool {
-	return podutil.IsPodAvailable(pod, minReadySeconds, metav1.Now())
 }
 
 // isCreated returns true if pod has been created and is maintained by the API server

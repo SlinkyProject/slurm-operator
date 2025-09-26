@@ -225,6 +225,10 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncK8sNodeStateSynchronization(ctx, nodeset, pods); err != nil {
+		return err
+	}
+
 	if err := r.syncNodeSet(ctx, nodeset, pods, hash); err != nil {
 		return err
 	}
@@ -270,6 +274,60 @@ func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodese
 	return nil
 }
 
+// syncK8sNodeStateSynchronization handles Kubernetes node state synchronization
+// for cordoned/uncordoned nodes and their corresponding NodeSet pods.
+func (r *NodeSetReconciler) syncK8sNodeStateSynchronization(
+	ctx context.Context,
+	nodeset *slinkyv1alpha1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	// Track pods that need drain state updates
+	podsNeedingDrainStateUpdate := make([]*corev1.Pod, 0)
+
+	for _, pod := range pods {
+		// K8s node state synchronization check
+		node := &corev1.Node{}
+		if err := r.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, node); err != nil {
+			// Node lookup failed - log and continue processing
+			logger.V(1).Info("K8s node state synchronization: failed to get node, skipping synchronization check",
+				"pod", klog.KObj(pod), "node", pod.Spec.NodeName, "error", err)
+			continue
+		}
+
+		podIsCordoned := podutils.IsPodCordon(pod)
+
+		// If K8s node is cordoned but pod isn't, cordon the pod
+		if node.Spec.Unschedulable && !podIsCordoned {
+			logger.Info("K8s node state synchronization: node cordoned externally, cordoning pod for workload protection",
+				"pod", klog.KObj(pod), "node", node.Name)
+			if err := r.makePodCordonAndDrain(ctx, nodeset, pod); err != nil {
+				return err
+			}
+			// Track this pod for drain state update
+			podsNeedingDrainStateUpdate = append(podsNeedingDrainStateUpdate, pod)
+		}
+		// If K8s node is uncordoned but pod is cordoned, uncordon the pod
+		if !node.Spec.Unschedulable && podIsCordoned {
+			logger.Info("K8s node state synchronization: node uncordoned externally, uncordoning pod",
+				"pod", klog.KObj(pod), "node", node.Name)
+			if err := r.makePodUncordonAndUndrain(ctx, nodeset, pod); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update drain state annotations for pods that were cordoned using batch processing
+	if len(podsNeedingDrainStateUpdate) > 0 {
+		if err := r.updateDrainStateForCordonedPods(ctx, nodeset, podsNeedingDrainStateUpdate); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // syncSlurm will reconcile the Slurm Nodes with the NodeSet Pods.
 func (r *NodeSetReconciler) syncSlurm(
 	ctx context.Context,
@@ -310,6 +368,11 @@ func (r *NodeSetReconciler) syncSlurm(
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmFn); err != nil {
+		return err
+	}
+
+	// Update drain state annotations for cordoned pods using batch processing
+	if err := r.updateDrainStateForCordonedPods(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
@@ -363,7 +426,8 @@ func (r *NodeSetReconciler) doPodScaleOut(
 
 	uncordonFn := func(i int) error {
 		pod := pods[i]
-		return r.makePodUncordonAndUndrain(ctx, nodeset, pod)
+
+		return r.handleUncordonWithSynchronization(ctx, nodeset, pod)
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
 		return err
@@ -465,7 +529,8 @@ func (r *NodeSetReconciler) doPodScaleIn(
 
 	uncordonFn := func(i int) error {
 		pod := podsToKeep[i]
-		return r.makePodUncordonAndUndrain(ctx, nodeset, pod)
+
+		return r.handleUncordonWithSynchronization(ctx, nodeset, pod)
 	}
 	if _, err := utils.SlowStartBatch(len(podsToKeep), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
 		return err
@@ -593,7 +658,8 @@ func (r *NodeSetReconciler) doPodProcessing(
 	_, podsToKeep := r.splitUpdatePods(ctx, nodeset, pods, hash)
 	uncordonFn := func(i int) error {
 		pod := podsToKeep[i]
-		return r.makePodUncordonAndUndrain(ctx, nodeset, pod)
+
+		return r.handleUncordonWithSynchronization(ctx, nodeset, pod)
 	}
 	if _, err := utils.SlowStartBatch(len(podsToKeep), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
 		return err
@@ -674,6 +740,8 @@ func (r *NodeSetReconciler) makePodCordon(
 		toUpdate.Annotations = make(map[string]string)
 	}
 	toUpdate.Annotations[slinkyv1alpha1.AnnotationPodCordon] = "true"
+	toUpdate.Annotations[slinkyv1alpha1.AnnotationSlurmNodeDrainState] = string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDraining)
+	toUpdate.Annotations[slinkyv1alpha1.AnnotationSlurmNodeDrainReason] = string(slinkyv1alpha1.AnnotationSlurmNodeDrainReasonK8sCordon)
 	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
 		return err
 	}
@@ -710,11 +778,95 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 	toUpdate := pod.DeepCopy()
 	logger.Info("Uncordon Pod", "Pod", klog.KObj(toUpdate))
 	delete(toUpdate.Annotations, slinkyv1alpha1.AnnotationPodCordon)
+	delete(toUpdate.Annotations, slinkyv1alpha1.AnnotationSlurmNodeDrainState)
+	delete(toUpdate.Annotations, slinkyv1alpha1.AnnotationSlurmNodeDrainReason)
 	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// updateDrainStateForCordonedPods updates drain state annotations for cordoned pods.
+// These annotations provide external visibility for kubernetes break-fix and maintenance
+// automation tools to determine when it's safe to perform node maintenance operations.
+func (r *NodeSetReconciler) updateDrainStateForCordonedPods(
+	ctx context.Context,
+	nodeset *slinkyv1alpha1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	// Filter to only cordoned pods
+	cordonedPods := make([]*corev1.Pod, 0)
+	for _, pod := range pods {
+		if podutils.IsPodCordon(pod) {
+			cordonedPods = append(cordonedPods, pod)
+		}
+	}
+
+	if len(cordonedPods) == 0 {
+		return nil
+	}
+
+	updateDrainStateFn := func(i int) error {
+		pod := cordonedPods[i]
+
+		// Check if drain is complete and update annotation
+		isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
+		if err != nil {
+			return err
+		}
+
+		toUpdate := pod.DeepCopy()
+		if toUpdate.Annotations == nil {
+			toUpdate.Annotations = make(map[string]string)
+		}
+		if isDrained {
+			toUpdate.Annotations[slinkyv1alpha1.AnnotationSlurmNodeDrainState] = string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDrained)
+		} else {
+			toUpdate.Annotations[slinkyv1alpha1.AnnotationSlurmNodeDrainState] = string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDraining)
+		}
+		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if _, err := utils.SlowStartBatch(len(cordonedPods), utils.SlowStartInitialBatchSize, updateDrainStateFn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// handleUncordonWithSynchronization handles uncordoning with K8s node state synchronization
+func (r *NodeSetReconciler) handleUncordonWithSynchronization(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+	logger := log.FromContext(ctx)
+
+	// K8s node state synchronization: skip uncordoning pods on externally cordoned nodes
+	if r.shouldSkipUncordon(ctx, pod) {
+		logger.V(1).Info("Skipping uncordon for pod on externally cordoned node",
+			"pod", klog.KObj(pod), "node", pod.Spec.NodeName)
+		return nil // Skip uncordoning this pod
+	}
+
+	return r.makePodUncordonAndUndrain(ctx, nodeset, pod)
+}
+
+// shouldSkipUncordon checks if a pod should skip uncordoning due to external node cordoning
+func (r *NodeSetReconciler) shouldSkipUncordon(ctx context.Context, pod *corev1.Pod) bool {
+	// Check if pod is currently cordoned
+	if !podutils.IsPodCordon(pod) {
+		return false // Pod is not cordoned, no need to skip
+	}
+
+	// Check if the Kubernetes node is externally cordoned
+	node := &corev1.Node{}
+	if err := r.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, node); err != nil {
+		return false // Can't get node info, don't skip
+	}
+
+	// Skip uncordoning if node is externally cordoned
+	return node.Spec.Unschedulable
 }
 
 // syncUpdate will synchronize NodeSet pod version updates based on update type.

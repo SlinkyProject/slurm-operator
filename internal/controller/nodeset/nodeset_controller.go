@@ -142,12 +142,16 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Reader:       mgr.GetCache(),
 		expectations: r.expectations,
 	}
+	nodeEventHandler := &nodeEventHandler{
+		Reader: mgr.GetCache(),
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1alpha1.NodeSet{}).
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
 		Watches(&corev1.Pod{}, podEventHandler).
+		Watches(&corev1.Node{}, nodeEventHandler).
 		WatchesRawSource(source.Channel(r.EventCh, podEventHandler)).
 		Watches(&slinkyv1alpha1.Controller{}, &controllerEventHandler{
 			Reader:      r.Client,

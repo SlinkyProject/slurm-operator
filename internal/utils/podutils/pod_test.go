@@ -9,6 +9,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 )
 
 func TestIsRunningAndReady(t *testing.T) {
@@ -71,57 +73,6 @@ func newPod(now metav1.Time, ready bool, beforeSec int) *corev1.Pod {
 				},
 			},
 		},
-	}
-}
-func TestIsRunningAndAvailable(t *testing.T) {
-	type args struct {
-		pod             *corev1.Pod
-		minReadySeconds int32
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Not ready before 0",
-			args: args{
-				pod:             newPod(metav1.Now(), false, 0),
-				minReadySeconds: 0,
-			},
-			want: false,
-		},
-		{
-			name: "Ready before 0",
-			args: args{
-				pod:             newPod(metav1.Now(), true, 0),
-				minReadySeconds: 1,
-			},
-			want: false,
-		},
-		{
-			name: "Ready 0",
-			args: args{
-				pod:             newPod(metav1.Now(), true, 0),
-				minReadySeconds: 0,
-			},
-			want: true,
-		},
-		{
-			name: "Ready after 50",
-			args: args{
-				pod:             newPod(metav1.Now(), true, 51),
-				minReadySeconds: 50,
-			},
-			want: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsRunningAndAvailable(tt.args.pod, tt.args.minReadySeconds); got != tt.want {
-				t.Errorf("IsRunningAndAvailable() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -359,6 +310,108 @@ func TestIsHealthy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsHealthy(tt.args.pod); got != tt.want {
 				t.Errorf("IsHealthy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetSlurmNodeDrainState(t *testing.T) {
+	var podWithDraining, podWithDrained, podWithEmpty, podWithInvalid, podWithoutAnnotation corev1.Pod
+
+	podWithDraining.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainState: string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDraining),
+	}
+	podWithDrained.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainState: string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDrained),
+	}
+	podWithEmpty.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainState: "",
+	}
+	podWithInvalid.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainState: "invalid-state",
+	}
+
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Pod with draining state",
+			args: args{pod: &podWithDraining},
+			want: string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDraining),
+		},
+		{
+			name: "Pod with drained state",
+			args: args{pod: &podWithDrained},
+			want: string(slinkyv1alpha1.AnnotationSlurmNodeDrainStateDrained),
+		},
+		{
+			name: "Pod with empty drain state",
+			args: args{pod: &podWithEmpty},
+			want: "",
+		},
+		{
+			name: "Pod with invalid drain state",
+			args: args{pod: &podWithInvalid},
+			want: "invalid-state",
+		},
+		{
+			name: "Pod without drain state annotation",
+			args: args{pod: &podWithoutAnnotation},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetSlurmNodeDrainState(tt.args.pod); got != tt.want {
+				t.Errorf("GetSlurmNodeDrainState() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetSlurmNodeDrainReason(t *testing.T) {
+	var podWithReason, podWithEmpty, podWithoutAnnotation corev1.Pod
+
+	podWithReason.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainReason: "k8s-node-cordoned",
+	}
+	podWithEmpty.Annotations = map[string]string{
+		slinkyv1alpha1.AnnotationSlurmNodeDrainReason: "",
+	}
+
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Pod with drain reason",
+			args: args{pod: &podWithReason},
+			want: "k8s-node-cordoned",
+		},
+		{
+			name: "Pod with empty drain reason",
+			args: args{pod: &podWithEmpty},
+			want: "",
+		},
+		{
+			name: "Pod without drain reason annotation",
+			args: args{pod: &podWithoutAnnotation},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetSlurmNodeDrainReason(tt.args.pod); got != tt.want {
+				t.Errorf("GetSlurmNodeDrainReason() = %v, want %v", got, tt.want)
 			}
 		})
 	}
