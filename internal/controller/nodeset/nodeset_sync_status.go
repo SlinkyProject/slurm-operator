@@ -248,7 +248,7 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 		}
 		err := r.Status().Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
 		if err != nil {
-			logger.Error(err, "Error patching pod condition", toUpdate)
+			logger.Error(err, "Error patching pod condition", "pod", klog.KObj(toUpdate))
 			return err
 		}
 	}
