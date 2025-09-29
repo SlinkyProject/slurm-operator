@@ -194,6 +194,17 @@ func getPatch(nodeset *slinkyv1alpha1.NodeSet) ([]byte, error) {
 	template := spec["template"].(map[string]any)
 	specCopy["template"] = template
 	template["$patch"] = "replace"
+	if slurmd, ok := spec["slurmd"].(map[string]any); ok {
+		slurmd["$patch"] = "replace"
+		specCopy["slurmd"] = slurmd
+	}
+	if extraConf, ok := spec["extraConf"].(string); ok {
+		specCopy["extraConf"] = extraConf
+	}
+	if logfile, ok := spec["logfile"].(map[string]any); ok {
+		logfile["$patch"] = "replace"
+		specCopy["logfile"] = logfile
+	}
 	objCopy["spec"] = specCopy
 	patch, err := json.Marshal(objCopy)
 	return patch, err
