@@ -50,7 +50,7 @@ spec:
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}
   {{- with $nodeset.partition }}
   partition:
-    enabled: {{ $nodeset.enabled | default false }}
+    enabled: {{ $nodeset.partition.enabled | default false }}
     {{- if (include "slurm.worker.partitionConfig" $nodeset.partition) }}
     config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
