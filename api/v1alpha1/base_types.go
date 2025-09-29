@@ -127,26 +127,6 @@ func (o *ContainerWrapper) DeepCopy() *ContainerWrapper {
 	}
 }
 
-// ContainerMinimal defines a minimal container.
-type ContainerMinimal struct {
-	// Image URI.
-	// More info: https://kubernetes.io/docs/concepts/containers/images
-	// +optional
-	Image string `json:"image,omitempty"`
-
-	// Image pull policy.
-	// One of Always, Never, IfNotPresent.
-	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-
-	// Compute Resources required by this container.
-	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +optional
-	Resources corev1.ResourceRequirements `json:"resources,omitzero"`
-}
-
 // ServiceSpec defines a template to customize Service objects.
 type ServiceSpec struct {
 	// Standard object's metadata.

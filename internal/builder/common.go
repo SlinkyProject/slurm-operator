@@ -11,8 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
-	clientutils "github.com/SlinkyProject/slurm-client/pkg/utils"
-
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
@@ -67,10 +65,7 @@ func configlessArgs(controller *slinkyv1alpha1.Controller) []string {
 //go:embed scripts/initconf.sh
 var initConfScript string
 
-func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerMinimal) corev1.Container {
-	merge := &corev1.Container{}
-	clientutils.RemarshalOrDie(container, merge)
-
+func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerWrapper) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "initconf",
@@ -93,7 +88,7 @@ func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerMinimal) c
 				{Name: slurmConfigVolume, MountPath: slurmConfigDir, ReadOnly: true},
 			},
 		},
-		merge: *merge,
+		merge: container.Container,
 	}
 
 	return b.BuildContainer(opts)
@@ -102,10 +97,7 @@ func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerMinimal) c
 //go:embed scripts/logfile.sh
 var logfileScript string
 
-func (b *Builder) logfileContainer(container slinkyv1alpha1.ContainerMinimal, logfilePath string) corev1.Container {
-	merge := &corev1.Container{}
-	clientutils.RemarshalOrDie(container, merge)
-
+func (b *Builder) logfileContainer(container slinkyv1alpha1.ContainerWrapper, logfilePath string) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "logfile",
@@ -125,7 +117,7 @@ func (b *Builder) logfileContainer(container slinkyv1alpha1.ContainerMinimal, lo
 				{Name: slurmLogFileVolume, MountPath: slurmLogFileDir},
 			},
 		},
-		merge: *merge,
+		merge: container.Container,
 	}
 
 	return b.BuildContainer(opts)

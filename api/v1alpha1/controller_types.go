@@ -51,11 +51,11 @@ type ControllerSpec struct {
 
 	// The reconfigure container configuration.
 	// +optional
-	Reconfigure ContainerMinimal `json:"reconfigure,omitzero"`
+	Reconfigure ContainerWrapper `json:"reconfigure,omitzero"`
 
 	// The logfile sidecar configuration.
 	// +optional
-	LogFile ContainerMinimal `json:"logfile,omitzero"`
+	LogFile ContainerWrapper `json:"logfile,omitzero"`
 
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected.

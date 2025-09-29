@@ -89,8 +89,10 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1alpha1.Nod
 				},
 			},
 			ExtraConf: "Weight=10",
-			LogFile: slinkyv1alpha1.ContainerMinimal{
-				Image: "alpine",
+			LogFile: slinkyv1alpha1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "alpine",
+				},
 			},
 		},
 	}

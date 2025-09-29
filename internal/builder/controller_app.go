@@ -15,8 +15,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	clientutils "github.com/SlinkyProject/slurm-client/pkg/utils"
-
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
@@ -289,10 +287,7 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 //go:embed scripts/reconfigure.sh
 var reconfigureScript string
 
-func (b *Builder) reconfigureContainer(container slinkyv1alpha1.ContainerMinimal) corev1.Container {
-	merge := &corev1.Container{}
-	clientutils.RemarshalOrDie(container, merge)
-
+func (b *Builder) reconfigureContainer(container slinkyv1alpha1.ContainerWrapper) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "reconfigure",
@@ -310,7 +305,7 @@ func (b *Builder) reconfigureContainer(container slinkyv1alpha1.ContainerMinimal
 				{Name: slurmAuthSocketVolume, MountPath: slurmctldAuthSocketDir, ReadOnly: true},
 			},
 		},
-		merge: *merge,
+		merge: container.Container,
 	}
 
 	return b.BuildContainer(opts)

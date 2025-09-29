@@ -46,11 +46,15 @@ func NewController(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySele
 					Image: "slurmctld",
 				},
 			},
-			Reconfigure: slinkyv1alpha1.ContainerMinimal{
-				Image: "slurmctld",
+			Reconfigure: slinkyv1alpha1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "slurmctld",
+				},
 			},
-			LogFile: slinkyv1alpha1.ContainerMinimal{
-				Image: "alpine",
+			LogFile: slinkyv1alpha1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "alpine",
+				},
 			},
 		},
 	}
@@ -120,8 +124,10 @@ func NewAccounting(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySele
 					Image: "slurmdbd",
 				},
 			},
-			InitConf: slinkyv1alpha1.ContainerMinimal{
-				Image: "sackd",
+			InitConf: slinkyv1alpha1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "sackd",
+				},
 			},
 		},
 	}
@@ -170,8 +176,10 @@ func NewNodeset(name string, controller *slinkyv1alpha1.Controller, replicas int
 					Image: "slurmd",
 				},
 			},
-			LogFile: slinkyv1alpha1.ContainerMinimal{
-				Image: "alpine",
+			LogFile: slinkyv1alpha1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "alpine",
+				},
 			},
 		},
 	}
