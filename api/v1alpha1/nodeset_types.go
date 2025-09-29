@@ -266,18 +266,18 @@ type NodeSetStatus struct {
 	Selector string `json:"selector"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=nodesets;nss;slurmd
-//+kubebuilder:subresource:scale:specpath=".spec.replicas",statuspath=".status.replicas",selectorpath=".status.selector"
-//+kubebuilder:printcolumn:name="REPLICAS",type="integer",JSONPath=".status.replicas",priority=0,description="The current number of pods."
-//+kubebuilder:printcolumn:name="UPDATED",type="integer",JSONPath=".status.updatedReplicas",priority=0,description="The number of pods updated."
-//+kubebuilder:printcolumn:name="READY",type="integer",JSONPath=".status.readyReplicas",priority=0,description="The number of pods ready."
-//+kubebuilder:printcolumn:name="IDLE",type="integer",JSONPath=".status.slurmIdle",priority=1,description="The number of IDLE slurm nodes."
-//+kubebuilder:printcolumn:name="ALLOCATED",type="integer",JSONPath=".status.slurmAllocated",priority=1,description="The number of ALLOCATED/MIXED slurm nodes."
-//+kubebuilder:printcolumn:name="DOWN",type="integer",JSONPath=".status.slurmDown",priority=1,description="The number of DOWN slurm nodes."
-//+kubebuilder:printcolumn:name="DRAIN",type="integer",JSONPath=".status.slurmDrain",priority=1,description="The number of DRAIN slurm nodes."
-//+kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=nodesets;nss;slurmd
+// +kubebuilder:subresource:scale:specpath=".spec.replicas",statuspath=".status.replicas",selectorpath=".status.selector"
+// +kubebuilder:printcolumn:name="REPLICAS",type="integer",JSONPath=".status.replicas",priority=0,description="The current number of pods."
+// +kubebuilder:printcolumn:name="UPDATED",type="integer",JSONPath=".status.updatedReplicas",priority=0,description="The number of pods updated."
+// +kubebuilder:printcolumn:name="READY",type="integer",JSONPath=".status.readyReplicas",priority=0,description="The number of pods ready."
+// +kubebuilder:printcolumn:name="IDLE",type="integer",JSONPath=".status.slurmIdle",priority=1,description="The number of IDLE slurm nodes."
+// +kubebuilder:printcolumn:name="ALLOCATED",type="integer",JSONPath=".status.slurmAllocated",priority=1,description="The number of ALLOCATED/MIXED slurm nodes."
+// +kubebuilder:printcolumn:name="DOWN",type="integer",JSONPath=".status.slurmDown",priority=1,description="The number of DOWN slurm nodes."
+// +kubebuilder:printcolumn:name="DRAIN",type="integer",JSONPath=".status.slurmDrain",priority=1,description="The number of DRAIN slurm nodes."
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // NodeSet is the Schema for the nodesets API
 type NodeSet struct {
@@ -288,7 +288,7 @@ type NodeSet struct {
 	Status NodeSetStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // NodeSetList contains a list of NodeSet
 type NodeSetList struct {

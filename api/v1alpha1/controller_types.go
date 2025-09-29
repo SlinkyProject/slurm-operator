@@ -145,7 +145,7 @@ type Controller struct {
 	Status ControllerStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ControllerList contains a list of Controller
 type ControllerList struct {

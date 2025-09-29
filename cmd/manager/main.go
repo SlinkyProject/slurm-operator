@@ -31,7 +31,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -43,7 +43,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 }
 
 // Input flags to the command
@@ -152,7 +152,7 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	//+kubebuilder:scaffold:builder
+	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running controller")
