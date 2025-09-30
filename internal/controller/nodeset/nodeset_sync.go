@@ -310,19 +310,23 @@ func (r *NodeSetReconciler) syncCordon(
 		case nodeIsCordoned:
 			logger.Info("Kubernetes node cordoned externally, cordoning pod",
 				"pod", klog.KObj(pod), "node", node.Name)
-			if err := r.makePodCordonAndDrain(ctx, nodeset, pod); err != nil {
+			reason := fmt.Sprintf("Node (%s) was cordoned, Pod (%s) must be cordoned",
+				pod.Spec.NodeName, klog.KObj(pod))
+			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
 
 		// If pod is cordoned, drain the Slurm node
 		case podIsCordoned:
-			if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
+			reason := fmt.Sprintf("Pod (%s) was cordoned", klog.KObj(pod))
+			if err := r.syncSlurmNodeDrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
 
 		// If pod is uncordoned, undrain the Slurm node
 		case !podIsCordoned:
-			if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
+			reason := fmt.Sprintf("Pod (%s) was uncordoned", klog.KObj(pod))
+			if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
 		}
@@ -620,7 +624,8 @@ func (r *NodeSetReconciler) processCondemned(
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
 		// We must wait until fully drained to terminate the pod.
 		durationStore.Push(key, 30*time.Second)
-		return r.makePodCordonAndDrain(ctx, nodeset, pod)
+		reason := fmt.Sprintf("Pod (%s) was cordoned pending termination", klog.KObj(pod))
+		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason)
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in",
@@ -699,12 +704,13 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pod *corev1.Pod,
+	reason string,
 ) error {
 	if err := r.makePodCordon(ctx, pod); err != nil {
 		return err
 	}
 
-	if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
+	if err := r.syncSlurmNodeDrain(ctx, nodeset, pod, reason); err != nil {
 		return err
 	}
 
@@ -716,6 +722,7 @@ func (r *NodeSetReconciler) syncSlurmNodeDrain(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pod *corev1.Pod,
+	message string,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -730,6 +737,10 @@ func (r *NodeSetReconciler) syncSlurmNodeDrain(
 	}
 
 	reason := fmt.Sprintf("Pod (%s) has been cordoned", klog.KObj(pod))
+	if message != "" {
+		reason = message
+	}
+
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason); err != nil {
 		return err
 	}
@@ -766,12 +777,13 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pod *corev1.Pod,
+	reason string,
 ) error {
 	if err := r.makePodUncordon(ctx, pod); err != nil {
 		return err
 	}
 
-	if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
+	if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 		return err
 	}
 
@@ -783,6 +795,7 @@ func (r *NodeSetReconciler) syncSlurmNodeUndrain(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pod *corev1.Pod,
+	message string,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -797,6 +810,10 @@ func (r *NodeSetReconciler) syncSlurmNodeUndrain(
 	}
 
 	reason := fmt.Sprintf("Pod (%s) has been uncordoned", klog.KObj(pod))
+	if message != "" {
+		reason = message
+	}
+
 	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 		return err
 	}
@@ -833,7 +850,7 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 		return nil // Skip uncordoning this pod
 	}
 
-	return r.makePodUncordonAndUndrain(ctx, nodeset, pod)
+	return r.makePodUncordonAndUndrain(ctx, nodeset, pod, "")
 }
 
 // shouldSkipUncordon checks if a pod should skip uncordoning due to external node cordoning

@@ -935,6 +935,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 		ctx     context.Context
 		nodeset *slinkyv1alpha1.NodeSet
 		pod     *corev1.Pod
+		reason  string
 	}
 	tests := []struct {
 		name    string
@@ -1064,7 +1065,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
+			if err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.makePodCordonAndDrain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check Pod Annotations
@@ -1200,6 +1201,7 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 		ctx     context.Context
 		nodeset *slinkyv1alpha1.NodeSet
 		pod     *corev1.Pod
+		reason  string
 	}
 	tests := []struct {
 		name    string
@@ -1312,7 +1314,7 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.makePodUncordonAndUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
+			if err := r.makePodUncordonAndUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.makePodUncordonAndUndrain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check Pod Annotations
