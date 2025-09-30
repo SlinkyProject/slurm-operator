@@ -410,7 +410,8 @@ accounting:
       # loadBalancerIP: ""
       # externalIPs: []
       # externalName: ""
-
+    # port: 6819
+    # nodePort: 30819
 
 # Slurm LoginSet (sackd, sshd, sssd) configurations.
 loginsets:
