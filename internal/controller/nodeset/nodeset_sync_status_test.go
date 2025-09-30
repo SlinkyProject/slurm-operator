@@ -21,7 +21,7 @@ import (
 
 	slurminterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
@@ -30,7 +30,7 @@ import (
 )
 
 func TestNodeSetReconciler_syncStatus(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -42,7 +42,7 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx             context.Context
-		nodeset         *slinkyv1alpha1.NodeSet
+		nodeset         *slinkyv1beta1.NodeSet
 		pods            []*corev1.Pod
 		currentRevision *appsv1.ControllerRevision
 		updateRevision  *appsv1.ControllerRevision
@@ -169,7 +169,7 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -180,7 +180,7 @@ func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pods    []*corev1.Pod
 	}
 	type testCaseFields struct {
@@ -241,7 +241,7 @@ func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -253,7 +253,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx             context.Context
-		nodeset         *slinkyv1alpha1.NodeSet
+		nodeset         *slinkyv1beta1.NodeSet
 		pods            []*corev1.Pod
 		currentRevision *appsv1.ControllerRevision
 		updateRevision  *appsv1.ControllerRevision
@@ -264,7 +264,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 		name       string
 		fields     fields
 		args       args
-		wantStatus *slinkyv1alpha1.NodeSetStatus
+		wantStatus *slinkyv1beta1.NodeSetStatus
 		wantErr    bool
 	}
 	tests := []testCaseFields{
@@ -315,7 +315,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 					collisionCount:  0,
 					hash:            hash,
 				},
-				wantStatus: &slinkyv1alpha1.NodeSetStatus{
+				wantStatus: &slinkyv1beta1.NodeSetStatus{
 					Replicas:          2,
 					ReadyReplicas:     2,
 					AvailableReplicas: 2,
@@ -375,7 +375,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 					collisionCount:  0,
 					hash:            hash,
 				},
-				wantStatus: &slinkyv1alpha1.NodeSetStatus{
+				wantStatus: &slinkyv1beta1.NodeSetStatus{
 					Replicas:            2,
 					UnavailableReplicas: 2,
 					NodeSetHash:         "12345",
@@ -392,7 +392,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 			if err := r.syncNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision, tt.args.collisionCount, tt.args.hash); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.syncNodeSetStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			got := &slinkyv1alpha1.NodeSet{}
+			got := &slinkyv1beta1.NodeSet{}
 			key := client.ObjectKeyFromObject(tt.args.nodeset)
 			if err := r.Get(tt.args.ctx, key, got); err == nil {
 				if diff := cmp.Diff(tt.wantStatus, &got.Status); diff != "" {
@@ -404,14 +404,14 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 }
 
 func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
 	}
 	const hash = "12345"
 	type args struct {
-		nodeset         *slinkyv1alpha1.NodeSet
+		nodeset         *slinkyv1beta1.NodeSet
 		pods            []*corev1.Pod
 		currentRevision *appsv1.ControllerRevision
 		updateRevision  *appsv1.ControllerRevision
@@ -517,7 +517,7 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 		Message: "",
 	}
 
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -648,7 +648,7 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 }
 
 func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -659,8 +659,8 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx       context.Context
-		nodeset   *slinkyv1alpha1.NodeSet
-		newStatus *slinkyv1alpha1.NodeSetStatus
+		nodeset   *slinkyv1beta1.NodeSet
+		newStatus *slinkyv1beta1.NodeSetStatus
 	}
 	tests := []struct {
 		name    string
@@ -679,7 +679,7 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 			args: args{
 				ctx:       context.TODO(),
 				nodeset:   nodeset,
-				newStatus: &slinkyv1alpha1.NodeSetStatus{},
+				newStatus: &slinkyv1beta1.NodeSetStatus{},
 			},
 			wantErr: false,
 		},
@@ -691,7 +691,7 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 			args: args{
 				ctx:       context.TODO(),
 				nodeset:   nodeset,
-				newStatus: &slinkyv1alpha1.NodeSetStatus{},
+				newStatus: &slinkyv1beta1.NodeSetStatus{},
 			},
 			wantErr: false,
 		},
@@ -711,7 +711,7 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 			args: args{
 				ctx:       context.TODO(),
 				nodeset:   nodeset,
-				newStatus: &slinkyv1alpha1.NodeSetStatus{},
+				newStatus: &slinkyv1beta1.NodeSetStatus{},
 			},
 			wantErr: true,
 		},
@@ -722,7 +722,7 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 			if err := r.updateNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.newStatus); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.updateNodeSetStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			got := &slinkyv1alpha1.NodeSet{}
+			got := &slinkyv1beta1.NodeSet{}
 			key := client.ObjectKeyFromObject(tt.args.nodeset)
 			if err := r.Get(tt.args.ctx, key, got); err == nil {
 				if diff := cmp.Diff(tt.args.newStatus, &got.Status); diff != "" {

@@ -22,7 +22,7 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
@@ -64,8 +64,8 @@ func newFakeClientList(interceptorFuncs interceptor.Funcs, initObjLists ...objec
 var _ = Describe("Slurm NodeSet", func() {
 	Context("When creating NodeSet", func() {
 		var name = testutils.GenerateResourceName(5)
-		var nodeset *slinkyv1alpha1.NodeSet
-		var controller *slinkyv1alpha1.Controller
+		var nodeset *slinkyv1beta1.NodeSet
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 
@@ -91,7 +91,7 @@ var _ = Describe("Slurm NodeSet", func() {
 
 		It("Should successfully create create a nodeset", func(ctx SpecContext) {
 			By("Creating NodeSet CR")
-			createdNodeset := &slinkyv1alpha1.NodeSet{}
+			createdNodeset := &slinkyv1beta1.NodeSet{}
 			nodesetKey := k8sclient.ObjectKeyFromObject(nodeset)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, nodesetKey, createdNodeset)).To(Succeed())
@@ -113,8 +113,8 @@ var _ = Describe("Slurm NodeSet", func() {
 
 	Context("Scaling unhealthy replicas", func() {
 		var name = testutils.GenerateResourceName(5)
-		var nodeset *slinkyv1alpha1.NodeSet
-		var controller *slinkyv1alpha1.Controller
+		var nodeset *slinkyv1beta1.NodeSet
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 
@@ -174,8 +174,8 @@ var _ = Describe("Slurm NodeSet", func() {
 
 	Context("Scaling healthy replicas", func() {
 		var name = testutils.GenerateResourceName(5)
-		var nodeset *slinkyv1alpha1.NodeSet
-		var controller *slinkyv1alpha1.Controller
+		var nodeset *slinkyv1beta1.NodeSet
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 

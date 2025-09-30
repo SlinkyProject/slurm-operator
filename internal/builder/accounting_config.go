@@ -8,13 +8,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/config"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *Builder) BuildAccountingConfig(accounting *slinkyv1alpha1.Accounting) (*corev1.Secret, error) {
+func (b *Builder) BuildAccountingConfig(accounting *slinkyv1beta1.Accounting) (*corev1.Secret, error) {
 	storagePass, err := b.refResolver.GetSecretKeyRef(context.TODO(), accounting.AuthStorageRef(), accounting.Namespace)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (b *Builder) BuildAccountingConfig(accounting *slinkyv1alpha1.Accounting) (
 }
 
 // https://slurm.schedmd.com/slurmdbd.conf.html
-func buildSlurmdbdConf(accounting *slinkyv1alpha1.Accounting, storagePass string) string {
+func buildSlurmdbdConf(accounting *slinkyv1beta1.Accounting, storagePass string) string {
 	dbdHost := accounting.PrimaryName()
 	storageHost := accounting.Spec.StorageConfig.Host
 	storagePort := accounting.Spec.StorageConfig.Port

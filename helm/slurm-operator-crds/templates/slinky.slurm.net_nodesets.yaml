@@ -54,7 +54,391 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
+    deprecated: true
+    deprecationWarning: v1alpha1 is deprecated, use v1beta1.
     name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NodeSet is the Schema for the nodesets API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NodeSetSpec defines the desired state of NodeSet
+            properties:
+              controllerRef:
+                description: controllerRef is a reference to the Controller CR to
+                  which this has membership.
+                properties:
+                  name:
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  namespace:
+                    description: |-
+                      Namespace of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              extraConf:
+                description: |-
+                  ExtraConf is added to the slurmd args as `--conf <extraConf>`.
+                  Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
+                type: string
+              logfile:
+                description: The logfile sidecar configuration.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              minReadySeconds:
+                description: |-
+                  minReadySeconds is the minimum number of seconds for which a newly
+                  created NodeSet Pod should be ready without any of its container crashing,
+                  for it to be considered available.
+                  Defaults to 0 (pod will be considered available as soon as it is ready).
+                format: int32
+                type: integer
+              partition:
+                description: Partition defines the Slurm partition configuration for
+                  this NodeSet.
+                properties:
+                  config:
+                    description: |-
+                      Config is added to the NodeSet's partition line.
+                      Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
+                    type: string
+                  enabled:
+                    default: true
+                    description: Enabled will create a partition for this NodeSet.
+                    type: boolean
+                required:
+                - enabled
+                type: object
+              persistentVolumeClaimRetentionPolicy:
+                description: |-
+                  PersistentVolumeClaimRetentionPolicy describes the policy used for PVCs
+                  created from the NodeSet VolumeClaimTemplates. This requires the
+                  NodeSetAutoDeletePVC feature gate to be enabled, which is alpha.
+                properties:
+                  whenDeleted:
+                    description: |-
+                      WhenDeleted specifies what happens to PVCs created from NodeSet
+                      VolumeClaimTemplates when the NodeSet is deleted. The default policy
+                      of `Retain` causes PVCs to not be affected by NodeSet deletion. The
+                      `Delete` policy causes those PVCs to be deleted.
+                    type: string
+                  whenScaled:
+                    description: |-
+                      WhenScaled specifies what happens to PVCs created from NodeSet
+                      VolumeClaimTemplates when the NodeSet is scaled down. The default
+                      policy of `Retain` causes PVCs to not be affected by a scaledown. The
+                      `Delete` policy causes the associated PVCs for any excess pods to be
+                      deleted.
+                    type: string
+                type: object
+              replicas:
+                description: |-
+                  replicas is the desired number of replicas of the given Template.
+                  These are replicas in the sense that they are instantiations of the
+                  same Template, but individual replicas also have a consistent identity.
+                  If unspecified, defaults to 1.
+                format: int32
+                type: integer
+              revisionHistoryLimit:
+                description: |-
+                  revisionHistoryLimit is the maximum number of revisions that will
+                  be maintained in the NodeSet's revision history. The revision history
+                  consists of all revisions not represented by a currently applied
+                  NodeSetSpec version. The default value is 0.
+                format: int32
+                type: integer
+              slurmd:
+                description: |-
+                  The slurmd container configuration.
+                  See corev1.Container spec.
+                  Ref: https://github.com/kubernetes/api/blob/master/core/v1/types.go#L2885
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              template:
+                description: |-
+                  Template is the object that describes the pod that will be created if
+                  insufficient replicas are detected.
+                  More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
+                properties:
+                  metadata:
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        type: object
+                    type: object
+                  spec:
+                    description: PodSpec is a description of a pod.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+              updateStrategy:
+                description: |-
+                  updateStrategy indicates the NodeSetUpdateStrategy that will be
+                  employed to update Pods in the NodeSet when a revision is made to
+                  Template.
+                properties:
+                  rollingUpdate:
+                    description: |-
+                      RollingUpdate is used to communicate parameters when Type is
+                      RollingUpdateNodeSetStrategyType.
+                    properties:
+                      maxUnavailable:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          The maximum number of pods that can be unavailable during the update.
+                          Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
+                          Absolute number is calculated from percentage by rounding up. This can not be 0.
+                          Defaults to 1.
+                        x-kubernetes-int-or-string: true
+                    type: object
+                  type:
+                    description: |-
+                      Type indicates the type of the NodeSetUpdateStrategy.
+                      Default is RollingUpdate.
+                    type: string
+                type: object
+              volumeClaimTemplates:
+                description: |-
+                  volumeClaimTemplates is a list of claims that pods are allowed to reference.
+                  The NodeSet controller is responsible for mapping network identities to
+                  claims in a way that maintains the identity of a pod. Every claim in
+                  this list must have at least one matching (by name) volumeMount in one
+                  container in the template. A claim in this list takes precedence over
+                  any volumes in the template, with the same name.
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - controllerRef
+            type: object
+          status:
+            description: NodeSetStatus defines the observed state of NodeSet
+            properties:
+              availableReplicas:
+                description: Total number of available pods (ready for at least minReadySeconds)
+                  targeted by this NodeSet.
+                format: int32
+                type: integer
+              collisionCount:
+                description: |-
+                  Count of hash collisions for the NodeSet. The NodeSet controller
+                  uses this field as a collision avoidance mechanism when it needs to
+                  create the name for the newest ControllerRevision.
+                format: int32
+                type: integer
+              conditions:
+                description: Represents the latest available observations of a NodeSet's
+                  current state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              nodeSetHash:
+                description: |-
+                  NodeSetHash is the "controller-revision-hash", which represents the
+                  latest version of the NodeSet.
+                type: string
+              observedGeneration:
+                description: |-
+                  observedGeneration is the most recent generation observed for this NodeSet. It corresponds to the
+                  NodeSet's generation, which is updated on mutation by the API Server.
+                format: int64
+                type: integer
+              readyReplicas:
+                description: readyReplicas is the number of pods targeted by this
+                  NodeSet with a Ready Condition.
+                format: int32
+                type: integer
+              replicas:
+                description: Total number of non-terminated pods targeted by this
+                  NodeSet (their labels match the Selector).
+                format: int32
+                type: integer
+              selector:
+                description: Add Selector to status for HPA support in the scale subresource.
+                type: string
+              slurmAllocated:
+                description: |-
+                  The number of NodeSet pods that are running and are in the Slurm
+                  ALLOCATED or MIXED state. ALLOCATED/MIXED means the Slurm node is
+                  allocated one or more Slurm jobs and is doing work.
+                format: int32
+                type: integer
+              slurmDown:
+                description: |-
+                  The number of NodeSet pods that are running and are in the Slurm
+                  DOWN state. DOWN means the Slurm node is unavailable for use.
+                format: int32
+                type: integer
+              slurmDrain:
+                description: |-
+                  The number of NodeSet pods that are running and are in the Slurm DRAIN
+                  state. DRAIN means the Slurm node becomes unschedulable but allocated
+                  Slurm jobs will not be evicted and can continue running until completion.
+                format: int32
+                type: integer
+              slurmIdle:
+                description: |-
+                  The number of NodeSet pods that are running and are in the Slurm IDLE
+                  state. IDLE means the Slurm nodes is not ALLOCATED or MIXED, hence is not
+                  allocated any Slurm jobs, nor doing work.
+                format: int32
+                type: integer
+              unavailableReplicas:
+                description: |-
+                  Total number of unavailable pods targeted by this NodeSet. This is the total number of
+                  pods that are still required for the NodeSet to have 100% available capacity. They may
+                  either be pods that are running but not yet available or pods that still have not been created.
+                format: int32
+                type: integer
+              updatedReplicas:
+                description: Total number of non-terminated pods targeted by this
+                  NodeSet that have the desired template spec.
+                format: int32
+                type: integer
+            required:
+            - nodeSetHash
+            - selector
+            type: object
+        type: object
+    served: true
+    storage: false
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}
+  - additionalPrinterColumns:
+    - description: The current number of pods.
+      jsonPath: .status.replicas
+      name: REPLICAS
+      type: integer
+    - description: The number of pods updated.
+      jsonPath: .status.updatedReplicas
+      name: UPDATED
+      type: integer
+    - description: The number of pods ready.
+      jsonPath: .status.readyReplicas
+      name: READY
+      type: integer
+    - description: The number of IDLE slurm nodes.
+      jsonPath: .status.slurmIdle
+      name: IDLE
+      priority: 1
+      type: integer
+    - description: The number of ALLOCATED/MIXED slurm nodes.
+      jsonPath: .status.slurmAllocated
+      name: ALLOCATED
+      priority: 1
+      type: integer
+    - description: The number of DOWN slurm nodes.
+      jsonPath: .status.slurmDown
+      name: DOWN
+      priority: 1
+      type: integer
+    - description: The number of DRAIN slurm nodes.
+      jsonPath: .status.slurmDrain
+      name: DRAIN
+      priority: 1
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: NodeSet is the Schema for the nodesets API

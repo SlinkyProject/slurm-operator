@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
@@ -25,8 +25,8 @@ func New(c client.Client) *RefResolver {
 	}
 }
 
-func (r *RefResolver) GetController(ctx context.Context, ref slinkyv1alpha1.ObjectReference) (*slinkyv1alpha1.Controller, error) {
-	obj := &slinkyv1alpha1.Controller{}
+func (r *RefResolver) GetController(ctx context.Context, ref slinkyv1beta1.ObjectReference) (*slinkyv1beta1.Controller, error) {
+	obj := &slinkyv1beta1.Controller{}
 	key := ref.NamespacedName()
 	if err := r.client.Get(ctx, key, obj); err != nil {
 		return nil, err
@@ -34,8 +34,8 @@ func (r *RefResolver) GetController(ctx context.Context, ref slinkyv1alpha1.Obje
 	return obj, nil
 }
 
-func (r *RefResolver) GetAccounting(ctx context.Context, ref slinkyv1alpha1.ObjectReference) (*slinkyv1alpha1.Accounting, error) {
-	obj := &slinkyv1alpha1.Accounting{}
+func (r *RefResolver) GetAccounting(ctx context.Context, ref slinkyv1beta1.ObjectReference) (*slinkyv1beta1.Accounting, error) {
+	obj := &slinkyv1beta1.Accounting{}
 	key := ref.NamespacedName()
 	if err := r.client.Get(ctx, key, obj); err != nil {
 		return nil, err
@@ -43,13 +43,13 @@ func (r *RefResolver) GetAccounting(ctx context.Context, ref slinkyv1alpha1.Obje
 	return obj, nil
 }
 
-func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *slinkyv1alpha1.Controller) (*slinkyv1alpha1.NodeSetList, error) {
-	list := &slinkyv1alpha1.NodeSetList{}
+func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.NodeSetList, error) {
+	list := &slinkyv1beta1.NodeSetList{}
 	if err := r.client.List(ctx, list); err != nil {
 		return nil, err
 	}
 
-	out := &slinkyv1alpha1.NodeSetList{}
+	out := &slinkyv1beta1.NodeSetList{}
 	for _, item := range list.Items {
 		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
@@ -59,13 +59,13 @@ func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *
 	return out, nil
 }
 
-func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller *slinkyv1alpha1.Controller) (*slinkyv1alpha1.LoginSetList, error) {
-	list := &slinkyv1alpha1.LoginSetList{}
+func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.LoginSetList, error) {
+	list := &slinkyv1beta1.LoginSetList{}
 	if err := r.client.List(ctx, list); err != nil {
 		return nil, err
 	}
 
-	out := &slinkyv1alpha1.LoginSetList{}
+	out := &slinkyv1beta1.LoginSetList{}
 	for _, item := range list.Items {
 		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
@@ -75,13 +75,13 @@ func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller 
 	return out, nil
 }
 
-func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *slinkyv1alpha1.Controller) (*slinkyv1alpha1.RestApiList, error) {
-	list := &slinkyv1alpha1.RestApiList{}
+func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.RestApiList, error) {
+	list := &slinkyv1beta1.RestApiList{}
 	if err := r.client.List(ctx, list); err != nil {
 		return nil, err
 	}
 
-	out := &slinkyv1alpha1.RestApiList{}
+	out := &slinkyv1beta1.RestApiList{}
 	for _, item := range list.Items {
 		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
@@ -91,13 +91,13 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 	return out, nil
 }
 
-func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1alpha1.Accounting) (*slinkyv1alpha1.ControllerList, error) {
-	list := &slinkyv1alpha1.ControllerList{}
+func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (*slinkyv1beta1.ControllerList, error) {
+	list := &slinkyv1beta1.ControllerList{}
 	if err := r.client.List(ctx, list); err != nil {
 		return nil, err
 	}
 
-	out := &slinkyv1alpha1.ControllerList{}
+	out := &slinkyv1beta1.ControllerList{}
 	for _, item := range list.Items {
 		if item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
 			out.Items = append(out.Items, item)

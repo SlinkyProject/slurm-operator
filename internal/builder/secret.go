@@ -12,13 +12,13 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 )
 
 type SecretOpts struct {
 	Key        types.NamespacedName
-	Metadata   slinkyv1alpha1.Metadata
+	Metadata   slinkyv1beta1.Metadata
 	Data       map[string][]byte
 	StringData map[string]string
 	Immutable  bool

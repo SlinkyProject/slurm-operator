@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme.Scheme))
 }
 
 func TestNew(t *testing.T) {

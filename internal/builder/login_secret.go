@@ -8,13 +8,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *Builder) BuildLoginSshHostKeys(loginset *slinkyv1alpha1.LoginSet) (*corev1.Secret, error) {
+func (b *Builder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (*corev1.Secret, error) {
 	keyPairRsa, err := crypto.NewKeyPair(crypto.WithType(crypto.KeyPairRsa))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)

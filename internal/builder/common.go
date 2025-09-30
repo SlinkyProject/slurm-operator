@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
 )
@@ -50,11 +50,11 @@ const (
 )
 
 const (
-	annotationAuthSlurmKeyHash    = slinkyv1alpha1.SlinkyPrefix + "slurm-key-hash"
-	annotationAuthJwtHs256KeyHash = slinkyv1alpha1.SlinkyPrefix + "jwt-hs256-key-hash"
+	annotationAuthSlurmKeyHash    = slinkyv1beta1.SlinkyPrefix + "slurm-key-hash"
+	annotationAuthJwtHs256KeyHash = slinkyv1beta1.SlinkyPrefix + "jwt-hs256-key-hash"
 )
 
-func configlessArgs(controller *slinkyv1alpha1.Controller) []string {
+func configlessArgs(controller *slinkyv1beta1.Controller) []string {
 	args := []string{
 		"--conf-server",
 		fmt.Sprintf("%s:%d", controller.ServiceFQDNShort(), SlurmctldPort),
@@ -65,7 +65,7 @@ func configlessArgs(controller *slinkyv1alpha1.Controller) []string {
 //go:embed scripts/initconf.sh
 var initConfScript string
 
-func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerWrapper) corev1.Container {
+func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "initconf",
@@ -97,7 +97,7 @@ func (b *Builder) initconfContainer(container slinkyv1alpha1.ContainerWrapper) c
 //go:embed scripts/logfile.sh
 var logfileScript string
 
-func (b *Builder) logfileContainer(container slinkyv1alpha1.ContainerWrapper, logfilePath string) corev1.Container {
+func (b *Builder) logfileContainer(container slinkyv1beta1.ContainerWrapper, logfilePath string) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "logfile",

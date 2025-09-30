@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
@@ -31,12 +31,12 @@ import (
 
 // NewNodeSetPod returns a new Pod conforming to the nodeset's Spec with an identity generated from ordinal.
 func NewNodeSetPod(
-	nodeset *slinkyv1alpha1.NodeSet,
-	controller *slinkyv1alpha1.Controller,
+	nodeset *slinkyv1beta1.NodeSet,
+	controller *slinkyv1beta1.Controller,
 	ordinal int,
 	revisionHash string,
 ) *corev1.Pod {
-	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1alpha1.NodeSetGVK)
+	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK)
 	podTemplate := builder.New(nil).BuildWorkerPodTemplate(nodeset, controller)
 	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
 	pod.Name = GetPodName(nodeset, ordinal)
@@ -54,7 +54,7 @@ func NewNodeSetPod(
 	return pod
 }
 
-func initIdentity(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
+func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	UpdateIdentity(nodeset, pod)
 	// Set these immutable fields only on initial Pod creation, not updates.
 	if pod.Spec.Hostname != "" {
@@ -62,26 +62,26 @@ func initIdentity(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
 	} else {
 		pod.Spec.Hostname = pod.Name
 	}
-	pod.Labels[slinkyv1alpha1.LabelNodeSetPodHostname] = GetNodeName(pod)
+	pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetNodeName(pod)
 }
 
 // UpdateIdentity updates pod's name, hostname, and subdomain, and StatefulSetPodNameLabel to conform to nodeset's name
 // and headless service.
-func UpdateIdentity(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
+func UpdateIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	ordinal := GetOrdinal(pod)
 	pod.Name = GetPodName(nodeset, ordinal)
 	pod.Namespace = nodeset.Namespace
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
-	pod.Labels[slinkyv1alpha1.LabelNodeSetPodName] = pod.Name
-	pod.Labels[slinkyv1alpha1.LabelNodeSetPodIndex] = strconv.Itoa(ordinal)
-	pod.Labels[slinkyv1alpha1.LabelNodeSetPodHostname] = GetNodeName(pod)
+	pod.Labels[slinkyv1beta1.LabelNodeSetPodName] = pod.Name
+	pod.Labels[slinkyv1beta1.LabelNodeSetPodIndex] = strconv.Itoa(ordinal)
+	pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetNodeName(pod)
 }
 
 // UpdateStorage updates pod's Volumes to conform with the PersistentVolumeClaim of nodeset's templates. If pod has
 // conflicting local Volumes these are replaced with Volumes that conform to the nodeset's templates.
-func UpdateStorage(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
+func UpdateStorage(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	currentVolumes := pod.Spec.Volumes
 	claims := GetPersistentVolumeClaims(nodeset, pod)
 	newVolumes := make([]corev1.Volume, 0, len(claims))
@@ -106,7 +106,7 @@ func UpdateStorage(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
 }
 
 // IsPodFromNodeSet returns if the name schema matches
-func IsPodFromNodeSet(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
+func IsPodFromNodeSet(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	found, err := regexp.MatchString(fmt.Sprintf("^%s-", nodeset.Name), pod.Name)
 	if err != nil {
 		return false
@@ -147,7 +147,7 @@ func GetParentNameAndOrdinal(pod *corev1.Pod) (string, int) {
 }
 
 // GetPodName gets the name of nodeset's child Pod with an ordinal index of ordinal
-func GetPodName(nodeset *slinkyv1alpha1.NodeSet, ordinal int) string {
+func GetPodName(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
 	return fmt.Sprintf("%s-%d", nodeset.Name, ordinal)
 }
 
@@ -160,17 +160,17 @@ func GetNodeName(pod *corev1.Pod) string {
 }
 
 // IsIdentityMatch returns true if pod has a valid identity and network identity for a member of nodeset.
-func IsIdentityMatch(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
+func IsIdentityMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	parent, ordinal := GetParentNameAndOrdinal(pod)
 	return ordinal >= 0 &&
 		nodeset.Name == parent &&
 		pod.Name == GetPodName(nodeset, ordinal) &&
 		pod.Namespace == nodeset.Namespace &&
-		pod.Labels[slinkyv1alpha1.LabelNodeSetPodName] == pod.Name
+		pod.Labels[slinkyv1beta1.LabelNodeSetPodName] == pod.Name
 }
 
 // IsStorageMatch returns true if pod's Volumes cover the nodeset of PersistentVolumeClaims
-func IsStorageMatch(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
+func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	ordinal := GetOrdinal(pod)
 	if ordinal < 0 {
 		return false
@@ -194,7 +194,7 @@ func IsStorageMatch(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
 // GetPersistentVolumeClaims gets a map of PersistentVolumeClaims to their template names, as defined in nodeset. The
 // returned PersistentVolumeClaims are each constructed with a the name specific to the Pod. This name is determined
 // by GetPersistentVolumeClaimName.
-func GetPersistentVolumeClaims(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) map[string]corev1.PersistentVolumeClaim {
+func GetPersistentVolumeClaims(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) map[string]corev1.PersistentVolumeClaim {
 	ordinal := GetOrdinal(pod)
 	templates := nodeset.Spec.VolumeClaimTemplates
 	selectorLabels := labels.NewBuilder().WithWorkerSelectorLabels(nodeset).Build()
@@ -215,14 +215,14 @@ func GetPersistentVolumeClaims(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod)
 
 // GetPersistentVolumeClaimName gets the name of PersistentVolumeClaim for a Pod with an ordinal index of ordinal. claim
 // must be a PersistentVolumeClaim from nodeset's VolumeClaims template.
-func GetPersistentVolumeClaimName(nodeset *slinkyv1alpha1.NodeSet, claim *corev1.PersistentVolumeClaim, ordinal int) string {
+func GetPersistentVolumeClaimName(nodeset *slinkyv1beta1.NodeSet, claim *corev1.PersistentVolumeClaim, ordinal int) string {
 	// NOTE: This name format is used by the heuristics for zone spreading in ChooseZoneForVolume
 	return fmt.Sprintf("%s-%s-%d", claim.Name, nodeset.Name, ordinal)
 }
 
 // SetOwnerReferences modifies the object with all NodeSets as non-controller owners.
 func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Object, clusterName string) error {
-	nodesetList := &slinkyv1alpha1.NodeSetList{}
+	nodesetList := &slinkyv1beta1.NodeSetList{}
 	if err := r.List(ctx, nodesetList); err != nil {
 		return err
 	}

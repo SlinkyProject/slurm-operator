@@ -13,20 +13,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type SyncStep struct {
 	Name string
-	Sync func(ctx context.Context, cluster *slinkyv1alpha1.Accounting) error
+	Sync func(ctx context.Context, cluster *slinkyv1beta1.Accounting) error
 }
 
 // Sync implements control logic for synchronizing a Accounting.
 func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	cluster := &slinkyv1alpha1.Accounting{}
+	cluster := &slinkyv1beta1.Accounting{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Accounting has been deleted", "request", req)
@@ -38,7 +38,7 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, accounting *slinkyv1alpha1.Accounting) error {
+			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
 				object, err := r.builder.BuildAccountingService(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -52,7 +52,7 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "Config",
-			Sync: func(ctx context.Context, accounting *slinkyv1alpha1.Accounting) error {
+			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
 				object, err := r.builder.BuildAccountingConfig(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -65,7 +65,7 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "StatefulSet",
-			Sync: func(ctx context.Context, accounting *slinkyv1alpha1.Accounting) error {
+			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
 				object, err := r.builder.BuildAccounting(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)

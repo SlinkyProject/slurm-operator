@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
@@ -151,13 +151,13 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(&slinkyv1alpha1.NodeSet{}).
+		For(&slinkyv1beta1.NodeSet{}).
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
 		Watches(&corev1.Pod{}, podEventHandler).
 		Watches(&corev1.Node{}, nodeEventHandler).
 		WatchesRawSource(source.Channel(r.EventCh, podEventHandler)).
-		Watches(&slinkyv1alpha1.Controller{}, &controllerEventHandler{
+		Watches(&slinkyv1beta1.Controller{}, &controllerEventHandler{
 			Reader:      r.Client,
 			refResolver: r.refResolver,
 		}).

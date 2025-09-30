@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 )
@@ -30,7 +30,7 @@ const (
 	slurmdSpoolDir = "/var/spool/slurmd"
 )
 
-func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, controller *slinkyv1alpha1.Controller) corev1.PodTemplateSpec {
+func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) corev1.PodTemplateSpec {
 	key := nodeset.Key()
 
 	objectMeta := metadata.NewBuilder(key).
@@ -46,7 +46,7 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 
 	opts := PodTemplateOpts{
 		Key: key,
-		Metadata: slinkyv1alpha1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Annotations: objectMeta.Annotations,
 			Labels:      objectMeta.Labels,
 		},
@@ -73,7 +73,7 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 	return b.buildPodTemplate(opts)
 }
 
-func nodesetVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {
+func nodesetVolumes(controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: slurmEtcVolume,
@@ -100,7 +100,7 @@ func nodesetVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {
 	return out
 }
 
-func (b *Builder) slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *slinkyv1alpha1.Controller) corev1.Container {
+func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) corev1.Container {
 	merge := nodeset.Spec.Slurmd.Container
 
 	opts := ContainerOpts{
@@ -184,14 +184,14 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *s
 	return b.BuildContainer(opts)
 }
 
-func slurmdArgs(nodeset *slinkyv1alpha1.NodeSet, controller *slinkyv1alpha1.Controller) []string {
+func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []string {
 	args := []string{"-Z"}
 	args = append(args, configlessArgs(controller)...)
 	args = append(args, slurmdConfArgs(nodeset)...)
 	return args
 }
 
-func slurmdConfArgs(nodeset *slinkyv1alpha1.NodeSet) []string {
+func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
 	extraConf := []string{}
 	if nodeset.Spec.ExtraConf != "" {
 		extraConf = strings.Split(nodeset.Spec.ExtraConf, " ")

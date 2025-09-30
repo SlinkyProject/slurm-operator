@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
 ---
-apiVersion: slinky.slurm.net/v1alpha1
+apiVersion: slinky.slurm.net/v1beta1
 kind: LoginSet
 metadata:
   name: {{ $name }}

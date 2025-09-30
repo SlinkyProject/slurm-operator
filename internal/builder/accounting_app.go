@@ -16,7 +16,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
@@ -29,7 +29,7 @@ const (
 	slurmdbdConfFile = "slurmdbd.conf"
 )
 
-func (b *Builder) BuildAccounting(accounting *slinkyv1alpha1.Accounting) (*appsv1.StatefulSet, error) {
+func (b *Builder) BuildAccounting(accounting *slinkyv1beta1.Accounting) (*appsv1.StatefulSet, error) {
 	key := accounting.Key()
 	serviceKey := accounting.ServiceKey()
 
@@ -67,7 +67,7 @@ func (b *Builder) BuildAccounting(accounting *slinkyv1alpha1.Accounting) (*appsv
 	return o, nil
 }
 
-func (b *Builder) accountingPodTemplate(accounting *slinkyv1alpha1.Accounting) (corev1.PodTemplateSpec, error) {
+func (b *Builder) accountingPodTemplate(accounting *slinkyv1beta1.Accounting) (corev1.PodTemplateSpec, error) {
 	ctx := context.TODO()
 	key := accounting.Key()
 
@@ -89,7 +89,7 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1alpha1.Accounting) (
 
 	opts := PodTemplateOpts{
 		Key: key,
-		Metadata: slinkyv1alpha1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Annotations: objectMeta.Annotations,
 			Labels:      objectMeta.Labels,
 		},
@@ -109,7 +109,7 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1alpha1.Accounting) (
 	return b.buildPodTemplate(opts), nil
 }
 
-func accountingVolumes(accounting *slinkyv1alpha1.Accounting) []corev1.Volume {
+func accountingVolumes(accounting *slinkyv1beta1.Accounting) []corev1.Volume {
 	out := []corev1.Volume{
 		etcSlurmVolume(),
 		{
@@ -192,10 +192,10 @@ func (b *Builder) slurmdbdContainer(merge corev1.Container) corev1.Container {
 }
 
 const (
-	annotationSlurmdbdConfHash = slinkyv1alpha1.SlinkyPrefix + "slurmdbd-conf-hash"
+	annotationSlurmdbdConfHash = slinkyv1beta1.SlinkyPrefix + "slurmdbd-conf-hash"
 )
 
-func (b *Builder) getAccountingHashes(ctx context.Context, accounting *slinkyv1alpha1.Accounting) (map[string]string, error) {
+func (b *Builder) getAccountingHashes(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
 	hashMap, err := b.getAuthHashesFromAccounting(ctx, accounting)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func (b *Builder) getAccountingHashes(ctx context.Context, accounting *slinkyv1a
 	return hashMap, nil
 }
 
-func (b *Builder) getAuthHashesFromAccounting(ctx context.Context, accounting *slinkyv1alpha1.Accounting) (map[string]string, error) {
+func (b *Builder) getAuthHashesFromAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
 	authSlurm := &corev1.Secret{}
 	authSlurmKey := accounting.AuthSlurmKey()
 	if err := b.client.Get(ctx, authSlurmKey, authSlurm); err != nil {

@@ -11,15 +11,15 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("LoginSet Controller", func() {
 	Context("When reconciling a LoginSet", func() {
 		var name = testutils.GenerateResourceName(5)
-		var loginset *slinkyv1alpha1.LoginSet
-		var controller *slinkyv1alpha1.Controller
+		var loginset *slinkyv1beta1.LoginSet
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 		var sssdConfSecret *corev1.Secret
@@ -50,7 +50,7 @@ var _ = Describe("LoginSet Controller", func() {
 
 		It("Should successfully create create an loginset", func(ctx SpecContext) {
 			By("Creating LoginSet CR")
-			createdLoginset := &slinkyv1alpha1.Controller{}
+			createdLoginset := &slinkyv1beta1.Controller{}
 			loginsetKey := client.ObjectKeyFromObject(controller)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, loginsetKey, createdLoginset)).To(Succeed())

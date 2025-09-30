@@ -125,7 +125,7 @@ metadata:
   name: scale-radar
 spec:
   scaleTargetRef:
-    apiVersion: slinky.slurm.net/v1alpha1
+    apiVersion: slinky.slurm.net/v1beta1
     kind: NodeSet
     name: slurm-worker-radar
   idleReplicaCount: 0

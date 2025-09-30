@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -59,12 +59,12 @@ func Test_controllerEventHandler_Create(t *testing.T) {
 			name: "non-empty",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.RestApi{
+					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
-						Spec: slinkyv1alpha1.RestApiSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -74,7 +74,7 @@ func Test_controllerEventHandler_Create(t *testing.T) {
 			args: args{
 				ctx: context.TODO(),
 				evt: event.CreateEvent{
-					Object: &slinkyv1alpha1.Controller{
+					Object: &slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
@@ -127,12 +127,12 @@ func Test_controllerEventHandler_Update(t *testing.T) {
 			name: "non-empty",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.RestApi{
+					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
-						Spec: slinkyv1alpha1.RestApiSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -142,12 +142,12 @@ func Test_controllerEventHandler_Update(t *testing.T) {
 			args: args{
 				ctx: context.TODO(),
 				evt: event.UpdateEvent{
-					ObjectNew: &slinkyv1alpha1.Controller{
+					ObjectNew: &slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
 					},
-					ObjectOld: &slinkyv1alpha1.Controller{
+					ObjectOld: &slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
@@ -200,12 +200,12 @@ func Test_controllerEventHandler_Delete(t *testing.T) {
 			name: "non-empty",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.RestApi{
+					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
-						Spec: slinkyv1alpha1.RestApiSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -215,7 +215,7 @@ func Test_controllerEventHandler_Delete(t *testing.T) {
 			args: args{
 				ctx: context.TODO(),
 				evt: event.DeleteEvent{
-					Object: &slinkyv1alpha1.Controller{
+					Object: &slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},

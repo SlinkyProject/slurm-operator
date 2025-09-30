@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -66,7 +66,7 @@ func (e *accountingEventHandler) enqueueRequest(
 ) {
 	logger := log.FromContext(ctx)
 
-	accounting, ok := obj.(*slinkyv1alpha1.Accounting)
+	accounting, ok := obj.(*slinkyv1beta1.Accounting)
 	if !ok {
 		return
 	}
@@ -133,7 +133,7 @@ func (e *secretEventHandler) enqueueRequest(
 	}
 	secretKey := client.ObjectKeyFromObject(secret)
 
-	controllerList := &slinkyv1alpha1.ControllerList{}
+	controllerList := &slinkyv1beta1.ControllerList{}
 	if err := e.List(ctx, controllerList); err != nil {
 		logger.Error(err, "failed to list controller CRs")
 	}

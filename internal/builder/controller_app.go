@@ -15,7 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 )
@@ -34,7 +34,7 @@ const (
 	slurmctldSpoolDir = "/var/spool/slurmctld"
 )
 
-func (b *Builder) BuildController(controller *slinkyv1alpha1.Controller) (*appsv1.StatefulSet, error) {
+func (b *Builder) BuildController(controller *slinkyv1beta1.Controller) (*appsv1.StatefulSet, error) {
 	key := controller.Key()
 	serviceKey := controller.ServiceKey()
 	selectorLabels := labels.NewBuilder().
@@ -103,7 +103,7 @@ func (b *Builder) BuildController(controller *slinkyv1alpha1.Controller) (*appsv
 	return o, nil
 }
 
-func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (corev1.PodTemplateSpec, error) {
+func (b *Builder) controllerPodTemplate(controller *slinkyv1beta1.Controller) (corev1.PodTemplateSpec, error) {
 	key := controller.Key()
 
 	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
@@ -137,7 +137,7 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (
 
 	opts := PodTemplateOpts{
 		Key: key,
-		Metadata: slinkyv1alpha1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Annotations: objectMeta.Annotations,
 			Labels:      objectMeta.Labels,
 		},
@@ -164,7 +164,7 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (
 	return b.buildPodTemplate(opts), nil
 }
 
-func controllerVolumes(controller *slinkyv1alpha1.Controller, extra []string) []corev1.Volume {
+func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: slurmEtcVolume,
@@ -287,7 +287,7 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 //go:embed scripts/reconfigure.sh
 var reconfigureScript string
 
-func (b *Builder) reconfigureContainer(container slinkyv1alpha1.ContainerWrapper) corev1.Container {
+func (b *Builder) reconfigureContainer(container slinkyv1beta1.ContainerWrapper) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: "reconfigure",

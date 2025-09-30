@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
@@ -103,7 +103,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res 
 // SetupWithManager sets up the controller with the Manager.
 func (r *TokenReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&slinkyv1alpha1.Token{}).
+		For(&slinkyv1beta1.Token{}).
 		Owns(&corev1.Secret{}).
 		Complete(r)
 }

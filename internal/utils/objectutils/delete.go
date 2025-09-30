@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func DeleteObject(c client.Client, ctx context.Context, newObj client.Object) error {
@@ -32,16 +32,16 @@ func DeleteObject(c client.Client, ctx context.Context, newObj client.Object) er
 		oldObj = &appsv1.Deployment{}
 	case *appsv1.StatefulSet:
 		oldObj = &appsv1.StatefulSet{}
-	case *slinkyv1alpha1.Controller:
-		oldObj = &slinkyv1alpha1.Controller{}
-	case *slinkyv1alpha1.RestApi:
-		oldObj = &slinkyv1alpha1.RestApi{}
-	case *slinkyv1alpha1.Accounting:
-		oldObj = &slinkyv1alpha1.Accounting{}
-	case *slinkyv1alpha1.NodeSet:
-		oldObj = &slinkyv1alpha1.NodeSet{}
-	case *slinkyv1alpha1.LoginSet:
-		oldObj = &slinkyv1alpha1.LoginSet{}
+	case *slinkyv1beta1.Controller:
+		oldObj = &slinkyv1beta1.Controller{}
+	case *slinkyv1beta1.RestApi:
+		oldObj = &slinkyv1beta1.RestApi{}
+	case *slinkyv1beta1.Accounting:
+		oldObj = &slinkyv1beta1.Accounting{}
+	case *slinkyv1beta1.NodeSet:
+		oldObj = &slinkyv1beta1.NodeSet{}
+	case *slinkyv1beta1.LoginSet:
+		oldObj = &slinkyv1beta1.LoginSet{}
 	default:
 		return errors.New("unhandled object, this is a bug")
 	}

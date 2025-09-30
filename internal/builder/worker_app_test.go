@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +23,8 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		nodeset    *slinkyv1alpha1.NodeSet
-		controller *slinkyv1alpha1.Controller
+		nodeset    *slinkyv1beta1.NodeSet
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name   string
@@ -37,31 +37,31 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				nodeset: &slinkyv1alpha1.NodeSet{
+				nodeset: &slinkyv1beta1.NodeSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm-foo",
 					},
-					Spec: slinkyv1alpha1.NodeSetSpec{
-						ControllerRef: slinkyv1alpha1.ObjectReference{
+					Spec: slinkyv1beta1.NodeSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
 						ExtraConf: strings.Join([]string{
 							"features=bar",
 							"weight=5",
 						}, " "),
-						Template: slinkyv1alpha1.PodTemplate{
-							PodSpecWrapper: slinkyv1alpha1.PodSpecWrapper{
+						Template: slinkyv1beta1.PodTemplate{
+							PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
 								PodSpec: corev1.PodSpec{
 									Hostname: "foo-",
 								},
 							},
 						},
 					},
-					Status: slinkyv1alpha1.NodeSetStatus{
-						Selector: k8slabels.SelectorFromSet(k8slabels.Set(labels.NewBuilder().WithWorkerSelectorLabels(&slinkyv1alpha1.NodeSet{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}).Build())).String(),
+					Status: slinkyv1beta1.NodeSetStatus{
+						Selector: k8slabels.SelectorFromSet(k8slabels.Set(labels.NewBuilder().WithWorkerSelectorLabels(&slinkyv1beta1.NodeSet{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}).Build())).String(),
 					},
 				},
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},

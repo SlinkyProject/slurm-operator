@@ -21,7 +21,7 @@ import (
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	nodesetcontroller "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
@@ -31,7 +31,7 @@ import (
 func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	controller := &slinkyv1alpha1.Controller{}
+	controller := &slinkyv1beta1.Controller{}
 	if err := r.Get(ctx, req.NamespacedName, controller); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Removed slurm client", "controller", req)
@@ -115,7 +115,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	return nil
 }
 
-func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller *slinkyv1alpha1.Controller) (string, error) {
+func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller *slinkyv1beta1.Controller) (string, error) {
 	logger := log.FromContext(ctx)
 
 	restapiList, err := r.refResolver.GetRestapisForController(ctx, controller)
@@ -135,7 +135,7 @@ func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller
 	return server, nil
 }
 
-func (r *SlurmClientReconciler) isRestapiReady(ctx context.Context, controller *slinkyv1alpha1.Controller) (bool, error) {
+func (r *SlurmClientReconciler) isRestapiReady(ctx context.Context, controller *slinkyv1beta1.Controller) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	restapiList, err := r.refResolver.GetRestapisForController(ctx, controller)

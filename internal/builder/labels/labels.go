@@ -6,7 +6,7 @@ package labels
 import (
 	"maps"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 // Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels
@@ -84,69 +84,69 @@ const (
 	LoginComp = "login"
 )
 
-func (b *Builder) WithControllerSelectorLabels(obj *slinkyv1alpha1.Controller) *Builder {
+func (b *Builder) WithControllerSelectorLabels(obj *slinkyv1beta1.Controller) *Builder {
 	return b.
 		WithApp(ControllerApp).
 		WithInstance(obj.Name)
 }
 
-func (b *Builder) WithControllerLabels(obj *slinkyv1alpha1.Controller) *Builder {
+func (b *Builder) WithControllerLabels(obj *slinkyv1beta1.Controller) *Builder {
 	return b.
 		WithControllerSelectorLabels(obj).
 		WithComponent(ControllerComp)
 }
 
-func (b *Builder) WithRestapiSelectorLabels(obj *slinkyv1alpha1.RestApi) *Builder {
+func (b *Builder) WithRestapiSelectorLabels(obj *slinkyv1beta1.RestApi) *Builder {
 	return b.
 		WithApp(RestapiApp).
 		WithInstance(obj.Name)
 }
 
-func (b *Builder) WithRestapiLabels(obj *slinkyv1alpha1.RestApi) *Builder {
+func (b *Builder) WithRestapiLabels(obj *slinkyv1beta1.RestApi) *Builder {
 	return b.
 		WithRestapiSelectorLabels(obj).
 		WithComponent(RestapiComp)
 }
 
-func (b *Builder) WithAccountingSelectorLabels(obj *slinkyv1alpha1.Accounting) *Builder {
+func (b *Builder) WithAccountingSelectorLabels(obj *slinkyv1beta1.Accounting) *Builder {
 	return b.
 		WithApp(AccountingApp).
 		WithInstance(obj.Name)
 }
 
-func (b *Builder) WithAccountingLabels(obj *slinkyv1alpha1.Accounting) *Builder {
+func (b *Builder) WithAccountingLabels(obj *slinkyv1beta1.Accounting) *Builder {
 	return b.
 		WithAccountingSelectorLabels(obj).
 		WithComponent(AccountingComp)
 }
 
-func (b *Builder) WithWorkerSelectorLabels(obj *slinkyv1alpha1.NodeSet) *Builder {
+func (b *Builder) WithWorkerSelectorLabels(obj *slinkyv1beta1.NodeSet) *Builder {
 	return b.
 		WithApp(WorkerApp).
 		WithInstance(obj.Name)
 }
 
-func (b *Builder) WithWorkerLabels(obj *slinkyv1alpha1.NodeSet) *Builder {
+func (b *Builder) WithWorkerLabels(obj *slinkyv1beta1.NodeSet) *Builder {
 	return b.
 		WithWorkerSelectorLabels(obj).
 		WithComponent(WorkerComp).
 		WithCluster(obj.Spec.ControllerRef.Name)
 }
 
-func (b *Builder) WithLoginSelectorLabels(obj *slinkyv1alpha1.LoginSet) *Builder {
+func (b *Builder) WithLoginSelectorLabels(obj *slinkyv1beta1.LoginSet) *Builder {
 	return b.
 		WithApp(LoginApp).
 		WithInstance(obj.Name)
 }
 
-func (b *Builder) WithLoginLabels(obj *slinkyv1alpha1.LoginSet) *Builder {
+func (b *Builder) WithLoginLabels(obj *slinkyv1beta1.LoginSet) *Builder {
 	return b.
 		WithLoginSelectorLabels(obj).
 		WithComponent(LoginComp)
 }
 
 func (b *Builder) WithPodProtect() *Builder {
-	b.labels[slinkyv1alpha1.LabelNodeSetPodProtect] = "true"
+	b.labels[slinkyv1beta1.LabelNodeSetPodProtect] = "true"
 	return b
 }
 

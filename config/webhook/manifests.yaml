@@ -5,20 +5,20 @@ metadata:
   name: validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-accounting
+      path: /validate-slinky-slurm-net-v1beta1-accounting
   failurePolicy: Fail
-  name: accounting-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: accounting-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -26,20 +26,20 @@ webhooks:
     - accountings
   sideEffects: None
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-controller
+      path: /validate-slinky-slurm-net-v1beta1-controller
   failurePolicy: Fail
-  name: controller-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: controller-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -47,20 +47,20 @@ webhooks:
     - controllers
   sideEffects: None
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-loginset
+      path: /validate-slinky-slurm-net-v1beta1-loginset
   failurePolicy: Fail
-  name: loginset-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: loginset-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -68,20 +68,20 @@ webhooks:
     - loginsets
   sideEffects: None
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-nodeset
+      path: /validate-slinky-slurm-net-v1beta1-nodeset
   failurePolicy: Fail
-  name: nodeset-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: nodeset-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -89,20 +89,20 @@ webhooks:
     - nodesets
   sideEffects: None
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-restapi
+      path: /validate-slinky-slurm-net-v1beta1-restapi
   failurePolicy: Fail
-  name: restapi-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: restapi-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE
@@ -110,20 +110,20 @@ webhooks:
     - restapis
   sideEffects: None
 - admissionReviewVersions:
-  - v1
-  - v1alpha1
+  - v1beta1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-slinky-slurm-net-v1alpha1-token
+      path: /validate-slinky-slurm-net-v1beta1-token
   failurePolicy: Fail
-  name: token-v1alpha1.kb.io
+  matchPolicy: Equivalent
+  name: token-v1beta1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
     apiVersions:
-    - v1alpha1
+    - v1beta1
     operations:
     - CREATE
     - UPDATE

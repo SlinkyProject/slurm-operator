@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -19,7 +19,7 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -34,7 +34,7 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},

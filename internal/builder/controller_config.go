@@ -15,7 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/config"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
@@ -26,7 +26,7 @@ const (
 	cgroupConfFile = "cgroup.conf"
 )
 
-func (b *Builder) BuildControllerConfig(controller *slinkyv1alpha1.Controller) (*corev1.ConfigMap, error) {
+func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*corev1.ConfigMap, error) {
 	ctx := context.TODO()
 
 	accounting, err := b.refResolver.GetAccounting(ctx, controller.Spec.AccountingRef)
@@ -142,9 +142,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1alpha1.Controller) (
 
 // https://slurm.schedmd.com/slurm.conf.html
 func buildSlurmConf(
-	controller *slinkyv1alpha1.Controller,
-	accounting *slinkyv1alpha1.Accounting,
-	nodesetList *slinkyv1alpha1.NodeSetList,
+	controller *slinkyv1beta1.Controller,
+	accounting *slinkyv1beta1.Accounting,
+	nodesetList *slinkyv1beta1.NodeSetList,
 	prologScripts, epilogScripts []string,
 	prologSlurmctldScripts, epilogSlurmctldScripts []string,
 	cgroupEnabled bool,

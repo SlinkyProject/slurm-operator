@@ -26,7 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 )
@@ -39,7 +39,7 @@ func newPodControl(client client.Client, recorder record.EventRecorder) *realPod
 	}
 }
 
-func newNodeSet(replicas int32) *slinkyv1alpha1.NodeSet {
+func newNodeSet(replicas int32) *slinkyv1beta1.NodeSet {
 	petMounts := []corev1.VolumeMount{
 		{Name: "datadir", MountPath: "/tmp/zookeeper"},
 	}
@@ -49,7 +49,7 @@ func newNodeSet(replicas int32) *slinkyv1alpha1.NodeSet {
 	return newNodeSetWithVolumes(replicas, "foo", petMounts, podMounts)
 }
 
-func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.VolumeMount, podMounts []corev1.VolumeMount) *slinkyv1alpha1.NodeSet {
+func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.VolumeMount, podMounts []corev1.VolumeMount) *slinkyv1beta1.NodeSet {
 	mounts := petMounts
 	mounts = append(mounts, podMounts...)
 	claims := []corev1.PersistentVolumeClaim{}
@@ -69,30 +69,30 @@ func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.Volum
 		})
 	}
 
-	template := slinkyv1alpha1.PodTemplate{
-		PodMetadata: slinkyv1alpha1.Metadata{
+	template := slinkyv1beta1.PodTemplate{
+		PodMetadata: slinkyv1beta1.Metadata{
 			Labels: map[string]string{"foo": "bar"},
 		},
-		PodSpecWrapper: slinkyv1alpha1.PodSpecWrapper{
+		PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
 			PodSpec: corev1.PodSpec{
 				Volumes: vols,
 			},
 		},
 	}
 
-	return &slinkyv1alpha1.NodeSet{
+	return &slinkyv1beta1.NodeSet{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       slinkyv1alpha1.NodeSetKind,
-			APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
+			Kind:       slinkyv1beta1.NodeSetKind,
+			APIVersion: slinkyv1beta1.NodeSetAPIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: slinkyv1alpha1.NodeSetSpec{
+		Spec: slinkyv1beta1.NodeSetSpec{
 			Replicas: ptr.To(replicas),
-			Slurmd: slinkyv1alpha1.ContainerWrapper{
+			Slurmd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image:        "nginx",
 					VolumeMounts: mounts,
@@ -100,12 +100,12 @@ func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.Volum
 			},
 			Template:             template,
 			VolumeClaimTemplates: claims,
-			UpdateStrategy: slinkyv1alpha1.NodeSetUpdateStrategy{
-				Type: slinkyv1alpha1.RollingUpdateNodeSetStrategyType,
+			UpdateStrategy: slinkyv1beta1.NodeSetUpdateStrategy{
+				Type: slinkyv1beta1.RollingUpdateNodeSetStrategyType,
 			},
-			PersistentVolumeClaimRetentionPolicy: &slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			PersistentVolumeClaimRetentionPolicy: &slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			},
 			RevisionHistoryLimit: ptr.To[int32](2),
 		},
@@ -129,8 +129,8 @@ func newPVC(name string) corev1.PersistentVolumeClaim {
 }
 
 func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -143,7 +143,7 @@ func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -203,8 +203,8 @@ func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -217,7 +217,7 @@ func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -264,8 +264,8 @@ func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -279,7 +279,7 @@ func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -347,8 +347,8 @@ func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -362,7 +362,7 @@ func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -438,8 +438,8 @@ func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
 }
 
 func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -452,7 +452,7 @@ func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -506,7 +506,7 @@ func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
 }
 
 func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	const missing = "missing"
 	const exists = "exists"
 	const stale = "stale"
@@ -560,12 +560,12 @@ func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		nodeset := slinkyv1alpha1.NodeSet{}
+		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.Name = "set"
 		nodeset.Namespace = corev1.NamespaceDefault
-		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-			WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-			WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+			WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+			WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 		}
 		pvcList := &corev1.PersistentVolumeClaimList{}
 		for i, claimState := range tc.claimStates {
@@ -617,8 +617,8 @@ func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
 }
 
 func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
-	controller := &slinkyv1alpha1.Controller{
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -632,7 +632,7 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -739,53 +739,53 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 func Test_isClaimOwnerUpToDate(t *testing.T) {
 	testCases := []struct {
 		name            string
-		scaleDownPolicy slinkyv1alpha1.PersistentVolumeClaimRetentionPolicyType
-		setDeletePolicy slinkyv1alpha1.PersistentVolumeClaimRetentionPolicyType
+		scaleDownPolicy slinkyv1beta1.PersistentVolumeClaimRetentionPolicyType
+		setDeletePolicy slinkyv1beta1.PersistentVolumeClaimRetentionPolicyType
 		needsPodRef     bool
 		needsSetRef     bool
 		podCordon       bool
 	}{
 		{
 			name:            "retain",
-			scaleDownPolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     false,
 			needsSetRef:     false,
 		},
 		{
 			name:            "on nodeset delete",
-			scaleDownPolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     false,
 			needsSetRef:     true,
 		},
 		{
 			name:            "on scaledown only, condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     true,
 			needsSetRef:     false,
 			podCordon:       true,
 		},
 		{
 			name:            "on scaledown only, remains",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     false,
 			needsSetRef:     false,
 		},
 		{
 			name:            "on both, condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     true,
 			needsSetRef:     false,
 			podCordon:       true,
 		},
 		{
 			name:            "on both, remains",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			needsPodRef:     false,
 			needsSetRef:     true,
 		},
@@ -804,13 +804,13 @@ func Test_isClaimOwnerUpToDate(t *testing.T) {
 					pod.GetObjectMeta().SetUID("pod-123")
 					if tc.podCordon {
 						pod.Annotations = map[string]string{
-							slinkyv1alpha1.AnnotationPodCordon: "true",
+							slinkyv1beta1.AnnotationPodCordon: "true",
 						}
 					}
-					nodeset := slinkyv1alpha1.NodeSet{}
+					nodeset := slinkyv1beta1.NodeSet{}
 					nodeset.Name = "nodeset"
 					nodeset.GetObjectMeta().SetUID("ss-456")
-					nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
+					nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
 						WhenScaled:  tc.scaleDownPolicy,
 						WhenDeleted: tc.setDeletePolicy,
 					}
@@ -819,7 +819,7 @@ func Test_isClaimOwnerUpToDate(t *testing.T) {
 						claimRefs = addControllerRef(claimRefs, &pod, podGVK)
 					}
 					if setSetRef {
-						claimRefs = addControllerRef(claimRefs, &nodeset, slinkyv1alpha1.NodeSetGVK)
+						claimRefs = addControllerRef(claimRefs, &nodeset, slinkyv1beta1.NodeSetGVK)
 					}
 					if useOtherRefs {
 						claimRefs = append(
@@ -855,7 +855,7 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 	testCases := []struct {
 		name        string
 		ownerRefs   []metav1.OwnerReference
-		policy      slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy
+		policy      slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy
 		shouldMatch bool
 	}{
 		{
@@ -869,9 +869,9 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: true,
 		},
@@ -885,9 +885,9 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 					UID:        "pod-123",
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: false,
 		},
@@ -902,9 +902,9 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: true,
 		},
@@ -926,9 +926,9 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: false,
 		},
@@ -937,15 +937,15 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 			ownerRefs: []metav1.OwnerReference{
 				{
 					Name:       "nodeset",
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					UID:        "ss-456",
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: true,
 		},
@@ -955,13 +955,13 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 				{
 					Name:       "nodeset",
 					APIVersion: "foo/v0",
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					UID:        "ss-456",
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: false,
 		},
@@ -970,15 +970,15 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 			ownerRefs: []metav1.OwnerReference{
 				{
 					Name:       "nodeset",
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					UID:        "set-stale",
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: true,
 		},
@@ -987,22 +987,22 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 			ownerRefs: []metav1.OwnerReference{
 				{
 					Name:       "nodeset",
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					UID:        "ss-456",
 					Controller: ptr.To(true),
 				},
 				{
 					Name:       "Random",
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					UID:        "random",
 					Controller: ptr.To(true),
 				},
 			},
-			policy: slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			policy: slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			},
 			shouldMatch: false,
 		},
@@ -1015,9 +1015,9 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 		pod.Name = "pod-1"
 		pod.GetObjectMeta().SetUID("pod-123")
 		pod.Annotations = map[string]string{
-			slinkyv1alpha1.AnnotationPodCordon: "true",
+			slinkyv1beta1.AnnotationPodCordon: "true",
 		}
-		nodeset := slinkyv1alpha1.NodeSet{}
+		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.Name = "nodeset"
 		nodeset.GetObjectMeta().SetUID("ss-456")
 		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &tc.policy
@@ -1091,8 +1091,8 @@ func Test_hasUnexpectedController(t *testing.T) {
 			name: "other set controller",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "simon",
 					UID:        "other-uid",
 					Controller: ptr.To(true),
@@ -1104,8 +1104,8 @@ func Test_hasUnexpectedController(t *testing.T) {
 			name: "own set controller",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set-uid",
 					Controller: ptr.To(true),
@@ -1117,8 +1117,8 @@ func Test_hasUnexpectedController(t *testing.T) {
 			name: "own set controller, stale uid",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "stale-uid",
 					Controller: ptr.To(true),
@@ -1198,7 +1198,7 @@ func Test_hasUnexpectedController(t *testing.T) {
 	for _, tc := range testCases {
 		target := &corev1.PersistentVolumeClaim{}
 		target.SetOwnerReferences(tc.refs)
-		nodeset := &slinkyv1alpha1.NodeSet{}
+		nodeset := &slinkyv1beta1.NodeSet{}
 		nodeset.SetName("set")
 		nodeset.SetUID("set-uid")
 		pod := &corev1.Pod{}
@@ -1208,9 +1208,9 @@ func Test_hasUnexpectedController(t *testing.T) {
 		if hasUnexpectedController(target, nodeset, pod) {
 			t.Errorf("Any controller should be allowed when no retention policy (retain behavior) is specified. Incorrectly identified unexpected controller at %s", tc.name)
 		}
-		const retainPolicy = slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType
-		const deletePolicy = slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType
-		for _, policy := range []slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
+		const retainPolicy = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
+		const deletePolicy = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
+		for _, policy := range []slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
 			// {WhenDeleted: retainPolicy, WhenScaled: retainPolicy},
 			{WhenDeleted: retainPolicy, WhenScaled: deletePolicy},
 			{WhenDeleted: deletePolicy, WhenScaled: retainPolicy},
@@ -1247,8 +1247,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 					Controller: ptr.To(true),
 				},
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 					Controller: ptr.To(true),
@@ -1268,8 +1268,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 					UID:        "pod",
 				},
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 					Controller: ptr.To(true),
@@ -1290,8 +1290,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 					Controller: ptr.To(true),
 				},
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 				},
@@ -1304,8 +1304,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 			name: "set controller",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 					Controller: ptr.To(true),
@@ -1341,8 +1341,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 			name: "set noncontroller",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 				},
@@ -1355,8 +1355,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 			name: "set noncontroller with ptr",
 			refs: []metav1.OwnerReference{
 				{
-					APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-					Kind:       slinkyv1alpha1.NodeSetKind,
+					APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+					Kind:       slinkyv1beta1.NodeSetKind,
 					Name:       "set",
 					UID:        "set",
 					Controller: ptr.To(false),
@@ -1402,7 +1402,7 @@ func Test_hasNonControllerOwner(t *testing.T) {
 		pod := corev1.Pod{}
 		pod.SetUID(tc.podUID)
 		pod.SetName("pod")
-		nodeset := slinkyv1alpha1.NodeSet{}
+		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.SetUID(tc.setUID)
 		nodeset.SetName("set")
 		got := hasNonControllerOwner(&claim, &nodeset, &pod)
@@ -1415,8 +1415,8 @@ func Test_hasNonControllerOwner(t *testing.T) {
 func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 	testCases := []struct {
 		name                 string
-		scaleDownPolicy      slinkyv1alpha1.PersistentVolumeClaimRetentionPolicyType
-		setDeletePolicy      slinkyv1alpha1.PersistentVolumeClaimRetentionPolicyType
+		scaleDownPolicy      slinkyv1beta1.PersistentVolumeClaimRetentionPolicyType
+		setDeletePolicy      slinkyv1beta1.PersistentVolumeClaimRetentionPolicyType
 		condemned            bool
 		needsPodRef          bool
 		needsSetRef          bool
@@ -1424,56 +1424,56 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 	}{
 		{
 			name:            "retain",
-			scaleDownPolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			condemned:       false,
 			needsPodRef:     false,
 			needsSetRef:     false,
 		},
 		{
 			name:            "delete with nodeset",
-			scaleDownPolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			condemned:       false,
 			needsPodRef:     false,
 			needsSetRef:     true,
 		},
 		{
 			name:            "delete with scaledown, not condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			condemned:       false,
 			needsPodRef:     false,
 			needsSetRef:     false,
 		},
 		{
 			name:            "delete on scaledown, condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			condemned:       true,
 			needsPodRef:     true,
 			needsSetRef:     false,
 		},
 		{
 			name:            "delete on both, not condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			condemned:       false,
 			needsPodRef:     false,
 			needsSetRef:     true,
 		},
 		{
 			name:            "delete on both, condemned",
-			scaleDownPolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy: slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy: slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			condemned:       true,
 			needsPodRef:     true,
 			needsSetRef:     false,
 		},
 		{
 			name:                 "unexpected controller",
-			scaleDownPolicy:      slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-			setDeletePolicy:      slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
+			scaleDownPolicy:      slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+			setDeletePolicy:      slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
 			condemned:            true,
 			needsPodRef:          false,
 			needsSetRef:          false,
@@ -1487,12 +1487,12 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 			extraOwner := (variations & 3) != 0
 			_, ctx := ktesting.NewTestContext(t)
 			logger := klog.FromContext(ctx)
-			nodeset := slinkyv1alpha1.NodeSet{}
+			nodeset := slinkyv1beta1.NodeSet{}
 			nodeset.Name = "nss"
 			numReplicas := int32(5)
 			nodeset.Spec.Replicas = &numReplicas
 			nodeset.SetUID("nss-123")
-			nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
+			nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
 				WhenScaled:  tc.scaleDownPolicy,
 				WhenDeleted: tc.setDeletePolicy,
 			}
@@ -1500,7 +1500,7 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 			if tc.condemned {
 				pod.Name = "pod-8"
 				pod.Annotations = map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon: "true",
+					slinkyv1beta1.AnnotationPodCordon: "true",
 				}
 			} else {
 				pod.Name = "pod-1"
@@ -1512,7 +1512,7 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 				claimRefs = addControllerRef(claimRefs, &pod, podGVK)
 			}
 			if hasSetRef {
-				claimRefs = addControllerRef(claimRefs, &nodeset, slinkyv1alpha1.NodeSetGVK)
+				claimRefs = addControllerRef(claimRefs, &nodeset, slinkyv1beta1.NodeSetGVK)
 			}
 			if extraOwner {
 				// Note the extra owner should not affect our owner references.
@@ -1593,24 +1593,24 @@ func Test_hasOwnerRef(t *testing.T) {
 }
 
 func Test_getPersistentVolumeClaimRetentionPolicy(t *testing.T) {
-	retainPolicy := slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-		WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-		WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+	retainPolicy := slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+		WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+		WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 	}
-	scaledownPolicy := slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-		WhenScaled:  slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType,
-		WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+	scaledownPolicy := slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+		WhenScaled:  slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType,
+		WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 	}
 
-	nodeset := slinkyv1alpha1.NodeSet{}
+	nodeset := slinkyv1beta1.NodeSet{}
 	nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &retainPolicy
 	got := getPersistentVolumeClaimRetentionPolicy(&nodeset)
-	if got.WhenScaled != slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType {
+	if got.WhenScaled != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
 		t.Errorf("Expected retain policy")
 	}
 	nodeset.Spec.PersistentVolumeClaimRetentionPolicy = &scaledownPolicy
 	got = getPersistentVolumeClaimRetentionPolicy(&nodeset)
-	if got.WhenScaled != slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType {
+	if got.WhenScaled != slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
 		t.Errorf("Expected scaledown policy")
 	}
 }
@@ -1735,23 +1735,23 @@ func Test_addControllerRef(t *testing.T) {
 			args: args{
 				refs:  []metav1.OwnerReference{},
 				owner: nodeset,
-				gvk:   slinkyv1alpha1.NodeSetGVK,
+				gvk:   slinkyv1beta1.NodeSetGVK,
 			},
 			want: []metav1.OwnerReference{
-				*metav1.NewControllerRef(nodeset, slinkyv1alpha1.NodeSetGVK),
+				*metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK),
 			},
 		},
 		{
 			name: "Already owned",
 			args: args{
 				refs: []metav1.OwnerReference{
-					*metav1.NewControllerRef(nodeset, slinkyv1alpha1.NodeSetGVK),
+					*metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK),
 				},
 				owner: nodeset,
-				gvk:   slinkyv1alpha1.NodeSetGVK,
+				gvk:   slinkyv1beta1.NodeSetGVK,
 			},
 			want: []metav1.OwnerReference{
-				*metav1.NewControllerRef(nodeset, slinkyv1alpha1.NodeSetGVK),
+				*metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK),
 			},
 		},
 	}

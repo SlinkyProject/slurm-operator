@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
@@ -123,12 +123,12 @@ func (h *nodeEventHandler) resolveControllerRef(
 	ctx context.Context,
 	namespace string,
 	controllerRef *metav1.OwnerReference,
-) *slinkyv1alpha1.NodeSet {
-	if controllerRef.Kind != slinkyv1alpha1.NodeSetKind || controllerRef.APIVersion != slinkyv1alpha1.NodeSetAPIVersion {
+) *slinkyv1beta1.NodeSet {
+	if controllerRef.Kind != slinkyv1beta1.NodeSetKind || controllerRef.APIVersion != slinkyv1beta1.NodeSetAPIVersion {
 		return nil
 	}
 
-	nodeset := &slinkyv1alpha1.NodeSet{}
+	nodeset := &slinkyv1beta1.NodeSet{}
 	key := types.NamespacedName{Namespace: namespace, Name: controllerRef.Name}
 	if err := h.Get(ctx, key, nodeset); err != nil {
 		return nil

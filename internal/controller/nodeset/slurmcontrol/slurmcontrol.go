@@ -22,7 +22,7 @@ import (
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
@@ -32,25 +32,25 @@ import (
 
 type SlurmControlInterface interface {
 	// RefreshNodeCache forces the Node cache to be refreshed
-	RefreshNodeCache(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet) error
+	RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// UpdateNodeWithPodInfo handles updating the Node with its pod info
-	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error
+	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 	// MakeNodeDrain handles adding the DRAIN state to the slurm node.
-	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, reason string) error
+	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
-	MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, reason string) error
+	MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
 	// IsNodeDrain checks if the slurm node has the DRAIN state.
-	IsNodeDrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrained checks if the slurm node is drained.
-	IsNodeDrained(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDownForUnresponsive checks if the slurm node is unresponsive
-	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeReasonOurs reports if the node reason was set by the operator.
-	IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// CalculateNodeStatus returns the current state of the registered slurm nodes.
-	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
+	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
-	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
+	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
@@ -59,7 +59,7 @@ type realSlurmControl struct {
 }
 
 // RefreshNodeCache implements SlurmControlInterface.
-func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet) error {
+func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -78,7 +78,7 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 }
 
 // GetNodeNames implements SlurmControlInterface.
-func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) ([]string, error) {
+func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -111,7 +111,7 @@ func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1al
 }
 
 // UpdateNodeWithPodInfo implements SlurmControlInterface.
-func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -173,7 +173,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 const nodeReasonPrefix = "slurm-operator:"
 
 // MakeNodeDrain implements SlurmControlInterface.
-func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, reason string) error {
+func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -223,7 +223,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1a
 }
 
 // MakeNodeUndrain implements SlurmControlInterface.
-func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, reason string) error {
+func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -272,7 +272,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 }
 
 // IsNodeDrain implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -296,7 +296,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1alp
 }
 
 // IsNodeDrained implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -325,7 +325,7 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1a
 }
 
 // IsNodeDownForUnresponsive implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -354,7 +354,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 }
 
 // IsNodeReasonOurs implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -410,7 +410,7 @@ type SlurmNodeStatus struct {
 }
 
 // CalculateNodeStatus implements SlurmControlInterface.
-func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error) {
+func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error) {
 	logger := log.FromContext(ctx)
 	status := SlurmNodeStatus{
 		NodeStates: make(map[string][]corev1.PodCondition),
@@ -522,7 +522,7 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 const infiniteDuration = time.Duration(math.MaxInt64)
 
 // GetNodeDeadlines implements SlurmControlInterface.
-func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error) {
+func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error) {
 	logger := log.FromContext(ctx)
 	ts := timestore.NewTimeStore(timestore.Greater)
 
@@ -576,7 +576,7 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 	return ts, nil
 }
 
-func (r *realSlurmControl) lookupClient(nodeset *slinkyv1alpha1.NodeSet) slurmclient.Client {
+func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {
 	return r.clientMap.Get(nodeset.Spec.ControllerRef.NamespacedName())
 }
 

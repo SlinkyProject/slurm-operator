@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
@@ -37,7 +37,7 @@ import (
 // syncStatus handles synchronizing Slurm Nodes and NodeSet Status.
 func (r *NodeSetReconciler) syncStatus(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 	currentRevision, updateRevision *appsv1.ControllerRevision,
 	collisionCount int32,
@@ -66,7 +66,7 @@ func (r *NodeSetReconciler) syncStatus(
 // syncSlurmStatus handles synchronizing Slurm Node Status given the pods.
 func (r *NodeSetReconciler) syncSlurmStatus(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
 	syncSlurmStatusFn := func(i int) error {
@@ -86,7 +86,7 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 // syncSlurmStatus handles synchronizing NodeSet Status.
 func (r *NodeSetReconciler) syncNodeSetStatus(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 	currentRevision, updateRevision *appsv1.ControllerRevision,
 	collisionCount int32,
@@ -103,7 +103,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		return err
 	}
 
-	newStatus := &slinkyv1alpha1.NodeSetStatus{
+	newStatus := &slinkyv1beta1.NodeSetStatus{
 		Replicas:            replicaStatus.Replicas,
 		UpdatedReplicas:     replicaStatus.Updated,
 		ReadyReplicas:       replicaStatus.Ready,
@@ -153,7 +153,7 @@ type replicaStatus struct {
 
 // calculateReplicaStatus will calculate the status of the given pods.
 func (r *NodeSetReconciler) calculateReplicaStatus(
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 	currentRevision, updateRevision *appsv1.ControllerRevision,
 ) replicaStatus {
@@ -194,7 +194,7 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 // Sync NodeSet Pod Conditions to reflect Slurm base and flag states
 func (r *NodeSetReconciler) syncNodeSetPodStatus(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
 	slurmNodeStatus, err := r.slurmControl.CalculateNodeStatus(ctx, nodeset, pods)
@@ -267,8 +267,8 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 // The Status update will be retried on all failures other than NotFound.
 func (r *NodeSetReconciler) updateNodeSetStatus(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
-	newStatus *slinkyv1alpha1.NodeSetStatus,
+	nodeset *slinkyv1beta1.NodeSet,
+	newStatus *slinkyv1beta1.NodeSetStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -280,7 +280,7 @@ func (r *NodeSetReconciler) updateNodeSetStatus(
 	logger.V(1).Info("Pending NodeSet Status update",
 		"newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.NodeSet{}
+		toUpdate := &slinkyv1beta1.NodeSet{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -319,7 +319,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 			podLabel := labels.NewBuilder().WithPodProtect().Build()
 			toUpdate.Labels = structutils.MergeMaps(toUpdate.Labels, podLabel)
 		} else {
-			delete(toUpdate.Labels, slinkyv1alpha1.LabelNodeSetPodProtect)
+			delete(toUpdate.Labels, slinkyv1beta1.LabelNodeSetPodProtect)
 		}
 
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {

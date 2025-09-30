@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme.Scheme))
 }
 
 func TestSyncObject(t *testing.T) {
@@ -103,7 +103,7 @@ func TestSyncObject(t *testing.T) {
 			args: args{
 				c:   fake.NewFakeClient(),
 				ctx: context.TODO(),
-				newObj: &slinkyv1alpha1.Controller{
+				newObj: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "foo",
 					},
@@ -116,7 +116,7 @@ func TestSyncObject(t *testing.T) {
 			args: args{
 				c:   fake.NewFakeClient(),
 				ctx: context.TODO(),
-				newObj: &slinkyv1alpha1.RestApi{
+				newObj: &slinkyv1beta1.RestApi{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "foo",
 					},
@@ -129,7 +129,7 @@ func TestSyncObject(t *testing.T) {
 			args: args{
 				c:   fake.NewFakeClient(),
 				ctx: context.TODO(),
-				newObj: &slinkyv1alpha1.Accounting{
+				newObj: &slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "foo",
 					},
@@ -142,7 +142,7 @@ func TestSyncObject(t *testing.T) {
 			args: args{
 				c:   fake.NewFakeClient(),
 				ctx: context.TODO(),
-				newObj: &slinkyv1alpha1.NodeSet{
+				newObj: &slinkyv1beta1.NodeSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "foo",
 					},
@@ -155,7 +155,7 @@ func TestSyncObject(t *testing.T) {
 			args: args{
 				c:   fake.NewFakeClient(),
 				ctx: context.TODO(),
-				newObj: &slinkyv1alpha1.LoginSet{
+				newObj: &slinkyv1beta1.LoginSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "foo",
 					},

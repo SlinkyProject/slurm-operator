@@ -14,11 +14,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
-func newNodeSet(name string) *slinkyv1alpha1.NodeSet {
+func newNodeSet(name string) *slinkyv1beta1.NodeSet {
 	petMounts := []corev1.VolumeMount{
 		{Name: "datadir", MountPath: "/tmp/zookeeper"},
 	}
@@ -28,7 +28,7 @@ func newNodeSet(name string) *slinkyv1alpha1.NodeSet {
 	return newNodeSetWithVolumes(name, petMounts, podMounts)
 }
 
-func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMounts []corev1.VolumeMount) *slinkyv1alpha1.NodeSet {
+func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMounts []corev1.VolumeMount) *slinkyv1beta1.NodeSet {
 	mounts := petMounts
 	mounts = append(mounts, podMounts...)
 	claims := []corev1.PersistentVolumeClaim{}
@@ -48,30 +48,30 @@ func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMount
 		})
 	}
 
-	template := slinkyv1alpha1.PodTemplate{
-		PodMetadata: slinkyv1alpha1.Metadata{
+	template := slinkyv1beta1.PodTemplate{
+		PodMetadata: slinkyv1beta1.Metadata{
 			Labels: map[string]string{"foo": "bar"},
 		},
-		PodSpecWrapper: slinkyv1alpha1.PodSpecWrapper{
+		PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
 			PodSpec: corev1.PodSpec{
 				Volumes: vols,
 			},
 		},
 	}
 
-	return &slinkyv1alpha1.NodeSet{
+	return &slinkyv1beta1.NodeSet{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       slinkyv1alpha1.NodeSetKind,
-			APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
+			Kind:       slinkyv1beta1.NodeSetKind,
+			APIVersion: slinkyv1beta1.NodeSetAPIVersion,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: slinkyv1alpha1.NodeSetSpec{
+		Spec: slinkyv1beta1.NodeSetSpec{
 			Replicas: ptr.To[int32](1),
-			Slurmd: slinkyv1alpha1.ContainerWrapper{
+			Slurmd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image:        "nginx",
 					VolumeMounts: mounts,
@@ -79,12 +79,12 @@ func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMount
 			},
 			Template:             template,
 			VolumeClaimTemplates: claims,
-			UpdateStrategy: slinkyv1alpha1.NodeSetUpdateStrategy{
-				Type: slinkyv1alpha1.RollingUpdateNodeSetStrategyType,
+			UpdateStrategy: slinkyv1beta1.NodeSetUpdateStrategy{
+				Type: slinkyv1beta1.RollingUpdateNodeSetStrategyType,
 			},
-			PersistentVolumeClaimRetentionPolicy: &slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-				WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-				WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+			PersistentVolumeClaimRetentionPolicy: &slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+				WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+				WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 			},
 			RevisionHistoryLimit: ptr.To[int32](2),
 		},
@@ -108,13 +108,13 @@ func newPVC(name string) corev1.PersistentVolumeClaim {
 }
 
 func TestIsPodFromNodeSet(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -149,7 +149,7 @@ func TestIsPodFromNodeSet(t *testing.T) {
 }
 
 func TestGetParentName(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -187,7 +187,7 @@ func TestGetParentName(t *testing.T) {
 }
 
 func TestGetOrdinal(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -225,7 +225,7 @@ func TestGetOrdinal(t *testing.T) {
 }
 
 func TestGetParentNameAndOrdinal(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -271,7 +271,7 @@ func TestGetParentNameAndOrdinal(t *testing.T) {
 
 func TestGetPodName(t *testing.T) {
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		ordinal int
 	}
 	tests := []struct {
@@ -306,7 +306,7 @@ func TestGetPodName(t *testing.T) {
 }
 
 func TestGetNodeName(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
@@ -344,13 +344,13 @@ func TestGetNodeName(t *testing.T) {
 }
 
 func TestIsIdentityMatch(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -385,13 +385,13 @@ func TestIsIdentityMatch(t *testing.T) {
 }
 
 func TestIsStorageMatch(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -426,13 +426,13 @@ func TestIsStorageMatch(t *testing.T) {
 }
 
 func TestGetPersistentVolumeClaims(t *testing.T) {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -443,7 +443,7 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 		{
 			name: "Without Claims",
 			args: func() args {
-				nodeset := &slinkyv1alpha1.NodeSet{
+				nodeset := &slinkyv1beta1.NodeSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: corev1.NamespaceDefault,
 						Name:      "foo",
@@ -494,7 +494,7 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 
 func TestGetPersistentVolumeClaimName(t *testing.T) {
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		claim   *corev1.PersistentVolumeClaim
 		ordinal int
 	}

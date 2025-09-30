@@ -15,17 +15,17 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 // syncStatus handles determining and updating the status.
 func (r *AccountingReconciler) syncStatus(
 	ctx context.Context,
-	accounting *slinkyv1alpha1.Accounting,
+	accounting *slinkyv1beta1.Accounting,
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1alpha1.AccountingStatus{
+	newStatus := &slinkyv1beta1.AccountingStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, accounting.Status.Conditions...)
@@ -46,8 +46,8 @@ func (r *AccountingReconciler) syncStatus(
 
 func (r *AccountingReconciler) updateStatus(
 	ctx context.Context,
-	cluster *slinkyv1alpha1.Accounting,
-	newStatus *slinkyv1alpha1.AccountingStatus,
+	cluster *slinkyv1beta1.Accounting,
+	newStatus *slinkyv1beta1.AccountingStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -59,7 +59,7 @@ func (r *AccountingReconciler) updateStatus(
 	logger.V(1).Info("Pending Accounting Status update",
 		"cluster", klog.KObj(cluster), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.Accounting{}
+		toUpdate := &slinkyv1beta1.Accounting{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil

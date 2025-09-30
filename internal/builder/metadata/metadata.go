@@ -9,14 +9,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 type MetadataBuilder struct {
 	objMeta metav1.ObjectMeta
 }
 
-func (b *MetadataBuilder) WithMetadata(meta slinkyv1alpha1.Metadata) *MetadataBuilder {
+func (b *MetadataBuilder) WithMetadata(meta slinkyv1beta1.Metadata) *MetadataBuilder {
 	b.WithAnnotations(meta.Annotations)
 	b.WithLabels(meta.Labels)
 	return b

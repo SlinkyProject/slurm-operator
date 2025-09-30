@@ -6,7 +6,7 @@ package metadata
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -56,7 +56,7 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 		key types.NamespacedName
 	}
 	type args struct {
-		meta slinkyv1alpha1.Metadata
+		meta slinkyv1beta1.Metadata
 	}
 	tests := []struct {
 		name   string
@@ -73,7 +73,7 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 				},
 			},
 			args: args{
-				meta: slinkyv1alpha1.Metadata{},
+				meta: slinkyv1beta1.Metadata{},
 			},
 			want: metav1.ObjectMeta{
 				Name:      "foo",
@@ -89,7 +89,7 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 				},
 			},
 			args: args{
-				meta: slinkyv1alpha1.Metadata{
+				meta: slinkyv1beta1.Metadata{
 					Annotations: map[string]string{
 						"foo": "bar",
 					},

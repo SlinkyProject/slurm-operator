@@ -11,15 +11,15 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("SlurmClient Controller", func() {
 	Context("When reconciling Controller", func() {
 		var name = testutils.GenerateResourceName(5)
-		var restapi *slinkyv1alpha1.RestApi
-		var controller *slinkyv1alpha1.Controller
+		var restapi *slinkyv1beta1.RestApi
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 

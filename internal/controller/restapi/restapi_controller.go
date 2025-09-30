@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
@@ -103,12 +103,12 @@ func (r *RestapiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 func (r *RestapiReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(&slinkyv1alpha1.RestApi{}).
+		For(&slinkyv1beta1.RestApi{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
-		Watches(&slinkyv1alpha1.Controller{}, &controllerEventHandler{
+		Watches(&slinkyv1beta1.Controller{}, &controllerEventHandler{
 			Reader:      r.Client,
 			refResolver: r.refResolver,
 		}).

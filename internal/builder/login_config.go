@@ -6,13 +6,13 @@ package builder
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/config"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *Builder) BuildLoginSshConfig(loginset *slinkyv1alpha1.LoginSet) (*corev1.ConfigMap, error) {
+func (b *Builder) BuildLoginSshConfig(loginset *slinkyv1beta1.LoginSet) (*corev1.ConfigMap, error) {
 	spec := loginset.Spec
 	opts := ConfigMapOpts{
 		Key:      loginset.SshConfigKey(),

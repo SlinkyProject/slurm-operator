@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -23,7 +23,7 @@ var scheme = runtime.NewScheme()
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme))
 }
 
 func TestRefResolver_GetController(t *testing.T) {
@@ -32,13 +32,13 @@ func TestRefResolver_GetController(t *testing.T) {
 	}
 	type args struct {
 		ctx context.Context
-		ref slinkyv1alpha1.ObjectReference
+		ref slinkyv1beta1.ObjectReference
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *slinkyv1alpha1.Controller
+		want    *slinkyv1beta1.Controller
 		wantErr bool
 	}{
 		{
@@ -50,7 +50,7 @@ func TestRefResolver_GetController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1alpha1.ObjectReference{
+				ref: slinkyv1beta1.ObjectReference{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
 				},
@@ -62,7 +62,7 @@ func TestRefResolver_GetController(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm",
 							Namespace: metav1.NamespaceDefault,
@@ -72,12 +72,12 @@ func TestRefResolver_GetController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1alpha1.ObjectReference{
+				ref: slinkyv1beta1.ObjectReference{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
 				},
 			},
-			want: &slinkyv1alpha1.Controller{
+			want: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
@@ -108,13 +108,13 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 	}
 	type args struct {
 		ctx context.Context
-		ref slinkyv1alpha1.ObjectReference
+		ref slinkyv1beta1.ObjectReference
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *slinkyv1alpha1.Accounting
+		want    *slinkyv1beta1.Accounting
 		wantErr bool
 	}{
 		{
@@ -126,7 +126,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1alpha1.ObjectReference{
+				ref: slinkyv1beta1.ObjectReference{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
 				},
@@ -138,7 +138,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.Accounting{
+					WithObjects(&slinkyv1beta1.Accounting{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm",
 							Namespace: metav1.NamespaceDefault,
@@ -148,12 +148,12 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1alpha1.ObjectReference{
+				ref: slinkyv1beta1.ObjectReference{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
 				},
 			},
-			want: &slinkyv1alpha1.Accounting{
+			want: &slinkyv1beta1.Accounting{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "slurm",
 					Namespace: metav1.NamespaceDefault,
@@ -184,7 +184,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 	}
 	type args struct {
 		ctx        context.Context
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -202,7 +202,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -216,25 +216,25 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.NodeSet{
+					WithObjects(&slinkyv1beta1.NodeSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.NodeSetSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.NodeSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm",
 								Namespace: metav1.NamespaceDefault,
 							},
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.NodeSet{
+					WithObjects(&slinkyv1beta1.NodeSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm1",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.NodeSetSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.NodeSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm1",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -244,7 +244,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -277,7 +277,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 	}
 	type args struct {
 		ctx        context.Context
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -295,7 +295,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -309,25 +309,25 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.LoginSet{
+					WithObjects(&slinkyv1beta1.LoginSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.LoginSetSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.LoginSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm",
 								Namespace: metav1.NamespaceDefault,
 							},
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.LoginSet{
+					WithObjects(&slinkyv1beta1.LoginSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm1",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.LoginSetSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.LoginSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm1",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -337,7 +337,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -370,7 +370,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 	}
 	type args struct {
 		ctx        context.Context
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -388,7 +388,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -402,25 +402,25 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.RestApi{
+					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.RestApiSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm",
 								Namespace: metav1.NamespaceDefault,
 							},
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.RestApi{
+					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm1",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.RestApiSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm1",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -430,7 +430,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -463,7 +463,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 	}
 	type args struct {
 		ctx        context.Context
-		accounting *slinkyv1alpha1.Accounting
+		accounting *slinkyv1beta1.Accounting
 	}
 	tests := []struct {
 		name    string
@@ -481,7 +481,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				accounting: &slinkyv1alpha1.Accounting{
+				accounting: &slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,
@@ -495,25 +495,25 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 			fields: fields{
 				client: fake.NewClientBuilder().
 					WithScheme(scheme).
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.ControllerSpec{
-							AccountingRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm",
 								Namespace: metav1.NamespaceDefault,
 							},
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm1",
 							Namespace: metav1.NamespaceDefault,
 						},
-						Spec: slinkyv1alpha1.ControllerSpec{
-							AccountingRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
 								Name:      "slurm1",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -523,7 +523,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				accounting: &slinkyv1alpha1.Accounting{
+				accounting: &slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "slurm",
 						Namespace: metav1.NamespaceDefault,

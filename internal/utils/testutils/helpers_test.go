@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -22,14 +22,14 @@ func TestNewObjectRef(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want slinkyv1alpha1.ObjectReference
+		want slinkyv1beta1.ObjectReference
 	}{
 		{
 			name: "empty",
 			args: args{
 				obj: &corev1.Pod{},
 			},
-			want: slinkyv1alpha1.ObjectReference{},
+			want: slinkyv1beta1.ObjectReference{},
 		},
 		{
 			name: "named",
@@ -41,7 +41,7 @@ func TestNewObjectRef(t *testing.T) {
 					},
 				},
 			},
-			want: slinkyv1alpha1.ObjectReference{
+			want: slinkyv1beta1.ObjectReference{
 				Namespace: corev1.NamespaceDefault,
 				Name:      "foo",
 			},
@@ -61,7 +61,7 @@ func TestNewController(t *testing.T) {
 		name           string
 		slurmKeyRef    corev1.SecretKeySelector
 		jwtHs256KeyRef corev1.SecretKeySelector
-		accounting     *slinkyv1alpha1.Accounting
+		accounting     *slinkyv1beta1.Accounting
 	}
 	tests := []struct {
 		name string
@@ -294,7 +294,7 @@ func TestNewPasswordSecret(t *testing.T) {
 func TestNewNodeset(t *testing.T) {
 	type args struct {
 		name       string
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 		replicas   int32
 	}
 	tests := []struct {
@@ -328,7 +328,7 @@ func TestNewNodeset(t *testing.T) {
 func TestNewLoginset(t *testing.T) {
 	type args struct {
 		name        string
-		controller  *slinkyv1alpha1.Controller
+		controller  *slinkyv1beta1.Controller
 		sssdConfRef corev1.SecretKeySelector
 	}
 	tests := []struct {
@@ -413,7 +413,7 @@ func TestNewSssdConfSecret(t *testing.T) {
 func TestNewRestapi(t *testing.T) {
 	type args struct {
 		name       string
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name string

@@ -88,6 +88,7 @@ type LoginSetStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:deprecatedversion:warning="v1alpha1 is deprecated, use v1beta1."
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=loginsets;lss;sackd
 // +kubebuilder:subresource:scale:specpath=".spec.replicas",statuspath=".status.replicas",selectorpath=".status.selector"

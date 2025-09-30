@@ -10,15 +10,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	testutils "github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("RestApi Controller", func() {
 	Context("When reconciling a RestApi", func() {
 		var name = testutils.GenerateResourceName(5)
-		var restapi *slinkyv1alpha1.RestApi
-		var controller *slinkyv1alpha1.Controller
+		var restapi *slinkyv1beta1.RestApi
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 
@@ -44,7 +44,7 @@ var _ = Describe("RestApi Controller", func() {
 
 		It("Should successfully create create a restapi", func(ctx SpecContext) {
 			By("Creating RestApi CR")
-			createdRestapi := &slinkyv1alpha1.RestApi{}
+			createdRestapi := &slinkyv1beta1.RestApi{}
 			restapiKey := client.ObjectKeyFromObject(restapi)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, restapiKey, createdRestapi)).To(Succeed())

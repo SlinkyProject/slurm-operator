@@ -10,14 +10,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("Accounting controller", func() {
 	Context("When creating Accounting", func() {
 		var name = testutils.GenerateResourceName(5)
-		var accounting *slinkyv1alpha1.Accounting
+		var accounting *slinkyv1beta1.Accounting
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 		var passwordSecret *corev1.Secret
@@ -45,7 +45,7 @@ var _ = Describe("Accounting controller", func() {
 
 		It("Should successfully create create a accounting", func(ctx SpecContext) {
 			By("Creating Accounting CR")
-			createdAccounting := &slinkyv1alpha1.Accounting{}
+			createdAccounting := &slinkyv1beta1.Accounting{}
 			accountingKey := client.ObjectKeyFromObject(accounting)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, accountingKey, createdAccounting)).To(Succeed())

@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -28,7 +28,7 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		token *slinkyv1alpha1.Token
+		token *slinkyv1beta1.Token
 	}
 	tests := []struct {
 		name    string
@@ -44,13 +44,13 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				token: &slinkyv1alpha1.Token{
+				token: &slinkyv1beta1.Token{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.TokenSpec{
+					Spec: slinkyv1beta1.TokenSpec{
 						Username: "foo",
-						JwtHs256KeyRef: slinkyv1alpha1.JwtSecretKeySelector{
+						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
 							SecretKeySelector: corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "slurm-jwths256key",
@@ -68,13 +68,13 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				token: &slinkyv1alpha1.Token{
+				token: &slinkyv1beta1.Token{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.TokenSpec{
+					Spec: slinkyv1beta1.TokenSpec{
 						Username: "foo",
-						JwtHs256KeyRef: slinkyv1alpha1.JwtSecretKeySelector{
+						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
 							SecretKeySelector: corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "slurm-jwths256key",

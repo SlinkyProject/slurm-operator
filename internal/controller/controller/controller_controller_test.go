@@ -11,14 +11,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("Slurm Controller", func() {
 	Context("When creating Controller", func() {
 		var name = testutils.GenerateResourceName(5)
-		var controller *slinkyv1alpha1.Controller
+		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
 		var jwtHs256KeySecret *corev1.Secret
 
@@ -41,7 +41,7 @@ var _ = Describe("Slurm Controller", func() {
 
 		It("Should successfully create create a controller", func(ctx SpecContext) {
 			By("Creating Controller CR")
-			createdController := &slinkyv1alpha1.Controller{}
+			createdController := &slinkyv1beta1.Controller{}
 			controllerKey := client.ObjectKeyFromObject(controller)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, controllerKey, createdController)).To(Succeed())

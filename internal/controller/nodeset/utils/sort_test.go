@@ -15,7 +15,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestSortingActivePods(t *testing.T) {
@@ -93,7 +93,7 @@ func TestSortingActivePods(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "runningWithCost",
-						Annotations: map[string]string{slinkyv1alpha1.AnnotationPodDeletionCost: "1"},
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodDeletionCost: "1"},
 					},
 					Spec: corev1.PodSpec{NodeName: "foo"},
 					Status: corev1.PodStatus{
@@ -106,7 +106,7 @@ func TestSortingActivePods(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "runningWithCordon",
-						Annotations: map[string]string{slinkyv1alpha1.AnnotationPodCordon: "True"},
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodCordon: "True"},
 					},
 					Spec: corev1.PodSpec{NodeName: "foo"},
 					Status: corev1.PodStatus{
@@ -129,7 +129,7 @@ func TestSortingActivePods(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "runningWithDeadline",
-						Annotations: map[string]string{slinkyv1alpha1.AnnotationPodDeadline: time.Now().Format(time.RFC3339)},
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339)},
 					},
 					Spec: corev1.PodSpec{NodeName: "foo"},
 					Status: corev1.PodStatus{
@@ -173,7 +173,7 @@ func TestSortingActivePods(t *testing.T) {
 			pods: []corev1.Pod{
 				newRunningPod("regular", nil),
 				newRunningPod("podCordon", map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon: "True",
+					slinkyv1beta1.AnnotationPodCordon: "True",
 				}),
 			},
 			wantOrder: []string{
@@ -186,13 +186,13 @@ func TestSortingActivePods(t *testing.T) {
 			pods: []corev1.Pod{
 				newRunningPod("noDeadline", nil),
 				newRunningPod("deadlineBefore", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Add(-time.Hour).Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(-time.Hour).Format(time.RFC3339),
 				}),
 				newRunningPod("deadlineNow", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
 				}),
 				newRunningPod("deadlineLater", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}),
 			},
 			wantOrder: []string{
@@ -206,11 +206,11 @@ func TestSortingActivePods(t *testing.T) {
 			name: "Sort deletion cost",
 			pods: []corev1.Pod{
 				newRunningPod("costNeg10", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeletionCost: "-10",
+					slinkyv1beta1.AnnotationPodDeletionCost: "-10",
 				}),
 				newRunningPod("cost0", nil),
 				newRunningPod("costPos10", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeletionCost: "10",
+					slinkyv1beta1.AnnotationPodDeletionCost: "10",
 				}),
 			},
 			wantOrder: []string{
@@ -225,32 +225,32 @@ func TestSortingActivePods(t *testing.T) {
 				newRunningPod("ordinal-0", nil),
 				newRunningPod("ordinal-1", nil),
 				newRunningPod("deadlineNow", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
 				}),
 				newRunningPod("deadlineLater", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}),
 				newRunningPod("podCordoned", map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon: "True",
+					slinkyv1beta1.AnnotationPodCordon: "True",
 				}),
 				newRunningPod("podCordonedAndDeadlineNow", map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon:   "True",
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
 				}),
 				newRunningPod("podCordonedAndDeadlineLater", map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon:   "True",
-					slinkyv1alpha1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}),
 				newRunningPod("deletionCostNeg10", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeletionCost: "-10",
+					slinkyv1beta1.AnnotationPodDeletionCost: "-10",
 				}),
 				newRunningPod("deletionCostPos10", map[string]string{
-					slinkyv1alpha1.AnnotationPodDeletionCost: "1",
+					slinkyv1beta1.AnnotationPodDeletionCost: "1",
 				}),
 				newRunningPod("cordonedDeadlineCost100", map[string]string{
-					slinkyv1alpha1.AnnotationPodCordon:       "True",
-					slinkyv1alpha1.AnnotationPodDeadline:     time.Now().Format(time.RFC3339),
-					slinkyv1alpha1.AnnotationPodDeletionCost: "100",
+					slinkyv1beta1.AnnotationPodCordon:       "True",
+					slinkyv1beta1.AnnotationPodDeadline:     time.Now().Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeletionCost: "100",
 				}),
 			},
 			wantOrder: []string{

@@ -15,17 +15,17 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 // syncStatus handles determining and updating the status.
 func (r *RestapiReconciler) syncStatus(
 	ctx context.Context,
-	restapi *slinkyv1alpha1.RestApi,
+	restapi *slinkyv1beta1.RestApi,
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1alpha1.RestApiStatus{
+	newStatus := &slinkyv1beta1.RestApiStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, restapi.Status.Conditions...)
@@ -46,8 +46,8 @@ func (r *RestapiReconciler) syncStatus(
 
 func (r *RestapiReconciler) updateStatus(
 	ctx context.Context,
-	cluster *slinkyv1alpha1.RestApi,
-	newStatus *slinkyv1alpha1.RestApiStatus,
+	cluster *slinkyv1beta1.RestApi,
+	newStatus *slinkyv1beta1.RestApiStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -59,7 +59,7 @@ func (r *RestapiReconciler) updateStatus(
 	logger.V(1).Info("Pending Restapi Status update",
 		"cluster", klog.KObj(cluster), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.RestApi{}
+		toUpdate := &slinkyv1beta1.RestApi{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil

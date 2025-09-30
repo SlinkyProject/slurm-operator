@@ -13,13 +13,13 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 // BuildClusterWorkerPodDisruptionBudget creates a single PodDisruptionBudget for ALL worker NodeSets in the same Slurm cluster
 // The PodDisruptionBudget name is derived from the Slurm cluster name to support hybrid deployments
-func (b *Builder) BuildClusterWorkerPodDisruptionBudget(nodeset *slinkyv1alpha1.NodeSet) (*policyv1.PodDisruptionBudget, error) {
+func (b *Builder) BuildClusterWorkerPodDisruptionBudget(nodeset *slinkyv1beta1.NodeSet) (*policyv1.PodDisruptionBudget, error) {
 	selectorLabels := labels.NewBuilder().
 		WithPodProtect().WithCluster(nodeset.Spec.ControllerRef.Name).Build()
 	opts := PodDisruptionBudgetOpts{

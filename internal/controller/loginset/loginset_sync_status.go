@@ -17,14 +17,14 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 // syncStatus handles determining and updating the status.
 func (r *LoginSetReconciler) syncStatus(
 	ctx context.Context,
-	loginset *slinkyv1alpha1.LoginSet,
+	loginset *slinkyv1beta1.LoginSet,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -36,7 +36,7 @@ func (r *LoginSetReconciler) syncStatus(
 		return err
 	}
 
-	newStatus := &slinkyv1alpha1.LoginSetStatus{
+	newStatus := &slinkyv1beta1.LoginSetStatus{
 		Replicas:   replicaStatus.Replicas,
 		Selector:   selector.String(),
 		Conditions: []metav1.Condition{},
@@ -64,7 +64,7 @@ type replicaStatus struct {
 // calculateReplicaStatus will calculate the status of the given pods.
 func (r *LoginSetReconciler) calculateReplicaStatus(
 	ctx context.Context,
-	loginset *slinkyv1alpha1.LoginSet,
+	loginset *slinkyv1beta1.LoginSet,
 ) (replicaStatus, error) {
 	deployment := &appsv1.Deployment{}
 	deploymentKey := loginset.Key()
@@ -81,8 +81,8 @@ func (r *LoginSetReconciler) calculateReplicaStatus(
 
 func (r *LoginSetReconciler) updateStatus(
 	ctx context.Context,
-	cluster *slinkyv1alpha1.LoginSet,
-	newStatus *slinkyv1alpha1.LoginSetStatus,
+	cluster *slinkyv1beta1.LoginSet,
+	newStatus *slinkyv1beta1.LoginSetStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -94,7 +94,7 @@ func (r *LoginSetReconciler) updateStatus(
 	logger.V(1).Info("Pending LoginSet Status update",
 		"cluster", klog.KObj(cluster), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.LoginSet{}
+		toUpdate := &slinkyv1beta1.LoginSet{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil

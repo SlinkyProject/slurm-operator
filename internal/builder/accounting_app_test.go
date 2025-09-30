@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -21,7 +21,7 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		accounting *slinkyv1alpha1.Accounting
+		accounting *slinkyv1beta1.Accounting
 	}
 	tests := []struct {
 		name    string
@@ -35,7 +35,7 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				accounting: &slinkyv1alpha1.Accounting{
+				accounting: &slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},

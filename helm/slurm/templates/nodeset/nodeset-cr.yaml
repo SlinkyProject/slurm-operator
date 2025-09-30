@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
   {{- $_ := set $nodeset.podSpec "volumes" $volumes -}}
 {{- end }}
 ---
-apiVersion: slinky.slurm.net/v1alpha1
+apiVersion: slinky.slurm.net/v1beta1
 kind: NodeSet
 metadata:
   name: {{ $name }}

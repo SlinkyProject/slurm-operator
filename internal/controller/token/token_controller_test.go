@@ -9,14 +9,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("Token Controller", func() {
 	Context("When reconciling a Token", func() {
 		var name = testutils.GenerateResourceName(5)
-		var token *slinkyv1alpha1.Token
+		var token *slinkyv1beta1.Token
 		var jwtHs256KeySecret *corev1.Secret
 
 		BeforeEach(func() {
@@ -34,7 +34,7 @@ var _ = Describe("Token Controller", func() {
 
 		It("Should successfully create create a token", func(ctx SpecContext) {
 			By("Creating Token CR")
-			createdToken := &slinkyv1alpha1.Token{}
+			createdToken := &slinkyv1beta1.Token{}
 			tokenKey := client.ObjectKeyFromObject(token)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, tokenKey, createdToken)).To(Succeed())

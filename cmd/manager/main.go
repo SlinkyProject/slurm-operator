@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/accounting"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller"
@@ -43,7 +44,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme))
+	//+kubebuilder:scaffold:scheme
 }
 
 // Input flags to the command

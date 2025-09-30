@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
@@ -35,16 +35,16 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		oldObj = &appsv1.Deployment{}
 	case *appsv1.StatefulSet:
 		oldObj = &appsv1.StatefulSet{}
-	case *slinkyv1alpha1.Controller:
-		oldObj = &slinkyv1alpha1.Controller{}
-	case *slinkyv1alpha1.RestApi:
-		oldObj = &slinkyv1alpha1.RestApi{}
-	case *slinkyv1alpha1.Accounting:
-		oldObj = &slinkyv1alpha1.Accounting{}
-	case *slinkyv1alpha1.NodeSet:
-		oldObj = &slinkyv1alpha1.NodeSet{}
-	case *slinkyv1alpha1.LoginSet:
-		oldObj = &slinkyv1alpha1.LoginSet{}
+	case *slinkyv1beta1.Controller:
+		oldObj = &slinkyv1beta1.Controller{}
+	case *slinkyv1beta1.RestApi:
+		oldObj = &slinkyv1beta1.RestApi{}
+	case *slinkyv1beta1.Accounting:
+		oldObj = &slinkyv1beta1.Accounting{}
+	case *slinkyv1beta1.NodeSet:
+		oldObj = &slinkyv1beta1.NodeSet{}
+	case *slinkyv1beta1.LoginSet:
+		oldObj = &slinkyv1beta1.LoginSet{}
 	case *policyv1.PodDisruptionBudget:
 		oldObj = &policyv1.PodDisruptionBudget{}
 	default:
@@ -122,26 +122,26 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		obj.Spec.Replicas = o.Spec.Replicas
 		obj.Spec.Template = o.Spec.Template
 		obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
-	case *slinkyv1alpha1.Controller:
-		obj := oldObj.(*slinkyv1alpha1.Controller)
+	case *slinkyv1beta1.Controller:
+		obj := oldObj.(*slinkyv1beta1.Controller)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
 		obj.Spec = o.Spec
-	case *slinkyv1alpha1.RestApi:
-		obj := oldObj.(*slinkyv1alpha1.RestApi)
+	case *slinkyv1beta1.RestApi:
+		obj := oldObj.(*slinkyv1beta1.RestApi)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
 		obj.Spec = o.Spec
-	case *slinkyv1alpha1.Accounting:
-		obj := oldObj.(*slinkyv1alpha1.Accounting)
+	case *slinkyv1beta1.Accounting:
+		obj := oldObj.(*slinkyv1beta1.Accounting)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
 		obj.Spec = o.Spec
-	case *slinkyv1alpha1.NodeSet:
-		obj := oldObj.(*slinkyv1alpha1.NodeSet)
+	case *slinkyv1beta1.NodeSet:
+		obj := oldObj.(*slinkyv1beta1.NodeSet)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
@@ -150,8 +150,8 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		obj.Spec.Replicas = o.Spec.Replicas
 		obj.Spec.Template = o.Spec.Template
 		obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
-	case *slinkyv1alpha1.LoginSet:
-		obj := oldObj.(*slinkyv1alpha1.LoginSet)
+	case *slinkyv1beta1.LoginSet:
+		obj := oldObj.(*slinkyv1beta1.LoginSet)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)

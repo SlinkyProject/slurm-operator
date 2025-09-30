@@ -38,7 +38,7 @@ metadata:
   labels:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 webhooks:
-  - name: accounting-v1alpha1.kb.io
+  - name: accounting-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -49,7 +49,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - accountings
         operations:
@@ -63,16 +63,16 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-accounting
+        path: /validate-slinky-slurm-net-v1beta1-accounting
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
-  - name: controller-v1alpha1.kb.io
+  - name: controller-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -83,7 +83,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - controllers
         operations:
@@ -97,16 +97,16 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-controller
+        path: /validate-slinky-slurm-net-v1beta1-controller
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
-  - name: loginset-v1alpha1.kb.io
+  - name: loginset-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -117,7 +117,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - loginsets
         operations:
@@ -131,16 +131,16 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-loginset
+        path: /validate-slinky-slurm-net-v1beta1-loginset
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
-  - name: nodeset-v1alpha1.kb.io
+  - name: nodeset-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -151,7 +151,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - nodesets
         operations:
@@ -165,16 +165,16 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-nodeset
+        path: /validate-slinky-slurm-net-v1beta1-nodeset
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
-  - name: restapi-v1alpha1.kb.io
+  - name: restapi-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -185,7 +185,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - restapis
         operations:
@@ -199,16 +199,16 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-restapi
+        path: /validate-slinky-slurm-net-v1beta1-restapi
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
-  - name: token-v1alpha1.kb.io
+  - name: token-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
@@ -219,7 +219,7 @@ webhooks:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
         apiVersions:
-          - v1alpha1
+          - v1beta1
         resources:
           - tokens
         operations:
@@ -233,13 +233,13 @@ webhooks:
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
-        path: /validate-slinky-slurm-net-v1alpha1-token
+        path: /validate-slinky-slurm-net-v1beta1-token
     failurePolicy: Fail
+    matchPolicy: Equivalent
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
-      - v1
-      - v1alpha1
+      - v1beta1
     sideEffects: None
 {{- end }}{{- /* if .Values.webhook.enabled */}}

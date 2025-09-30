@@ -9,7 +9,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestTokenReconciler_syncStatus(t *testing.T) {
@@ -18,7 +18,7 @@ func TestTokenReconciler_syncStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx   context.Context
-		token *slinkyv1alpha1.Token
+		token *slinkyv1beta1.Token
 	}
 	tests := []struct {
 		name    string
@@ -44,8 +44,8 @@ func TestTokenReconciler_updateStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx       context.Context
-		token     *slinkyv1alpha1.Token
-		newStatus *slinkyv1alpha1.TokenStatus
+		token     *slinkyv1beta1.Token
+		newStatus *slinkyv1beta1.TokenStatus
 	}
 	tests := []struct {
 		name    string

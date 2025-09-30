@@ -14,7 +14,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 )
 
@@ -25,7 +25,7 @@ import (
 // expects that revisions is sorted when supplied.
 func (r *NodeSetReconciler) truncateHistory(
 	ctx context.Context,
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	revisions []*appsv1.ControllerRevision,
 	current, update *appsv1.ControllerRevision,
 ) error {
@@ -74,7 +74,7 @@ func (r *NodeSetReconciler) truncateHistory(
 // a new revision, or modify the Revision of an existing revision if an update to nodeset is detected.
 // This method expects that revisions is sorted when supplied.
 func (r *NodeSetReconciler) getNodeSetRevisions(
-	nodeset *slinkyv1alpha1.NodeSet,
+	nodeset *slinkyv1beta1.NodeSet,
 	revisions []*appsv1.ControllerRevision,
 ) (*appsv1.ControllerRevision, *appsv1.ControllerRevision, int32, error) {
 	var currentRevision, updateRevision *appsv1.ControllerRevision
@@ -151,14 +151,14 @@ func nextRevision(revisions []*appsv1.ControllerRevision) int64 {
 // The Revision of the returned ControllerRevision is set to revision. If the returned error is nil, the returned
 // ControllerRevision is valid. NodeSet revisions are stored as patches that re-apply the current state of NodeSet
 // to a new NodeSet using a strategic merge patch to replace the saved state of the new NodeSet.
-func newRevision(nodeset *slinkyv1alpha1.NodeSet, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
+func newRevision(nodeset *slinkyv1beta1.NodeSet, revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
 	patch, err := getPatch(nodeset)
 	if err != nil {
 		return nil, err
 	}
 	cr, err := history.NewControllerRevision(
 		nodeset,
-		slinkyv1alpha1.NodeSetGVK,
+		slinkyv1beta1.NodeSetGVK,
 		nodeset.Spec.Template.PodMetadata.Labels,
 		runtime.RawExtension{Raw: patch},
 		revision,
@@ -177,7 +177,7 @@ func newRevision(nodeset *slinkyv1alpha1.NodeSet, revision int64, collisionCount
 // previous version. If the returned error is nil the patch is valid. The current state that we save is just the
 // PodSpecTemplate. We can modify this later to encompass more state (or less) and remain compatible with previously
 // recorded patches.
-func getPatch(nodeset *slinkyv1alpha1.NodeSet) ([]byte, error) {
+func getPatch(nodeset *slinkyv1beta1.NodeSet) ([]byte, error) {
 	crBytes, err := json.Marshal(nodeset)
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
@@ -37,13 +37,13 @@ var controllerlog = logf.Log.WithName("controller-resource")
 
 func (r *ControllerWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&slinkyv1alpha1.Controller{}).
+		For(&slinkyv1beta1.Controller{}).
 		WithValidator(r).
 		Complete()
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-controller,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=controllers,verbs=create;update,versions=v1alpha1,name=controller-v1alpha1.kb.io,admissionReviewVersions=v1;v1alpha1
+// +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1beta1-controller,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups=slinky.slurm.net,resources=controllers,verbs=create;update,versions=v1beta1,name=controller-v1beta1.kb.io,admissionReviewVersions=v1beta1
 
 var _ webhook.CustomValidator = &ControllerWebhook{}
 
@@ -52,7 +52,7 @@ const warnTableNameRegex = `[A-Z]+`
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *ControllerWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	controller := obj.(*slinkyv1alpha1.Controller)
+	controller := obj.(*slinkyv1beta1.Controller)
 	controllerlog.Info("validate create", "controller", klog.KObj(controller))
 
 	warns, errs := r.validateController(ctx, controller)
@@ -79,8 +79,8 @@ func (r *ControllerWebhook) ValidateCreate(ctx context.Context, obj runtime.Obje
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *ControllerWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
-	newController := newObj.(*slinkyv1alpha1.Controller)
-	oldController := oldObj.(*slinkyv1alpha1.Controller)
+	newController := newObj.(*slinkyv1beta1.Controller)
+	oldController := oldObj.(*slinkyv1beta1.Controller)
 	controllerlog.Info("validate update", "newController", klog.KObj(newController))
 
 	warns, errs := r.validateController(ctx, newController)
@@ -106,13 +106,13 @@ func (r *ControllerWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.O
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *ControllerWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	controller := obj.(*slinkyv1alpha1.Controller)
+	controller := obj.(*slinkyv1beta1.Controller)
 	controllerlog.Info("validate delete", "controller", klog.KObj(controller))
 
 	return nil, nil
 }
 
-func (r *ControllerWebhook) validateController(ctx context.Context, obj *slinkyv1alpha1.Controller) (admission.Warnings, []error) {
+func (r *ControllerWebhook) validateController(ctx context.Context, obj *slinkyv1beta1.Controller) (admission.Warnings, []error) {
 	var warns admission.Warnings
 	var errs []error
 

@@ -7,7 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
@@ -15,7 +15,7 @@ import (
 
 type PodTemplateOpts struct {
 	Key      types.NamespacedName
-	Metadata slinkyv1alpha1.Metadata
+	Metadata slinkyv1beta1.Metadata
 	base     corev1.PodSpec
 	merge    corev1.PodSpec
 }

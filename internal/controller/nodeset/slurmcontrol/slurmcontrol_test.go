@@ -27,21 +27,21 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/object"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
-func newNodeSet(name, controllerName string, replicas int32) *slinkyv1alpha1.NodeSet {
-	return &slinkyv1alpha1.NodeSet{
+func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.NodeSet {
+	return &slinkyv1beta1.NodeSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: corev1.NamespaceDefault,
 			Name:      name,
 		},
-		Spec: slinkyv1alpha1.NodeSetSpec{
-			ControllerRef: slinkyv1alpha1.ObjectReference{
+		Spec: slinkyv1beta1.NodeSetSpec{
+			ControllerRef: slinkyv1beta1.ObjectReference{
 				Namespace: corev1.NamespaceDefault,
 				Name:      controllerName,
 			},
@@ -61,13 +61,13 @@ func newSlurmClientMap(controllerName string, client client.Client) *clientmap.C
 }
 
 var _ = Describe("SlurmControlInterface", func() {
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
 	}
 	var slurmcontrol SlurmControlInterface
-	var nodeset *slinkyv1alpha1.NodeSet
+	var nodeset *slinkyv1beta1.NodeSet
 	var pod *corev1.Pod
 	var sclient client.Client
 
@@ -395,7 +395,7 @@ var _ = Describe("SlurmControlInterface", func() {
 
 func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 	ctx := context.Background()
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -407,7 +407,7 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -485,7 +485,7 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 
 func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 	ctx := context.Background()
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -497,7 +497,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -769,7 +769,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 
 func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 	ctx := context.Background()
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -781,7 +781,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -1125,7 +1125,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 
 func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 	ctx := context.Background()
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -1137,7 +1137,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
 	tests := []struct {
@@ -1237,7 +1237,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 
 func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 	ctx := context.Background()
-	controller := &slinkyv1alpha1.Controller{
+	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
@@ -1249,7 +1249,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 	}
 	type args struct {
 		ctx     context.Context
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 		pods    []*corev1.Pod
 	}
 	tests := []struct {

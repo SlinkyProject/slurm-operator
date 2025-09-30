@@ -7,12 +7,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *Builder) BuildLoginService(loginset *slinkyv1alpha1.LoginSet) (*corev1.Service, error) {
+func (b *Builder) BuildLoginService(loginset *slinkyv1beta1.LoginSet) (*corev1.Service, error) {
 	spec := loginset.Spec.Service
 	opts := ServiceOpts{
 		Key:         loginset.ServiceKey(),

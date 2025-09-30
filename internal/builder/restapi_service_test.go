@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -19,7 +19,7 @@ func TestBuilder_BuildRestapiService(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		restapi *slinkyv1alpha1.RestApi
+		restapi *slinkyv1beta1.RestApi
 	}
 	tests := []struct {
 		name    string
@@ -32,7 +32,7 @@ func TestBuilder_BuildRestapiService(t *testing.T) {
 			name: "default",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
@@ -40,12 +40,12 @@ func TestBuilder_BuildRestapiService(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				restapi: &slinkyv1alpha1.RestApi{
+				restapi: &slinkyv1beta1.RestApi{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.RestApiSpec{
-						ControllerRef: slinkyv1alpha1.ObjectReference{
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
 					},

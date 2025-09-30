@@ -66,6 +66,7 @@ type TokenStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:deprecatedversion:warning="v1alpha1 is deprecated, use v1beta1."
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=tokens;jwt
 // +kubebuilder:printcolumn:name="USER",type="string",JSONPath=".spec.username",description="The username issued to the JWT."

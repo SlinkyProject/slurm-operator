@@ -23,7 +23,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
@@ -41,13 +41,13 @@ var (
 )
 
 type PodControlInterface interface {
-	CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error
-	DeleteNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error
-	UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error
+	CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
+	DeleteNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
+	UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 
-	PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
-	UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error
-	IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
+	UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
+	IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 }
 
 // RealPodControl is the default implementation of PodControlInterface.
@@ -58,7 +58,7 @@ type realPodControl struct {
 }
 
 // CreateNodeSetPod implements PodControlInterface.
-func (r *realPodControl) CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realPodControl) CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	// Create the Pod's PVCs prior to creating the Pod
 	if err := r.createPersistentVolumeClaims(ctx, nodeset, pod); err != nil {
 		r.recordPodEvent(eventCreate, nodeset, pod, err)
@@ -79,14 +79,14 @@ func (r *realPodControl) CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 }
 
 // DeleteNodeSetPod implements PodControlInterface.
-func (r *realPodControl) DeleteNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realPodControl) DeleteNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	err := r.podControl.DeletePod(ctx, pod.GetNamespace(), pod.GetName(), nodeset)
 	r.recordPodEvent(eventDelete, nodeset, pod, err)
 	return err
 }
 
 // UpdatePod implements PodControlInterface.
-func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	attemptedUpdate := false
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		// assume the Pod is consistent
@@ -155,7 +155,7 @@ func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 // PodPVCsMatchRetentionPolicy returns false if the PVCs for pod are not consistent with nodeset's PVC deletion policy.
 // An error is returned if something is not consistent. This is expected if the pod is being otherwise updated,
 // but a problem otherwise (see usage of this method in UpdateNodeSetPod).
-func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := klog.FromContext(ctx)
 	ordinal := nodesetutils.GetOrdinal(pod)
 	templates := nodeset.Spec.VolumeClaimTemplates
@@ -182,7 +182,7 @@ func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodese
 }
 
 // UpdatePodPVCsForRetentionPolicy implements PodControlInterface.
-func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := klog.FromContext(ctx)
 	ordinal := nodesetutils.GetOrdinal(pod)
 	templates := nodeset.Spec.VolumeClaimTemplates
@@ -220,9 +220,9 @@ func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, no
 // IsPodPVCsStale returns true for a stale PVC that should block pod creation. If the scaling
 // policy is deletion, and a PVC has an ownerRef that does not match the pod, the PVC is stale. This
 // includes pods whose UID has not been created.
-func (r *realPodControl) IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realPodControl) IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	policy := getPersistentVolumeClaimRetentionPolicy(nodeset)
-	if policy.WhenScaled == slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType {
+	if policy.WhenScaled == slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
 		// PVCs are meant to be reused and so can't be stale.
 		return false, nil
 	}
@@ -250,7 +250,7 @@ func (r *realPodControl) IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1al
 
 // recordPodEvent records an event for verb applied to a Pod in a NodeSet. If err is nil the generated event will
 // have a reason of corev1.EventTypeNormal. If err is not nil the generated event will have a reason of corev1.EventTypeWarning.
-func (r *realPodControl) recordPodEvent(verb string, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, err error) {
+func (r *realPodControl) recordPodEvent(verb string, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, err error) {
 	caser := cases.Title(language.English)
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", caser.String(verb))
@@ -269,7 +269,7 @@ func (r *realPodControl) recordPodEvent(verb string, nodeset *slinkyv1alpha1.Nod
 // nodeset. If all of the claims for Pod are successfully created, the returned error is nil. If creation fails, this method
 // may be called again until no error is returned, indicating the PersistentVolumeClaims for pod are consistent with
 // nodeset's Spec.
-func (r *realPodControl) createPersistentVolumeClaims(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
+func (r *realPodControl) createPersistentVolumeClaims(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	var errs []error
 	for _, claim := range nodesetutils.GetPersistentVolumeClaims(nodeset, pod) {
 		pvcId := types.NamespacedName{
@@ -302,7 +302,7 @@ func (r *realPodControl) createPersistentVolumeClaims(ctx context.Context, nodes
 // recordClaimEvent records an event for verb applied to the PersistentVolumeClaim of a Pod in a NodeSet. If err is
 // nil the generated event will have a reason of corev1.EventTypeNormal. If err is not nil the generated event will have a
 // reason of corev1.EventTypeWarning.
-func (r *realPodControl) recordClaimEvent(verb string, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod, claim *corev1.PersistentVolumeClaim, err error) {
+func (r *realPodControl) recordClaimEvent(verb string, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, claim *corev1.PersistentVolumeClaim, err error) {
 	caser := cases.Title(language.English)
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", caser.String(verb))
@@ -337,8 +337,8 @@ func NewPodControl(client client.Client, recorder record.EventRecorder) PodContr
 // - Retain on scaling and delete on nodeset deletion: owner ref on the nodeset only.
 // - Delete on scaling and retain on nodeset deletion: owner ref on the pod only.
 // - Delete on scaling and nodeset deletion: owner refs on both nodeset and pod.
-func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
-	if hasStaleOwnerRef(claim, nodeset, slinkyv1alpha1.NodeSetGVK) || hasStaleOwnerRef(claim, pod, podGVK) {
+func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
+	if hasStaleOwnerRef(claim, nodeset, slinkyv1beta1.NodeSetGVK) || hasStaleOwnerRef(claim, pod, podGVK) {
 		// The claim is being managed by previous, presumably deleted, version of the controller. It should not be touched.
 		return true
 	}
@@ -357,8 +357,8 @@ func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClai
 	}
 
 	policy := getPersistentVolumeClaimRetentionPolicy(nodeset)
-	const delete = slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType
-	const retain = slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType
+	const delete = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
+	const retain = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
 	switch {
 	default:
 		logger.Error(nil, "Unknown policy, treating as Retain", "policy", nodeset.Spec.PersistentVolumeClaimRetentionPolicy)
@@ -396,15 +396,15 @@ func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClai
 // hasUnexpectedController returns true if the nodeset has a retention policy and there is a controller
 // for the claim that's not the nodeset or pod. Since the retention policy may have been changed, it is
 // always valid for the nodeset or pod to be a controller.
-func hasUnexpectedController(claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
+func hasUnexpectedController(claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	policy := getPersistentVolumeClaimRetentionPolicy(nodeset)
-	const retain = slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType
+	const retain = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
 	if policy.WhenScaled == retain && policy.WhenDeleted == retain {
 		// On a retain policy, it's not a problem for different controller to be managing the claims.
 		return false
 	}
 	for _, ownerRef := range claim.GetOwnerReferences() {
-		if matchesRef(&ownerRef, nodeset, slinkyv1alpha1.NodeSetGVK) {
+		if matchesRef(&ownerRef, nodeset, slinkyv1beta1.NodeSetGVK) {
 			if ownerRef.UID != nodeset.GetUID() {
 				// A UID mismatch means that pods were incorrectly orphaned. Treating this as an unexpected
 				// controller means we won't touch the PVCs (eg, leave it to the garbage collector to clean
@@ -429,7 +429,7 @@ func hasUnexpectedController(claim *corev1.PersistentVolumeClaim, nodeset *slink
 }
 
 // hasNonControllerOwner returns true if the pod or nodeset is an owner but not controller of the claim.
-func hasNonControllerOwner(claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) bool {
+func hasNonControllerOwner(claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	for _, ownerRef := range claim.GetOwnerReferences() {
 		if ownerRef.UID == nodeset.GetUID() || ownerRef.UID == pod.GetUID() {
 			if ownerRef.Controller == nil || !*ownerRef.Controller {
@@ -455,14 +455,14 @@ func removeRefs(refs []metav1.OwnerReference, predicate func(ref *metav1.OwnerRe
 // updateClaimOwnerRefForSetAndPod updates the ownerRefs for the claim according to the deletion policy of
 // the NodeSet. Returns true if the claim was changed and should be updated and false otherwise.
 // isClaimOwnerUpToDate should be called before this to avoid an expensive update operation.
-func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) {
+func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.PersistentVolumeClaim, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	refs := claim.GetOwnerReferences()
 
 	unexpectedController := hasUnexpectedController(claim, nodeset, pod)
 
 	// Scrub any ownerRefs to our nodeset & pod.
 	refs = removeRefs(refs, func(ref *metav1.OwnerReference) bool {
-		return matchesRef(ref, nodeset, slinkyv1alpha1.NodeSetGVK) || matchesRef(ref, pod, podGVK)
+		return matchesRef(ref, nodeset, slinkyv1beta1.NodeSetGVK) || matchesRef(ref, pod, podGVK)
 	})
 
 	if unexpectedController {
@@ -472,8 +472,8 @@ func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.Persisten
 	}
 
 	policy := getPersistentVolumeClaimRetentionPolicy(nodeset)
-	const retain = slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType
-	const delete = slinkyv1alpha1.DeletePersistentVolumeClaimRetentionPolicyType
+	const retain = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
+	const delete = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
 	switch {
 	default:
 		logger.Error(nil, "Unknown policy, treating as Retain", "policy", nodeset.Spec.PersistentVolumeClaimRetentionPolicy)
@@ -481,7 +481,7 @@ func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.Persisten
 	case policy.WhenScaled == retain && policy.WhenDeleted == retain:
 		// Nothing to do
 	case policy.WhenScaled == retain && policy.WhenDeleted == delete:
-		refs = addControllerRef(refs, nodeset, slinkyv1alpha1.NodeSetGVK)
+		refs = addControllerRef(refs, nodeset, slinkyv1beta1.NodeSetGVK)
 	case policy.WhenScaled == delete && policy.WhenDeleted == retain:
 		podScaledDown := podutils.IsPodCordon(pod)
 		if podScaledDown {
@@ -493,17 +493,17 @@ func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.Persisten
 			refs = addControllerRef(refs, pod, podGVK)
 		}
 		if !podScaledDown {
-			refs = addControllerRef(refs, nodeset, slinkyv1alpha1.NodeSetGVK)
+			refs = addControllerRef(refs, nodeset, slinkyv1beta1.NodeSetGVK)
 		}
 	}
 	claim.SetOwnerReferences(refs)
 }
 
 // getPersistentVolumeClaimPolicy returns the PVC policy for a NodeSet, returning a retain policy if the nodeset policy is nil.
-func getPersistentVolumeClaimRetentionPolicy(nodeset *slinkyv1alpha1.NodeSet) slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy {
-	policy := slinkyv1alpha1.NodeSetPersistentVolumeClaimRetentionPolicy{
-		WhenDeleted: slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
-		WhenScaled:  slinkyv1alpha1.RetainPersistentVolumeClaimRetentionPolicyType,
+func getPersistentVolumeClaimRetentionPolicy(nodeset *slinkyv1beta1.NodeSet) slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy {
+	policy := slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
+		WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
+		WhenScaled:  slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
 	}
 	if nodeset.Spec.PersistentVolumeClaimRetentionPolicy != nil {
 		policy = *nodeset.Spec.PersistentVolumeClaimRetentionPolicy

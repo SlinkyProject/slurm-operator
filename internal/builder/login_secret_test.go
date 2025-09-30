@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -17,7 +17,7 @@ func TestBuilder_BuildLoginSshHostKeys(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		loginset *slinkyv1alpha1.LoginSet
+		loginset *slinkyv1beta1.LoginSet
 	}
 	tests := []struct {
 		name    string
@@ -31,7 +31,7 @@ func TestBuilder_BuildLoginSshHostKeys(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				loginset: &slinkyv1alpha1.LoginSet{
+				loginset: &slinkyv1beta1.LoginSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},

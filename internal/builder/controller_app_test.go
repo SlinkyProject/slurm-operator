@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -21,7 +21,7 @@ func TestBuilder_BuildController(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -35,7 +35,7 @@ func TestBuilder_BuildController(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
@@ -48,12 +48,12 @@ func TestBuilder_BuildController(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.ControllerSpec{
-						Persistence: slinkyv1alpha1.ControllerPersistence{
+					Spec: slinkyv1beta1.ControllerSpec{
+						Persistence: slinkyv1beta1.ControllerPersistence{
 							Enabled: true,
 						},
 					},
@@ -66,12 +66,12 @@ func TestBuilder_BuildController(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.ControllerSpec{
-						Persistence: slinkyv1alpha1.ControllerPersistence{
+					Spec: slinkyv1beta1.ControllerSpec{
+						Persistence: slinkyv1beta1.ControllerPersistence{
 							Enabled:       true,
 							ExistingClaim: "pvc",
 						},

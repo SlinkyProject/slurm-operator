@@ -8,12 +8,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 // IsPodCordon returns true if and only if the delete annotation is nodeset to true.
 func IsPodCordon(pod *corev1.Pod) bool {
-	return pod.GetAnnotations()[slinkyv1alpha1.AnnotationPodCordon] == "true"
+	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordon] == "true"
 }
 
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.

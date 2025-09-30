@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +45,7 @@ func TestBuilder_BuildService(t *testing.T) {
 						Name:      "foo",
 						Namespace: "bar",
 					},
-					Metadata: slinkyv1alpha1.Metadata{
+					Metadata: slinkyv1beta1.Metadata{
 						Annotations: map[string]string{
 							"foo": "bar",
 						},

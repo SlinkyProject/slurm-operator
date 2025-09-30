@@ -13,20 +13,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type SyncStep struct {
 	Name string
-	Sync func(ctx context.Context, controller *slinkyv1alpha1.Controller) error
+	Sync func(ctx context.Context, controller *slinkyv1beta1.Controller) error
 }
 
 // Sync implements control logic for synchronizing a Controller.
 func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	controller := &slinkyv1alpha1.Controller{}
+	controller := &slinkyv1beta1.Controller{}
 	if err := r.Get(ctx, req.NamespacedName, controller); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Controller has been deleted", "request", req)
@@ -38,7 +38,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, controller *slinkyv1alpha1.Controller) error {
+			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				object, err := r.builder.BuildControllerService(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -51,7 +51,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "Config",
-			Sync: func(ctx context.Context, controller *slinkyv1alpha1.Controller) error {
+			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				object, err := r.builder.BuildControllerConfig(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -64,7 +64,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "StatefulSet",
-			Sync: func(ctx context.Context, controller *slinkyv1alpha1.Controller) error {
+			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				object, err := r.builder.BuildController(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)

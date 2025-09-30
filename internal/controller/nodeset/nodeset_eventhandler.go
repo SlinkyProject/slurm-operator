@@ -30,7 +30,7 @@ import (
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
@@ -174,7 +174,7 @@ func (e *podEventHandler) updatePod(
 		// Note that this still suffers from #29229, we are just moving the problem one level
 		// "closer" to kubelet (from the deployment to the replica nodeset controller).
 		if !podutil.IsPodReady(oldPod) && podutil.IsPodReady(curPod) && nodeset.Spec.MinReadySeconds > 0 {
-			logger.V(2).Info("pod will be enqueued after a while for availability check", "duration", nodeset.Spec.MinReadySeconds, "kind", slinkyv1alpha1.NodeSetGVK, "pod", klog.KObj(oldPod))
+			logger.V(2).Info("pod will be enqueued after a while for availability check", "duration", nodeset.Spec.MinReadySeconds, "kind", slinkyv1beta1.NodeSetGVK, "pod", klog.KObj(oldPod))
 			requeueDuration := (time.Duration(nodeset.Spec.MinReadySeconds) * time.Second) + time.Second
 			objectutils.EnqueueRequestAfter(q, nodeset, requeueDuration)
 		}
@@ -279,12 +279,12 @@ func (e *podEventHandler) resolveControllerRef(
 	ctx context.Context,
 	namespace string,
 	controllerRef *metav1.OwnerReference,
-) *slinkyv1alpha1.NodeSet {
-	if controllerRef.Kind != slinkyv1alpha1.NodeSetKind || controllerRef.APIVersion != slinkyv1alpha1.NodeSetAPIVersion {
+) *slinkyv1beta1.NodeSet {
+	if controllerRef.Kind != slinkyv1beta1.NodeSetKind || controllerRef.APIVersion != slinkyv1beta1.NodeSetAPIVersion {
 		return nil
 	}
 
-	nodeset := &slinkyv1alpha1.NodeSet{}
+	nodeset := &slinkyv1beta1.NodeSet{}
 	key := types.NamespacedName{Namespace: namespace, Name: controllerRef.Name}
 	if err := e.Get(ctx, key, nodeset); err != nil {
 		return nil
@@ -297,14 +297,14 @@ func (e *podEventHandler) resolveControllerRef(
 	return nodeset
 }
 
-func (e *podEventHandler) getPodNodeSets(ctx context.Context, pod *corev1.Pod) []*slinkyv1alpha1.NodeSet {
+func (e *podEventHandler) getPodNodeSets(ctx context.Context, pod *corev1.Pod) []*slinkyv1beta1.NodeSet {
 	logger := log.FromContext(ctx)
-	nodesetList := slinkyv1alpha1.NodeSetList{}
+	nodesetList := slinkyv1beta1.NodeSetList{}
 	if err := e.List(ctx, &nodesetList, client.InNamespace(pod.Namespace)); err != nil {
 		return nil
 	}
 
-	var nsMatched []*slinkyv1alpha1.NodeSet
+	var nsMatched []*slinkyv1beta1.NodeSet
 	for i := range nodesetList.Items {
 		nodeset := &nodesetList.Items[i]
 		selectorLabels := labels.NewBuilder().WithWorkerSelectorLabels(nodeset).Build()
@@ -370,7 +370,7 @@ func (e *controllerEventHandler) enqueueRequest(
 ) {
 	logger := log.FromContext(ctx)
 
-	controller, ok := obj.(*slinkyv1alpha1.Controller)
+	controller, ok := obj.(*slinkyv1beta1.Controller)
 	if !ok {
 		return
 	}
@@ -491,7 +491,7 @@ func (e *secretEventHandler) enqueueRequest(
 	}
 	secretKey := client.ObjectKeyFromObject(secret)
 
-	controllerList := &slinkyv1alpha1.ControllerList{}
+	controllerList := &slinkyv1beta1.ControllerList{}
 	if err := e.List(ctx, controllerList); err != nil {
 		logger.Error(err, "failed to list controller CRs")
 	}

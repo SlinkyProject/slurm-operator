@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,7 +19,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		controller *slinkyv1alpha1.Controller
+		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
 		name    string
@@ -56,18 +56,18 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.ControllerSpec{
+					Spec: slinkyv1beta1.ControllerSpec{
 						ExtraConf: strings.Join([]string{
 							"MinJobAge=2",
 						}, "\n"),
-						PrologScriptRefs: []slinkyv1alpha1.ObjectReference{
+						PrologScriptRefs: []slinkyv1beta1.ObjectReference{
 							{Name: "prolog"},
 						},
-						EpilogScriptRefs: []slinkyv1alpha1.ObjectReference{
+						EpilogScriptRefs: []slinkyv1beta1.ObjectReference{
 							{Name: "epilog"},
 						},
 					},
@@ -78,32 +78,32 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 			name: "with accounting, nodesets, config",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.Accounting{
+					WithObjects(&slinkyv1beta1.Accounting{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
 					}).
-					WithObjects(&slinkyv1alpha1.NodeSet{
+					WithObjects(&slinkyv1beta1.NodeSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm-foo",
 						},
-						Spec: slinkyv1alpha1.NodeSetSpec{
-							ControllerRef: slinkyv1alpha1.ObjectReference{
+						Spec: slinkyv1beta1.NodeSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 							ExtraConf: strings.Join([]string{
 								"features=bar",
 							}, " "),
-							Partition: slinkyv1alpha1.NodeSetPartition{
+							Partition: slinkyv1beta1.NodeSetPartition{
 								Enabled: true,
 							},
-							Template: slinkyv1alpha1.PodTemplate{
-								PodSpecWrapper: slinkyv1alpha1.PodSpecWrapper{
+							Template: slinkyv1beta1.PodTemplate{
+								PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
 									PodSpec: corev1.PodSpec{
 										Hostname: "foo-",
 									},
@@ -129,15 +129,15 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				controller: &slinkyv1alpha1.Controller{
+				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.ControllerSpec{
-						AccountingRef: slinkyv1alpha1.ObjectReference{
+					Spec: slinkyv1beta1.ControllerSpec{
+						AccountingRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
-						ConfigFileRefs: []slinkyv1alpha1.ObjectReference{
+						ConfigFileRefs: []slinkyv1beta1.ObjectReference{
 							{Name: "slurm-config"},
 						},
 					},

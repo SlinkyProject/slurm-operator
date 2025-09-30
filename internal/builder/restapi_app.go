@@ -17,7 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 )
@@ -30,7 +30,7 @@ const (
 	slurmrestdUserGid = slurmrestdUserUid
 )
 
-func (b *Builder) BuildRestapi(restapi *slinkyv1alpha1.RestApi) (*appsv1.Deployment, error) {
+func (b *Builder) BuildRestapi(restapi *slinkyv1beta1.RestApi) (*appsv1.Deployment, error) {
 	key := restapi.Key()
 
 	selectorLabels := labels.NewBuilder().
@@ -65,7 +65,7 @@ func (b *Builder) BuildRestapi(restapi *slinkyv1alpha1.RestApi) (*appsv1.Deploym
 	return o, nil
 }
 
-func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.PodTemplateSpec, error) {
+func (b *Builder) restapiPodTemplate(restapi *slinkyv1beta1.RestApi) (corev1.PodTemplateSpec, error) {
 	ctx := context.TODO()
 	key := restapi.Key()
 
@@ -74,7 +74,7 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.Po
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, slinkyv1alpha1.ObjectReference{})
+	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, slinkyv1beta1.ObjectReference{})
 
 	objectMeta := metadata.NewBuilder(key).
 		WithMetadata(restapi.Spec.Template.PodMetadata).
@@ -89,7 +89,7 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.Po
 
 	opts := PodTemplateOpts{
 		Key: key,
-		Metadata: slinkyv1alpha1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Annotations: objectMeta.Annotations,
 			Labels:      objectMeta.Labels,
 		},
@@ -112,7 +112,7 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.Po
 	return b.buildPodTemplate(opts), nil
 }
 
-func restapiVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {
+func restapiVolumes(controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: slurmEtcVolume,

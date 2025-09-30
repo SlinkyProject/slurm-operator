@@ -14,21 +14,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type SyncStep struct {
 	Name string
-	Sync func(ctx context.Context, token *slinkyv1alpha1.Token) error
+	Sync func(ctx context.Context, token *slinkyv1beta1.Token) error
 }
 
 // Sync implements control logic for synchronizing a Token.
 func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	token := &slinkyv1alpha1.Token{}
+	token := &slinkyv1beta1.Token{}
 	if err := r.Get(ctx, req.NamespacedName, token); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Token has been deleted", "request", req)
@@ -40,7 +40,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	syncSteps := []SyncStep{
 		{
 			Name: "Secret",
-			Sync: func(ctx context.Context, token *slinkyv1alpha1.Token) error {
+			Sync: func(ctx context.Context, token *slinkyv1beta1.Token) error {
 				object, err := r.builder.BuildTokenSecret(token)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -53,7 +53,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 		},
 		{
 			Name: "Refresh",
-			Sync: func(ctx context.Context, token *slinkyv1alpha1.Token) error {
+			Sync: func(ctx context.Context, token *slinkyv1beta1.Token) error {
 				if !token.Spec.Refresh {
 					return nil
 				}

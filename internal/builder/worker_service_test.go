@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,7 +18,7 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		nodeset *slinkyv1alpha1.NodeSet
+		nodeset *slinkyv1beta1.NodeSet
 	}
 	tests := []struct {
 		name    string
@@ -32,13 +32,13 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				nodeset: &slinkyv1alpha1.NodeSet{
+				nodeset: &slinkyv1beta1.NodeSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "gpu-1",
 						Namespace: "slinky",
 					},
-					Spec: slinkyv1alpha1.NodeSetSpec{
-						ControllerRef: slinkyv1alpha1.ObjectReference{
+					Spec: slinkyv1beta1.NodeSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
 					},

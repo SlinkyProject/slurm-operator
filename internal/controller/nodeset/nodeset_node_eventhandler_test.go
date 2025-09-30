@@ -17,12 +17,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 )
 
 func Test_nodeEventHandler_Create(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Reader client.Reader
 	}
@@ -64,7 +64,7 @@ func Test_nodeEventHandler_Create(t *testing.T) {
 }
 
 func Test_nodeEventHandler_Delete(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Reader client.Reader
 	}
@@ -106,7 +106,7 @@ func Test_nodeEventHandler_Delete(t *testing.T) {
 }
 
 func Test_nodeEventHandler_Generic(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Reader client.Reader
 	}
@@ -148,7 +148,7 @@ func Test_nodeEventHandler_Generic(t *testing.T) {
 }
 
 func Test_nodeEventHandler_Update(t *testing.T) {
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	nodeset := newNodeSet("foo", "slurm", 0)
 	type fields struct {
 		Reader client.Reader
@@ -245,8 +245,8 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 	}
 }
 
-func newNodeSetPod(nodeset *slinkyv1alpha1.NodeSet, ordinal int, nodeName string) *corev1.Pod {
-	ctld := &slinkyv1alpha1.Controller{}
+func newNodeSetPod(nodeset *slinkyv1beta1.NodeSet, ordinal int, nodeName string) *corev1.Pod {
+	ctld := &slinkyv1beta1.Controller{}
 	pod := nodesetutils.NewNodeSetPod(nodeset, ctld, ordinal, "")
 	pod.Spec.NodeName = nodeName
 	return pod

@@ -11,47 +11,47 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 const Timeout = 30 * time.Second
 
-func NewObjectRef(obj client.Object) slinkyv1alpha1.ObjectReference {
-	return slinkyv1alpha1.ObjectReference{
+func NewObjectRef(obj client.Object) slinkyv1beta1.ObjectReference {
+	return slinkyv1beta1.ObjectReference{
 		Name:      obj.GetName(),
 		Namespace: obj.GetNamespace(),
 	}
 }
 
-func NewController(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySelector, accounting *slinkyv1alpha1.Accounting) *slinkyv1alpha1.Controller {
-	accountingRef := slinkyv1alpha1.ObjectReference{}
+func NewController(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySelector, accounting *slinkyv1beta1.Accounting) *slinkyv1beta1.Controller {
+	accountingRef := slinkyv1beta1.ObjectReference{}
 	if accounting != nil {
 		accountingRef = NewObjectRef(accounting)
 	}
-	return &slinkyv1alpha1.Controller{
+	return &slinkyv1beta1.Controller{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.ControllerAPIVersion,
-			Kind:       slinkyv1alpha1.ControllerKind,
+			APIVersion: slinkyv1beta1.ControllerAPIVersion,
+			Kind:       slinkyv1beta1.ControllerKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.ControllerSpec{
+		Spec: slinkyv1beta1.ControllerSpec{
 			SlurmKeyRef:    slurmKeyRef,
 			JwtHs256KeyRef: jwtHs256KeyRef,
 			AccountingRef:  accountingRef,
-			Slurmctld: slinkyv1alpha1.ContainerWrapper{
+			Slurmctld: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "slurmctld",
 				},
 			},
-			Reconfigure: slinkyv1alpha1.ContainerWrapper{
+			Reconfigure: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "slurmctld",
 				},
 			},
-			LogFile: slinkyv1alpha1.ContainerWrapper{
+			LogFile: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "alpine",
 				},
@@ -102,29 +102,29 @@ func NewJwtHs256KeySecret(ref corev1.SecretKeySelector) *corev1.Secret {
 	}
 }
 
-func NewAccounting(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySelector, passwordRef corev1.SecretKeySelector) *slinkyv1alpha1.Accounting {
-	return &slinkyv1alpha1.Accounting{
+func NewAccounting(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySelector, passwordRef corev1.SecretKeySelector) *slinkyv1beta1.Accounting {
+	return &slinkyv1beta1.Accounting{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.AccountingAPIVersion,
-			Kind:       slinkyv1alpha1.AccountingKind,
+			APIVersion: slinkyv1beta1.AccountingAPIVersion,
+			Kind:       slinkyv1beta1.AccountingKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.AccountingSpec{
+		Spec: slinkyv1beta1.AccountingSpec{
 			SlurmKeyRef:    slurmKeyRef,
 			JwtHs256KeyRef: jwtHs256KeyRef,
-			StorageConfig: slinkyv1alpha1.StorageConfig{
+			StorageConfig: slinkyv1beta1.StorageConfig{
 				Host:           "mariadb",
 				PasswordKeyRef: passwordRef,
 			},
-			Slurmdbd: slinkyv1alpha1.ContainerWrapper{
+			Slurmdbd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "slurmdbd",
 				},
 			},
-			InitConf: slinkyv1alpha1.ContainerWrapper{
+			InitConf: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "sackd",
 				},
@@ -154,54 +154,49 @@ func NewPasswordSecret(ref corev1.SecretKeySelector) *corev1.Secret {
 	}
 }
 
-func NewNodeset(name string, controller *slinkyv1alpha1.Controller, replicas int32) *slinkyv1alpha1.NodeSet {
-	controllerRef := slinkyv1alpha1.ObjectReference{}
+func NewNodeset(name string, controller *slinkyv1beta1.Controller, replicas int32) *slinkyv1beta1.NodeSet {
+	controllerRef := slinkyv1beta1.ObjectReference{}
 	if controller != nil {
 		controllerRef = NewObjectRef(controller)
 	}
-	return &slinkyv1alpha1.NodeSet{
+	return &slinkyv1beta1.NodeSet{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.NodeSetAPIVersion,
-			Kind:       slinkyv1alpha1.NodeSetKind,
+			APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+			Kind:       slinkyv1beta1.NodeSetKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.NodeSetSpec{
+		Spec: slinkyv1beta1.NodeSetSpec{
 			ControllerRef: controllerRef,
 			Replicas:      ptr.To(replicas),
-			Slurmd: slinkyv1alpha1.ContainerWrapper{
+			Slurmd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "slurmd",
-				},
-			},
-			LogFile: slinkyv1alpha1.ContainerWrapper{
-				Container: corev1.Container{
-					Image: "alpine",
 				},
 			},
 		},
 	}
 }
 
-func NewLoginset(name string, controller *slinkyv1alpha1.Controller, sssdConfRef corev1.SecretKeySelector) *slinkyv1alpha1.LoginSet {
-	controllerRef := slinkyv1alpha1.ObjectReference{}
+func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef corev1.SecretKeySelector) *slinkyv1beta1.LoginSet {
+	controllerRef := slinkyv1beta1.ObjectReference{}
 	if controller != nil {
 		controllerRef = NewObjectRef(controller)
 	}
-	return &slinkyv1alpha1.LoginSet{
+	return &slinkyv1beta1.LoginSet{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.LoginSetAPIVersion,
-			Kind:       slinkyv1alpha1.LoginSetKind,
+			APIVersion: slinkyv1beta1.LoginSetAPIVersion,
+			Kind:       slinkyv1beta1.LoginSetKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.LoginSetSpec{
+		Spec: slinkyv1beta1.LoginSetSpec{
 			ControllerRef: controllerRef,
-			Login: slinkyv1alpha1.ContainerWrapper{
+			Login: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "login",
 				},
@@ -232,23 +227,23 @@ func NewSssdConfSecret(ref corev1.SecretKeySelector) *corev1.Secret {
 	}
 }
 
-func NewRestapi(name string, controller *slinkyv1alpha1.Controller) *slinkyv1alpha1.RestApi {
-	controllerRef := slinkyv1alpha1.ObjectReference{}
+func NewRestapi(name string, controller *slinkyv1beta1.Controller) *slinkyv1beta1.RestApi {
+	controllerRef := slinkyv1beta1.ObjectReference{}
 	if controller != nil {
 		controllerRef = NewObjectRef(controller)
 	}
-	return &slinkyv1alpha1.RestApi{
+	return &slinkyv1beta1.RestApi{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.RestApiAPIVersion,
-			Kind:       slinkyv1alpha1.RestApiKind,
+			APIVersion: slinkyv1beta1.RestApiAPIVersion,
+			Kind:       slinkyv1beta1.RestApiKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.RestApiSpec{
+		Spec: slinkyv1beta1.RestApiSpec{
 			ControllerRef: controllerRef,
-			Slurmrestd: slinkyv1alpha1.ContainerWrapper{
+			Slurmrestd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image: "slurmrestd",
 				},
@@ -257,19 +252,19 @@ func NewRestapi(name string, controller *slinkyv1alpha1.Controller) *slinkyv1alp
 	}
 }
 
-func NewToken(name string, jwtHs256KeySecret *corev1.Secret) *slinkyv1alpha1.Token {
-	return &slinkyv1alpha1.Token{
+func NewToken(name string, jwtHs256KeySecret *corev1.Secret) *slinkyv1beta1.Token {
+	return &slinkyv1beta1.Token{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: slinkyv1alpha1.TokenAPIVersion,
-			Kind:       slinkyv1alpha1.TokenKind,
+			APIVersion: slinkyv1beta1.TokenAPIVersion,
+			Kind:       slinkyv1beta1.TokenKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Spec: slinkyv1alpha1.TokenSpec{
+		Spec: slinkyv1beta1.TokenSpec{
 			Username: "slurm",
-			JwtHs256KeyRef: slinkyv1alpha1.JwtSecretKeySelector{
+			JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
 				SecretKeySelector: corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: jwtHs256KeySecret.Name,

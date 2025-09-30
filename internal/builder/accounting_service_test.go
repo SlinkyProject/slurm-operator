@@ -6,7 +6,7 @@ package builder
 import (
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -19,7 +19,7 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		accounting *slinkyv1alpha1.Accounting
+		accounting *slinkyv1beta1.Accounting
 	}
 	tests := []struct {
 		name    string
@@ -42,12 +42,12 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				accounting: &slinkyv1alpha1.Accounting{
+				accounting: &slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.AccountingSpec{
-						StorageConfig: slinkyv1alpha1.StorageConfig{
+					Spec: slinkyv1beta1.AccountingSpec{
+						StorageConfig: slinkyv1beta1.StorageConfig{
 							PasswordKeyRef: corev1.SecretKeySelector{
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "mariadb",

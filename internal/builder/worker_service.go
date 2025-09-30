@@ -11,13 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 // BuildClusterWorkerService creates a single headless service for ALL worker NodeSets in the same Slurm cluster
 // The service name is derived from the Slurm cluster name to support hybrid deployments
-func (b *Builder) BuildClusterWorkerService(nodeset *slinkyv1alpha1.NodeSet) (*corev1.Service, error) {
+func (b *Builder) BuildClusterWorkerService(nodeset *slinkyv1beta1.NodeSet) (*corev1.Service, error) {
 	selectorLabels := labels.NewBuilder().
 		WithApp(labels.WorkerApp).
 		WithCluster(nodeset.Spec.ControllerRef.Name).

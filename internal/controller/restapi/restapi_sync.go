@@ -13,20 +13,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type SyncStep struct {
 	Name string
-	Sync func(ctx context.Context, cluster *slinkyv1alpha1.RestApi) error
+	Sync func(ctx context.Context, cluster *slinkyv1beta1.RestApi) error
 }
 
 // Sync implements control logic for synchronizing a Restapi.
 func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	cluster := &slinkyv1alpha1.RestApi{}
+	cluster := &slinkyv1beta1.RestApi{}
 	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Restapi has been deleted", "request", req)
@@ -38,7 +38,7 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, restapi *slinkyv1alpha1.RestApi) error {
+			Sync: func(ctx context.Context, restapi *slinkyv1beta1.RestApi) error {
 				object, err := r.builder.BuildRestapiService(restapi)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -51,7 +51,7 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 		},
 		{
 			Name: "Deployment",
-			Sync: func(ctx context.Context, restapi *slinkyv1alpha1.RestApi) error {
+			Sync: func(ctx context.Context, restapi *slinkyv1beta1.RestApi) error {
 				object, err := r.builder.BuildRestapi(restapi)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)

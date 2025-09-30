@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"testing"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -20,7 +20,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 		client client.Client
 	}
 	type args struct {
-		loginset *slinkyv1alpha1.LoginSet
+		loginset *slinkyv1beta1.LoginSet
 	}
 	tests := []struct {
 		name    string
@@ -32,7 +32,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			name: "default",
 			fields: fields{
 				client: fake.NewClientBuilder().
-					WithObjects(&slinkyv1alpha1.Controller{
+					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
 						},
@@ -40,12 +40,12 @@ func TestBuilder_BuildLogin(t *testing.T) {
 					Build(),
 			},
 			args: args{
-				loginset: &slinkyv1alpha1.LoginSet{
+				loginset: &slinkyv1beta1.LoginSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},
-					Spec: slinkyv1alpha1.LoginSetSpec{
-						ControllerRef: slinkyv1alpha1.ObjectReference{
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
 					},
@@ -58,7 +58,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 				client: fake.NewFakeClient(),
 			},
 			args: args{
-				loginset: &slinkyv1alpha1.LoginSet{
+				loginset: &slinkyv1beta1.LoginSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
 					},

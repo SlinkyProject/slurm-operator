@@ -17,7 +17,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
@@ -66,7 +66,7 @@ const (
 	rootAuthorizedKeysFilePath = "/root/.ssh/" + authorizedKeysFile
 )
 
-func (b *Builder) BuildLogin(loginset *slinkyv1alpha1.LoginSet) (*appsv1.Deployment, error) {
+func (b *Builder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Deployment, error) {
 	key := loginset.Key()
 
 	selectorLabels := labels.NewBuilder().
@@ -101,7 +101,7 @@ func (b *Builder) BuildLogin(loginset *slinkyv1alpha1.LoginSet) (*appsv1.Deploym
 	return o, nil
 }
 
-func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.PodTemplateSpec, error) {
+func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.PodTemplateSpec, error) {
 	ctx := context.TODO()
 	key := loginset.Key()
 
@@ -129,7 +129,7 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 
 	opts := PodTemplateOpts{
 		Key: key,
-		Metadata: slinkyv1alpha1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Annotations: objectMeta.Annotations,
 			Labels:      objectMeta.Labels,
 		},
@@ -152,7 +152,7 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 	return b.buildPodTemplate(opts), nil
 }
 
-func loginVolumes(loginset *slinkyv1alpha1.LoginSet, controller *slinkyv1alpha1.Controller) []corev1.Volume {
+func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: sackdVolume,
@@ -252,7 +252,7 @@ func loginVolumes(loginset *slinkyv1alpha1.LoginSet, controller *slinkyv1alpha1.
 	return out
 }
 
-func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1alpha1.Controller) corev1.Container {
+func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1beta1.Controller) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: labels.LoginApp,
@@ -295,7 +295,7 @@ func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1alp
 	return b.BuildContainer(opts)
 }
 
-func loginEnv(container corev1.Container, controller *slinkyv1alpha1.Controller) []corev1.EnvVar {
+func loginEnv(container corev1.Container, controller *slinkyv1beta1.Controller) []corev1.EnvVar {
 	env := []corev1.EnvVar{
 		{
 			Name:  "SACKD_OPTIONS",
@@ -306,12 +306,12 @@ func loginEnv(container corev1.Container, controller *slinkyv1alpha1.Controller)
 }
 
 const (
-	annotationSshdConfHash    = slinkyv1alpha1.LoginSetPrefix + "sshd-conf-hash"
-	annotationSssdConfHash    = slinkyv1alpha1.LoginSetPrefix + "sssd-conf-hash"
-	annotationSshHostKeysHash = slinkyv1alpha1.LoginSetPrefix + "ssh-host-keys-hash"
+	annotationSshdConfHash    = slinkyv1beta1.LoginSetPrefix + "sshd-conf-hash"
+	annotationSssdConfHash    = slinkyv1beta1.LoginSetPrefix + "sssd-conf-hash"
+	annotationSshHostKeysHash = slinkyv1beta1.LoginSetPrefix + "ssh-host-keys-hash"
 )
 
-func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1alpha1.LoginSet) (map[string]string, error) {
+func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (map[string]string, error) {
 	sshConfig := &corev1.ConfigMap{}
 	sshConfigKey := loginset.SshConfigKey()
 	if err := b.client.Get(ctx, sshConfigKey, sshConfig); err != nil {

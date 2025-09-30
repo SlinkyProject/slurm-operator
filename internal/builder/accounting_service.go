@@ -7,12 +7,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *Builder) BuildAccountingService(accounting *slinkyv1alpha1.Accounting) (*corev1.Service, error) {
+func (b *Builder) BuildAccountingService(accounting *slinkyv1beta1.Accounting) (*corev1.Service, error) {
 	spec := accounting.Spec.Service
 	opts := ServiceOpts{
 		Key:         accounting.ServiceKey(),

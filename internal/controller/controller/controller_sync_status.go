@@ -15,17 +15,17 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 // syncStatus handles determining and updating the status.
 func (r *ControllerReconciler) syncStatus(
 	ctx context.Context,
-	controller *slinkyv1alpha1.Controller,
+	controller *slinkyv1beta1.Controller,
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1alpha1.ControllerStatus{
+	newStatus := &slinkyv1beta1.ControllerStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, controller.Status.Conditions...)
@@ -46,8 +46,8 @@ func (r *ControllerReconciler) syncStatus(
 
 func (r *ControllerReconciler) updateStatus(
 	ctx context.Context,
-	controller *slinkyv1alpha1.Controller,
-	newStatus *slinkyv1alpha1.ControllerStatus,
+	controller *slinkyv1beta1.Controller,
+	newStatus *slinkyv1beta1.ControllerStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -59,7 +59,7 @@ func (r *ControllerReconciler) updateStatus(
 	logger.V(1).Info("Pending Controller Status update",
 		"controller", klog.KObj(controller), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.Controller{}
+		toUpdate := &slinkyv1beta1.Controller{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil

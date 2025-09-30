@@ -15,7 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
@@ -24,7 +24,7 @@ import (
 // syncStatus handles determining and updating the status.
 func (r *TokenReconciler) syncStatus(
 	ctx context.Context,
-	token *slinkyv1alpha1.Token,
+	token *slinkyv1beta1.Token,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -52,7 +52,7 @@ func (r *TokenReconciler) syncStatus(
 		issuedAt = ptr.To(metav1.NewTime(iat.Time))
 	}
 
-	newStatus := &slinkyv1alpha1.TokenStatus{
+	newStatus := &slinkyv1beta1.TokenStatus{
 		IssuedAt:   issuedAt,
 		Conditions: structutils.MergeList(token.Status.Conditions),
 	}
@@ -73,8 +73,8 @@ func (r *TokenReconciler) syncStatus(
 
 func (r *TokenReconciler) updateStatus(
 	ctx context.Context,
-	token *slinkyv1alpha1.Token,
-	newStatus *slinkyv1alpha1.TokenStatus,
+	token *slinkyv1beta1.Token,
+	newStatus *slinkyv1beta1.TokenStatus,
 ) error {
 	logger := log.FromContext(ctx)
 	tokenKey := objectutils.NamespacedName(token)
@@ -82,7 +82,7 @@ func (r *TokenReconciler) updateStatus(
 	logger.V(1).Info("Pending Token Status update",
 		"token", klog.KObj(token), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		toUpdate := &slinkyv1alpha1.Token{}
+		toUpdate := &slinkyv1beta1.Token{}
 		if err := r.Get(ctx, tokenKey, toUpdate); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil

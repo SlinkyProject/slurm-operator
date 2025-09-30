@@ -66,6 +66,7 @@ type RestApiStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:deprecatedversion:warning="v1alpha1 is deprecated, use v1beta1."
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=slurmrestd
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
