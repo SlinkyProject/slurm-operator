@@ -1,13 +1,7 @@
-# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
-# Ignore build and test binaries.
-.github/
-.gitlab/
-.vscode/
-bin/
-docs/
-config/
-hack/
-helm/
-CHANGELOG/
-LICENSES/
-*debug_bin*
+*
+!api/
+!cmd/
+!internal/
+!pkg/
+!go.mod
+!go.sum
