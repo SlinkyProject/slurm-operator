@@ -284,10 +284,9 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1a
 		return false, err
 	}
 
-	// DRAINED = IDLE+DRAIN || DOWN+DRAIN
-	baseState := slurmNode.GetStateAsSet().HasAny(api.V0043NodeStateIDLE, api.V0043NodeStateDOWN)
-	flagState := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
-	isDrained := baseState && flagState
+	isBusy := slurmNode.GetStateAsSet().HasAny(api.V0043NodeStateALLOCATED, api.V0043NodeStateMIXED, api.V0043NodeStateCOMPLETING)
+	isDrain := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) && !slurmNode.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN)
+	isDrained := isDrain && !isBusy
 
 	return isDrained, nil
 }

@@ -458,6 +458,52 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "MIXED",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateMIXED,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "DOWN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
 			name: "IDLE+DRAIN",
 			fields: func() fields {
 				node := &types.V0043Node{
@@ -480,6 +526,30 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				pod:     pod,
 			},
 			want: true,
+		},
+		{
+			name: "MIXED+DRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateMIXED,
+							api.V0043NodeStateDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
 		},
 		{
 			name: "ALLOC+DRAIN",
@@ -530,6 +600,81 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 			},
 			want:    true,
 			wantErr: false,
+		},
+		{
+			name: "IDLE+COMPLETING",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateCOMPLETING,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "IDLE+DRAIN+COMPLETING",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateCOMPLETING,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "IDLE+DRAIN+UNDRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateUNDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
 		},
 	}
 	for _, tt := range tests {
