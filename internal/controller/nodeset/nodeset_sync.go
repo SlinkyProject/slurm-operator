@@ -217,6 +217,10 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
+	if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncClusterWorkerService(ctx, nodeset); err != nil {
 		return err
 	}
@@ -352,13 +356,11 @@ func (r *NodeSetReconciler) syncSlurm(
 		}
 
 		if podutils.IsPodCordon(pod) {
-			reason := fmt.Sprintf("Pod (%s) is cordoned", klog.KObj(pod))
-			if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason); err != nil {
+			if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
 				return err
 			}
 		} else {
-			reason := fmt.Sprintf("Pod (%s) is uncordoned", klog.KObj(pod))
-			if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
+			if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
 				return err
 			}
 		}
@@ -704,6 +706,31 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 		return err
 	}
 
+	if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// syncSlurmNodeDrain will drain the corresponding Slurm node.
+func (r *NodeSetReconciler) syncSlurmNodeDrain(
+	ctx context.Context,
+	nodeset *slinkyv1alpha1.NodeSet,
+	pod *corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, pod)
+	if err != nil {
+		return err
+	}
+
+	if isDrain {
+		logger.V(1).Info("Node is drain, skipping drain request")
+		return nil
+	}
+
 	reason := fmt.Sprintf("Pod (%s) has been cordoned", klog.KObj(pod))
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason); err != nil {
 		return err
@@ -744,6 +771,31 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 ) error {
 	if err := r.makePodUncordon(ctx, pod); err != nil {
 		return err
+	}
+
+	if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// syncSlurmNodeUndrain will undrain the corresponding Slurm node.
+func (r *NodeSetReconciler) syncSlurmNodeUndrain(
+	ctx context.Context,
+	nodeset *slinkyv1alpha1.NodeSet,
+	pod *corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, pod)
+	if err != nil {
+		return err
+	}
+
+	if !isDrain {
+		logger.V(1).Info("Node is undrain, skipping undrain request")
+		return nil
 	}
 
 	reason := fmt.Sprintf("Pod (%s) has been uncordoned", klog.KObj(pod))
