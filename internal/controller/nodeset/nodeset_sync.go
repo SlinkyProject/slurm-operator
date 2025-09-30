@@ -225,7 +225,7 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
-	if err := r.syncSlurm(ctx, nodeset, pods); err != nil {
+	if err := r.syncSlurmDeadline(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
@@ -340,8 +340,8 @@ func (r *NodeSetReconciler) syncCordon(
 	return nil
 }
 
-// syncSlurm will reconcile the Slurm Nodes with the NodeSet Pods.
-func (r *NodeSetReconciler) syncSlurm(
+// syncSlurmDeadline handles the Slurm Node's workload completion deadline.
+func (r *NodeSetReconciler) syncSlurmDeadline(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pods []*corev1.Pod,
@@ -351,7 +351,7 @@ func (r *NodeSetReconciler) syncSlurm(
 		return err
 	}
 
-	syncSlurmFn := func(i int) error {
+	syncSlurmDeadlineFn := func(i int) error {
 		pod := pods[i]
 		slurmNodeName := nodesetutils.GetNodeName(pod)
 		deadline := nodeDeadlines.Peek(slurmNodeName)
@@ -368,7 +368,7 @@ func (r *NodeSetReconciler) syncSlurm(
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmFn); err != nil {
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmDeadlineFn); err != nil {
 		return err
 	}
 
