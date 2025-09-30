@@ -39,6 +39,12 @@ metadata:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 webhooks:
   - name: accountings.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -67,6 +73,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: controllers.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -95,6 +107,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: loginsets.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -123,6 +141,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: nodesets.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -151,6 +175,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: restapis.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -177,6 +207,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: tokens.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -216,6 +252,12 @@ metadata:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 webhooks:
   - name: accountings.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -244,6 +286,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: controllers.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -272,6 +320,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: loginsets.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -300,6 +354,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: nodesets.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -328,6 +388,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: restapis.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -356,6 +422,12 @@ webhooks:
       - v1alpha1
     sideEffects: None
   - name: tokens.{{- include "slurm-operator.apiGroup" . }}
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
