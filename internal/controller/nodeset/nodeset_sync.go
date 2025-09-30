@@ -229,7 +229,7 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
-	if err := r.syncNodeCordonState(ctx, nodeset, pods); err != nil {
+	if err := r.syncCordon(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
@@ -278,16 +278,19 @@ func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodese
 	return nil
 }
 
-// syncNodeCordonState handles Kubernetes node state synchronization
-// for cordoned/uncordoned nodes and their corresponding NodeSet pods.
-func (r *NodeSetReconciler) syncNodeCordonState(
+// syncCordon handles propagating cordon/uncordon activity into the NodeSet pods.
+//
+// When the Kubernetes node is cordoned, the NodeSet pods on that node should have their Slurm node drained.
+// Conversely, when the Kubernetes node is uncordoned, the NodeSet pods on that node should have their Slurm node be undrained.
+// Otherwise the pods' pod-cordon label intent is propagated -- have the Slurm node drained or undrained.
+func (r *NodeSetReconciler) syncCordon(
 	ctx context.Context,
 	nodeset *slinkyv1alpha1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
 	logger := log.FromContext(ctx)
 
-	syncNodeCordonStateFn := func(i int) error {
+	syncCordonFn := func(i int) error {
 		pod := pods[i]
 
 		node := &corev1.Node{}
@@ -304,25 +307,29 @@ func (r *NodeSetReconciler) syncNodeCordonState(
 
 		switch {
 		// If Kubernetes node is cordoned but pod isn't, cordon the pod
-		case nodeIsCordoned && !podIsCordoned:
+		case nodeIsCordoned:
 			logger.Info("Kubernetes node cordoned externally, cordoning pod",
 				"pod", klog.KObj(pod), "node", node.Name)
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod); err != nil {
 				return err
 			}
 
-		// If Kubernetes node is uncordoned but pod is cordoned, uncordon the pod
-		case !nodeIsCordoned && podIsCordoned:
-			logger.Info("Kubernetes node uncordoned externally, uncordoning pod",
-				"pod", klog.KObj(pod), "node", node.Name)
-			if err := r.makePodUncordonAndUndrain(ctx, nodeset, pod); err != nil {
+		// If pod is cordoned, drain the Slurm node
+		case podIsCordoned:
+			if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
+				return err
+			}
+
+		// If pod is uncordoned, undrain the Slurm node
+		case !podIsCordoned:
+			if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
 				return err
 			}
 		}
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncNodeCordonStateFn); err != nil {
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncCordonFn); err != nil {
 		return err
 	}
 
@@ -355,15 +362,6 @@ func (r *NodeSetReconciler) syncSlurm(
 			return err
 		}
 
-		if podutils.IsPodCordon(pod) {
-			if err := r.syncSlurmNodeDrain(ctx, nodeset, pod); err != nil {
-				return err
-			}
-		} else {
-			if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod); err != nil {
-				return err
-			}
-		}
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmFn); err != nil {
