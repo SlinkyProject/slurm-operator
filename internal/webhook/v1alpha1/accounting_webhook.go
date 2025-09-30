@@ -28,21 +28,8 @@ var accountinglog = logf.Log.WithName("accounting-resource")
 func (r *AccountingSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.Accounting{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-// +kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-accounting,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=accountings,verbs=create;update,versions=v1alpha1,name=maccounting.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &AccountingSetWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *AccountingSetWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	accounting := obj.(*slinkyv1alpha1.Accounting)
-	accountinglog.Info("default", "accounting", klog.KObj(accounting))
-
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

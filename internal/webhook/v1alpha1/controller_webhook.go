@@ -38,20 +38,8 @@ var controllerlog = logf.Log.WithName("controller-resource")
 func (r *ControllerWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.Controller{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-// +kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-controller,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=controllers,verbs=create;update,versions=v1alpha1,name=mcontroller.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &ControllerWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *ControllerWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	controller := obj.(*slinkyv1alpha1.Controller)
-	controllerlog.Info("default", "controller", klog.KObj(controller))
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

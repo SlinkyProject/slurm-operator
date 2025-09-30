@@ -28,21 +28,8 @@ var loginsetlog = logf.Log.WithName("loginset-resource")
 func (r *LoginSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.LoginSet{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-//+kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-loginset,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=loginsets,verbs=create;update,versions=v1alpha1,name=mloginset.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &LoginSetWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *LoginSetWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	loginset := obj.(*slinkyv1alpha1.LoginSet)
-	loginsetlog.Info("default", "loginset", klog.KObj(loginset))
-
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

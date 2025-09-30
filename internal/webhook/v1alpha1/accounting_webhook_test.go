@@ -8,12 +8,6 @@ import (
 )
 
 var _ = Describe("Accounting Webhook", func() {
-	Context("When creating Accounting under Defaulting Webhook", func() {
-		It("Should fill in the default value if a required field is empty", func() {
-			// TODO(user): Add your logic here
-		})
-	})
-
 	Context("When creating Accounting under Validating Webhook", func() {
 		It("Should deny if a required field is empty", func() {
 			// TODO(user): Add your logic here

@@ -28,21 +28,8 @@ var tokenlog = logf.Log.WithName("token-resource")
 func (r *TokenWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.Token{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-// +kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-token,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=tokens,verbs=create;update,versions=v1alpha1,name=mtoken.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &TokenWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *TokenWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	token := obj.(*slinkyv1alpha1.Token)
-	tokenlog.Info("default", "token", klog.KObj(token))
-
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

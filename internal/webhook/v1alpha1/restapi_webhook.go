@@ -28,21 +28,8 @@ var restapilog = logf.Log.WithName("restapi-resource")
 func (r *RestapiWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.RestApi{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-// +kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-restapi,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=restapis,verbs=create;update,versions=v1alpha1,name=mrestapi.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &RestapiWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *RestapiWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	restapi := obj.(*slinkyv1alpha1.RestApi)
-	restapilog.Info("default", "restapi", klog.KObj(restapi))
-
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

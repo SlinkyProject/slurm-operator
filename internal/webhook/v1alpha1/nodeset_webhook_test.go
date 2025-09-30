@@ -8,12 +8,6 @@ import (
 )
 
 var _ = Describe("NodeSet Webhook", func() {
-	Context("When creating NodeSet under Defaulting Webhook", func() {
-		It("Should fill in the default value if a required field is empty", func() {
-			// TODO(user): Add your logic here
-		})
-	})
-
 	Context("When creating NodeSet under Validating Webhook", func() {
 		It("Should deny if a required field is empty", func() {
 			// TODO(user): Add your logic here

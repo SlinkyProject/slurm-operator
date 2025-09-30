@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -29,28 +28,8 @@ var nodesetlog = logf.Log.WithName("nodeset-resource")
 func (r *NodeSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1alpha1.NodeSet{}).
-		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
-}
-
-//+kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1alpha1-nodeset,mutating=true,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1alpha1,name=mnodeset.kb.io,admissionReviewVersions=v1
-
-var _ webhook.CustomDefaulter = &NodeSetWebhook{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *NodeSetWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	nodeset := obj.(*slinkyv1alpha1.NodeSet)
-	nodesetlog.Info("default", "nodeset", klog.KObj(nodeset))
-
-	if nodeset.Spec.RevisionHistoryLimit == nil {
-		nodeset.Spec.RevisionHistoryLimit = ptr.To[int32](0)
-	}
-	if nodeset.Spec.UpdateStrategy.Type == "" {
-		nodeset.Spec.UpdateStrategy.Type = slinkyv1alpha1.RollingUpdateNodeSetStrategyType
-	}
-
-	return nil
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.

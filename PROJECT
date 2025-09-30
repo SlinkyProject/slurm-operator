@@ -21,7 +21,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 - api:
@@ -34,7 +33,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 - api:
@@ -47,7 +45,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 - api:
@@ -60,7 +57,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 - api:
@@ -73,7 +69,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 - api:
@@ -86,7 +81,6 @@ resources:
   path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
   version: v1alpha1
   webhooks:
-    defaulting: true
     validation: true
     webhookVersion: v1alpha1
 version: "3"
