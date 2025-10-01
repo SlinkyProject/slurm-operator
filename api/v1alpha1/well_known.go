@@ -24,7 +24,7 @@ const (
 	AnnotationPodDeletionCost = NodeSetPrefix + "pod-deletion-cost"
 
 	// AnnotationPodDeadline stores a time.RFC3339 timestamp, indicating when the Slurm node should complete its running
-	// workload by. Pods an earlier daedline are preferred to be deleted before pods with a later deadline.
+	// workload by. Pods with an earlier deadline are preferred to be deleted before pods with a later deadline.
 	// NOTE: this is honored on a best-effort basis, and does not offer guarantees on pod deletion order.
 	AnnotationPodDeadline = NodeSetPrefix + "pod-deadline"
 )
