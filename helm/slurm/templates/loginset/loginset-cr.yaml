@@ -47,7 +47,16 @@ spec:
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with $loginset.service }}
   service:
-    {{- toYaml . | nindent 4 }}
+    {{- if .port }}
+    port: {{ .port }}
+    {{- end }}
+    {{- if .nodePort }}
+    nodePort: {{ .nodePort }}
+    {{- end }}
+    {{- if .type }}
+    spec:
+      type: {{ .type }}
+    {{- end }}
   {{- end }}{{- /* with $loginset.service */}}
 {{- end }}{{- /* $loginset.enabled */}}
 {{- end }}{{- /* range $loginset := $.Values.loginsets */}}
