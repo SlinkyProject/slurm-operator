@@ -233,7 +233,7 @@ delete Slinky CRDs, then install the new release like normal.
 
    helm --namespace=slurm uninstall slurm
    helm --namespace=slinky uninstall slurm-operator
-   helm --namespace=slinky uninstall slurm-operator-crds
+   helm uninstall slurm-operator-crds
 
 If the CRDs were not installed via ``slurm-operator-crds`` helm chart:
 
