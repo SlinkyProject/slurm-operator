@@ -142,7 +142,9 @@ Slurm is a full featured HPC workload manager. To highlight a few features:
 Install the [cert-manager] with its CRDs:
 
 ```sh
-helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager \
   --set 'crds.enabled=true' \
   --namespace cert-manager --create-namespace
 ```
