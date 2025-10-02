@@ -57,7 +57,7 @@ const (
 func configlessArgs(controller *slinkyv1alpha1.Controller) []string {
 	args := []string{
 		"--conf-server",
-		fmt.Sprintf("%s:%d", controller.PrimaryFQDN(), SlurmctldPort),
+		fmt.Sprintf("%s:%d", controller.ServiceFQDNShort(), SlurmctldPort),
 	}
 	return args
 }

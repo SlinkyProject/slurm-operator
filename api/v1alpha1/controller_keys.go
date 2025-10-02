@@ -29,12 +29,6 @@ func (o *Controller) PrimaryName() string {
 	return fmt.Sprintf("%s-0", key.Name)
 }
 
-func (o *Controller) PrimaryFQDN() string {
-	key := o.PrimaryName()
-	svc := o.ServiceFQDNShort()
-	return fmt.Sprintf("%s.%s", key, svc)
-}
-
 func (o *Controller) ServiceKey() types.NamespacedName {
 	key := o.Key()
 	return types.NamespacedName{
