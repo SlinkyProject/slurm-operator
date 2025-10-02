@@ -149,7 +149,7 @@ func buildSlurmConf(
 	prologSlurmctldScripts, epilogSlurmctldScripts []string,
 	cgroupEnabled bool,
 ) string {
-	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.PrimaryFQDN())
+	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
 
 	conf := config.NewBuilder()
 
