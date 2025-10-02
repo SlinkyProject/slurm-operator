@@ -63,9 +63,9 @@ spec:
     {{- $_ := set $nodeset.logfile "imagePullPolicy" (default $.Values.imagePullPolicy $nodeset.logfile.imagePullPolicy) -}}
     {{- include "format-container" $nodeset.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
+  {{- with $nodeset.updateStrategy }}
   updateStrategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 100%
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with $nodeset.updateStrategy */}}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}

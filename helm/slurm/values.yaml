@@ -587,6 +587,16 @@ nodesets:
         # MaxTime: UNLIMITED
     # -- Enable propagation of container `resources.limits` into slurmd.
     useResourceLimits: true
+    # Update strategy configuration.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+    updateStrategy:
+      # -- The strategy type. Can be one of: RollingUpdate; OnDelete.
+      type: RollingUpdate
+      # The RollingUpdate configuration. Ignored unless `type=RollingUpdate`.
+      rollingUpdate:
+        # -- Maximum number of pods that can be unavailable during update.
+        # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
+        maxUnavailable: 25%
     # -- Labels and annotations.
     # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     metadata: {}
