@@ -41,6 +41,28 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "headless service",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1alpha1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1alpha1.ControllerSpec{
+						Service: slinkyv1alpha1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1alpha1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ClusterIP: corev1.ClusterIPNone,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -68,6 +90,16 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 					got.Spec.Ports[0].TargetPort,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].Name,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			}
+
+			// Test headless service configuration
+			if tt.name == "headless service" {
+				if got.Spec.ClusterIP != corev1.ClusterIPNone {
+					t.Errorf("Expected headless service (ClusterIP=None), got ClusterIP=%v", got.Spec.ClusterIP)
+				}
+				if !got.Spec.PublishNotReadyAddresses {
+					t.Errorf("Expected PublishNotReadyAddresses=true for headless service, got %v", got.Spec.PublishNotReadyAddresses)
+				}
 			}
 		})
 	}
