@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
   has moved from `service` to `service.spec`.
 - Fixed regression where `service.nodePort` was missing from the migration to
   CRDs.
+- Fixed bug wereby slurm-controller hostname was set incorrectly
 
 ### Changed
 
