@@ -223,12 +223,9 @@ controller:
       #   effect: NoSchedule
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
-    # spec:
-      # type: LoadBalancer
-      # loadBalancerIP: ""
-      # externalIPs: []
-      # externalName: ""
+  service:
+    spec:
+      clusterIP: None  # Default to headless for Slurm StatefulSet pod DNS
     # port: 6817
     # nodePort: 30817
 
