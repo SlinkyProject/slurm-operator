@@ -167,11 +167,11 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "Node cordoned - should enqueue NodeSet",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: newFakeClientBuilderWithIndexes(
 					nodeset,
 					newNodeSetPod(nodeset, 0, "test-node"),
 					newNodeSetPod(nodeset, 1, "test-node2"),
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -186,10 +186,10 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "Node uncordoned - should enqueue NodeSet",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: newFakeClientBuilderWithIndexes(
 					nodeset,
 					newNodeSetPod(nodeset, 0, "test-node"),
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -204,7 +204,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "No cordon change - should not enqueue",
 			fields: fields{
-				Reader: fake.NewFakeClient(),
+				Reader: newFakeClientBuilderWithIndexes().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -219,7 +219,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "No worker pods on node - should not enqueue",
 			fields: fields{
-				Reader: fake.NewFakeClient(), // No pods
+				Reader: newFakeClientBuilderWithIndexes().Build(), // No pods
 			},
 			args: args{
 				ctx: context.TODO(),

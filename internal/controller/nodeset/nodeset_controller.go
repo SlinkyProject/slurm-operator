@@ -145,6 +145,9 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	nodeEventHandler := &nodeEventHandler{
 		Reader: mgr.GetCache(),
 	}
+	if err := addIndexers(mgr); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1alpha1.NodeSet{}).

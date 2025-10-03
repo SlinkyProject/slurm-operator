@@ -83,15 +83,17 @@ func (h *nodeEventHandler) enqueueNodeSetsForNode(
 	logger := log.FromContext(ctx)
 
 	podList := &corev1.PodList{}
-	if err := h.List(ctx, podList); err != nil {
+	opts := []client.ListOption{
+		client.MatchingFields{
+			"spec.nodeName": node.Name,
+		},
+	}
+	if err := h.List(ctx, podList, opts...); err != nil {
 		logger.Error(err, "failed to list pods", "node", node.Name)
 		return
 	}
 
 	for _, pod := range podList.Items {
-		if pod.Spec.NodeName != node.Name {
-			continue
-		}
 		controllerRef := metav1.GetControllerOf(&pod)
 		if controllerRef == nil {
 			continue
