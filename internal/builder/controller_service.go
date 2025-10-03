@@ -21,6 +21,7 @@ func (b *Builder) BuildControllerService(controller *slinkyv1alpha1.Controller) 
 		Selector: labels.NewBuilder().
 			WithControllerSelectorLabels(controller).
 			Build(),
+		Headless: controller.Spec.Service.ServiceSpecWrapper.ServiceSpec.ClusterIP == corev1.ClusterIPNone,
 	}
 
 	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build())
