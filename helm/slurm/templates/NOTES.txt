@@ -50,51 +50,51 @@ APP VERSION: {{ .Chart.AppVersion }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
 
 ssh via the Slurm login ({{ $name }}) service:
-  {{- if eq ($loginset.service.type | default "" | lower) ("LoadBalancer" | lower) }}
+  {{- if eq ($loginset | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) }}
   $ SLURM_LOGIN_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ $name }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-  {{- else if eq ($loginset.service.type | default "" | lower) ("ExternalName" | lower) }}
+  {{- else if eq ($loginset | dig "service" "spec" "type" "" | lower) ("ExternalName" | lower) }}
   $ SLURM_LOGIN_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ $name }} -o jsonpath='{.spec.externalName}')"
   {{- else }}
   $ SLURM_LOGIN_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ $name }} -o jsonpath='{.spec.clusterIP}')"
-  {{- end }}{{- /* if eq ($loginset.service.type | default "" | lower) ("LoadBalancer" | lower) */}}
+  {{- end }}{{- /* if eq ($loginset | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
   $ ssh -p {{ $loginset.service.port | default 22 }} $SLURM_LOGIN_IP
 {{- end }}{{- /* $loginset.enabled */}}
 {{- end }}{{- /* range $key, $loginset := $.Values.loginsets */}}
 
-{{- if ne (.Values.controller.service.type | default "None" | lower) ("None" | lower) }}
+{{- if ne (.Values.controller | dig "service" "spec" "type" "None" | lower) ("None" | lower) }}
 
 The Slurm controller service:
-  {{- if eq (.Values.controller.service.type | default "" | lower) ("LoadBalancer" | lower) }}
+  {{- if eq (.Values.controller | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) }}
   $ SLURM_CONTROLLER_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.controller.name" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-  {{- else if eq (.Values.controller.service.type | default "" | lower) ("ExternalName" | lower) }}
+  {{- else if eq (.Values.controller | dig "service" "spec" "type" "" | lower) ("ExternalName" | lower) }}
   $ SLURM_CONTROLLER_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.controller.name" . }} -o jsonpath='{.spec.externalName}')"
   {{- else }}
   $ SLURM_CONTROLLER_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.controller.name" . }} -o jsonpath='{.spec.clusterIP}')"
-  {{- end }}{{- /* if eq (.Values.controller.service.type | default "" | lower) ("LoadBalancer" | lower) */}}
+  {{- end }}{{- /* if eq (.Values.controller | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
   $ SLURM_CONF_SERVER=$SLURM_CONTROLLER_IP:{{ .Values.controller.service.port | default 6817 }}
 
 Learn more about slurmctld:
   - Overview: https://slurm.schedmd.com/slurmctld.html
   - Configless: https://slurm.schedmd.com/configless_slurm.html
-{{- end }}{{- /* if ne (.Values.controller.service.type | default "None" | lower) ("None" | lower) */}}
+{{- end }}{{- /* if ne (.Values.controller | dig "service" "spec" "type" "None" | lower) ("None" | lower) */}}
 
-{{- if ne (.Values.restapi.service.type | default "None" | lower) ("None" | lower) }}
+{{- if ne (.Values.restapi | dig "service" "spec" "type" "None" | lower) ("None" | lower) }}
 
 curl the Slurm restapi service:
-  {{- if eq (.Values.restapi.service.type | default "" | lower) ("LoadBalancer" | lower) }}
+  {{- if eq (.Values.restapi | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) }}
   $ SLURM_RESTAPI_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.restapi.name" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-  {{- else if eq (.Values.restapi.service.type | default "" | lower) ("ExternalName" | lower) }}
+  {{- else if eq (.Values.restapi | dig "service" "spec" "type" "" | lower) ("ExternalName" | lower) }}
   $ SLURM_RESTAPI_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.restapi.name" . }} -o jsonpath='{.spec.externalName}')"
   {{- else }}
   $ SLURM_RESTAPI_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.restapi.name" . }} -o jsonpath='{.spec.clusterIP}')"
-  {{- end }}{{- /* if eq (.Values.restapi.service.type | default "" | lower) ("LoadBalancer" | lower) */}}
+  {{- end }}{{- /* if eq (.Values.restapi | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
   $ curl -H "X-SLURM-USER-TOKEN: auth/none" http://${SLURM_RESTAPI_IP}:{{ .Values.restapi.service.port | default 6820 }}/openapi/v3
 
 Learn more about slurmrestd:
   - Overview: https://slurm.schedmd.com/rest.html
   - Quickstart: https://slurm.schedmd.com/rest_quickstart.html
   - Documentation: https://slurm.schedmd.com/rest_api.html
-{{- end }}{{- /* if ne (.Values.restapi.service.type | default "None" | lower) ("None" | lower) */}}
+{{- end }}{{- /* if ne (.Values.restapi | dig "service" "spec" "type" "None" | lower) ("None" | lower) */}}
 
 Learn more about Slurm:
   - Overview: https://slurm.schedmd.com/overview.html
