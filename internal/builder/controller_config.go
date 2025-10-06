@@ -236,10 +236,6 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewPropertyRaw("### COMPUTE & PARTITION ###"))
 	}
 	for _, nodeset := range nodesetList.Items {
-		partition := nodeset.Spec.Partition
-		if !partition.Enabled {
-			continue
-		}
 		name := nodeset.Name
 		template := nodeset.Spec.Template.PodSpecWrapper
 		if template.Hostname != "" {
@@ -251,6 +247,10 @@ func buildSlurmConf(
 		}
 		nodesetLineRendered := strings.Join(nodesetLine, " ")
 		conf.AddProperty(config.NewPropertyRaw(nodesetLineRendered))
+		partition := nodeset.Spec.Partition
+		if !partition.Enabled {
+			continue
+		}
 		partitionLine := []string{
 			fmt.Sprintf("PartitionName=%v", name),
 			fmt.Sprintf("Nodes=%v", name),
