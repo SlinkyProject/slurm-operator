@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+### Fixed
+
+### Changed
+
+### Removed
+
+## v0.4.1
+
+### Added
+
 - Added NodePort to v1alpha1.ServiceSpec
 
 ### Fixed
