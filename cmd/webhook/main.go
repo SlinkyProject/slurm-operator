@@ -43,6 +43,7 @@ func init() {
 type Flags struct {
 	enableLeaderElection bool
 	probeAddr            string
+	metricsAddr          string
 	secureMetrics        bool
 	enableHTTP2          bool
 }
@@ -53,6 +54,12 @@ func parseFlags(flags *Flags) {
 		"health-probe-bind-address",
 		":8081",
 		"The address the probe endpoint binds to.",
+	)
+	flag.StringVar(
+		&flags.metricsAddr,
+		"metrics-server-bind-address",
+		"0",
+		"The address the metrics server binds to.",
 	)
 	flag.BoolVar(
 		&flags.enableLeaderElection,
@@ -94,7 +101,7 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
-			BindAddress: "0",
+			BindAddress: flags.metricsAddr,
 			TLSOpts:     tlsOpts,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
