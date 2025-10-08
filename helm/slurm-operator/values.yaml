@@ -77,6 +77,11 @@ operator:
   slurmclientWorkers: 2
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
+  # -- Set the port used for health checks.
+  healthAddr: 8081
+  # -- Set the port used by the metrics server.
+  metricsAddr: 8080
+
 
 # Webhook configurations.
 webhook:
@@ -120,6 +125,10 @@ webhook:
     #   memory: 4Gi
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
+  # -- Set the port used for health checks.
+  healthAddr: 8081
+  # -- Set the port used by the metrics server. Defaults to "0" which disables the metrics server.
+  metricsAddr: 0
 
 #
 # Cert-Manager certificate configurations.

@@ -37,14 +37,22 @@ spec:
           args:
             - --zap-log-level
             - {{ default "info" .Values.webhook.logLevel | quote }}
+            {{- with .Values.webhook.healthAddr }}
+            - --health-addr
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.webhook.healthAddr */}}
+            {{- with .Values.webhook.metricsAddr }}
+            - --metrics-addr
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.webhook.metricsAddr */}}
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8081
+              port: {{ .Values.webhook.healthAddr | default 8081 }}
           readinessProbe:
             httpGet:
               path: /readyz
-              port: 8081
+              port: {{ .Values.webhook.healthAddr | default 8081 }}
           volumeMounts:
             - name: certificates
               mountPath: /tmp/k8s-webhook-server/serving-certs/

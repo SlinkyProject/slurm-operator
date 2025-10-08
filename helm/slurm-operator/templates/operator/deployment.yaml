@@ -63,14 +63,22 @@ spec:
             - --zap-log-level
             - {{ . | quote }}
             {{- end }}{{- /* with .Values.operator.logLevel */}}
+            {{- with .Values.operator.healthAddr }}
+            - --health-addr
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.operator.healthAddr */}}
+            {{- with .Values.operator.metricsAddr }}
+            - --metrics-addr
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.operator.metricsAddr */}}
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8081
+              port: {{ .Values.operator.healthAddr | default 8081 }}
           readinessProbe:
             httpGet:
               path: /readyz
-              port: 8081
+              port: {{ .Values.operator.healthAddr | default 8081 }}
       {{- with .Values.operator.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
