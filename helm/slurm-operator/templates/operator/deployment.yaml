@@ -34,11 +34,11 @@ spec:
             {{- with .Values.operator.accountingWorkers }}
             - --accounting-workers
             - {{ . | quote }}
-            {{- end }}{{- /* with .Values.operator.clusterWorkers */}}
-            {{- with .Values.operator.accountingWorkers }}
+            {{- end }}{{- /* with .Values.operator.accountingWorkers */}}
+            {{- with .Values.operator.controllerWorkers }}
             - --controller-workers
             - {{ . | quote }}
-            {{- end }}{{- /* with .Values.operator.clusterWorkers */}}
+            {{- end }}{{- /* with .Values.operator.controllerWorkers */}}
             {{- with .Values.operator.loginsetWorkers }}
             - --loginset-workers
             - {{ . | quote }}
