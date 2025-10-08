@@ -23,3 +23,10 @@ Determine operator image reference (repo:tag)
 {{- define "slurm-operator.operator.imageRef" -}}
 {{ printf "%s:%s" (include "slurm-operator.operator.image.repository" .) (include "slurm-operator.operator.image.tag" .) | quote }}
 {{- end }}
+
+{{/*
+Define operator imagePullPolicy
+*/}}
+{{- define "slurm-operator.operator.imagePullPolicy" -}}
+{{ .Values.operator.imagePullPolicy | default .Values.imagePullPolicy }}
+{{- end }}

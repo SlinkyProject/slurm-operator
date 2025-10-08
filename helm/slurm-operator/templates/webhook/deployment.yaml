@@ -33,7 +33,7 @@ spec:
       containers:
         - name: webhook
           image: {{ include "slurm-operator.webhook.imageRef" . }}
-          imagePullPolicy: {{ include "slurm-operator.imagePullPolicy" . }}
+          imagePullPolicy: {{ include "slurm-operator.webhook.imagePullPolicy" . }}
           args:
             - --zap-log-level
             - {{ default "info" .Values.webhook.logLevel | quote }}

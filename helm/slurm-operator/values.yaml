@@ -15,6 +15,9 @@ namespaceOverride: ""
 imagePullSecrets: []
   # - name: regcred
 
+# -- Set the default image pull policy.
+imagePullPolicy: IfNotPresent
+
 # -- Set the priority class to use.
 # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 priorityClassName: ""

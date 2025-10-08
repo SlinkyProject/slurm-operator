@@ -61,3 +61,10 @@ Determine operator webhook image reference (repo:tag)
 {{- define "slurm-operator.webhook.imageRef" -}}
 {{ printf "%s:%s" (include "slurm-operator.webhook.image.repository" .) (include "slurm-operator.webhook.image.tag" .) | quote }}
 {{- end }}
+
+{{/*
+Define operator webhook imagePullPolicy
+*/}}
+{{- define "slurm-operator.webhook.imagePullPolicy" -}}
+{{ .Values.webhook.imagePullPolicy | default .Values.imagePullPolicy }}
+{{- end }}

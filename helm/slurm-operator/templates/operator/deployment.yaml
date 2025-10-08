@@ -29,7 +29,7 @@ spec:
       containers:
         - name: slurm-operator
           image: {{ include "slurm-operator.operator.imageRef" . }}
-          imagePullPolicy: {{ include "slurm-operator.imagePullPolicy" . }}
+          imagePullPolicy: {{ include "slurm-operator.operator.imagePullPolicy" . }}
           args:
             {{- with .Values.operator.accountingWorkers }}
             - --accounting-workers

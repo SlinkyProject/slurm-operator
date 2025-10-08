@@ -35,6 +35,7 @@ Kubernetes: `>= 1.29.0-0`
 | crds | object | `{"enabled":false}` | Configure Custom Resource Definitions (CRDs). |
 | crds.enabled | bool | `false` | Whether this helm chart should manage the CRD and its upgrades. |
 | fullnameOverride | string | `""` | Overrides the full name of the release. |
+| imagePullPolicy | string | `"IfNotPresent"` | Set the default image pull policy. |
 | imagePullSecrets | list | `[]` | Sets the image pull secrets. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ |
 | nameOverride | string | `""` | Overrides the name of the release. |
 | namespaceOverride | string | `""` | Overrides the namespace of the release. |
