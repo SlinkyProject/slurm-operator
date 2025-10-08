@@ -29,7 +29,9 @@ Installation instructions for the Slurm Operator on Kubernetes.
 Install the [cert-manager] with its CRDs, if not already installed:
 
 ```sh
-helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager \
   --set 'crds.enabled=true' \
   --namespace cert-manager --create-namespace
 ```
@@ -216,17 +218,17 @@ You will need to configure the Slurm chart such that the login pods can
 communicate with an identity service via [sssd].
 
 > [!WARNING]
-> In this example, you will need to supply an `sssd.conf` (at `~/sssd.conf`)
-> that is configured for your environment.
+> In this example, you will need to supply an `sssd.conf` (at
+> `${HOME}/sssd.conf`) that is configured for your environment.
 
 Install a Slurm cluster via helm chart with the
-`--set 'loginsets[slinky].enabled=true'` and
-`--set-file "loginsets[slinky].sssdConf=~/sssd.conf"` arguments.
+`--set 'loginsets.slinky.enabled=true'` and
+`--set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf"` arguments.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
-  --set 'loginsets[slinky].enabled=true' \
-  --set-file "loginsets[slinky].sssdConf=~/sssd.conf" \
+  --set 'loginsets.slinky.enabled=true' \
+  --set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf" \
   --namespace=slurm --create-namespace
 ```
 
@@ -237,14 +239,14 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 > pod.
 
 Install a Slurm cluster via helm chart with the
-`--set 'loginsets[slinky].enabled=true'` and
-`--set-file "loginsets[slinky].rootSshAuthorizedKeys=~/.ssh/id_ed25519.pub"`
+`--set 'loginsets.slinky.enabled=true'` and
+`--set-file "loginsets.slinky.rootSshAuthorizedKeys=${HOME}/.ssh/id_ed25519.pub"`
 arguments.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
-  --set 'loginsets[slinky].enabled=true' \
-  --set-file "loginsets[slinky].rootSshAuthorizedKeys=~/.ssh/id_ed25519.pub" \
+  --set 'loginsets.slinky.enabled=true' \
+  --set-file "loginsets.slinky.rootSshAuthorizedKeys=${HOME}/.ssh/id_ed25519.pub" \
   --namespace=slurm --create-namespace
 ```
 
@@ -255,7 +257,7 @@ SSH through the login service:
 ```sh
 SLURM_LOGIN_IP="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
 SLURM_LOGIN_PORT="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ports[0].port}')"
-## Assuming your public SSH key was configured in `loginsets[slinky].rootSshAuthorizedKeys`.
+## Assuming your public SSH key was configured in `loginsets.slinky.rootSshAuthorizedKeys`.
 ssh -p ${SLURM_LOGIN_PORT:-22} root@${SLURM_LOGIN_IP}
 ## Assuming SSSD was configured correctly.
 ssh -p ${SLURM_LOGIN_PORT:-22} ${USER}@${SLURM_LOGIN_IP}

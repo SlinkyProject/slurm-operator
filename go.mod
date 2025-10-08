@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.3
 
 require (
-	github.com/SlinkyProject/slurm-client v0.3.0-20250606103204-4a082b2b4f83.0.20250909183322-b50bb6141345
+	github.com/SlinkyProject/slurm-client v0.4.1-20251006172405-5f88a047678e
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.23.4

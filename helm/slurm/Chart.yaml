@@ -6,7 +6,7 @@ name: slurm
 description: Slurm Cluster
 type: application
 appVersion: "25.05"
-version: 0.4.0
+version: 0.4.1
 
 annotations:
   license: Apache-2.0
@@ -27,5 +27,5 @@ maintainers:
 dependencies:
   - name: slurm-exporter
     repository: oci://ghcr.io/slinkyproject/charts
-    version: 0.4.0
+    version: 0.4.1
     condition: slurm-exporter.enabled

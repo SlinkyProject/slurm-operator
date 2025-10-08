@@ -138,7 +138,9 @@ Slurm is a full featured HPC workload manager. To highlight a few features:
 Install the [cert-manager] with its CRDs:
 
 ```sh
-helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install cert-manager jetstack/cert-manager \
   --set 'crds.enabled=true' \
   --namespace cert-manager --create-namespace
 ```
@@ -171,7 +173,7 @@ new release like normal.
 ```bash
 helm --namespace=slurm uninstall slurm
 helm --namespace=slinky uninstall slurm-operator
-helm --namespace=slinky uninstall slurm-operator-crds
+helm uninstall slurm-operator-crds
 ```
 
 If the CRDs were not installed via `slurm-operator-crds` helm chart:
