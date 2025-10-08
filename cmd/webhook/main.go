@@ -51,13 +51,13 @@ type Flags struct {
 func parseFlags(flags *Flags) {
 	flag.StringVar(
 		&flags.probeAddr,
-		"health-probe-bind-address",
+		"health-addr",
 		":8081",
 		"The address the probe endpoint binds to.",
 	)
 	flag.StringVar(
 		&flags.metricsAddr,
-		"metrics-server-bind-address",
+		"metrics-addr",
 		"0",
 		"The address the metrics server binds to.",
 	)

@@ -12,7 +12,7 @@ import (
 
 func Test_parseFlags(t *testing.T) {
 	flags := Flags{}
-	os.Args = []string{"test", "--health-probe-bind-address", "8080", "--leader-elect", "true"}
+	os.Args = []string{"test", "--health-addr", "8080", "--leader-elect", "true"}
 	parseFlags(&flags)
 	if flags.probeAddr != "8080" {
 		t.Errorf("Test_parseFlags() metricsAddr = %v, want %v", flags.probeAddr, "8080")
