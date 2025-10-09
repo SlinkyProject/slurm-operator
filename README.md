@@ -223,7 +223,7 @@ specific language governing permissions and limitations under the License.
 
 <!-- links -->
 
-[architecture]: ./docs/architecture.md
+[architecture]: ./docs/concepts/architecture.md
 [cert-manager]: https://cert-manager.io/docs/installation/helm/
 [contact-schedmd]: https://www.schedmd.com/slurm-resources/contact-schedmd/
 [crds]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions
@@ -238,7 +238,7 @@ specific language governing permissions and limitations under the License.
 [slurm-arch]: https://slurm.schedmd.com/quickstart.html#arch
 [slurm-containers]: https://slurm.schedmd.com/containers.html
 [slurm-dependency]: https://slurm.schedmd.com/sbatch.html#OPT_dependency
-[slurm-docs]: ./docs/slurm.md
+[slurm-docs]: ./docs/concepts/slurm.md
 [slurm-drain]: https://slurm.schedmd.com/scontrol.html#OPT_DRAIN
 [slurm-fairshare]: https://slurm.schedmd.com/fair_tree.html
 [slurm-healthcheck]: https://slurm.schedmd.com/slurm.conf.html#OPT_HealthCheckProgram

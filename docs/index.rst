@@ -77,7 +77,7 @@ Slurm clusters.
    “Slurm Operator Architecture”
 
 For additional architectural notes, see the
-`architecture <architecture.html>`__ docs.
+`architecture <concepts/architecture.html>`__ docs.
 
 Slurm Cluster
 ~~~~~~~~~~~~~
@@ -92,7 +92,7 @@ customizable and tries to expose everything Slurm has to offer.
    “Slurm Architecture”
 
 For additional information about Slurm, see the
-`slurm <slurm.html>`__ docs.
+`slurm <concepts/slurm.html>`__ docs.
 
 Features
 --------

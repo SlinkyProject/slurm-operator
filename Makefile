@@ -237,12 +237,26 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: generate-docs
 generate-docs: pandoc-bin
+# Use pandoc to generate index.rst from README.md
 	$(PANDOC) --quiet README.md -o docs/index.rst
+
+# Add a newline at the base of index.rst
 	printf '\n' >> docs/index.rst
+
+# Generate and insert a table of contents for ./docs
 	cat ./docs/_static/toc.rst >> docs/index.rst
+
+# In index.rst, find all instances of links to markdown files in the docs dir, and strip the directory prefix from them
 	sed -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
+
+# In index.rst, find all instances of links to svgs and strip the directory prefix from them
 	sed -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
-	sed -i -E '/<[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
+
+# In index.rst, find all instances of markdown files within a subdirectory of docs, and strip the directory and subdirectory prefix from them
+	sed -i -E '/<.\/docs\/[A-Za-z]*\/[A-Za-z]*.md>`/s/.\/docs\///g' docs/index.rst
+
+# In index.rst, replace all links to markdown files with links to HTML files, as will be present when using Myst Parser in Sphinx
+	sed -i -E '/[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
 
 DOCS_IMAGE ?= $(REGISTRY)/sphinx
 

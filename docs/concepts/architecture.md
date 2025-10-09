@@ -34,7 +34,7 @@ This document describes the high-level architecture of the Slinky
 The following diagram illustrates the operator, from a communication
 perspective.
 
-<img src="./_static/images/architecture-operator.svg" alt="Slurm Operator Architecture" width="100%" height="auto" />
+<img src="../_static/images/architecture-operator.svg" alt="Slurm Operator Architecture" width="100%" height="auto" />
 
 The `slurm-operator` follows the Kubernetes
 [operator pattern][operator-pattern].
@@ -56,7 +56,7 @@ influences how the `slurm-operator` reconciles certain CRs.
 The following diagram illustrates a containerized Slurm cluster, from a
 communication perspective.
 
-<img src="./_static/images/architecture-slurm.svg" alt="Slurm Cluster Architecture" width="100%" height="auto" />
+<img src="../_static/images/architecture-slurm.svg" alt="Slurm Cluster Architecture" width="100%" height="auto" />
 
 For additional information about Slurm, see the [slurm] docs.
 
@@ -68,7 +68,7 @@ bare-metal and still be joined to your containerized Slurm cluster; external
 services that your Slurm cluster needs or wants (e.g. AD/LDAP, NFS, MariaDB) do
 not have to live in Kubernetes to be functional with your Slurm cluster.
 
-<img src="./_static/images/architecture-slurm-hybrid.svg" alt="Hybrid Slurm Cluster Architecture" width="100%" height="auto" />
+<img src="../_static/images/architecture-slurm-hybrid.svg" alt="Hybrid Slurm Cluster Architecture" width="100%" height="auto" />
 
 ### Autoscale
 
@@ -76,7 +76,7 @@ Kubernetes supports resource autoscaling. In the context of Slurm, autoscaling
 Slurm workers can be quite useful when your Kubernetes and Slurm clusters have
 workload fluctuations.
 
-<img src="./_static/images/architecture-autoscale.svg" alt="Autoscale Architecture" width="100%" height="auto" />
+<img src="../_static/images/architecture-autoscale.svg" alt="Autoscale Architecture" width="100%" height="auto" />
 
 See the [autoscaling] guide for additional information.
 
