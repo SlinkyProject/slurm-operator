@@ -95,22 +95,16 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.Po
 		},
 		base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
-			Affinity:                     template.Affinity,
 			Containers: []corev1.Container{
 				b.slurmrestdContainer(spec.Slurmrestd.Container, hasAccounting),
 			},
-			Hostname:          template.Hostname,
-			ImagePullSecrets:  template.ImagePullSecrets,
-			NodeSelector:      template.NodeSelector,
-			PriorityClassName: template.PriorityClassName,
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsNonRoot: ptr.To(true),
 				RunAsUser:    ptr.To(slurmrestdUserUid),
 				RunAsGroup:   ptr.To(slurmrestdUserGid),
 				FSGroup:      ptr.To(slurmrestdUserGid),
 			},
-			Tolerations: template.Tolerations,
-			Volumes:     restapiVolumes(controller),
+			Volumes: restapiVolumes(controller),
 		},
 		merge: template.PodSpec,
 	}

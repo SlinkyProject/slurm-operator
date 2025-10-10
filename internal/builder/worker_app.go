@@ -53,25 +53,19 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 		base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
 			EnableServiceLinks:           ptr.To(false),
-			Affinity:                     template.Affinity,
 			Containers: []corev1.Container{
 				b.slurmdContainer(nodeset, controller),
 			},
-			Hostname:  template.Hostname,
 			Subdomain: slurmClusterWorkerServiceName(spec.ControllerRef.Name),
 			DNSConfig: &corev1.PodDNSConfig{
 				Searches: []string{
 					slurmClusterWorkerService(spec.ControllerRef.Name, nodeset.Namespace),
 				},
 			},
-			ImagePullSecrets: template.ImagePullSecrets,
 			InitContainers: []corev1.Container{
 				b.logfileContainer(spec.LogFile, slurmdLogFilePath),
 			},
-			NodeSelector:      template.NodeSelector,
-			PriorityClassName: template.PriorityClassName,
-			Tolerations:       template.Tolerations,
-			Volumes:           nodesetVolumes(controller),
+			Volumes: nodesetVolumes(controller),
 		},
 		merge: template.PodSpec,
 	}

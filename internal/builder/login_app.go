@@ -136,21 +136,15 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 		base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
 			EnableServiceLinks:           ptr.To(false),
-			Affinity:                     template.Affinity,
 			Containers: []corev1.Container{
 				b.loginContainer(spec.Login.Container, controller),
 			},
-			Hostname: template.Hostname,
 			DNSConfig: &corev1.PodDNSConfig{
 				Searches: []string{
 					slurmClusterWorkerService(spec.ControllerRef.Name, loginset.Namespace),
 				},
 			},
-			ImagePullSecrets:  template.ImagePullSecrets,
-			NodeSelector:      template.NodeSelector,
-			PriorityClassName: template.PriorityClassName,
-			Tolerations:       template.Tolerations,
-			Volumes:           loginVolumes(loginset, controller),
+			Volumes: loginVolumes(loginset, controller),
 		},
 		merge: template.PodSpec,
 	}

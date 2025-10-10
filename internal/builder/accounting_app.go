@@ -95,7 +95,6 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1alpha1.Accounting) (
 		},
 		base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
-			Affinity:                     template.Affinity,
 			Containers: []corev1.Container{
 				b.slurmdbdContainer(spec.Slurmdbd.Container),
 			},
