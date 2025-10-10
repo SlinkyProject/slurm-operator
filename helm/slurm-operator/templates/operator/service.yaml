@@ -16,12 +16,14 @@ spec:
   selector:
     {{- include "slurm-operator.operator.labels" . | nindent 4 }}
   ports:
+    {{- if ne (int .Values.operator.metricsPort) 0 }}
     - name: metrics
       protocol: TCP
-      port: 8080
-      targetPort: 8080
+      port: {{ .Values.operator.metricsPort | default 8080 }}
+      targetPort: {{ .Values.operator.metricsPort | default 8080 }}
+    {{- end }}{{- /* if .Values.operator.metricsPort != 0 */}}
     - name: health
       protocol: TCP
-      port: 8081
-      targetPort: 8081
+      port: {{ .Values.operator.healthPort | default 8081 }}
+      targetPort: {{ .Values.operator.healthPort | default 8081 }}
 {{- end }}{{- /* if .Values.operator.enabled */}}

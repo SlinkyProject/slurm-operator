@@ -81,9 +81,9 @@ operator:
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
   # -- Set the port used for health checks.
-  healthAddr: 8081
-  # -- Set the port used by the metrics server.
-  metricsAddr: 8080
+  healthPort: 8081
+  # -- Set the port used by the metrics server. Value of "0" will disable it.
+  metricsPort: 8080
 
 
 # Webhook configurations.
@@ -129,9 +129,9 @@ webhook:
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
   # -- Set the port used for health checks.
-  healthAddr: 8081
-  # -- Set the port used by the metrics server. Defaults to "0" which disables the metrics server.
-  metricsAddr: 0
+  healthPort: 8081
+  # -- Set the port used by the metrics server. Value of "0" will disable it.
+  metricsPort: 0
 
 #
 # Cert-Manager certificate configurations.

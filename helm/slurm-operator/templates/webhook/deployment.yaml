@@ -37,22 +37,22 @@ spec:
           args:
             - --zap-log-level
             - {{ default "info" .Values.webhook.logLevel | quote }}
-            {{- with .Values.webhook.healthAddr }}
+            {{- with .Values.webhook.healthPort }}
             - --health-addr
-            - {{ . | quote }}
-            {{- end }}{{- /* with .Values.webhook.healthAddr */}}
-            {{- with .Values.webhook.metricsAddr }}
+            - {{ printf ":%s" (toString .) | quote }}
+            {{- end }}{{- /* with .Values.webhook.healthPort */}}
+            {{- with .Values.webhook.metricsPort }}
             - --metrics-addr
-            - {{ . | quote }}
-            {{- end }}{{- /* with .Values.webhook.metricsAddr */}}
+            - {{ printf ":%s" (toString .) | quote }}
+            {{- end }}{{- /* with .Values.webhook.metricsPort */}}
           livenessProbe:
             httpGet:
               path: /healthz
-              port: {{ .Values.webhook.healthAddr | default 8081 }}
+              port: {{ .Values.webhook.healthPort | default 8081 }}
           readinessProbe:
             httpGet:
               path: /readyz
-              port: {{ .Values.webhook.healthAddr | default 8081 }}
+              port: {{ .Values.webhook.healthPort | default 8081 }}
           volumeMounts:
             - name: certificates
               mountPath: /tmp/k8s-webhook-server/serving-certs/

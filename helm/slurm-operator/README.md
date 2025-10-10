@@ -43,12 +43,12 @@ Kubernetes: `>= 1.29.0-0`
 | operator.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | operator.controllerWorkers | int | `4` | Set the max concurrent workers for the Controller controller. |
 | operator.enabled | bool | `true` | Enables the operator. |
-| operator.healthAddr | int | `8081` | Set the port used for health checks. |
+| operator.healthPort | int | `8081` | Set the port used for health checks. |
 | operator.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | operator.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | operator.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | operator.loginsetWorkers | int | `4` | Set the max concurrent workers for the LoginSet controller. |
-| operator.metricsAddr | int | `8080` | Set the port used by the metrics server. |
+| operator.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
 | operator.nodesetWorkers | int | `4` | Set the max concurrent workers for the NodeSet controller. |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
@@ -61,11 +61,11 @@ Kubernetes: `>= 1.29.0-0`
 | priorityClassName | string | `""` | Set the priority class to use. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass |
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | webhook.enabled | bool | `true` | Enable the webhook. |
-| webhook.healthAddr | int | `8081` | Set the port used for health checks. |
+| webhook.healthPort | int | `8081` | Set the port used for health checks. |
 | webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
-| webhook.metricsAddr | int | `0` | Set the port used by the metrics server. Defaults to "0" which disables the metrics server. |
+| webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.serviceAccount.create | bool | `true` | Allows chart to create the service account. |

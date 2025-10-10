@@ -20,8 +20,14 @@ spec:
       protocol: TCP
       port: 443
       targetPort: 9443
+    {{- if ne (int .Values.webhook.metricsPort) 0 }}
+    - name: metrics
+      protocol: TCP
+      port: {{ .Values.webhook.metricsPort | default 8080 }}
+      targetPort: {{ .Values.webhook.metricsPort | default 8080 }}
+    {{- end }}{{- /* if .Values.webhook.metricsPort != 0 */}}
     - name: health
       protocol: TCP
-      port: 8081
-      targetPort: 8081
+      port: {{ .Values.webhook.healthPort | default 8081 }}
+      targetPort: {{ .Values.webhook.healthPort | default 8081 }}
 {{- end }}{{- /* if .Values.webhook.enabled */}}
