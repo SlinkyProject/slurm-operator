@@ -33,8 +33,6 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.enabled | bool | `false` | Enables Slurm accounting subsystem, stores job/step historical records. Ref: https://slurm.schedmd.com/accounting.html#Overview |
 | accounting.extraConf | string | `nil` | Extra Slurm configuration lines appended to `slurmdbd.conf`. Ref: https://slurm.schedmd.com/slurmdbd.conf.html |
 | accounting.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra Slurm configuration lines appended to `slurmdbd.conf`. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurmdbd.conf.html |
-| accounting.initconf.image | object | `{"repository":"ghcr.io/slinkyproject/sackd","tag":"25.11-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
-| accounting.initconf.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | accounting.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | accounting.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"tolerations":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | accounting.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |

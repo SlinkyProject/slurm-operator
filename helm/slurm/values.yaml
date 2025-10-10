@@ -335,19 +335,6 @@ accounting:
       # limits:
       #   cpu: 1
       #   memory: 1Gi
-  # InitConf container configurations.
-  initconf:
-    # -- The image to use, `${repository}:${tag}`.
-    # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
-    image:
-      repository: ghcr.io/slinkyproject/sackd
-      tag: 25.11-ubuntu24.04
-    # -- The container resource limits and requests.
-    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-    resources: {}
-      # limits:
-      #   cpu: 500m
-      #   memory: 100Mi
   # The storage configuration.
   storageConfig:
     # -- The name of the host where the database is running.

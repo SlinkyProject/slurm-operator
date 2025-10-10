@@ -33,10 +33,6 @@ type AccountingSpec struct {
 	// +optional
 	Slurmdbd ContainerWrapper `json:"slurmdbd,omitempty"`
 
-	// The initconf container configuration.
-	// +optional
-	InitConf ContainerWrapper `json:"initconf,omitzero"`
-
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected.
 	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template

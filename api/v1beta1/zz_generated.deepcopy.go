@@ -79,7 +79,6 @@ func (in *AccountingSpec) DeepCopyInto(out *AccountingSpec) {
 	in.SlurmKeyRef.DeepCopyInto(&out.SlurmKeyRef)
 	in.JwtHs256KeyRef.DeepCopyInto(&out.JwtHs256KeyRef)
 	in.Slurmdbd.DeepCopyInto(&out.Slurmdbd)
-	in.InitConf.DeepCopyInto(&out.InitConf)
 	in.Template.DeepCopyInto(&out.Template)
 	in.StorageConfig.DeepCopyInto(&out.StorageConfig)
 	in.Service.DeepCopyInto(&out.Service)

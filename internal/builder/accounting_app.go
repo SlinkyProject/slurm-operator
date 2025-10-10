@@ -98,8 +98,11 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1beta1.Accounting) (c
 			Containers: []corev1.Container{
 				b.slurmdbdContainer(spec.Slurmdbd.Container),
 			},
-			InitContainers: []corev1.Container{
-				b.initconfContainer(spec.InitConf),
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsNonRoot: ptr.To(true),
+				RunAsUser:    ptr.To(slurmUserUid),
+				RunAsGroup:   ptr.To(slurmUserGid),
+				FSGroup:      ptr.To(slurmUserGid),
 			},
 			Volumes: accountingVolumes(accounting),
 		},
@@ -111,9 +114,8 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1beta1.Accounting) (c
 
 func accountingVolumes(accounting *slinkyv1beta1.Accounting) []corev1.Volume {
 	out := []corev1.Volume{
-		etcSlurmVolume(),
 		{
-			Name: slurmConfigVolume,
+			Name: slurmEtcVolume,
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
 					DefaultMode: ptr.To[int32](0o600),

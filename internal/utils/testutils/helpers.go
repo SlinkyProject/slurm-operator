@@ -124,11 +124,6 @@ func NewAccounting(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySele
 					Image: "slurmdbd",
 				},
 			},
-			InitConf: slinkyv1beta1.ContainerWrapper{
-				Container: corev1.Container{
-					Image: "sackd",
-				},
-			},
 		},
 	}
 }

@@ -360,10 +360,6 @@ spec:
                   ExtraConf is appended onto the end of the `slurmdbd.conf` file.
                   Ref: https://slurm.schedmd.com/slurmdbd.conf.html
                 type: string
-              initconf:
-                description: The initconf container configuration.
-                type: object
-                x-kubernetes-preserve-unknown-fields: true
               jwtHs256KeyRef:
                 description: Slurm `auth/jwt` JWT HS256 key authentication.
                 properties:

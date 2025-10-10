@@ -40,9 +40,6 @@ spec:
   slurmdbd:
     {{- $_ := set .Values.accounting.slurmdbd "imagePullPolicy" (default $.Values.imagePullPolicy .Values.accounting.slurmdbd.imagePullPolicy) -}}
     {{- include "format-container" .Values.accounting.slurmdbd | nindent 4 }}
-  initconf:
-    {{- $_ := set .Values.accounting.initconf "imagePullPolicy" (default $.Values.imagePullPolicy .Values.accounting.initconf.imagePullPolicy) -}}
-    {{- include "format-container" .Values.accounting.initconf | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.accounting.storageConfig }}
   storageConfig:
