@@ -126,7 +126,7 @@ controller:
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmctld
-      tag: 25.05-ubuntu24.04
+      tag: 25.11-ubuntu24.04
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS
     args: []
@@ -143,7 +143,7 @@ controller:
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmctld
-      tag: 25.05-ubuntu24.04
+      tag: 25.11-ubuntu24.04
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -245,7 +245,7 @@ restapi:
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmrestd
-      tag: 25.05-ubuntu24.04
+      tag: 25.11-ubuntu24.04
     # -- Environment passed to the image.
     # Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES
     env: []
@@ -323,7 +323,7 @@ accounting:
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmdbd
-      tag: 25.05-ubuntu24.04
+      tag: 25.11-ubuntu24.04
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS
     args: []
@@ -340,7 +340,7 @@ accounting:
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/sackd
-      tag: 25.05-ubuntu24.04
+      tag: 25.11-ubuntu24.04
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -436,7 +436,7 @@ loginsets:
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: ghcr.io/slinkyproject/login
-        tag: 25.05-ubuntu24.04
+        tag: 25.11-ubuntu24.04
       # -- Environment passed to the image.
       env: []
         # - name: SACKD_OPTIONS
@@ -545,7 +545,7 @@ nodesets:
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: ghcr.io/slinkyproject/slurmd
-        tag: 25.05-ubuntu24.04
+        tag: 25.11-ubuntu24.04
       # -- Arguments passed to the image.
       # Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS
       args: []

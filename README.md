@@ -136,7 +136,7 @@ Slurm is a full featured HPC workload manager. To highlight a few features:
 | Software   |                             Minimum Version                              |
 | :--------- | :----------------------------------------------------------------------: |
 | Kubernetes | [v1.29](https://kubernetes.io/blog/2023/12/13/kubernetes-v1-29-release/) |
-| Slurm      | [25.05](https://www.schedmd.com/slurm-version-25-05-0-is-now-available/) |
+| Slurm      | [25.11](https://www.schedmd.com/slurm-version-25-11-0-is-now-available/) |
 | Cgroup     |         [v2](https://docs.kernel.org/admin-guide/cgroup-v2.html)         |
 
 ## Quick Start
