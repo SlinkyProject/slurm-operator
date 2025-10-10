@@ -147,9 +147,9 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (
 			AutomountServiceAccountToken: ptr.To(false),
 			Containers: []corev1.Container{
 				b.slurmctldContainer(spec.Slurmctld.Container, controller.ClusterName()),
-				b.reconfigureContainer(spec.Reconfigure),
 			},
 			InitContainers: []corev1.Container{
+				b.reconfigureContainer(spec.Reconfigure),
 				b.logfileContainer(spec.LogFile, slurmctldLogFilePath),
 			},
 			SecurityContext: &corev1.PodSecurityContext{
@@ -304,6 +304,7 @@ func (b *Builder) reconfigureContainer(container slinkyv1alpha1.ContainerMinimal
 				"-c",
 				reconfigureScript,
 			},
+			RestartPolicy: ptr.To(corev1.ContainerRestartPolicyAlways),
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: slurmEtcVolume, MountPath: slurmEtcDir, ReadOnly: true},
 				{Name: slurmAuthSocketVolume, MountPath: slurmctldAuthSocketDir, ReadOnly: true},
