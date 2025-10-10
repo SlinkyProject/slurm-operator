@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -120,12 +121,9 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"scontrol",
-							"show",
-							"slurmd",
-						},
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.WorkerApp),
 					},
 				},
 				FailureThreshold: 6,
@@ -133,12 +131,9 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"scontrol",
-							"show",
-							"slurmd",
-						},
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.WorkerApp),
 					},
 				},
 				FailureThreshold: 6,
@@ -146,12 +141,9 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"scontrol",
-							"show",
-							"slurmd",
-						},
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/readyz",
+						Port: intstr.FromString(labels.WorkerApp),
 					},
 				},
 			},

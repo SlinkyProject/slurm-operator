@@ -242,8 +242,9 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 			},
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 				FailureThreshold: 6,
@@ -251,15 +252,17 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/readyz",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 			},
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 				FailureThreshold: 6,
