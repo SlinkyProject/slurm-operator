@@ -107,9 +107,7 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1alpha1.Accounting) (
 		merge: template.PodSpec,
 	}
 
-	o := b.buildPodTemplate(opts)
-
-	return o, nil
+	return b.buildPodTemplate(opts), nil
 }
 
 func accountingVolumes(accounting *slinkyv1alpha1.Accounting) []corev1.Volume {

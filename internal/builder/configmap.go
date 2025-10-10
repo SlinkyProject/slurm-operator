@@ -29,16 +29,16 @@ func (b *Builder) BuildConfigMap(opts ConfigMapOpts, owner metav1.Object) (*core
 		WithMetadata(opts.Metadata).
 		Build()
 
-	o := &corev1.ConfigMap{
+	out := &corev1.ConfigMap{
 		ObjectMeta: objectMeta,
 		Data:       opts.Data,
 		BinaryData: opts.BinaryData,
 		Immutable:  ptr.To(opts.Immutable),
 	}
 
-	if err := controllerutil.SetControllerReference(owner, o, b.client.Scheme()); err != nil {
+	if err := controllerutil.SetControllerReference(owner, out, b.client.Scheme()); err != nil {
 		return nil, fmt.Errorf("failed to set owner controller: %w", err)
 	}
 
-	return o, nil
+	return out, nil
 }

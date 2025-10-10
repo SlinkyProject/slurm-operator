@@ -169,9 +169,7 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1alpha1.Controller) (
 		merge: template.PodSpec,
 	}
 
-	o := b.buildPodTemplate(opts)
-
-	return o, nil
+	return b.buildPodTemplate(opts), nil
 }
 
 func controllerVolumes(controller *slinkyv1alpha1.Controller, extra []string) []corev1.Volume {

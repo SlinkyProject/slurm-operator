@@ -155,9 +155,7 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1alpha1.LoginSet) (corev1.Po
 		merge: template.PodSpec,
 	}
 
-	o := b.buildPodTemplate(opts)
-
-	return o, nil
+	return b.buildPodTemplate(opts), nil
 }
 
 func loginVolumes(loginset *slinkyv1alpha1.LoginSet, controller *slinkyv1alpha1.Controller) []corev1.Volume {

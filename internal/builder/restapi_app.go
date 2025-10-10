@@ -115,9 +115,7 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1alpha1.RestApi) (corev1.Po
 		merge: template.PodSpec,
 	}
 
-	o := b.buildPodTemplate(opts)
-
-	return o, nil
+	return b.buildPodTemplate(opts), nil
 }
 
 func restapiVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {

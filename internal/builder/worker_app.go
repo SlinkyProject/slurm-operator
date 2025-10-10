@@ -76,9 +76,7 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1alpha1.NodeSet, contro
 		merge: template.PodSpec,
 	}
 
-	o := b.buildPodTemplate(opts)
-
-	return o
+	return b.buildPodTemplate(opts)
 }
 
 func nodesetVolumes(controller *slinkyv1alpha1.Controller) []corev1.Volume {

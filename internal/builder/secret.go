@@ -29,7 +29,7 @@ func (b *Builder) BuildSecret(opts SecretOpts, owner metav1.Object) (*corev1.Sec
 		WithMetadata(opts.Metadata).
 		Build()
 
-	o := &corev1.Secret{
+	out := &corev1.Secret{
 		ObjectMeta: objectMeta,
 		Data:       opts.Data,
 		StringData: opts.StringData,
@@ -40,11 +40,11 @@ func (b *Builder) BuildSecret(opts SecretOpts, owner metav1.Object) (*corev1.Sec
 		return nil, fmt.Errorf("failed to specify an owner")
 	}
 
-	if owner.GetNamespace() == o.GetNamespace() {
-		if err := controllerutil.SetControllerReference(owner, o, b.client.Scheme()); err != nil {
+	if owner.GetNamespace() == out.GetNamespace() {
+		if err := controllerutil.SetControllerReference(owner, out, b.client.Scheme()); err != nil {
 			return nil, fmt.Errorf("failed to set owner controller: %w", err)
 		}
 	}
 
-	return o, nil
+	return out, nil
 }
