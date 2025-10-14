@@ -5,6 +5,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"regexp"
@@ -13,6 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8scontroller "k8s.io/kubernetes/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
@@ -215,4 +218,26 @@ func GetPersistentVolumeClaims(nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod)
 func GetPersistentVolumeClaimName(nodeset *slinkyv1alpha1.NodeSet, claim *corev1.PersistentVolumeClaim, ordinal int) string {
 	// NOTE: This name format is used by the heuristics for zone spreading in ChooseZoneForVolume
 	return fmt.Sprintf("%s-%s-%d", claim.Name, nodeset.Name, ordinal)
+}
+
+// SetOwnerReferences modifies the object with all NodeSets as non-controller owners.
+func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Object, clusterName string) error {
+	nodesetList := &slinkyv1alpha1.NodeSetList{}
+	if err := r.List(ctx, nodesetList); err != nil {
+		return err
+	}
+
+	opts := []controllerutil.OwnerReferenceOption{
+		controllerutil.WithBlockOwnerDeletion(true),
+	}
+	for _, nodeset := range nodesetList.Items {
+		if nodeset.Spec.ControllerRef.Name != clusterName {
+			continue
+		}
+		if err := controllerutil.SetOwnerReference(&nodeset, object, r.Scheme(), opts...); err != nil {
+			return fmt.Errorf("failed to set owner: %w", err)
+		}
+	}
+
+	return nil
 }

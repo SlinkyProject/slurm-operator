@@ -21,7 +21,6 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -258,21 +257,9 @@ func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodese
 		}
 	}
 
-	nodesetList := &slinkyv1alpha1.NodeSetList{}
-	if err := r.List(ctx, nodesetList); err != nil {
-		return err
-	}
 	clusterName := nodeset.Spec.ControllerRef.Name
-	opts := []controllerutil.OwnerReferenceOption{
-		controllerutil.WithBlockOwnerDeletion(true),
-	}
-	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.ControllerRef.Name != clusterName {
-			continue
-		}
-		if err := controllerutil.SetOwnerReference(&nodeset, service, r.Scheme, opts...); err != nil {
-			return fmt.Errorf("failed to set owner: %w", err)
-		}
+	if err := nodesetutils.SetOwnerReferences(r.Client, ctx, service, clusterName); err != nil {
+		return err
 	}
 
 	if err := objectutils.SyncObject(r.Client, ctx, service, true); err != nil {
@@ -1000,22 +987,9 @@ func (r *NodeSetReconciler) syncClusterWorkerPDB(
 		}
 	}
 
-	nodesetList := &slinkyv1alpha1.NodeSetList{}
-	if err := r.List(ctx, nodesetList); err != nil {
-		return err
-	}
 	clusterName := nodeset.Spec.ControllerRef.Name
-	opts := []controllerutil.OwnerReferenceOption{
-		controllerutil.WithBlockOwnerDeletion(true),
-	}
-
-	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.ControllerRef.Name != clusterName {
-			continue
-		}
-		if err := controllerutil.SetOwnerReference(&nodeset, podDisruptionBudget, r.Scheme, opts...); err != nil {
-			return fmt.Errorf("failed to set owner: %w", err)
-		}
+	if err := nodesetutils.SetOwnerReferences(r.Client, ctx, podDisruptionBudget, clusterName); err != nil {
+		return err
 	}
 
 	// Sync the PodDisruptionBudget for each cluster
