@@ -78,7 +78,7 @@ Format pod template object.
 {{- define "format-podTemplate" -}}
 {{- with . -}}
 template:
-  {{- include "format-podMetadata" . | nindent 2 -}}
+  {{- include "format-metadata" . | nindent 2 -}}
   {{- include "format-podSpec" . | nindent 2 -}}
 {{- end -}}
 {{- end -}}
@@ -86,7 +86,7 @@ template:
 {{/*
 Format pod metadata object.
 */}}
-{{- define "format-podMetadata" -}}
+{{- define "format-metadata" -}}
 {{- with .metadata -}}
 metadata:
   {{- toYaml . | nindent 2 }}
@@ -97,6 +97,31 @@ metadata:
 Format pod spec object.
 */}}
 {{- define "format-podSpec" -}}
+{{- with .spec -}}
+spec:
+  {{- toYaml . | nindent 2 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Format pod service object.
+*/}}
+{{- define "format-service" -}}
+{{- with . -}}
+{{- $service := omit . "metadata" "spec" -}}
+service:
+  {{- include "format-metadata" . | nindent 2 -}}
+  {{- include "format-serviceSpec" . | nindent 2 -}}
+  {{- with $service -}}
+  {{- toYaml . | nindent 2 -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Format service spec object.
+*/}}
+{{- define "format-serviceSpec" -}}
 {{- with .spec -}}
 spec:
   {{- toYaml . | nindent 2 }}

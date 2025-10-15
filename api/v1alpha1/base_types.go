@@ -149,6 +149,11 @@ type ContainerMinimal struct {
 
 // ServiceSpec defines a template to customize Service objects.
 type ServiceSpec struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	Metadata Metadata `json:"metadata,omitempty"`
+
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// +optional
 	ServiceSpecWrapper ServiceSpecWrapper `json:"spec,omitempty"`

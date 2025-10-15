@@ -16,7 +16,7 @@ func (b *Builder) BuildRestapiService(restapi *slinkyv1alpha1.RestApi) (*corev1.
 	spec := restapi.Spec.Service
 	opts := ServiceOpts{
 		Key:         restapi.ServiceKey(),
-		Metadata:    restapi.Spec.Template.PodMetadata,
+		Metadata:    restapi.Spec.Service.Metadata,
 		ServiceSpec: restapi.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithRestapiSelectorLabels(restapi).

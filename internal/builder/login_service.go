@@ -16,7 +16,7 @@ func (b *Builder) BuildLoginService(loginset *slinkyv1alpha1.LoginSet) (*corev1.
 	spec := loginset.Spec.Service
 	opts := ServiceOpts{
 		Key:         loginset.ServiceKey(),
-		Metadata:    loginset.Spec.Template.PodMetadata,
+		Metadata:    loginset.Spec.Service.Metadata,
 		ServiceSpec: loginset.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithLoginSelectorLabels(loginset).

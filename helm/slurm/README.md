@@ -41,7 +41,8 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.podSpec.initContainers | list | `[]` | Additional initContainers for the pod. Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ |
 | accounting.podSpec.nodeSelector | map[string]string | `{"kubernetes.io/os":"linux"}` | Node label selector for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector |
 | accounting.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
-| accounting.service | object | `{"spec":{}}` | The service configuration. |
+| accounting.service | object | `{"metadata":{},"spec":{}}` | The service configuration. |
+| accounting.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | accounting.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | accounting.slurmdbd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS |
 | accounting.slurmdbd.image | object | `{"repository":"ghcr.io/slinkyproject/slurmdbd","tag":"25.05-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -70,7 +71,8 @@ Kubernetes: `>= 1.29.0-0`
 | controller.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | controller.reconfigure.image | object | `{"repository":"ghcr.io/slinkyproject/slurmctld","tag":"25.05-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.reconfigure.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
-| controller.service | object | `{"spec":{}}` | The service configuration. |
+| controller.service | object | `{"metadata":{},"spec":{}}` | The service configuration. |
+| controller.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | controller.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | controller.slurmctld.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS |
 | controller.slurmctld.image | object | `{"repository":"ghcr.io/slinkyproject/slurmctld","tag":"25.05-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -97,7 +99,8 @@ Kubernetes: `>= 1.29.0-0`
 | loginsets.slinky.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | loginsets.slinky.replicas | int | `1` | Number of replicas to deploy. |
 | loginsets.slinky.rootSshAuthorizedKeys | string | `nil` | SSH public keys to write into `/root/.ssh/authorized_keys`. |
-| loginsets.slinky.service | object | `{"spec":{"type":"LoadBalancer"}}` | The service configuration. |
+| loginsets.slinky.service | object | `{"metadata":{},"spec":{"type":"LoadBalancer"}}` | The service configuration. |
+| loginsets.slinky.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | loginsets.slinky.service.spec | corev1.ServiceSpec | `{"type":"LoadBalancer"}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | loginsets.slinky.sssdConf | string | `"[sssd]\nconfig_file_version = 2\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nauth_provider = ldap\nid_provider = ldap\nldap_uri = ldap://ldap.example.com\nldap_search_base = dc=example,dc=com\nldap_user_search_base = ou=Users,dc=example,dc=com\nldap_group_search_base = ou=Groups,dc=example,dc=com\n"` | The `sssd.conf` to use. Ref: https://man.archlinux.org/man/sssd.conf.5 |
 | nameOverride | string | `nil` | Overrides the name of the release. |
@@ -139,7 +142,8 @@ Kubernetes: `>= 1.29.0-0`
 | restapi.podSpec.nodeSelector | map[string]string | `{"kubernetes.io/os":"linux"}` | Node label selector for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector |
 | restapi.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | restapi.replicas | int | `1` | Number of replicas to deploy. |
-| restapi.service | object | `{"spec":{}}` | The service configuration. |
+| restapi.service | object | `{"metadata":{},"spec":{}}` | The service configuration. |
+| restapi.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | restapi.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | restapi.slurmrestd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_OPTIONS |
 | restapi.slurmrestd.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES |

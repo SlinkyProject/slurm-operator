@@ -223,6 +223,11 @@ controller:
       #   effect: NoSchedule
   # -- The service configuration.
   service:
+    # -- Labels and annotations.
+    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    metadata: {}
+      # annotations: {}
+      # labels: {}
     # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     spec: {}
@@ -283,6 +288,11 @@ restapi:
       #   effect: NoSchedule
   # -- The service configuration.
   service:
+    # -- Labels and annotations.
+    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    metadata: {}
+      # annotations: {}
+      # labels: {}
     # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     spec: {}
@@ -400,6 +410,11 @@ accounting:
       #   effect: NoSchedule
   # -- The service configuration.
   service:
+    # -- Labels and annotations.
+    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    metadata: {}
+      # annotations: {}
+      # labels: {}
     # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     spec: {}
@@ -504,6 +519,11 @@ loginsets:
         #     path: /exports/home
     # -- The service configuration.
     service:
+      # -- Labels and annotations.
+      # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+      metadata: {}
+        # annotations: {}
+        # labels: {}
       # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
       # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
       spec:
