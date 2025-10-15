@@ -222,13 +222,11 @@ controller:
       #   operator: Exists
       #   effect: NoSchedule
   # -- The service configuration.
-  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
-    # spec:
+  service:
+    # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
+    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    spec: {}
       # type: LoadBalancer
-      # loadBalancerIP: ""
-      # externalIPs: []
-      # externalName: ""
     # port: 6817
     # nodePort: 30817
 
@@ -284,13 +282,11 @@ restapi:
       #   operator: Exists
       #   effect: NoSchedule
   # -- The service configuration.
-  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
-    # spec:
+  service:
+    # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
+    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    spec: {}
       # type: ClusterIP
-      # loadBalancerIP: ""
-      # externalIPs: []
-      # externalName: ""
     # port: 6820
     # nodePort: 30820
 
@@ -403,13 +399,11 @@ accounting:
       #   operator: Exists
       #   effect: NoSchedule
   # -- The service configuration.
-  # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-  service: {}
-    # spec:
+  service:
+    # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
+    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    spec: {}
       # type: LoadBalancer
-      # loadBalancerIP: ""
-      # externalIPs: []
-      # externalName: ""
     # port: 6819
     # nodePort: 30819
 
@@ -509,13 +503,11 @@ loginsets:
         #     server: nfs-server.example.com
         #     path: /exports/home
     # -- The service configuration.
-    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
     service:
+      # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
+      # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
       spec:
         type: LoadBalancer
-        # loadBalancerIP: ""
-        # externalIPs: []
-        # externalName: ""
       # port: 22
       # nodePort: 32222
 
