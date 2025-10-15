@@ -183,12 +183,13 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewProperty("AuthInfo", authInfo))
 	conf.AddProperty(config.NewProperty("CommunicationParameters", "block_null_hash"))
 	conf.AddProperty(config.NewProperty("SelectTypeParameters", "CR_Core_Memory"))
-	conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless,enable_stepmgr"))
 	if cgroupEnabled {
+		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless,enable_stepmgr"))
 		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/cgroup"))
 		conf.AddProperty(config.NewProperty("PrologFlags", "Contain"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/cgroup,task/affinity"))
 	} else {
+		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
 	}
 
