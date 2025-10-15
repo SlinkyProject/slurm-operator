@@ -15,6 +15,7 @@ func TestPodInfo_Equal(t *testing.T) {
 	type fields struct {
 		Namespace string
 		PodName   string
+		Node      string
 	}
 	type args struct {
 		cmp PodInfo
@@ -104,6 +105,7 @@ func TestPodInfo_ToString(t *testing.T) {
 	type fields struct {
 		Namespace string
 		PodName   string
+		Node      string
 	}
 	tests := []struct {
 		name   string
@@ -113,15 +115,16 @@ func TestPodInfo_ToString(t *testing.T) {
 		{
 			name:   "Empty",
 			fields: fields{},
-			want:   `{"namespace":"","podName":""}`,
+			want:   `{"namespace":"","podName":"","node":""}`,
 		},
 		{
 			name: "Populated",
 			fields: fields{
 				Namespace: corev1.NamespaceDefault,
 				PodName:   "foo",
+				Node:      "bar",
 			},
-			want: `{"namespace":"default","podName":"foo"}`,
+			want: `{"namespace":"default","podName":"foo","node":"bar"}`,
 		},
 	}
 	for _, tt := range tests {
@@ -129,6 +132,7 @@ func TestPodInfo_ToString(t *testing.T) {
 			podInfo := &PodInfo{
 				Namespace: tt.fields.Namespace,
 				PodName:   tt.fields.PodName,
+				Node:      tt.fields.Node,
 			}
 			if got := podInfo.ToString(); got != tt.want {
 				t.Errorf("PodInfo.ToString() = %v, want %v", got, tt.want)
@@ -160,7 +164,7 @@ func TestParseIntoPodInfo(t *testing.T) {
 		{
 			name: "Empty values",
 			args: args{
-				str: ptr.To(`{"namespace":"","podName":""}`),
+				str: ptr.To(`{"namespace":"","podName":"","node":""}`),
 				out: &PodInfo{},
 			},
 			want:    &PodInfo{},
@@ -169,15 +173,17 @@ func TestParseIntoPodInfo(t *testing.T) {
 		{
 			name: "Overwrite PodInfo",
 			args: args{
-				str: ptr.To(`{"namespace":"default","podName":"foo"}`),
+				str: ptr.To(`{"namespace":"default","podName":"foo","node":"foo"}`),
 				out: &PodInfo{
 					Namespace: "baz",
 					PodName:   "bar",
+					Node:      "bar",
 				},
 			},
 			want: &PodInfo{
 				Namespace: "default",
 				PodName:   "foo",
+				Node:      "foo",
 			},
 			wantErr: false,
 		},

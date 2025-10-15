@@ -129,6 +129,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 	podInfo := podinfo.PodInfo{
 		Namespace: pod.GetNamespace(),
 		PodName:   pod.GetName(),
+		Node:      pod.Spec.NodeName,
 	}
 	podInfoOld := &podinfo.PodInfo{}
 	_ = podinfo.ParseIntoPodInfo(slurmNode.Comment, podInfoOld)
@@ -145,12 +146,23 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 		Comment: ptr.To(podInfo.ToString()),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
-		if tolerateError(err) {
-			return nil
+		if !tolerateError(err) {
+			return err
 		}
-		return err
 	}
 
+	if podInfoOld.Node != "" {
+		logger.Info("Update Slurm Node state due to Kubernetes node migration", "Node", slurmNode.Name)
+		req := api.V0043UpdateNodeMsg{
+			State: ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateIDLE}),
+		}
+		if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
+			if tolerateError(err) {
+				return nil
+			}
+			return err
+		}
+	}
 	return nil
 }
 

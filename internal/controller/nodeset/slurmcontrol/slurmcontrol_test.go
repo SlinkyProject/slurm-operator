@@ -123,6 +123,7 @@ var _ = Describe("SlurmControlInterface", func() {
 			wantPodInfo := podinfo.PodInfo{
 				Namespace: pod.GetNamespace(),
 				PodName:   pod.GetName(),
+				Node:      pod.Spec.NodeName,
 			}
 			checkNode := &types.V0043Node{}
 			key := object.ObjectKey(slurmNodename)
@@ -164,6 +165,79 @@ var _ = Describe("SlurmControlInterface", func() {
 			Expect(err).ToNot(HaveOccurred())
 			isDrain := checkNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
 			Expect(isDrain).To(BeTrue())
+		})
+	})
+
+	Context("UpdateNodeWithPodInfo()", func() {
+		It("Should reset Slurm node state when podInfo indicates migration to a new Kube node", func() {
+			By("Setup initial system state")
+			nodeset = newNodeSet("foo", controller.Name, 1)
+			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			slurmNodename := nodesetutils.GetNodeName(pod)
+			node := &types.V0043Node{
+				V0043Node: api.V0043Node{
+					Name: ptr.To(slurmNodename),
+					State: ptr.To([]api.V0043NodeState{
+						api.V0043NodeStateIDLE,
+					}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithUpdateFn(updateFn).WithObjects(node).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Update Slurm pod info")
+			err := slurmcontrol.UpdateNodeWithPodInfo(ctx, nodeset, pod)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Check Slurm Node podInfo")
+			wantPodInfo := podinfo.PodInfo{
+				Namespace: pod.GetNamespace(),
+				PodName:   pod.GetName(),
+				Node:      pod.Spec.NodeName,
+			}
+			checkNode := &types.V0043Node{}
+			key := object.ObjectKey(slurmNodename)
+			err = sclient.Get(ctx, key, checkNode)
+			Expect(err).ToNot(HaveOccurred())
+			checkPodInfo := podinfo.PodInfo{}
+			err = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
+
+			By("Make node drain")
+			err = slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain")
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Migrate pod to a new Kube node")
+			pod.Spec.NodeName = "bar"
+
+			By("Update Slurm pod info")
+			err = slurmcontrol.UpdateNodeWithPodInfo(ctx, nodeset, pod)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Check Slurm Node podInfo")
+			wantPodInfo = podinfo.PodInfo{
+				Namespace: pod.GetNamespace(),
+				PodName:   pod.GetName(),
+				Node:      pod.Spec.NodeName,
+			}
+			checkNode = &types.V0043Node{}
+			key = object.ObjectKey(slurmNodename)
+			err = sclient.Get(ctx, key, checkNode)
+			Expect(err).ToNot(HaveOccurred())
+			checkPodInfo = podinfo.PodInfo{}
+			err = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
+
+			By("Check Slurm Node state")
+			checkNode = &types.V0043Node{}
+			key = object.ObjectKey(slurmNodename)
+			err = sclient.Get(ctx, key, checkNode)
+			Expect(err).ToNot(HaveOccurred())
+			isIdle := checkNode.GetStateAsSet().Has(api.V0043NodeStateIDLE)
+			Expect(isIdle).To(BeTrue())
 		})
 	})
 
