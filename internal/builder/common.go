@@ -52,6 +52,12 @@ const (
 	annotationAuthJwtHs256KeyHash = slinkyv1beta1.SlinkyPrefix + "jwt-hs256-key-hash"
 )
 
+const (
+	annotationSshdConfHash    = slinkyv1beta1.SlinkyPrefix + "sshd-conf-hash"
+	annotationSssdConfHash    = slinkyv1beta1.SlinkyPrefix + "sssd-conf-hash"
+	annotationSshHostKeysHash = slinkyv1beta1.SlinkyPrefix + "ssh-host-keys-hash"
+)
+
 func configlessArgs(controller *slinkyv1beta1.Controller) []string {
 	host := controller.ServiceFQDNShort()
 	port := SlurmctldPort

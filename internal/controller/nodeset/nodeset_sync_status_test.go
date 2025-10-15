@@ -61,7 +61,7 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodHealthy(pod)
 				pods = append(pods, pod)
 			}
@@ -111,7 +111,7 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodCreated(pod)
 				pods = append(pods, pod)
 			}
@@ -194,7 +194,7 @@ func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, "")
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, "")
 				pod = makePodHealthy(pod)
 				pods = append(pods, pod)
 			}
@@ -272,7 +272,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodHealthy(pod)
 				pods = append(pods, pod)
 			}
@@ -332,7 +332,7 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodCreated(pod)
 				pods = append(pods, pod)
 			}
@@ -432,7 +432,7 @@ func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
 				nodeset := newNodeSet("foo", controller.Name, 2)
 				pods := make([]*corev1.Pod, 0)
 				for i := range 2 {
-					pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+					pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 					pod = makePodHealthy(pod)
 					pods = append(pods, pod)
 				}
@@ -464,7 +464,7 @@ func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
 				nodeset := newNodeSet("foo", controller.Name, 2)
 				pods := make([]*corev1.Pod, 0)
 				for i := range 2 {
-					pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+					pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 					pod = makePodCreated(pod)
 					pods = append(pods, pod)
 				}
@@ -542,7 +542,7 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodHealthy(pod)
 				pod.Status.Conditions = append(pod.Status.Conditions, idleCondition)
 				pods = append(pods, pod)
@@ -577,7 +577,7 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pods := make([]*corev1.Pod, 0)
 			for i := range 2 {
-				pod := nodesetutils.NewNodeSetPod(nodeset, controller, i, hash)
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, i, hash)
 				pod = makePodHealthy(pod)
 				pod.Status.Conditions = append(pod.Status.Conditions, allocatedCondition)
 				pods = append(pods, pod)

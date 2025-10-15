@@ -31,13 +31,14 @@ import (
 
 // NewNodeSetPod returns a new Pod conforming to the nodeset's Spec with an identity generated from ordinal.
 func NewNodeSetPod(
+	client client.Client,
 	nodeset *slinkyv1beta1.NodeSet,
 	controller *slinkyv1beta1.Controller,
 	ordinal int,
 	revisionHash string,
 ) *corev1.Pod {
 	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK)
-	podTemplate := builder.New(nil).BuildWorkerPodTemplate(nodeset, controller)
+	podTemplate := builder.New(client).BuildWorkerPodTemplate(nodeset, controller)
 	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
 	pod.Name = GetPodName(nodeset, ordinal)
 	initIdentity(nodeset, pod)

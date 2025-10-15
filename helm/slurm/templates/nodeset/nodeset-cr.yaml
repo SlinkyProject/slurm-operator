@@ -52,6 +52,13 @@ spec:
     config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
+  {{- if $nodeset.ssh.enabled }}
+  {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
+  {{- with $nodeset.ssh }}
+  ssh:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with $nodeset.ssh */}}
+  {{- end }}{{- /* if $nodeset.ssh.enabled */}}
   replicas: {{ $nodeset.replicas }}
   slurmd:
     {{- $_ := set $nodeset.slurmd "imagePullPolicy" (get $nodeset.slurmd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}

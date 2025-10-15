@@ -390,7 +390,7 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(
 					nodeset.DeepCopy(),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, ""),
 					&corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "blank",
@@ -401,7 +401,7 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 				ctx:     context.TODO(),
 				nodeset: nodeset.DeepCopy(),
 			},
-			want:    []string{klog.KObj(nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")).String()},
+			want:    []string{klog.KObj(nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")).String()},
 			wantErr: false,
 		},
 	}
@@ -494,7 +494,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 	}
 	nodesetNoTaint := newNodeSet("foo", controller.Name, 2)
 	nodesetNoTaint.UID = "1234"
-	podNoTaint := nodesetutils.NewNodeSetPod(nodesetNoTaint, controller, 0, "")
+	podNoTaint := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodesetNoTaint, controller, 0, "")
 	podNoTaint.Spec.NodeName = "node1"
 	podNoTaint.Status.Phase = corev1.PodRunning
 	if err := controllerutil.SetControllerReference(nodesetNoTaint, podNoTaint, clientgoscheme.Scheme); err != nil {
@@ -504,7 +504,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 	nodesetTaint := newNodeSet("bar", controller.Name, 2)
 	nodesetTaint.Spec.TaintKubeNodes = true
 	nodesetTaint.UID = "2345"
-	podTaint := nodesetutils.NewNodeSetPod(nodesetTaint, controller, 0, "")
+	podTaint := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodesetTaint, controller, 0, "")
 	podTaint.Spec.NodeName = "node1"
 	podTaint.Status.Phase = corev1.PodRunning
 	if err := controllerutil.SetControllerReference(nodesetTaint, podTaint, clientgoscheme.Scheme); err != nil {
@@ -1133,7 +1133,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -1399,7 +1399,7 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
 	type fields struct {
 		Client    client.Client
@@ -1666,8 +1666,8 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 		func() testCaseFields {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
-			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, hash)
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			pod1 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
@@ -1707,8 +1707,8 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			nodeset.Spec.UpdateStrategy.RollingUpdate = &slinkyv1beta1.RollingUpdateNodeSetStrategy{
 				MaxUnavailable: ptr.To(intstr.FromString("10%")),
 			}
-			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, hash)
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			pod1 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
@@ -1784,9 +1784,9 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			nodeset.Spec.UpdateStrategy.RollingUpdate = &slinkyv1beta1.RollingUpdateNodeSetStrategy{
 				MaxUnavailable: ptr.To(intstr.FromString("10%")),
 			}
-			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, hash)
+			pod1 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			makePodHealthy(pod1)
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
@@ -1827,9 +1827,9 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			nodeset.Spec.UpdateStrategy.RollingUpdate = &slinkyv1beta1.RollingUpdateNodeSetStrategy{
 				MaxUnavailable: ptr.To(intstr.FromString("10%")),
 			}
-			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, hash)
+			pod1 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			makePodHealthy(pod1)
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, hash)
+			pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, hash)
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
@@ -1870,9 +1870,9 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			nodeset.Spec.UpdateStrategy.RollingUpdate = &slinkyv1beta1.RollingUpdateNodeSetStrategy{
 				MaxUnavailable: ptr.To(intstr.FromString("10%")),
 			}
-			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			pod1 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 			makePodHealthy(pod1)
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
@@ -2326,7 +2326,7 @@ func Test_syncPodUncordon(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
 
 	type fields struct {

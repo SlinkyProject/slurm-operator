@@ -37,6 +37,10 @@ type NodeSetSpec struct {
 	// +optional
 	Slurmd ContainerWrapper `json:"slurmd,omitempty"`
 
+	// SSH configuration for worker pods.
+	// +optional
+	Ssh NodeSetSsh `json:"ssh,omitzero"`
+
 	// The logfile sidecar configuration.
 	// +optional
 	LogFile ContainerWrapper `json:"logfile,omitzero"`
@@ -110,6 +114,22 @@ type NodeSetPartition struct {
 	// Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
 	// +optional
 	Config string `json:"config,omitzero"`
+}
+
+// NodeSetSsh defines SSH configuration for NodeSet worker pods.
+type NodeSetSsh struct {
+	// Enabled controls whether SSH access is enabled for this NodeSet.
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// ExtraSshdConfig is added to the end of `sshd_config`.
+	// Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
+	// +optional
+	ExtraSshdConfig string `json:"extraSshdConfig,omitzero"`
+
+	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
+	// +required
+	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
 }
 
 // NodeSetUpdateStrategy indicates the strategy that the NodeSet

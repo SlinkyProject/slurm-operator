@@ -231,6 +231,10 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncSshConfig(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncSlurmDeadline(ctx, nodeset, pods); err != nil {
 		return err
 	}
@@ -544,7 +548,7 @@ func (r *NodeSetReconciler) doPodScaleOut(
 		for usedOrdinals.Has(ordinal) {
 			ordinal++
 		}
-		pod, err := r.newNodeSetPod(ctx, nodeset, ordinal, hash)
+		pod, err := r.newNodeSetPod(r.Client, ctx, nodeset, ordinal, hash)
 		if err != nil {
 			return err
 		}
@@ -598,6 +602,7 @@ func (r *NodeSetReconciler) doPodScaleOut(
 }
 
 func (r *NodeSetReconciler) newNodeSetPod(
+	client client.Client,
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	ordinal int,
@@ -609,7 +614,7 @@ func (r *NodeSetReconciler) newNodeSetPod(
 		return nil, err
 	}
 
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, ordinal, revisionHash)
+	pod := nodesetutils.NewNodeSetPod(client, nodeset, controller, ordinal, revisionHash)
 
 	return pod, nil
 }
@@ -1115,6 +1120,28 @@ func (r *NodeSetReconciler) syncClusterWorkerPDB(
 	// Sync the PodDisruptionBudget for each cluster
 	if err := objectutils.SyncObject(r.Client, ctx, podDisruptionBudget, true); err != nil {
 		return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(podDisruptionBudget), err)
+	}
+
+	return nil
+}
+
+// syncSshConfig manages SSH config for the NodeSet if SSH is enabled
+func (r *NodeSetReconciler) syncSshConfig(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+) error {
+	// Only create SSH config keys if SSH is enabled
+	if !nodeset.Spec.Ssh.Enabled {
+		return nil
+	}
+
+	config, err := r.builder.BuildWorkerSshConfig(nodeset)
+	if err != nil {
+		return fmt.Errorf("failed to build SSH config: %w", err)
+	}
+
+	if err := objectutils.SyncObject(r.Client, ctx, config, true); err != nil {
+		return fmt.Errorf("failed to sync SSH config (%s): %w", klog.KObj(config), err)
 	}
 
 	return nil

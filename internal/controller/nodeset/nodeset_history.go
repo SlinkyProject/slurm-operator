@@ -205,6 +205,10 @@ func getPatch(nodeset *slinkyv1beta1.NodeSet) ([]byte, error) {
 		logfile["$patch"] = "replace"
 		specCopy["logfile"] = logfile
 	}
+	if ssh, ok := spec["ssh"].(map[string]any); ok {
+		ssh["$patch"] = "replace"
+		specCopy["ssh"] = ssh
+	}
 	objCopy["spec"] = specCopy
 	patch, err := json.Marshal(objCopy)
 	return patch, err

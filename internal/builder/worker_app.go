@@ -4,6 +4,7 @@
 package builder
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"sort"
@@ -12,17 +13,22 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
 )
 
 const (
 	SlurmdPort = 6818
+	SshPort    = 22
 
 	slurmdUser = "root"
 
@@ -33,13 +39,20 @@ const (
 )
 
 func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) corev1.PodTemplateSpec {
+	ctx := context.TODO()
 	key := nodeset.Key()
+
+	hashMap, err := b.getWorkerHashes(ctx, nodeset)
+	if err != nil {
+		return corev1.PodTemplateSpec{}
+	}
 
 	objectMeta := metadata.NewBuilder(key).
 		WithAnnotations(nodeset.Annotations).
 		WithLabels(nodeset.Labels).
 		WithMetadata(nodeset.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithWorkerLabels(nodeset).Build()).
+		WithAnnotations(hashMap).
 		WithAnnotations(map[string]string{
 			annotationDefaultContainer: labels.WorkerApp,
 		}).
@@ -69,7 +82,7 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, control
 			InitContainers: []corev1.Container{
 				b.logfileContainer(spec.LogFile, slurmdLogFilePath),
 			},
-			Volumes: nodesetVolumes(controller),
+			Volumes: nodesetVolumes(nodeset, controller),
 			Tolerations: []corev1.Toleration{
 				slurmtaints.TolerationWorkerNode,
 			},
@@ -80,7 +93,7 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, control
 	return b.buildPodTemplate(opts)
 }
 
-func nodesetVolumes(controller *slinkyv1beta1.Controller) []corev1.Volume {
+func nodesetVolumes(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: slurmEtcVolume,
@@ -104,23 +117,96 @@ func nodesetVolumes(controller *slinkyv1beta1.Controller) []corev1.Volume {
 		},
 		logFileVolume(),
 	}
+
+	// Add SSH host keys volume if SSH is enabled
+	if nodeset.Spec.Ssh.Enabled {
+		out = structutils.MergeList(out, []corev1.Volume{
+			{
+				Name: sshConfigVolume,
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						DefaultMode: ptr.To[int32](0o600),
+						Sources: []corev1.VolumeProjection{
+							{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: nodeset.SshConfigKey().Name,
+									},
+									Items: []corev1.KeyToPath{
+										{Key: sshdConfigFile, Path: sshdConfigFile, Mode: ptr.To[int32](0o600)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: sssdConfVolume,
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						DefaultMode: ptr.To[int32](0o600),
+						Sources: []corev1.VolumeProjection{
+							{
+								Secret: &corev1.SecretProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: nodeset.SssdSecretRef().Name,
+									},
+									Items: []corev1.KeyToPath{
+										{Key: nodeset.SssdSecretRef().Key, Path: sssdConfFile, Mode: ptr.To[int32](0o600)},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	}
+
 	return out
 }
 
 func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) corev1.Container {
 	merge := nodeset.Spec.Slurmd.Container
 
+	// Base ports always include slurmd
+	ports := []corev1.ContainerPort{
+		{
+			Name:          labels.WorkerApp,
+			ContainerPort: SlurmdPort,
+			Protocol:      corev1.ProtocolTCP,
+		},
+	}
+
+	// Add SSH port if enabled
+	if nodeset.Spec.Ssh.Enabled {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          "ssh",
+			ContainerPort: SshPort,
+			Protocol:      corev1.ProtocolTCP,
+		})
+	}
+
+	// Base volume mounts
+	volumeMounts := []corev1.VolumeMount{
+		{Name: slurmEtcVolume, MountPath: slurmEtcDir, ReadOnly: true},
+		{Name: slurmLogFileVolume, MountPath: slurmLogFileDir},
+	}
+
+	// Add SSH host key mounts if enabled
+	if nodeset.Spec.Ssh.Enabled {
+		volumeMounts = structutils.MergeList(volumeMounts, []corev1.VolumeMount{
+			{Name: sshConfigVolume, MountPath: sshdConfigFilePath, SubPath: sshdConfigFile, ReadOnly: true},
+			{Name: sssdConfVolume, MountPath: sssdConfFilePath, SubPath: sssdConfFile, ReadOnly: true},
+		})
+	}
+
 	opts := ContainerOpts{
 		base: corev1.Container{
-			Name: labels.WorkerApp,
-			Args: slurmdArgs(nodeset, controller),
-			Ports: []corev1.ContainerPort{
-				{
-					Name:          labels.WorkerApp,
-					ContainerPort: SlurmdPort,
-					Protocol:      corev1.ProtocolTCP,
-				},
-			},
+			Name:  labels.WorkerApp,
+			Args:  slurmdArgs(nodeset, controller),
+			Ports: ports,
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
@@ -171,10 +257,7 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 					},
 				},
 			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: slurmEtcVolume, MountPath: slurmEtcDir, ReadOnly: true},
-				{Name: slurmLogFileVolume, MountPath: slurmLogFileDir},
-			},
+			VolumeMounts: volumeMounts,
 		},
 		merge: merge,
 	}
@@ -236,4 +319,32 @@ func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
 	}
 
 	return args
+}
+
+func (b *Builder) getWorkerHashes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (map[string]string, error) {
+	sshConfig := &corev1.ConfigMap{}
+	sshConfigKey := nodeset.SshConfigKey()
+	if err := b.client.Get(ctx, sshConfigKey, sshConfig); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sshConfig), err)
+		}
+	}
+	sshdConfigHash := crypto.CheckSum([]byte(sshConfig.Data[sshdConfigFile]))
+
+	sssdSecret := &corev1.Secret{}
+	sssdSecretKey := nodeset.SssdSecretKey()
+	if err := b.client.Get(ctx, sssdSecretKey, sssdSecret); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sssdSecret), err)
+		}
+	}
+	sssdConfRefKey := nodeset.SssdSecretRef().Key
+	SssdConfHash := crypto.CheckSum([]byte(sssdSecret.StringData[sssdConfRefKey]))
+
+	hashMap := map[string]string{
+		annotationSshdConfHash: sshdConfigHash,
+		annotationSssdConfHash: SssdConfHash,
+	}
+
+	return hashMap, nil
 }

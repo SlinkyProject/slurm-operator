@@ -309,12 +309,6 @@ func loginEnv(container corev1.Container, controller *slinkyv1beta1.Controller) 
 	return mergeEnvVar(env, container.Env, " ")
 }
 
-const (
-	annotationSshdConfHash    = slinkyv1beta1.LoginSetPrefix + "sshd-conf-hash"
-	annotationSssdConfHash    = slinkyv1beta1.LoginSetPrefix + "sssd-conf-hash"
-	annotationSshHostKeysHash = slinkyv1beta1.LoginSetPrefix + "ssh-host-keys-hash"
-)
-
 func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (map[string]string, error) {
 	sshConfig := &corev1.ConfigMap{}
 	sshConfigKey := loginset.SshConfigKey()

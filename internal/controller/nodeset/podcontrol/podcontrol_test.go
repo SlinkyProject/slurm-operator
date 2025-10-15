@@ -136,7 +136,7 @@ func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -210,7 +210,7 @@ func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -271,7 +271,7 @@ func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := ptr.To(newPVC("datadir-foo-0"))
 	type fields struct {
 		Client   client.Client
@@ -354,7 +354,7 @@ func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := newPVC("datadir-foo-0")
 	type fields struct {
 		Client   client.Client
@@ -445,7 +445,7 @@ func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -624,7 +624,7 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet(1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := newPVC("datadir-foo-0")
 	type fields struct {
 		Client   client.Client

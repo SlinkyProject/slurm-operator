@@ -139,6 +139,7 @@ func Test_NodeEventHandler_Generic(t *testing.T) {
 
 func Test_NodeEventHandler_Update(t *testing.T) {
 	nodeset := newNodeSet("foo", "slurm", 0)
+	cl := fake.NewFakeClient()
 	type fields struct {
 		Reader client.Reader
 	}
@@ -158,8 +159,8 @@ func Test_NodeEventHandler_Update(t *testing.T) {
 			fields: fields{
 				Reader: indexes.NewFakeClientBuilderWithIndexes(
 					nodeset,
-					newNodeSetPod(nodeset, 0, "test-node"),
-					newNodeSetPod(nodeset, 1, "test-node2"),
+					newNodeSetPod(cl, nodeset, 0, "test-node"),
+					newNodeSetPod(cl, nodeset, 1, "test-node2"),
 				).Build(),
 			},
 			args: args{
@@ -177,7 +178,7 @@ func Test_NodeEventHandler_Update(t *testing.T) {
 			fields: fields{
 				Reader: indexes.NewFakeClientBuilderWithIndexes(
 					nodeset,
-					newNodeSetPod(nodeset, 0, "test-node"),
+					newNodeSetPod(cl, nodeset, 0, "test-node"),
 				).Build(),
 			},
 			args: args{
@@ -232,9 +233,9 @@ func Test_NodeEventHandler_Update(t *testing.T) {
 	}
 }
 
-func newNodeSetPod(nodeset *slinkyv1beta1.NodeSet, ordinal int, nodeName string) *corev1.Pod {
+func newNodeSetPod(client client.Client, nodeset *slinkyv1beta1.NodeSet, ordinal int, nodeName string) *corev1.Pod {
 	ctld := &slinkyv1beta1.Controller{}
-	pod := nodesetutils.NewNodeSetPod(nodeset, ctld, ordinal, "")
+	pod := nodesetutils.NewNodeSetPod(client, nodeset, ctld, ordinal, "")
 	pod.Spec.NodeName = nodeName
 	return pod
 }

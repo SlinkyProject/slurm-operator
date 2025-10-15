@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
@@ -126,7 +127,7 @@ func TestIsPodFromNodeSet(t *testing.T) {
 			name: "From NodeSet",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: true,
 		},
@@ -134,7 +135,7 @@ func TestIsPodFromNodeSet(t *testing.T) {
 			name: "Not From NodeSet",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: false,
 		},
@@ -165,14 +166,14 @@ func TestGetParentName(t *testing.T) {
 		{
 			name: "foo-0",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: "foo",
 		},
 		{
 			name: "bar-1",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: "bar",
 		},
@@ -203,14 +204,14 @@ func TestGetOrdinal(t *testing.T) {
 		{
 			name: "foo-0",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: 0,
 		},
 		{
 			name: "bar-1",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: 1,
 		},
@@ -242,7 +243,7 @@ func TestGetParentNameAndOrdinal(t *testing.T) {
 		{
 			name: "foo-0",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want:  "foo",
 			want1: 0,
@@ -250,7 +251,7 @@ func TestGetParentNameAndOrdinal(t *testing.T) {
 		{
 			name: "bar-1",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want:  "bar",
 			want1: 1,
@@ -322,14 +323,14 @@ func TestGetNodeName(t *testing.T) {
 		{
 			name: "foo-0",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: "foo-0",
 		},
 		{
 			name: "bar-1",
 			args: args{
-				pod: NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod: NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: "bar-1",
 		},
@@ -362,7 +363,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			name: "Match",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: true,
 		},
@@ -370,7 +371,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			name: "Not Match",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: false,
 		},
@@ -403,7 +404,7 @@ func TestIsStorageMatch(t *testing.T) {
 			name: "Match",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: true,
 		},
@@ -411,7 +412,7 @@ func TestIsStorageMatch(t *testing.T) {
 			name: "Not Match",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("bar"), controller, 1, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, ""),
 			},
 			want: false,
 		},
@@ -454,7 +455,7 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 				}
 				return args{
 					nodeset: nodeset,
-					pod:     NewNodeSetPod(nodeset, controller, 0, ""),
+					pod:     NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, ""),
 				}
 			}(),
 			want: map[string]corev1.PersistentVolumeClaim{},
@@ -463,7 +464,7 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 			name: "With Claims",
 			args: args{
 				nodeset: newNodeSet("foo"),
-				pod:     NewNodeSetPod(newNodeSet("foo"), controller, 0, ""),
+				pod:     NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
 			},
 			want: map[string]corev1.PersistentVolumeClaim{
 				"datadir": {
