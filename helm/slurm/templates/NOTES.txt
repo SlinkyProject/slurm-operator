@@ -57,7 +57,7 @@ ssh via the Slurm login ({{ $name }}) service:
   {{- else }}
   $ SLURM_LOGIN_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ $name }} -o jsonpath='{.spec.clusterIP}')"
   {{- end }}{{- /* if eq ($loginset | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
-  $ ssh -p {{ $loginset.service.port | default 22 }} $SLURM_LOGIN_IP
+  $ ssh -p {{ $loginset | dig "service" "port" "22" }} $SLURM_LOGIN_IP
 {{- end }}{{- /* $loginset.enabled */}}
 {{- end }}{{- /* range $key, $loginset := $.Values.loginsets */}}
 
@@ -71,7 +71,7 @@ The Slurm controller service:
   {{- else }}
   $ SLURM_CONTROLLER_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.controller.name" . }} -o jsonpath='{.spec.clusterIP}')"
   {{- end }}{{- /* if eq (.Values.controller | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
-  $ SLURM_CONF_SERVER=$SLURM_CONTROLLER_IP:{{ .Values.controller.service.port | default 6817 }}
+  $ SLURM_CONF_SERVER=$SLURM_CONTROLLER_IP:{{ .Values.controller | dig "service" "port" "6817" }}
 
 Learn more about slurmctld:
   - Overview: https://slurm.schedmd.com/slurmctld.html
@@ -88,7 +88,7 @@ curl the Slurm restapi service:
   {{- else }}
   $ SLURM_RESTAPI_IP="$(kubectl get services -n {{ include "slurm.namespace" $ }} {{ include "slurm.restapi.name" . }} -o jsonpath='{.spec.clusterIP}')"
   {{- end }}{{- /* if eq (.Values.restapi | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) */}}
-  $ curl -H "X-SLURM-USER-TOKEN: auth/none" http://${SLURM_RESTAPI_IP}:{{ .Values.restapi.service.port | default 6820 }}/openapi/v3
+  $ curl -H "X-SLURM-USER-TOKEN: auth/none" http://${SLURM_RESTAPI_IP}:{{ .Values.restapi | dig "service" "port" "6820" }}/openapi/v3
 
 Learn more about slurmrestd:
   - Overview: https://slurm.schedmd.com/rest.html
