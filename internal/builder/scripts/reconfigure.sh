@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SLURM_DIR="/etc/slurm"
-INTERVAL="30s"
+INTERVAL="5"
 
 function getHash() {
 	echo "$(find "$SLURM_DIR" -type f -print0 | sort -z | xargs -0 md5sum | md5sum)"
