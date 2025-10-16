@@ -4,8 +4,6 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- $podMetadata := .Values.controller.metadata | default dict -}}
-{{- $labels := fromYaml (include "slurm.labels" $) -}}
-{{- $podMetadata = merge (dict "labels" $labels) ($podMetadata | default dict) -}}
 {{- $podSpec := .Values.controller.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}

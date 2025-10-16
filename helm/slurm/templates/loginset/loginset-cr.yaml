@@ -7,9 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 {{- if $loginset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
 {{- $podMetadata := $loginset.metadata | default dict -}}
-{{- $labels := fromYaml (include "slurm.labels" $) -}}
-{{- $labels = merge $labels (dict "loginset.slinky.slurm.net/name" $name) -}}
-{{- $podMetadata = merge (dict "labels" $labels) ($podMetadata | default dict) -}}
 {{- $podSpec := $loginset.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) ($.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
@@ -23,7 +20,6 @@ metadata:
   name: {{ $name }}
   namespace: {{ include "slurm.namespace" $ }}
   labels:
-    loginset.slinky.slurm.net/name: {{ $name }}
     {{- include "slurm.labels" $ | nindent 4 }}
 spec:
   controllerRef:
