@@ -223,9 +223,13 @@ controller:
       #   effect: NoSchedule
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+  # NOTE: Headless services are strictly defined by clusterIP: None.
+  # Using publishNotReadyAddresses: true is typical but not required for headless services.
+  # Headless services are required for StatefulSet pod DNS resolution.
   service:
     spec:
-      clusterIP: None  # Default to headless for Slurm StatefulSet pod DNS
+      clusterIP: None  # Required for headless service and StatefulSet pod DNS
+      publishNotReadyAddresses: true  # Optional: allows DNS resolution before pods are ready
     # port: 6817
     # nodePort: 30817
 
@@ -282,9 +286,14 @@ restapi:
       #   effect: NoSchedule
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+  # NOTE: Headless services are strictly defined by clusterIP: None.
+  # Using publishNotReadyAddresses: true is typical but not required for headless services.
+  # Headless services are required for StatefulSet pod DNS resolution.
   service: {}
     # spec:
       # type: ClusterIP
+      # clusterIP: None  # Optional: for headless service and StatefulSet pod DNS
+      # publishNotReadyAddresses: true  # Optional: allows DNS resolution before pods are ready
       # loadBalancerIP: ""
       # externalIPs: []
       # externalName: ""
@@ -401,9 +410,14 @@ accounting:
       #   effect: NoSchedule
   # -- The service configuration.
   # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+  # NOTE: Headless services are strictly defined by clusterIP: None.
+  # Using publishNotReadyAddresses: true is typical but not required for headless services.
+  # Headless services are required for StatefulSet pod DNS resolution.
   service: {}
     # spec:
       # type: LoadBalancer
+      # clusterIP: None  # Optional: for headless service and StatefulSet pod DNS
+      # publishNotReadyAddresses: true  # Optional: allows DNS resolution before pods are ready
       # loadBalancerIP: ""
       # externalIPs: []
       # externalName: ""
@@ -506,9 +520,14 @@ loginsets:
         #     path: /exports/home
     # -- The service configuration.
     # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    # NOTE: Headless services are strictly defined by clusterIP: None.
+    # Using publishNotReadyAddresses: true is typical but not required for headless services.
+    # Headless services are required for StatefulSet pod DNS resolution.
     service:
       spec:
         type: LoadBalancer
+        # clusterIP: None  # Optional: for headless service and StatefulSet pod DNS
+        # publishNotReadyAddresses: true  # Optional: allows DNS resolution before pods are ready
         # loadBalancerIP: ""
         # externalIPs: []
         # externalName: ""
