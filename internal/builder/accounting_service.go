@@ -21,6 +21,7 @@ func (b *Builder) BuildAccountingService(accounting *slinkyv1alpha1.Accounting) 
 		Selector: labels.NewBuilder().
 			WithAccountingSelectorLabels(accounting).
 			Build(),
+		Headless: accounting.Spec.Service.ServiceSpecWrapper.ServiceSpec.ClusterIP == corev1.ClusterIPNone,
 	}
 
 	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithAccountingLabels(accounting).Build())

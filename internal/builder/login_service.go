@@ -21,6 +21,7 @@ func (b *Builder) BuildLoginService(loginset *slinkyv1alpha1.LoginSet) (*corev1.
 		Selector: labels.NewBuilder().
 			WithLoginSelectorLabels(loginset).
 			Build(),
+		Headless: loginset.Spec.Service.ServiceSpecWrapper.ServiceSpec.ClusterIP == corev1.ClusterIPNone,
 	}
 
 	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build())
