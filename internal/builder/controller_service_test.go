@@ -22,11 +22,13 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 		controller *slinkyv1alpha1.Controller
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *corev1.Service
-		wantErr bool
+		name                         string
+		fields                       fields
+		args                         args
+		want                         *corev1.Service
+		wantErr                      bool
+		wantClusterIP                string
+		wantPublishNotReadyAddresses bool
 	}{
 		{
 			name: "default",
@@ -40,6 +42,8 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 					},
 				},
 			},
+			wantClusterIP:                "",
+			wantPublishNotReadyAddresses: false,
 		},
 		{
 			name: "headless service",
@@ -62,6 +66,8 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 					},
 				},
 			},
+			wantClusterIP:                corev1.ClusterIPNone,
+			wantPublishNotReadyAddresses: true,
 		},
 	}
 	for _, tt := range tests {
@@ -92,14 +98,15 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 					got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 			}
 
-			// Test headless service configuration
-			if tt.name == "headless service" {
-				if got.Spec.ClusterIP != corev1.ClusterIPNone {
-					t.Errorf("Expected headless service (ClusterIP=None), got ClusterIP=%v", got.Spec.ClusterIP)
-				}
-				if !got.Spec.PublishNotReadyAddresses {
-					t.Errorf("Expected PublishNotReadyAddresses=true for headless service, got %v", got.Spec.PublishNotReadyAddresses)
-				}
+			// Validate ClusterIP
+			if got.Spec.ClusterIP != tt.wantClusterIP {
+				t.Errorf("ClusterIP = %v, want %v", got.Spec.ClusterIP, tt.wantClusterIP)
+			}
+
+			// Validate PublishNotReadyAddresses
+			if got.Spec.PublishNotReadyAddresses != tt.wantPublishNotReadyAddresses {
+				t.Errorf("PublishNotReadyAddresses = %v, want %v",
+					got.Spec.PublishNotReadyAddresses, tt.wantPublishNotReadyAddresses)
 			}
 		})
 	}
