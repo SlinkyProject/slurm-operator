@@ -22,11 +22,13 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 		loginset *slinkyv1alpha1.LoginSet
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *corev1.Service
-		wantErr bool
+		name                         string
+		fields                       fields
+		args                         args
+		want                         *corev1.Service
+		wantErr                      bool
+		wantClusterIP                string
+		wantPublishNotReadyAddresses bool
 	}{
 		{
 			name: "default",
@@ -51,6 +53,41 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 					},
 				},
 			},
+			wantClusterIP:                "",
+			wantPublishNotReadyAddresses: false,
+		},
+		{
+			name: "headless service",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1alpha1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1alpha1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm-foo",
+					},
+					Spec: slinkyv1alpha1.LoginSetSpec{
+						Service: slinkyv1alpha1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1alpha1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ClusterIP: corev1.ClusterIPNone,
+								},
+							},
+						},
+						ControllerRef: slinkyv1alpha1.ObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+			wantClusterIP:                corev1.ClusterIPNone,
+			wantPublishNotReadyAddresses: true,
 		},
 	}
 	for _, tt := range tests {
@@ -79,6 +116,17 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 					got.Spec.Ports[0].TargetPort,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].Name,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			}
+
+			// Validate ClusterIP
+			if got.Spec.ClusterIP != tt.wantClusterIP {
+				t.Errorf("ClusterIP = %v, want %v", got.Spec.ClusterIP, tt.wantClusterIP)
+			}
+
+			// Validate PublishNotReadyAddresses
+			if got.Spec.PublishNotReadyAddresses != tt.wantPublishNotReadyAddresses {
+				t.Errorf("PublishNotReadyAddresses = %v, want %v",
+					got.Spec.PublishNotReadyAddresses, tt.wantPublishNotReadyAddresses)
 			}
 		})
 	}

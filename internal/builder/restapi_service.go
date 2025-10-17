@@ -21,6 +21,7 @@ func (b *Builder) BuildRestapiService(restapi *slinkyv1alpha1.RestApi) (*corev1.
 		Selector: labels.NewBuilder().
 			WithRestapiSelectorLabels(restapi).
 			Build(),
+		Headless: restapi.Spec.Service.ServiceSpecWrapper.ServiceSpec.ClusterIP == corev1.ClusterIPNone,
 	}
 
 	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithRestapiLabels(restapi).Build())

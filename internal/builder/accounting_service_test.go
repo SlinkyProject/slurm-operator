@@ -22,10 +22,12 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 		accounting *slinkyv1alpha1.Accounting
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name                         string
+		fields                       fields
+		args                         args
+		wantErr                      bool
+		wantClusterIP                string
+		wantPublishNotReadyAddresses bool
 	}{
 		{
 			name: "default",
@@ -58,6 +60,49 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 					},
 				},
 			},
+			wantClusterIP:                "",
+			wantPublishNotReadyAddresses: false,
+		},
+		{
+			name: "headless service",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "mariadb",
+						},
+						Data: map[string][]byte{
+							"password": []byte("mariadb-password"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				accounting: &slinkyv1alpha1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1alpha1.AccountingSpec{
+						Service: slinkyv1alpha1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1alpha1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ClusterIP: corev1.ClusterIPNone,
+								},
+							},
+						},
+						StorageConfig: slinkyv1alpha1.StorageConfig{
+							PasswordKeyRef: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "mariadb",
+								},
+								Key: "password",
+							},
+						},
+					},
+				},
+			},
+			wantClusterIP:                corev1.ClusterIPNone,
+			wantPublishNotReadyAddresses: true,
 		},
 	}
 	for _, tt := range tests {
@@ -86,6 +131,17 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 					got.Spec.Ports[0].TargetPort,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].Name,
 					got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			}
+
+			// Validate ClusterIP
+			if got.Spec.ClusterIP != tt.wantClusterIP {
+				t.Errorf("ClusterIP = %v, want %v", got.Spec.ClusterIP, tt.wantClusterIP)
+			}
+
+			// Validate PublishNotReadyAddresses
+			if got.Spec.PublishNotReadyAddresses != tt.wantPublishNotReadyAddresses {
+				t.Errorf("PublishNotReadyAddresses = %v, want %v",
+					got.Spec.PublishNotReadyAddresses, tt.wantPublishNotReadyAddresses)
 			}
 		})
 	}
