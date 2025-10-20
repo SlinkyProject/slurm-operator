@@ -25,10 +25,12 @@ import (
 	"k8s.io/klog/v2"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/history"
+	taints "k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	api "github.com/SlinkyProject/slurm-client/api/v0043"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
@@ -46,6 +48,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
 )
 
 func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) *NodeSetReconciler {
@@ -476,6 +479,208 @@ func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
 			if err := r.syncNodeSet(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.syncNodeSet() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncTaint(t *testing.T) {
+	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodesetNoTaint := newNodeSet("foo", controller.Name, 2)
+	nodesetNoTaint.UID = "1234"
+	podNoTaint := nodesetutils.NewNodeSetPod(nodesetNoTaint, controller, 0, "")
+	podNoTaint.Spec.NodeName = "node1"
+	podNoTaint.Status.Phase = corev1.PodRunning
+	if err := controllerutil.SetControllerReference(nodesetNoTaint, podNoTaint, clientgoscheme.Scheme); err != nil {
+		t.Errorf("TestNodeSetReconciler_syncTaint() unable to SetControllerReference to %v for %v: %v", nodesetNoTaint, podNoTaint, err)
+	}
+
+	nodesetTaint := newNodeSet("bar", controller.Name, 2)
+	nodesetTaint.Spec.TaintKubeNodes = true
+	nodesetTaint.UID = "2345"
+	podTaint := nodesetutils.NewNodeSetPod(nodesetTaint, controller, 0, "")
+	podTaint.Spec.NodeName = "node1"
+	podTaint.Status.Phase = corev1.PodRunning
+	if err := controllerutil.SetControllerReference(nodesetTaint, podTaint, clientgoscheme.Scheme); err != nil {
+		t.Errorf("TestNodeSetReconciler_syncTaint() unable to SetControllerReference to %v for %v: %v", nodesetTaint, podTaint, err)
+	}
+
+	node := corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+		},
+	}
+
+	emptyNode := corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node2",
+		},
+		Spec: corev1.NodeSpec{
+			Taints: []corev1.Taint{
+				slurmtaints.TaintNodeWorker,
+			},
+		},
+	}
+
+	type fields struct {
+		Client    client.Client
+		ClientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pod     *corev1.Pod
+		node    *corev1.Node
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		args      args
+		wantErr   bool
+		wantTaint bool
+	}{
+		{
+			name: "No taints applied for NodeSet with default, TaintKubeNodes: false",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodesetNoTaint.DeepCopy(),
+					&node,
+					podNoTaint,
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name: ptr.To(nodesetutils.GetNodeName(podNoTaint)),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodesetNoTaint,
+				pod:     podNoTaint,
+				node:    &node,
+			},
+			wantErr:   false,
+			wantTaint: false,
+		},
+		{
+			name: "Taints applied for NodeSet with TaintKubeNodes: true",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodesetTaint.DeepCopy(),
+					&node,
+					podTaint,
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name: ptr.To(nodesetutils.GetNodeName(podTaint)),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodesetTaint,
+				pod:     podTaint,
+				node:    &node,
+			},
+			wantErr:   false,
+			wantTaint: true,
+		},
+		{
+			name: "Taints removed from Node with no NodeSet pods",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					&emptyNode,
+				),
+			},
+			args: args{
+				ctx:  context.TODO(),
+				node: &emptyNode,
+			},
+			wantErr:   false,
+			wantTaint: false,
+		},
+		{
+			name: "Taints not applied to Node with no NodeSet pods with TaintKubeNodes: true",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodesetTaint.DeepCopy(),
+					&node,
+				),
+			},
+			args: args{
+				ctx:  context.TODO(),
+				node: &node,
+			},
+			wantErr:   false,
+			wantTaint: false,
+		},
+		{
+			name: "Taints applied to Node with NodeSet pods with both TaintKubeNodes: true and TaintKubeNodes: false",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodesetNoTaint.DeepCopy(),
+					nodesetTaint.DeepCopy(),
+					&node,
+					podTaint,
+					podNoTaint,
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0043NodeList{
+						Items: []slurmtypes.V0043Node{
+							{
+								V0043Node: api.V0043Node{
+									Name: ptr.To(nodesetutils.GetNodeName(podTaint)),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:  context.TODO(),
+				node: &node,
+			},
+			wantErr:   false,
+			wantTaint: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
+			if err := r.syncTaint(ctx); (err != nil) != tt.wantErr {
+				t.Errorf("NodeSetReconciler.syncTaint() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			node := &corev1.Node{}
+			key := client.ObjectKeyFromObject(tt.args.node)
+			if err := r.Get(tt.args.ctx, key, node); err != nil {
+				t.Errorf("NodeSetReconciler.syncTaint() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantTaint != taints.TaintExists(node.Spec.Taints, &slurmtaints.TaintNodeWorker) {
+				t.Errorf("NodeSetReconciler.syncTaint() slice.Contains(node.Spec.Taints, slurmtaints.TaintNodeWorker) = %v, wantTaintNoExecute = %v", node.Spec.Taints, tt.wantTaint)
 			}
 		})
 	}

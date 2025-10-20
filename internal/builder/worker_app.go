@@ -17,6 +17,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
+	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
 )
 
 const (
@@ -66,6 +67,9 @@ func (b *Builder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, control
 				b.logfileContainer(spec.LogFile, slurmdLogFilePath),
 			},
 			Volumes: nodesetVolumes(controller),
+			Tolerations: []corev1.Toleration{
+				slurmtaints.TolerationWorkerNode,
+			},
 		},
 		merge: template.PodSpec,
 	}

@@ -175,6 +175,12 @@ spec:
                   Ref: https://github.com/kubernetes/api/blob/master/core/v1/types.go#L2885
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              taintKubeNodes:
+                default: false
+                description: |-
+                  TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
+                  See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
+                type: boolean
               template:
                 description: |-
                   Template is the object that describes the pod that will be created if
@@ -557,6 +563,12 @@ spec:
                   Ref: https://github.com/kubernetes/api/blob/master/core/v1/types.go#L2885
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              taintKubeNodes:
+                default: false
+                description: |-
+                  TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
+                  See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
+                type: boolean
               template:
                 description: |-
                   Template is the object that describes the pod that will be created if

@@ -14,10 +14,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/history"
+	"k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +36,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
 )
 
 const (
@@ -236,6 +239,10 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncTaint(ctx); err != nil {
+		return err
+	}
+
 	if err := r.syncNodeSet(ctx, nodeset, pods, hash); err != nil {
 		return err
 	}
@@ -353,6 +360,83 @@ func (r *NodeSetReconciler) syncCordon(
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncCordonFn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// syncTaint ensures that a NoExecute taint is applied to all nodes running NodeSets
+func (r *NodeSetReconciler) syncTaint(
+	ctx context.Context,
+) error {
+	// Build a list of Kube nodes
+	kubeNodeList := &corev1.NodeList{}
+	if err := r.List(ctx, kubeNodeList); err != nil {
+		return err
+	}
+
+	// Build a list NodeSets and NodeSet UIDs
+	nodesetList := &slinkyv1beta1.NodeSetList{}
+	if err := r.List(ctx, nodesetList); err != nil {
+		return err
+	}
+	nodesetUIDs := sets.New[types.UID]()
+	for _, nodeset := range nodesetList.Items {
+		if nodeset.Spec.TaintKubeNodes {
+			nodesetUIDs.Insert(nodeset.UID)
+		}
+	}
+
+	// Build a list of Pods
+	podList := &corev1.PodList{}
+	if err := r.List(ctx, podList); err != nil {
+		return err
+	}
+
+	// Build a set of Kube Nodes that have NodeSet pods that are not terminating
+	// Use GetControllerOf on the pod
+	nodeSetWithPod := sets.New[string]()
+	for _, pod := range podList.Items {
+		owner := metav1.GetControllerOf(&pod)
+		if owner == nil || !nodesetUIDs.Has(owner.UID) || !podutils.IsRunning(&pod) || podutils.IsTerminating(&pod) {
+			continue
+		}
+		nodeSetWithPod.Insert(pod.Spec.NodeName)
+	}
+
+	syncTaintFn := func(i int) error {
+		node := kubeNodeList.Items[i]
+		var toUpdate *corev1.Node
+		var updated bool
+		var err error
+
+		// Taint the node if it has a NodeSet pod that is not terminating
+		if nodeSetWithPod.Has(node.Name) {
+			toUpdate, updated, err = taints.AddOrUpdateTaint(&node, &slurmtaints.TaintNodeWorker)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Remove the taint from nodes that don't have NodeSet pods
+			toUpdate, updated, err = taints.RemoveTaint(&node, &slurmtaints.TaintNodeWorker)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !updated {
+			return nil
+		}
+
+		patch := client.StrategicMergeFrom(&node)
+		if err := r.Patch(ctx, toUpdate, patch); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	if _, err := utils.SlowStartBatch(len(kubeNodeList.Items), utils.SlowStartInitialBatchSize, syncTaintFn); err != nil {
 		return err
 	}
 

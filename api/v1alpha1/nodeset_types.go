@@ -91,6 +91,12 @@ type NodeSetSpec struct {
 	// Defaults to 0 (pod will be considered available as soon as it is ready).
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
+	// TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
+	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
+	// +optional
+	// +default:=false
+	TaintKubeNodes bool `json:"taintKubeNodes,omitempty"`
 }
 
 // NodeSetPartition defines the Slurm partition configuration for the NodeSet.

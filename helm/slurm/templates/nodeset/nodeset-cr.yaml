@@ -63,5 +63,6 @@ spec:
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
+  taintKubeNodes: {{ $nodeset.taintKubeNodes }}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}
