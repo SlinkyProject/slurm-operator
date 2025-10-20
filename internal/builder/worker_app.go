@@ -155,7 +155,7 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *s
 						Command: []string{
 							"/usr/bin/sh",
 							"-c",
-							"scontrol update nodename=$(hostname) state=down reason=preStop && scontrol delete nodename=$(hostname);",
+							"scontrol update nodename=$(hostname) state=down reason='Pod is terminating' && scontrol delete nodename=$(hostname);",
 						},
 					},
 				},
