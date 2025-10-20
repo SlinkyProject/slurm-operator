@@ -269,10 +269,11 @@ func buildSlurmConf(
 	return conf.Build()
 }
 
+// https://slurm.schedmd.com/cgroup.conf.html
 func buildCgroupConf() string {
 	conf := config.NewBuilder()
 
-	conf.AddProperty(config.NewProperty("CgroupPlugin", "autodetect"))
+	conf.AddProperty(config.NewProperty("CgroupPlugin", "cgroup/v2"))
 	conf.AddProperty(config.NewProperty("IgnoreSystemd", "yes"))
 
 	return conf.Build()

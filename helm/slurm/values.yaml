@@ -47,7 +47,7 @@ clusterName: null
 configFiles: {}
   # Ref: https://slurm.schedmd.com/cgroup.conf.html
   # cgroup.conf: |
-  #   CgroupPlugin=autodetect
+  #   CgroupPlugin=cgroup/v2
   #   IgnoreSystemd=yes
   #   ConstrainCores=yes
   #   ConstrainRAMSpace=yes
