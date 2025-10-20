@@ -8,7 +8,7 @@ SLURM_DIR="/etc/slurm"
 INTERVAL="5"
 
 function getHash() {
-	echo "$(find "$SLURM_DIR" -type f -exec md5sum {} \; | sort -k2 | md5sum)"
+	echo "$(find "$SLURM_DIR" -type f -exec sha256sum {} \; | sort -k2 | sha256sum)"
 }
 
 function reconfigure() {
