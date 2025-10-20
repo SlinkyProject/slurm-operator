@@ -127,6 +127,19 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *s
 				FailureThreshold: 6,
 				PeriodSeconds:    10,
 			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"scontrol",
+							"show",
+							"slurmd",
+						},
+					},
+				},
+				FailureThreshold: 6,
+				PeriodSeconds:    10,
+			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
