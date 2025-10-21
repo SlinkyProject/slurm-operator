@@ -176,6 +176,15 @@ func (b *Builder) slurmrestdContainer(merge corev1.Container, hasAccounting bool
 				FailureThreshold: 6,
 				PeriodSeconds:    10,
 			},
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmrestdPort),
+					},
+				},
+				FailureThreshold: 6,
+				PeriodSeconds:    10,
+			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					TCPSocket: &corev1.TCPSocketAction{
