@@ -95,6 +95,10 @@ type ControllerSpec struct {
 	// Service defines a template for a Kubernetes Service object.
 	// +optional
 	Service ServiceSpec `json:"service,omitzero"`
+
+	// Metrics defines the metric collection configuration.
+	// +optional
+	Metrics Metrics `json:"metrics,omitzero"`
 }
 
 type ControllerPersistence struct {

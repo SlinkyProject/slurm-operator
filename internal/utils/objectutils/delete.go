@@ -8,8 +8,10 @@ import (
 	"errors"
 	"fmt"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,6 +44,10 @@ func DeleteObject(c client.Client, ctx context.Context, newObj client.Object) er
 		oldObj = &slinkyv1beta1.NodeSet{}
 	case *slinkyv1beta1.LoginSet:
 		oldObj = &slinkyv1beta1.LoginSet{}
+	case *policyv1.PodDisruptionBudget:
+		oldObj = &policyv1.PodDisruptionBudget{}
+	case *monitoringv1.ServiceMonitor:
+		oldObj = &monitoringv1.ServiceMonitor{}
 	default:
 		return errors.New("unhandled object, this is a bug")
 	}

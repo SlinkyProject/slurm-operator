@@ -75,6 +75,27 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 				return nil
 			},
 		},
+		{
+			Name: "ServiceMonitor",
+			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+				object, err := r.builder.BuildControllerServiceMonitor(controller)
+				if err != nil {
+					return fmt.Errorf("failed to build: %w", err)
+				}
+
+				if !controller.Spec.Metrics.Enabled || !controller.Spec.Metrics.ServiceMonitor.Enabled {
+					if err := objectutils.DeleteObject(r.Client, ctx, object); err != nil {
+						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
+					}
+					return nil
+				}
+
+				if err := objectutils.SyncObject(r.Client, ctx, object, true); err != nil {
+					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
+				}
+				return nil
+			},
+		},
 	}
 
 	for _, s := range syncSteps {

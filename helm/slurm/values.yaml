@@ -234,6 +234,34 @@ controller:
       # type: LoadBalancer
     # port: 6817
     # nodePort: 30817
+  # Metrics configuration.
+  # Ref: https://slurm.schedmd.com/metrics.html
+  metrics:
+    # -- Enable metrics.
+    enabled: false
+    # Prometheus service monitor configuration.
+    serviceMonitor:
+      # -- Enable serviceMonitor for metrics discovery.
+      enabled: false
+      # -- Annotations (metadata) added to the serviceMonitor.
+      annotations: {}
+      # -- Labels (metadata) added to the serviceMonitor.
+      labels: {}
+      # -- Interval at which Prometheus scrapes the metrics from the target (all endpoints).
+      # If empty, the Prometheus default will be used instead.
+      interval: 30s
+      # -- ScrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed (all endpoints).
+      # If empty, the Prometheus default will be used instead.
+      scrapeTimeout: 25s
+      # -- Endpoint scrape configuration.
+      # If empty, a default group of endpoints will be used.
+      # Ref: https://slurm.schedmd.com/metrics.html#endpoints
+      endpoints:
+        - path: /metrics/jobs
+        - path: /metrics/nodes
+        - path: /metrics/partitions
+        - path: /metrics/scheduler
+        # - path: /metrics/jobs-users-accts
 
 # Slurm REST API (slurmrestd) configuration.
 restapi:
@@ -300,18 +328,6 @@ restapi:
       # type: ClusterIP
     # port: 6820
     # nodePort: 30820
-
-# `slinky/slurm-exporter` subchart configurations.
-# Ref: https://github.com/SlinkyProject/slurm-exporter/blob/main/helm/slurm-exporter/values.yaml
-slurm-exporter:
-  enabled: true
-  exporter:
-    enabled: true
-    secretName: "slurm-token-exporter"
-    nodeSelector:
-      kubernetes.io/os: linux
-    affinity: {}
-    tolerations: []
 
 # Slurm accounting (slurmdbd) configuration.
 accounting:

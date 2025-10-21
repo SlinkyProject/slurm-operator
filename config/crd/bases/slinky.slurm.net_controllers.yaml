@@ -741,6 +741,85 @@ spec:
                 description: The logfile sidecar configuration.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              metrics:
+                description: Metrics defines the metric collection configuration.
+                properties:
+                  enabled:
+                    default: false
+                    description: Enabled controls if metrics will be configured.
+                    type: boolean
+                  serviceMonitor:
+                    description: ServiceMonitor defines a Prometheus service monitor
+                      to metrics discovery.
+                    nullable: true
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        type: object
+                      enabled:
+                        default: false
+                        description: Enabled controls if metrics will be configured.
+                        type: boolean
+                      endpoints:
+                        description: endpoints to scrape.
+                        items:
+                          properties:
+                            interval:
+                              description: |-
+                                interval at which Prometheus scrapes the metrics from the target.
+
+                                If empty, the local global value will be used.
+                              pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                              type: string
+                            path:
+                              description: path defines the HTTP path from which to
+                                scrape for metrics.
+                              type: string
+                            scrapeTimeout:
+                              description: |-
+                                scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+
+                                If empty, the local global value will be used.
+                              pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                              type: string
+                          required:
+                          - path
+                          type: object
+                        nullable: true
+                        type: array
+                      interval:
+                        description: |-
+                          interval at which Prometheus scrapes the metrics from the target.
+
+                          If empty, Prometheus uses the global scrape interval.
+                        pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                        type: string
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        type: object
+                      scrapeTimeout:
+                        description: |-
+                          scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+
+                          If empty, Prometheus uses the global scrape timeout unless it is less
+                          than the target's scrape interval value in which the latter is used.
+                          The value cannot be greater than the scrape interval otherwise the operator will reject the resource.
+                        pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                        type: string
+                    type: object
+                type: object
               persistence:
                 description: |-
                   Persistence defines a persistent volume for the slurm controller to store its save-state.

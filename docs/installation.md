@@ -102,7 +102,6 @@ The output should be similar to:
 NAME                                  READY   STATUS    RESTARTS   AGE
 slurm-accounting-0                    1/1     Running   0          2m
 slurm-controller-0                    3/3     Running   0          2m
-slurm-exporter-6ffb9fdbbd-547zj       1/1     Running   0          2m
 slurm-login-slinky-7ff66445b5-wdjkn   1/1     Running   0          2m
 slurm-restapi-77b9f969f7-kh4r8        1/1     Running   0          2m
 slurm-worker-slinky-0                 2/2     Running   0          2m

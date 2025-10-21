@@ -33,14 +33,33 @@ Metrics Server is needed to report CPU and memory usage for tools like
 `kubectl top`. KEDA is recommended for autoscaling as it provides usability
 improvements over standard the Horizontal Pod Autoscaler ([HPA]).
 
-To add KEDA in the helm install, run
+To install the Prometheus helm chart, run the following:
+
+```sh
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --set 'installCRDs=true' \
+  --namespace prometheus --create-namespace
+```
+
+To install the KEDA helm chart, run the following:
 
 ```sh
 helm repo add kedacore https://kedacore.github.io/charts
+helm repo update
+helm install keda kedacore/keda \
+  --namespace keda --create-namespace
 ```
 
-Install the [slurm-exporter]. This chart is installed as a dependency of the
-slurm helm chart by default. Configure using helm/slurm/values.yaml.
+Install the Slurm helm chart with the following:
+
+```sh
+helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set 'controller.metrics.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --namespace slurm --create-namespace
+```
 
 #### Verify KEDA Metrics API Server is running
 
@@ -136,7 +155,7 @@ spec:
       metricType: Value
       metadata:
         serverAddress: http://prometheus-kube-prometheus-prometheus.prometheus:9090
-        query: slurm_partition_pending_jobs{partition="radar"}
+        query: slurm_partition_jobs_pending{partition="radar"}
         threshold: '5'
 ```
 
@@ -225,4 +244,3 @@ KEDA will scale the NodeSet down to 0.
 [prometheus adapter]: https://github.com/kubernetes-sigs/prometheus-adapter
 [scale subresource]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource
 [scaledobject]: https://keda.sh/docs/concepts/scaling-deployments/
-[slurm-exporter]: https://github.com/SlinkyProject/slurm-exporter

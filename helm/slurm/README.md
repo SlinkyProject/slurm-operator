@@ -22,10 +22,6 @@ Slurm Cluster
 
 Kubernetes: `>= 1.29.0-0`
 
-| Repository | Name | Version |
-|------------|------|---------|
-| oci://ghcr.io/slinkyproject/charts | slurm-exporter | 0.4.1 |
-
 ## Values
 
 | Key | Type | Default | Description |
@@ -57,6 +53,13 @@ Kubernetes: `>= 1.29.0-0`
 | controller.logfile.image | object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.logfile.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | controller.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
+| controller.metrics.enabled | bool | `false` | Enable metrics. |
+| controller.metrics.serviceMonitor.annotations | object | `{}` | Annotations (metadata) added to the serviceMonitor. |
+| controller.metrics.serviceMonitor.enabled | bool | `false` | Enable serviceMonitor for metrics discovery. |
+| controller.metrics.serviceMonitor.endpoints | list | `[{"path":"/metrics/jobs"},{"path":"/metrics/nodes"},{"path":"/metrics/partitions"},{"path":"/metrics/scheduler"}]` | Endpoint scrape configuration. If empty, a default group of endpoints will be used. Ref: https://slurm.schedmd.com/metrics.html#endpoints |
+| controller.metrics.serviceMonitor.interval | string | `"30s"` | Interval at which Prometheus scrapes the metrics from the target (all endpoints). If empty, the Prometheus default will be used instead. |
+| controller.metrics.serviceMonitor.labels | object | `{}` | Labels (metadata) added to the serviceMonitor. |
+| controller.metrics.serviceMonitor.scrapeTimeout | string | `"25s"` | ScrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed (all endpoints). If empty, the Prometheus default will be used instead. |
 | controller.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | controller.persistence.enabled | bool | `true` | Enable persistence for slurmctld, retain save-state across recreations. |
 | controller.persistence.existingClaim | string | `nil` | Name of the existing `PersistentVolumeClaim` to use instead of creating one. If this is not empty, then certain other fields will be ignored. |
@@ -148,12 +151,6 @@ Kubernetes: `>= 1.29.0-0`
 | restapi.slurmrestd.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES |
 | restapi.slurmrestd.image | object | `{"repository":"ghcr.io/slinkyproject/slurmrestd","tag":"25.11-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | restapi.slurmrestd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
-| slurm-exporter.enabled | bool | `true` |  |
-| slurm-exporter.exporter.affinity | object | `{}` |  |
-| slurm-exporter.exporter.enabled | bool | `true` |  |
-| slurm-exporter.exporter.nodeSelector."kubernetes.io/os" | string | `"linux"` |  |
-| slurm-exporter.exporter.secretName | string | `"slurm-token-exporter"` |  |
-| slurm-exporter.exporter.tolerations | list | `[]` |  |
 | slurmKeyRef | secretKeyRef | `{}` | Slurm shared authentication key. If empty, one will be generated and used. Ref: https://slurm.schedmd.com/authentication.html#slurm |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |
 | vendor.nvidia.dcgm.jobMappingDir | string | `"/var/lib/dcgm-exporter/job-mapping"` | Directory path where GPU-to-job mapping files will be stored |

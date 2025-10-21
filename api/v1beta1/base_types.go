@@ -6,6 +6,8 @@ package v1beta1
 import (
 	"encoding/json"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -173,4 +175,64 @@ func (o *ServiceSpecWrapper) DeepCopy() *ServiceSpecWrapper {
 	return &ServiceSpecWrapper{
 		ServiceSpec: o.ServiceSpec,
 	}
+}
+
+// Metrics defines the metric collection configuration.
+type Metrics struct {
+	// Enabled controls if metrics will be configured.
+	// +optional
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// +optional
+	ServiceMonitor ServiceMonitor `json:"serviceMonitor,omitzero"`
+}
+
+// ServiceMonitor defines a Prometheus service monitor to metrics discovery.
+type ServiceMonitor struct {
+	// Enabled controls if metrics will be configured.
+	// +optional
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// +nullable
+	// +optional
+	Metadata `json:",inline"`
+
+	// interval at which Prometheus scrapes the metrics from the target.
+	//
+	// If empty, Prometheus uses the global scrape interval.
+	// +optional
+	Interval monitoringv1.Duration `json:"interval,omitempty"`
+
+	// scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+	//
+	// If empty, Prometheus uses the global scrape timeout unless it is less
+	// than the target's scrape interval value in which the latter is used.
+	// The value cannot be greater than the scrape interval otherwise the operator will reject the resource.
+	// +optional
+	ScrapeTimeout monitoringv1.Duration `json:"scrapeTimeout,omitempty"`
+
+	// endpoints to scrape.
+	// +nullable
+	// +optional
+	MetricEndpoints []MetricEndpoint `json:"endpoints,omitempty"`
+}
+
+type MetricEndpoint struct {
+	// path defines the HTTP path from which to scrape for metrics.
+	// +required
+	Path string `json:"path,omitempty"`
+
+	// interval at which Prometheus scrapes the metrics from the target.
+	//
+	// If empty, the local global value will be used.
+	// +optional
+	Interval monitoringv1.Duration `json:"interval,omitzero"`
+
+	// scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+	//
+	// If empty, the local global value will be used.
+	// +optional
+	ScrapeTimeout monitoringv1.Duration `json:"scrapeTimeout,omitzero"`
 }
