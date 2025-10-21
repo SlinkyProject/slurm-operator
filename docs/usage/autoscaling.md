@@ -140,9 +140,10 @@ spec:
         threshold: '5'
 ```
 
-**Note**: The Prometheus trigger is using `metricType: Value` instead of the
-default `AverageValue`. `AverageValue` calculates the replica count by averaging
-the threshold across the current replica count.
+> [!NOTE]
+> The Prometheus trigger is using `metricType: Value` instead of the default
+> `AverageValue`. `AverageValue` calculates the replica count by averaging the
+> threshold across the current replica count.
 
 Check [ScaledObject] documentation for a full list of allowable options.
 
@@ -157,8 +158,9 @@ on the trigger after a configurable amount of time, KEDA will scale the NodeSet
 to `idleReplicaCount`. See the [KEDA] documentation on [idleReplicaCount] for
 more examples.
 
-**Note**: The only supported value for `idleReplicaCount` is 0 due to
-limitations on how the HPA controller works.
+> [!NOTE]
+> The only supported value for `idleReplicaCount` is 0 due to limitations on how
+> the HPA controller works.
 
 To verify a KEDA ScaledObject, apply it to the cluster in the appropriate
 namespace on a NodeSet that has no replicas.
@@ -205,9 +207,10 @@ trigger. Once the number of pending jobs crosses the configured `threshold`
 handle the additional demand. Until the `threshold` is exceeded, the NodeSet
 will remain at `minReplicaCount`.
 
-**Note**: This example only works well for single node jobs, unless `threshold`
-is set to 1. In this case, HPA will continue to scale up NodeSet as long as
-there is a pending job until up until it reaches the `maxReplicaCount`.
+> [!NOTE]
+> This example only works well for single node jobs, unless `threshold` is set
+> to 1. In this case, HPA will continue to scale up NodeSet as long as there is
+> a pending job until up until it reaches the `maxReplicaCount`.
 
 After the default `coolDownPeriod` of 5 minutes without activity on the trigger,
 KEDA will scale the NodeSet down to 0.
