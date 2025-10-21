@@ -27,5 +27,5 @@ maintainers:
 dependencies:
   - name: slurm-exporter
     repository: oci://ghcr.io/slinkyproject/charts
-    version: 0.4.0
+    version: 0.4.1
     condition: slurm-exporter.enabled

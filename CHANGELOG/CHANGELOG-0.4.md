@@ -1,3 +1,33 @@
+## v0.4.1
+
+### Added
+
+- Added NodePort to v1alpha1.ServiceSpec
+
+### Fixed
+
+- Fixes links to installation.md
+- Fixed conversion of GHFM admonitions to RST
+- Fixed image rendering in docs/index.rst
+- Update kubeVersion parsing to handle provider suffixes (e.g., GKE
+  x.y.z-gke.a).
+- Fixed odd number of arguments logger error when updating pod conditions.
+- Avoid needless NotFound errors when patching pod conditions.
+- Fixed regression where nodeset `partition.enabled` was not being respected.
+- Fixed issue where changes to slurmd and/or logfile subobjects where not
+  causing a rolling update.
+- Fixes parsing of ServiceSpec via ServiceSpecWrapper
+- Fixes bug wereby slurm-controller hostname was set incorrectly
+- Fixes per-nodeset partition creation
+- Fixed chart installation failure where NOTES.txt failed to fetch value from
+  nested object where the parent was null.
+- Fixed installation instruction for cert-manager chart
+- Fixed notation used to refer to LoginSets in installation docs
+- When checking if a Slurm node is fully drained, the logic now follows closely
+  to how Slurm represents the drained state. There were certain edge cases that
+  could alleged the node was not drained when it actually was.
+- Fixed documentation for uninstalling slurm-operator-crds
+
 ## v0.4.0
 
 ### Added

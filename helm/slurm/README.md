@@ -24,7 +24,7 @@ Kubernetes: `>= 1.29.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://ghcr.io/slinkyproject/charts | slurm-exporter | 0.4.0 |
+| oci://ghcr.io/slinkyproject/charts | slurm-exporter | 0.4.1 |
 
 ## Values
 
