@@ -6,13 +6,14 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-accounting
   failurePolicy: Fail
-  name: vaccounting.kb.io
+  name: accounting-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
@@ -26,13 +27,14 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-controller
   failurePolicy: Fail
-  name: vcontroller.kb.io
+  name: controller-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
@@ -46,13 +48,14 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-loginset
   failurePolicy: Fail
-  name: vloginset.kb.io
+  name: loginset-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
@@ -66,13 +69,14 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-nodeset
   failurePolicy: Fail
-  name: vnodeset.kb.io
+  name: nodeset-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
@@ -86,13 +90,14 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-restapi
   failurePolicy: Fail
-  name: vrestapi.kb.io
+  name: restapi-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net
@@ -106,13 +111,14 @@ webhooks:
   sideEffects: None
 - admissionReviewVersions:
   - v1
+  - v1alpha1
   clientConfig:
     service:
       name: webhook-service
       namespace: system
       path: /validate-slinky-slurm-net-v1alpha1-token
   failurePolicy: Fail
-  name: vtoken.kb.io
+  name: token-v1alpha1.kb.io
   rules:
   - apiGroups:
     - slinky.slurm.net

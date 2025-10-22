@@ -33,7 +33,7 @@ func (r *NodeSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-nodeset,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1alpha1,name=vnodeset.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-nodeset,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1alpha1,name=nodeset-v1alpha1.kb.io,admissionReviewVersions=v1;v1alpha1
 
 var _ webhook.CustomValidator = &NodeSetWebhook{}
 
