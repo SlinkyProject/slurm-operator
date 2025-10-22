@@ -27,6 +27,7 @@ Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
   - [Compatibility](#compatibility)
   - [Quick Start](#quick-start)
   - [Upgrades](#upgrades)
+    - [1.X Releases](#1x-releases)
     - [0.X Releases](#0x-releases)
   - [Documentation](#documentation)
   - [Support and Development](#support-and-development)
@@ -169,11 +170,35 @@ For additional instructions, see the [installation] guide.
 
 ## Upgrades
 
+### 1.X Releases
+
+Breaking changes may be introduced into newer [CRDs]. To upgrade between `v1.X`
+versions (e.g. `v1.0.0` => `v1.1.0`), upgrade the slurm-operator-crds chart
+followed by the slurm-operator chart. Any Slurm charts will automatically be
+handled via CRD conversion; no further action is required. It is still
+recommended to upgrade Slurm charts to make use of the new features and
+functionality.
+
+```bash
+helm upgrade slurm-operator-crds oci://ghcr.io/slinkyproject/charts/slurm-operator-crds
+helm upgrade slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
+  --namespace=slinky
+```
+
+To make use of new Slinky CRD features, please review changes made to the CRDs
+and the Slurm chart. Update your values.yaml appropriately and upgrade the
+chart.
+
+```sh
+helm upgrade slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --namespace=slurm
+```
+
 ### 0.X Releases
 
-Breaking changes may be introduced into newer [CRDs]. To upgrade between these
-versions, uninstall all Slinky charts and delete Slinky CRDs, then install the
-new release like normal.
+Breaking changes may be introduced into existing [CRDs]. To upgrade between
+`v0.X` versions (e.g. `v0.1.0` => `v0.2.0`), uninstall all Slinky charts and
+delete Slinky CRDs, then install the new release like normal.
 
 ```bash
 helm --namespace=slurm uninstall slurm
