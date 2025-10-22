@@ -200,7 +200,9 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1alpha1-restapi
-    timeoutSeconds: {{ .Values.webhook.timeoutSeconds | default 10 }}
+    {{- with .Values.webhook.timeoutSeconds }}
+    timeoutSeconds: {{ . }}
+    {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
       - v1
       - v1beta1
@@ -232,7 +234,9 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1alpha1-token
-    timeoutSeconds: {{ .Values.webhook.timeoutSeconds | default 10 }}
+    {{- with .Values.webhook.timeoutSeconds }}
+    timeoutSeconds: {{ . }}
+    {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     admissionReviewVersions:
       - v1
       - v1beta1
