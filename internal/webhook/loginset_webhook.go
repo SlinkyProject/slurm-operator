@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package v1alpha1
+package webhook
 
 import (
 	"context"
@@ -19,15 +19,15 @@ import (
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-type TokenWebhook struct{}
+type LoginSetWebhook struct{}
 
 // log is for logging in this package.
-var tokenlog = logf.Log.WithName("token-resource")
+var loginsetlog = logf.Log.WithName("loginset-resource")
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
-func (r *TokenWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *LoginSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&slinkyv1alpha1.Token{}).
+		For(&slinkyv1alpha1.LoginSet{}).
 		WithValidator(r).
 		Complete()
 }
@@ -35,40 +35,40 @@ func (r *TokenWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-token,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=tokens,verbs=create;update,versions=v1alpha1,name=vtoken.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-loginset,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=loginsets,verbs=create;update,versions=v1alpha1,name=vloginset.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &TokenWebhook{}
+var _ webhook.CustomValidator = &LoginSetWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *TokenWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	token := obj.(*slinkyv1alpha1.Token)
-	tokenlog.Info("validate create", "token", klog.KObj(token))
+func (r *LoginSetWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	loginset := obj.(*slinkyv1alpha1.LoginSet)
+	loginsetlog.Info("validate create", "loginset", klog.KObj(loginset))
 
-	warns, errs := validateToken(token)
+	warns, errs := validateLoginSet(loginset)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *TokenWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
-	newToken := newObj.(*slinkyv1alpha1.Token)
-	_ = oldObj.(*slinkyv1alpha1.Token)
-	tokenlog.Info("validate update", "newToken", klog.KObj(newToken))
+func (r *LoginSetWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
+	newLoginset := newObj.(*slinkyv1alpha1.LoginSet)
+	_ = oldObj.(*slinkyv1alpha1.LoginSet)
+	loginsetlog.Info("validate update", "newLoginset", klog.KObj(newLoginset))
 
-	warns, errs := validateToken(newToken)
+	warns, errs := validateLoginSet(newLoginset)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *TokenWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	token := obj.(*slinkyv1alpha1.Token)
-	tokenlog.Info("validate delete", "token", klog.KObj(token))
+func (r *LoginSetWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	loginset := obj.(*slinkyv1alpha1.LoginSet)
+	loginsetlog.Info("validate delete", "loginset", klog.KObj(loginset))
 
 	return nil, nil
 }
 
-func validateToken(obj *slinkyv1alpha1.Token) (admission.Warnings, []error) {
+func validateLoginSet(obj *slinkyv1alpha1.LoginSet) (admission.Warnings, []error) {
 	var warns admission.Warnings
 	var errs []error
 

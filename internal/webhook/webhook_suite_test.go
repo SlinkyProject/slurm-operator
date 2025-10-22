@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package v1alpha1
+package webhook
 
 import (
 	"context"
@@ -53,12 +53,12 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "..", "config", "webhook")},
+			Paths: []string{filepath.Join("..", "..", "config", "webhook")},
 		},
-		BinaryAssetsDirectory: testutils.GetEnvTestBinary(filepath.Join("..", "..", "..")),
+		BinaryAssetsDirectory: testutils.GetEnvTestBinary(filepath.Join("..", "..")),
 	}
 
 	var err error

@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
-	webhookv1alpha1 "github.com/SlinkyProject/slurm-operator/internal/webhook/v1alpha1"
+	slinkywebhook "github.com/SlinkyProject/slurm-operator/internal/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -125,29 +125,29 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := (&webhookv1alpha1.ControllerWebhook{
+	if err := (&slinkywebhook.ControllerWebhook{
 		Client: mgr.GetClient(),
 	}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Controller")
 		os.Exit(1)
 	}
-	if err := (&webhookv1alpha1.RestapiWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&slinkywebhook.RestapiWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Restapi")
 		os.Exit(1)
 	}
-	if err := (&webhookv1alpha1.AccountingSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&slinkywebhook.AccountingSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Accounting")
 		os.Exit(1)
 	}
-	if err := (&webhookv1alpha1.NodeSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&slinkywebhook.NodeSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "NodeSet")
 		os.Exit(1)
 	}
-	if err = (&webhookv1alpha1.LoginSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&slinkywebhook.LoginSetWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "LoginSet")
 		os.Exit(1)
 	}
-	if err = (&webhookv1alpha1.TokenWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&slinkywebhook.TokenWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Token")
 		os.Exit(1)
 	}

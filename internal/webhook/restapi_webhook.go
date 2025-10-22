@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package v1alpha1
+package webhook
 
 import (
 	"context"
@@ -19,15 +19,15 @@ import (
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-type LoginSetWebhook struct{}
+type RestapiWebhook struct{}
 
 // log is for logging in this package.
-var loginsetlog = logf.Log.WithName("loginset-resource")
+var restapilog = logf.Log.WithName("restapi-resource")
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
-func (r *LoginSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *RestapiWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&slinkyv1alpha1.LoginSet{}).
+		For(&slinkyv1alpha1.RestApi{}).
 		WithValidator(r).
 		Complete()
 }
@@ -35,40 +35,40 @@ func (r *LoginSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-//+kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-loginset,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=loginsets,verbs=create;update,versions=v1alpha1,name=vloginset.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1alpha1-restapi,mutating=false,failurePolicy=fail,sideEffects=None,groups=slinky.slurm.net,resources=restapis,verbs=create;update,versions=v1alpha1,name=vrestapi.kb.io,admissionReviewVersions=v1
 
-var _ webhook.CustomValidator = &LoginSetWebhook{}
+var _ webhook.CustomValidator = &RestapiWebhook{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *LoginSetWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	loginset := obj.(*slinkyv1alpha1.LoginSet)
-	loginsetlog.Info("validate create", "loginset", klog.KObj(loginset))
+func (r *RestapiWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	restapi := obj.(*slinkyv1alpha1.RestApi)
+	restapilog.Info("validate create", "restapi", klog.KObj(restapi))
 
-	warns, errs := validateLoginSet(loginset)
+	warns, errs := validateRestapi(restapi)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *LoginSetWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
-	newLoginset := newObj.(*slinkyv1alpha1.LoginSet)
-	_ = oldObj.(*slinkyv1alpha1.LoginSet)
-	loginsetlog.Info("validate update", "newLoginset", klog.KObj(newLoginset))
+func (r *RestapiWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Object, newObj runtime.Object) (admission.Warnings, error) {
+	newRestapi := newObj.(*slinkyv1alpha1.RestApi)
+	_ = oldObj.(*slinkyv1alpha1.RestApi)
+	restapilog.Info("validate update", "newRestapi", klog.KObj(newRestapi))
 
-	warns, errs := validateLoginSet(newLoginset)
+	warns, errs := validateRestapi(newRestapi)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *LoginSetWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	loginset := obj.(*slinkyv1alpha1.LoginSet)
-	loginsetlog.Info("validate delete", "loginset", klog.KObj(loginset))
+func (r *RestapiWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	restapi := obj.(*slinkyv1alpha1.RestApi)
+	restapilog.Info("validate delete", "restapi", klog.KObj(restapi))
 
 	return nil, nil
 }
 
-func validateLoginSet(obj *slinkyv1alpha1.LoginSet) (admission.Warnings, []error) {
+func validateRestapi(obj *slinkyv1alpha1.RestApi) (admission.Warnings, []error) {
 	var warns admission.Warnings
 	var errs []error
 
