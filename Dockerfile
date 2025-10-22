@@ -18,14 +18,14 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace ./...
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bin/ ./...
 
 ################################################################################
 
 # Ref: https://github.com/GoogleContainerTools/distroless
 FROM gcr.io/distroless/static:nonroot AS manager
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=builder /workspace/bin/manager .
 USER 65532:65532
 ENTRYPOINT ["/manager"]
 
@@ -34,6 +34,6 @@ ENTRYPOINT ["/manager"]
 # Ref: https://github.com/GoogleContainerTools/distroless
 FROM gcr.io/distroless/static:nonroot AS webhook
 WORKDIR /
-COPY --from=builder /workspace/webhook .
+COPY --from=builder /workspace/bin/webhook .
 USER 65532:65532
 ENTRYPOINT ["/webhook"]
