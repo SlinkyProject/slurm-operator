@@ -11,6 +11,7 @@
     - [With CRDs As Subchart](#with-crds-as-subchart)
     - [Without cert-manager](#without-cert-manager)
   - [Slurm Cluster](#slurm-cluster)
+    - [Controller Persistence](#controller-persistence)
     - [With Accounting](#with-accounting)
       - [Mariadb (Community Edition)](#mariadb-community-edition)
     - [With Metrics](#with-metrics)
@@ -109,6 +110,46 @@ slurm-worker-slinky-0                 2/2     Running   0          2m
 
 > [!NOTE]
 > The above output is with all Slurm components enabled and configured properly.
+
+### Controller Persistence
+
+By default, the Slurm controller (slurmctld) pod will store its
+[state save][statesavelocation] data to a
+[Persistent Volume (PV)][persistent-volume]. Its
+[Persistent Volume Claim (PVC)][persistent-volume] requests the Kubernetes
+[default Storage Class][default-storageclass].
+
+If a default storage class is not defined or a specific storage class is
+desired, then you can install Slurm with the
+`--set "controller.persistence.storageClassName=$STORAGE_CLASS"` argument, where
+`$STORAGE_CLASS` matches an existing storage class.
+
+```sh
+kubectl get storageclasses.storage.k8s.io
+helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set "controller.persistence.storageClassName=$STORAGE_CLASS" \
+  --namespace=slurm --create-namespace
+```
+
+> [!NOTE]
+> Typically PVs will not be deleted after the PVC is deleted. Therefore, PVs may
+> need to be manually deleted when no longer needed.
+
+If Slurm controller (slurmctld) persistence is not desired (typically for
+testing), it can be disabled by installing Slurm with the
+`--set 'controller.persistence.enabled=false'` argument.
+
+```sh
+helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set 'controller.persistence.enabled=false' \
+  --namespace=slurm --create-namespace
+```
+
+> [!WARNING]
+> Without Slurm controller persistence, the state of the Slurm cluster is lost
+> between Controller pod restarts. Moreover, these restarts may impact operation
+> of the cluster and running workloads. Hence, disabling persistence is **not**
+> recommended for production usage.
 
 ### With Accounting
 
@@ -282,7 +323,10 @@ Slurm.
 <!-- Links -->
 
 [cert-manager]: https://cert-manager.io/docs/installation/helm/
+[default-storageclass]: https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
 [mariadb-operator]: https://mariadb.com/docs/tools/mariadb-enterprise-operator/installation/helm
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
+[persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
 [sssd]: https://sssd.io/
+[statesavelocation]: https://slurm.schedmd.com/slurm.conf.html#OPT_StateSaveLocation
