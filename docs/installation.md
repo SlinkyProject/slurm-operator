@@ -163,7 +163,7 @@ spec:
     key: password
     generate: true
   storage:
-    size: 1Gi
+    size: 16Gi
   myCnf: |
     [mariadb]
     bind-address=*
