@@ -246,7 +246,8 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		logger.V(1).Info("Node is already undrained, skipping undrain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
 		return nil
-	} else if nodeReason != "" && !strings.Contains(nodeReason, nodeReasonPrefix) {
+	}
+	if nodeReason != "" && !strings.HasPrefix(nodeReason, nodeReasonPrefix) {
 		logger.Info("Node was drained but not by slurm-operator, skipping undrain request",
 			"node", slurmNode.GetKey(), "nodeReason", nodeReason)
 		return nil
