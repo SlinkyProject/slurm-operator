@@ -188,11 +188,25 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1a
 		return err
 	}
 
+	// If the reason is not empty, prefix it with nodeReasonPrefix
+	prefixedReason := ""
+	if reason != "" {
+		prefixedReason = nodeReasonPrefix + " " + reason
+	}
+
+	// If Slurm node is already drained and the reasons match, no need to drain it again
+	nodeReason := ptr.Deref(slurmNode.Reason, "")
+	if slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) && nodeReason == prefixedReason {
+		logger.V(1).Info("Node is already drained, skipping drain request",
+			"node", slurmNode.GetKey(), "nodeState", slurmNode.State, "nodeReason", nodeReason)
+		return nil
+	}
+
 	logger.V(1).Info("make slurm node drain",
 		"pod", klog.KObj(pod))
 	req := api.V0043UpdateNodeMsg{
 		State:  ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateDRAIN}),
-		Reason: ptr.To(nodeReasonPrefix + " " + reason),
+		Reason: ptr.To(prefixedReason),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
 		if tolerateError(err) {

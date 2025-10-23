@@ -303,6 +303,25 @@ func (r *NodeSetReconciler) syncCordon(
 				"pod", klog.KObj(pod), "node", node.Name)
 			reason := fmt.Sprintf("Node (%s) was cordoned, Pod (%s) must be cordoned",
 				pod.Spec.NodeName, klog.KObj(pod))
+
+			// If the node being cordoned has AnnotationNodeCordonReason set, override the default reason
+			node := &corev1.Node{}
+			name := pod.Spec.NodeName
+			key := types.NamespacedName{
+				Name: name,
+			}
+			if err := r.Get(ctx, key, node); err != nil {
+				return fmt.Errorf("failed to get node: %w", err)
+			}
+
+			value, ok := node.Annotations[slinkyv1alpha1.AnnotationNodeCordonReason]
+			if ok {
+				logger.V(1).Info("makePodCordonAndDrain() reason overridden by annotation",
+					"reason", reason,
+					"annotation", fmt.Sprintf("%s=%s", slinkyv1alpha1.AnnotationNodeCordonReason, value))
+				reason = value
+			}
+
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}

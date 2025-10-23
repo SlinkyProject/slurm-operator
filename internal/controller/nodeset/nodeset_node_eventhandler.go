@@ -7,6 +7,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -71,6 +72,11 @@ func (h *nodeEventHandler) Update(
 
 	// Detect node cordoning/uncordoning
 	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable {
+		h.enqueueNodeSetsForNode(ctx, newNode, q)
+	}
+
+	// Detect node annotation updates
+	if !apiequality.Semantic.DeepEqual(oldNode.Annotations, newNode.Annotations) {
 		h.enqueueNodeSetsForNode(ctx, newNode, q)
 	}
 }

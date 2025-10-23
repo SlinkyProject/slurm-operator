@@ -29,6 +29,13 @@ const (
 	AnnotationPodDeadline = NodeSetPrefix + "pod-deadline"
 )
 
+// Well Known Annotations for Objects of type corev1.Node
+const (
+	// AnnotationNodeCordonReason indicates a custom reason for the Slurm DRAIN action taken when the Kube node on which
+	// a NodeSet pod is scheduled is cordoned
+	AnnotationNodeCordonReason = NodeSetPrefix + "node-cordon-reason"
+)
+
 // Well Known Labels
 const (
 	// LabelNodeSetPodName indicates the pod name.

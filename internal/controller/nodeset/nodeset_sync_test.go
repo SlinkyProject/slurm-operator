@@ -980,8 +980,9 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 						Items: []slurmtypes.V0043Node{
 							{
 								V0043Node: api.V0043Node{
-									Name:  ptr.To(nodesetutils.GetNodeName(pod)),
-									State: ptr.To([]api.V0043NodeState{api.V0043NodeStateDRAIN}),
+									Name:   ptr.To(nodesetutils.GetNodeName(pod)),
+									State:  ptr.To([]api.V0043NodeState{api.V0043NodeStateDRAIN}),
+									Reason: ptr.To("test reason"),
 								},
 							},
 						},
