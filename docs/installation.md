@@ -107,6 +107,9 @@ slurm-restapi-77b9f969f7-kh4r8        1/1     Running   0          2m
 slurm-worker-slinky-0                 2/2     Running   0          2m
 ```
 
+> [!NOTE]
+> The above output is with all Slurm components enabled and configured properly.
+
 ### With Accounting
 
 You will need to configure Slurm accounting to point at a database. There are
