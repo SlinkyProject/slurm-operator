@@ -10,6 +10,14 @@
     :maxdepth: 2
     :glob:
     :hidden:
+    :caption: Versioning
+
+    versioning.md
+
+.. toctree::
+    :maxdepth: 2
+    :glob:
+    :hidden:
     :caption: Usage & Configuration
 
     usage/*

@@ -27,8 +27,8 @@ Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
   - [Compatibility](#compatibility)
   - [Quick Start](#quick-start)
   - [Upgrades](#upgrades)
-    - [1.X Releases](#1x-releases)
-    - [0.X Releases](#0x-releases)
+    - [1.Y Releases](#1y-releases)
+    - [0.Y Releases](#0y-releases)
   - [Documentation](#documentation)
   - [Support and Development](#support-and-development)
   - [License](#license)
@@ -170,10 +170,16 @@ For additional instructions, see the [installation] guide.
 
 ## Upgrades
 
-### 1.X Releases
+Slinky versions are expressed as **X.Y.Z**, where **X** is the major version,
+**Y** is the minor version, and **Z** is the patch version, following
+[Semantic Versioning][semver] terminology.
 
-Breaking changes may be introduced into newer [CRDs]. To upgrade between `v1.X`
-versions (e.g. `v1.0.0` => `v1.1.0`), upgrade the slurm-operator-crds chart
+See [versioning] for more details.
+
+### 1.Y Releases
+
+Breaking changes may be introduced into newer [CRDs]. To upgrade between `v1.Y`
+versions (e.g. `v1.0.Z` => `v1.1.Z`), upgrade the slurm-operator-crds chart
 followed by the slurm-operator chart. Any Slurm charts will automatically be
 handled via CRD conversion; no further action is required. It is still
 recommended to upgrade Slurm charts to make use of the new features and
@@ -194,10 +200,10 @@ helm upgrade slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --namespace=slurm
 ```
 
-### 0.X Releases
+### 0.Y Releases
 
 Breaking changes may be introduced into existing [CRDs]. To upgrade between
-`v0.X` versions (e.g. `v0.1.0` => `v0.2.0`), uninstall all Slinky charts and
+`v0.Y` versions (e.g. `v0.1.Z` => `v0.2.Z`), uninstall all Slinky charts and
 delete Slinky CRDs, then install the new release like normal.
 
 ```bash
@@ -257,6 +263,7 @@ specific language governing permissions and limitations under the License.
 [installation]: ./docs/installation.md
 [kubernetes]: https://kubernetes.io/
 [schedmd]: https://schedmd.com/
+[semver]: https://semver.org/
 [slinky]: https://slinky.ai/
 [slinky-docs]: https://slinky.schedmd.com/
 [slurm]: https://slurm.schedmd.com/overview.html
@@ -273,3 +280,4 @@ specific language governing permissions and limitations under the License.
 [slurm-priority]: https://slurm.schedmd.com/priority_multifactor.html
 [slurm-qos]: https://slurm.schedmd.com/qos.html
 [slurm-reservations]: https://slurm.schedmd.com/reservations.html
+[versioning]: ./docs/versioning.md
