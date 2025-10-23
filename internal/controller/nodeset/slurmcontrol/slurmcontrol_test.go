@@ -767,6 +767,362 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 	}
 }
 
+func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1alpha1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	type fields struct {
+		clientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1alpha1.NodeSet
+		pod     *corev1.Pod
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "IDLE",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "MIXED",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateMIXED,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "DOWN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "IDLE+DRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "MIXED+DRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateMIXED,
+							api.V0043NodeStateDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "ALLOC+DRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateALLOCATED,
+							api.V0043NodeStateDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "DOWN+DRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+							api.V0043NodeStateDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "IDLE+COMPLETING",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateCOMPLETING,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "IDLE+DRAIN+COMPLETING",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateCOMPLETING,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "IDLE+DRAIN+UNDRAIN",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateIDLE,
+							api.V0043NodeStateDRAIN,
+							api.V0043NodeStateUNDRAIN,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "DOWN+NOT_RESPONDING",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+							api.V0043NodeStateNOTRESPONDING,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+		{
+			name: "DOWN+Reason Not responding",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+						}),
+						Reason: ptr.To("Not responding"),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: true,
+		},
+		{
+			name: "DOWN+Other reason",
+			fields: func() fields {
+				node := &types.V0043Node{
+					V0043Node: api.V0043Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0043NodeState{
+							api.V0043NodeStateDOWN,
+						}),
+						Reason: ptr.To("test reason"),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &realSlurmControl{
+				clientMap: tt.fields.clientMap,
+			}
+			got, err := r.IsNodeDownForUnresponsive(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("realSlurmControl.IsNodeDrained() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("realSlurmControl.IsNodeDrained() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1alpha1.Controller{

@@ -43,6 +43,8 @@ type SlurmControlInterface interface {
 	IsNodeDrain(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrained checks if the slurm node is drained.
 	IsNodeDrained(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	// IsNodeDownForUnresponsive checks if the slurm node is unresponsive
+	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
 	// CalculateNodeStatus returns the current state of the registered slurm nodes.
 	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
@@ -315,6 +317,34 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1a
 	isDrained := isDrain && !isBusy
 
 	return isDrained, nil
+}
+
+// IsNodeDownForUnresponsive implements SlurmControlInterface.
+func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
+			"pod", klog.KObj(pod))
+		return true, nil
+	}
+
+	slurmNode := &slurmtypes.V0043Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	isDown := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDOWN)
+	reasonNotResponding := strings.Contains(ptr.Deref(slurmNode.Reason, ""), "Not responding")
+
+	wasUnresponsive := isDown && reasonNotResponding
+
+	return wasUnresponsive, nil
 }
 
 type SlurmNodeStatus struct {

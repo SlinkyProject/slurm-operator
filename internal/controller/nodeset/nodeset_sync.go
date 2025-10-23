@@ -295,6 +295,10 @@ func (r *NodeSetReconciler) syncCordon(
 
 		nodeIsCordoned := node.Spec.Unschedulable
 		podIsCordoned := podutils.IsPodCordon(pod)
+		slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
+		if err != nil {
+			return err
+		}
 
 		switch {
 		// If Kubernetes node is cordoned but pod isn't, cordon the pod
@@ -336,6 +340,10 @@ func (r *NodeSetReconciler) syncCordon(
 		// If pod is uncordoned, undrain the Slurm node
 		case !podIsCordoned:
 			reason := fmt.Sprintf("Pod (%s) was uncordoned", klog.KObj(pod))
+			if slurmNodeIsUnresponsive {
+				// Preserve Slurm node reason
+				reason = ""
+			}
 			if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
