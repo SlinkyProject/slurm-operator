@@ -21,6 +21,7 @@ import (
 
 const (
 	SlurmdPort = 6818
+	SshPort    = 22
 
 	slurmdUser = "root"
 
@@ -111,6 +112,11 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1alpha1.NodeSet, controller *s
 				{
 					Name:          labels.WorkerApp,
 					ContainerPort: SlurmdPort,
+					Protocol:      corev1.ProtocolTCP,
+				},
+				{
+					Name:          "ssh",
+					ContainerPort: SshPort,
 					Protocol:      corev1.ProtocolTCP,
 				},
 			},
