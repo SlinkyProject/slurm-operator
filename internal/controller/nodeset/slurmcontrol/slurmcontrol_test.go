@@ -1114,10 +1114,10 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 			}
 			got, err := r.IsNodeDownForUnresponsive(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.IsNodeDrained() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("realSlurmControl.IsNodeDownForUnresponsive() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if got != tt.want {
-				t.Errorf("realSlurmControl.IsNodeDrained() = %v, want %v", got, tt.want)
+				t.Errorf("realSlurmControl.IsNodeDownForUnresponsive() = %v, want %v", got, tt.want)
 			}
 		})
 	}
