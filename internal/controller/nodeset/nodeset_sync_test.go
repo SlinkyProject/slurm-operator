@@ -1966,7 +1966,7 @@ func TestNodeSetReconciler_syncClusterWorkerService(t *testing.T) {
 	}
 }
 
-func Test_shouldSkipUncordon(t *testing.T) {
+func Test_isNodeCordoned(t *testing.T) {
 	utilruntime.Must(slinkyv1alpha1.AddToScheme(clientgoscheme.Scheme))
 
 	type fields struct {
@@ -1983,7 +1983,7 @@ func Test_shouldSkipUncordon(t *testing.T) {
 		want   bool
 	}{
 		{
-			name: "Pod not cordoned - should not skip",
+			name: "Node not cordoned, Pod not cordoned",
 			fields: fields{
 				Client: fake.NewFakeClient(
 					&corev1.Node{
@@ -2013,7 +2013,7 @@ func Test_shouldSkipUncordon(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Pod cordoned but node not cordoned - should not skip",
+			name: "Node not cordoned, Pod cordoned",
 			fields: fields{
 				Client: fake.NewFakeClient(
 					&corev1.Node{
@@ -2043,7 +2043,37 @@ func Test_shouldSkipUncordon(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Pod cordoned and node cordoned - should skip",
+			name: "Node cordoned, Pod not cordoned",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					&corev1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-node",
+						},
+						Spec: corev1.NodeSpec{
+							Unschedulable: true,
+						},
+					},
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-pod",
+						Annotations: map[string]string{
+							// No cordon annotation
+						},
+					},
+					Spec: corev1.PodSpec{
+						NodeName: "test-node",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Node cordoned, Pod cordoned",
 			fields: fields{
 				Client: fake.NewFakeClient(
 					&corev1.Node{
@@ -2076,8 +2106,8 @@ func Test_shouldSkipUncordon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if got := r.shouldSkipUncordon(tt.args.ctx, tt.args.pod); got != tt.want {
-				t.Errorf("shouldSkipUncordon() = %v, want %v", got, tt.want)
+			if got := r.isNodeCordoned(tt.args.ctx, tt.args.pod); got != tt.want {
+				t.Errorf("isNodeCordoned() = %v, want %v", got, tt.want)
 			}
 		})
 	}

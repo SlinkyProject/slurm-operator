@@ -802,31 +802,24 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
-	// Kubernetes skip uncordoning pods on externally cordoned nodes
-	if r.shouldSkipUncordon(ctx, pod) {
+	// The Kubernetes nodes which the pod is on may have been cordoned
+	if r.isNodeCordoned(ctx, pod) {
 		logger.V(1).Info("Skipping uncordon for pod on externally cordoned node",
 			"pod", klog.KObj(pod), "node", pod.Spec.NodeName)
-		return nil // Skip uncordoning this pod
+		return nil // Skip
 	}
 
 	return r.makePodUncordonAndUndrain(ctx, nodeset, pod, "")
 }
 
-// shouldSkipUncordon checks if a pod should skip uncordoning due to external node cordoning
-func (r *NodeSetReconciler) shouldSkipUncordon(ctx context.Context, pod *corev1.Pod) bool {
-	// Check if pod is currently cordoned
-	if !podutils.IsPodCordon(pod) {
-		return false // Pod is not cordoned, no need to skip
-	}
-
-	// Check if the Kubernetes node is externally cordoned
+// isNodeCordoned returns true if the pod's node is cordoned
+func (r *NodeSetReconciler) isNodeCordoned(ctx context.Context, pod *corev1.Pod) bool {
 	node := &corev1.Node{}
 	nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
 	if err := r.Get(ctx, nodeKey, node); err != nil {
-		return false // Can't get node info, don't skip
+		return false
 	}
 
-	// Skip uncordoning if node is externally cordoned
 	return node.Spec.Unschedulable
 }
 
