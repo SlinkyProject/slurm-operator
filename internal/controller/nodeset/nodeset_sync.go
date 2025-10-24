@@ -752,6 +752,9 @@ func (r *NodeSetReconciler) makePodCordon(
 	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
 		return err
 	}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -786,6 +789,9 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 	logger.Info("Uncordon Pod", "Pod", klog.KObj(toUpdate))
 	delete(toUpdate.Annotations, slinkyv1alpha1.AnnotationPodCordon)
 	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+		return err
+	}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
 		return err
 	}
 
