@@ -134,7 +134,7 @@ controller:
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
-      # limits:
+      # requests:
       #   cpu: 1
       #   memory: 1Gi
   # Reconfigure container configurations.
@@ -147,9 +147,9 @@ controller:
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
-      # limits:
-        # cpu: 500m
-        # memory: 100Mi
+      # requests:
+      #   cpu: 500m
+      #   memory: 128Mi
   # LogFile sidecar configurations.
   logfile:
     # -- The image to use, `${repository}:${tag}`.
@@ -160,9 +160,9 @@ controller:
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
-      # limits:
+      # requests:
       #   cpu: 500m
-      #   memory: 100Mi
+      #   memory: 128Mi
   # Enable persistence using Persistent Volume Claims.
   # Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   persistence:
@@ -287,7 +287,7 @@ restapi:
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
-      # limits:
+      # requests:
       #   cpu: 1
       #   memory: 1Gi
   # -- Labels and annotations.
@@ -348,7 +348,7 @@ accounting:
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
-      # limits:
+      # requests:
       #   cpu: 1
       #   memory: 1Gi
   # The storage configuration.
@@ -455,7 +455,7 @@ loginsets:
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
-        # limits:
+        # requests:
         #   cpu: 1
         #   memory: 1Gi
       # -- List of volume mounts to use.
@@ -557,7 +557,7 @@ nodesets:
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
-        # limits:
+        # requests:
         #   cpu: 1
         #   memory: 1Gi
       # -- List of volume mounts to use.
@@ -575,9 +575,9 @@ nodesets:
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
-        # limits:
+        # requests:
         #   cpu: 500m
-        #   memory: 100Mi
+        #   memory: 128Mi
     # -- Extra configuration added to the `--conf` argument.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
     extraConf: null

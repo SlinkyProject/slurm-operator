@@ -61,9 +61,6 @@ operator:
     # requests:
     #   cpu: 1
     #   memory: 1Gi
-    # limits:
-    #   cpu: 2
-    #   memory: 4Gi
   # -- Set the max concurrent workers for the Accounting controller.
   accountingWorkers: 4
   # -- Set the max concurrent workers for the Controller controller.
@@ -123,9 +120,6 @@ webhook:
     # requests:
     #   cpu: 1
     #   memory: 1Gi
-    # limits:
-    #   cpu: 2
-    #   memory: 4Gi
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
   # -- Set the port used for health checks.
