@@ -204,6 +204,12 @@ controller:
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
   podSpec:
+    # -- The pod resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 1
+      #   memory: 1Gi
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
@@ -298,6 +304,12 @@ restapi:
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
   podSpec:
+    # -- The pod resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 1
+      #   memory: 1Gi
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
@@ -395,6 +407,12 @@ accounting:
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
   podSpec:
+    # -- The pod resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 1
+      #   memory: 1Gi
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
@@ -497,6 +515,12 @@ loginsets:
     # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
     podSpec:
+      # -- The pod resource limits and requests.
+      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+      resources: {}
+        # requests:
+        #   cpu: 1
+        #   memory: 1Gi
       # -- Additional initContainers for the pod.
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
@@ -621,6 +645,12 @@ nodesets:
     # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
     podSpec:
+      # -- The pod resource limits and requests.
+      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+      resources: {}
+        # requests:
+        #   cpu: 1
+        #   memory: 1Gi
       # -- Additional initContainers for the pod.
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
