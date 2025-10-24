@@ -299,8 +299,16 @@ func (r *NodeSetReconciler) syncCordon(
 		if err != nil {
 			return err
 		}
+		ourReason, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
+		if err != nil {
+			return err
+		}
 
 		switch {
+		// If Slurm node was externally set into a state, preserve it
+		case !ourReason, slurmNodeIsUnresponsive:
+			return nil
+
 		// If Kubernetes node is cordoned but pod isn't, cordon the pod
 		case nodeIsCordoned:
 			logger.Info("Kubernetes node cordoned externally, cordoning pod",
@@ -337,10 +345,6 @@ func (r *NodeSetReconciler) syncCordon(
 		// If pod is uncordoned, undrain the Slurm node
 		case !podIsCordoned:
 			reason := fmt.Sprintf("Pod (%s) was uncordoned", klog.KObj(pod))
-			if slurmNodeIsUnresponsive {
-				// Preserve Slurm node reason
-				reason = ""
-			}
 			if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
@@ -798,7 +802,7 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 	return nil
 }
 
-// syncPodUncordon handles uncordoning with Kubernetes node state synchronization
+// syncPodUncordon handles uncordoning with Kubernetes and Slurm node state synchronization
 func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
@@ -806,6 +810,15 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 	if r.isNodeCordoned(ctx, pod) {
 		logger.V(1).Info("Skipping uncordon for pod on externally cordoned node",
 			"pod", klog.KObj(pod), "node", pod.Spec.NodeName)
+		return nil // Skip
+	}
+
+	// Slurm node may have been externally set in down, drain, fail, etc...
+	if ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod); err != nil {
+		return err
+	} else if !ok {
+		logger.V(1).Info("Skipping uncordon for pod which has an externally set reason",
+			"pod", klog.KObj(pod))
 		return nil // Skip
 	}
 

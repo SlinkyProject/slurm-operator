@@ -45,6 +45,8 @@ type SlurmControlInterface interface {
 	IsNodeDrained(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDownForUnresponsive checks if the slurm node is unresponsive
 	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
+	// IsNodeReasonOurs reports if the node reason was set by the operator.
+	IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error)
 	// CalculateNodeStatus returns the current state of the registered slurm nodes.
 	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
@@ -240,16 +242,10 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return err
 	}
 
-	nodeReason := ptr.Deref(slurmNode.Reason, "")
 	if !slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) ||
 		slurmNode.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN) {
 		logger.V(1).Info("Node is already undrained, skipping undrain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
-		return nil
-	}
-	if nodeReason != "" && !strings.HasPrefix(nodeReason, nodeReasonPrefix) {
-		logger.Info("Node was drained but not by slurm-operator, skipping undrain request",
-			"node", slurmNode.GetKey(), "nodeReason", nodeReason)
 		return nil
 	}
 
@@ -355,6 +351,36 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 	wasUnresponsive := isDown && reasonNotResponding
 
 	return wasUnresponsive, nil
+}
+
+// IsNodeReasonOurs implements SlurmControlInterface.
+func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1alpha1.NodeSet, pod *corev1.Pod) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do IsNodeReasonOurs()",
+			"pod", klog.KObj(pod))
+		return true, nil
+	}
+
+	slurmNode := &slurmtypes.V0043Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	// The operator will always prefix the node reason.
+	// External sources may not have a prefix or a different one.
+	nodeReason := ptr.Deref(slurmNode.Reason, "")
+	if nodeReason != "" && !strings.HasPrefix(nodeReason, nodeReasonPrefix) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 type SlurmNodeStatus struct {
