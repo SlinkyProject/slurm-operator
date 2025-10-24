@@ -253,11 +253,17 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return nil
 	}
 
+	// If the reason is not empty, prefix it with nodeReasonPrefix
+	prefixedReason := ""
+	if reason != "" {
+		prefixedReason = nodeReasonPrefix + " " + reason
+	}
+
 	logger.V(1).Info("make slurm node undrain",
 		"pod", klog.KObj(pod))
 	req := api.V0043UpdateNodeMsg{
 		State:  ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateUNDRAIN}),
-		Reason: ptr.To(nodeReasonPrefix + " " + reason),
+		Reason: ptr.To(prefixedReason),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
 		if tolerateError(err) {
