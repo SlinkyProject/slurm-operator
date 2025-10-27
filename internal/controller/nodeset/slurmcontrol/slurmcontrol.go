@@ -319,6 +319,8 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1a
 		return false, err
 	}
 
+	// Drained is when a node has the DRAIN flag and is not doing any work (e.g. job step, prolog, epilog).
+	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3500
 	isBusy := slurmNode.GetStateAsSet().HasAny(api.V0043NodeStateALLOCATED, api.V0043NodeStateMIXED, api.V0043NodeStateCOMPLETING)
 	isDrain := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) && !slurmNode.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN)
 	isDrained := isDrain && !isBusy
@@ -346,9 +348,10 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 		return false, err
 	}
 
+	// Slurm sets unresponsive nodes as `State=DOWN`, `Reason+="Not responding"`.
+	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/slurmctld/ping_nodes.c#L243
 	isDown := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDOWN)
 	reasonNotResponding := strings.Contains(ptr.Deref(slurmNode.Reason, ""), "Not responding")
-
 	wasUnresponsive := isDown && reasonNotResponding
 
 	return wasUnresponsive, nil

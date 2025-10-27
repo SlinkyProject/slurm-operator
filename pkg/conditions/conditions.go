@@ -36,16 +36,19 @@ func IsConditionTrue(status *corev1.PodStatus, condType corev1.PodConditionType)
 	return cond != nil && cond.Status == corev1.ConditionTrue
 }
 
+// Busy is a conceptual state that means work is happening on the node.
 func IsNodeBusy(status *corev1.PodStatus) bool {
 	isBusy := IsConditionTrue(status, PodConditionAllocated) ||
 		IsConditionTrue(status, PodConditionMixed)
 	return isBusy || IsConditionTrue(status, PodConditionCompleting)
 }
 
+// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3500
 func IsNodeDrained(status *corev1.PodStatus) bool {
 	return IsNodeDrain(status) && !IsNodeBusy(status)
 }
 
+// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3482
 func IsNodeDraining(status *corev1.PodStatus) bool {
 	return IsNodeDrain(status) && IsNodeBusy(status)
 }
