@@ -317,12 +317,9 @@ func (r *NodeSetReconciler) syncCordon(
 			if err := r.Get(ctx, key, node); err != nil {
 				return fmt.Errorf("failed to get node: %w", err)
 			}
-
-			value, ok := node.Annotations[slinkyv1alpha1.AnnotationNodeCordonReason]
-			if ok {
-				logger.V(1).Info("makePodCordonAndDrain() reason overridden by annotation",
-					"reason", reason,
-					"annotation", fmt.Sprintf("%s=%s", slinkyv1alpha1.AnnotationNodeCordonReason, value))
+			if value, ok := node.Annotations[slinkyv1alpha1.AnnotationNodeCordonReason]; ok {
+				logger.V(1).Info("Slurm node drain reason overridden by Kubernetes node annotation",
+					"reason", value)
 				reason = value
 			}
 
