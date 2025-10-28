@@ -249,12 +249,13 @@ restapi:
     # -- Environment passed to the image.
     # Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES
     env: []
+      # - name: SLURMRESTD_DEBUG_STDERR
+      #   value: "9"
       # - name: SLURMRESTD_YAML
       #   value: pretty
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_OPTIONS
     args: []
-      # - -vvv
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
