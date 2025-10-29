@@ -24,7 +24,7 @@ variables:
   services:
     - docker:dind
   tags:
-    - schedmd-slc
+    - schedmd-runners
 
 include:
   - local: .gitlab/ci/build.yml
