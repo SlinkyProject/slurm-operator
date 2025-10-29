@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package accounting
+package eventhandler
 
 import (
 	"context"
@@ -16,17 +16,21 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
-var _ handler.EventHandler = &accountingEventHandler{}
-
-type accountingEventHandler struct {
-	client.Reader
-	refResolver *refresolver.RefResolver
+func NewSecretEventHandler(reader client.Reader) *SecretEventHandler {
+	return &SecretEventHandler{
+		Reader: reader,
+	}
 }
 
-func (e *accountingEventHandler) Create(
+var _ handler.EventHandler = &SecretEventHandler{}
+
+type SecretEventHandler struct {
+	client.Reader
+}
+
+func (e *SecretEventHandler) Create(
 	ctx context.Context,
 	evt event.CreateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -34,7 +38,7 @@ func (e *accountingEventHandler) Create(
 	e.enqueueRequest(ctx, evt.Object, q)
 }
 
-func (e *accountingEventHandler) Update(
+func (e *SecretEventHandler) Update(
 	ctx context.Context,
 	evt event.UpdateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -42,7 +46,7 @@ func (e *accountingEventHandler) Update(
 	e.enqueueRequest(ctx, evt.ObjectNew, q)
 }
 
-func (e *accountingEventHandler) Delete(
+func (e *SecretEventHandler) Delete(
 	ctx context.Context,
 	evt event.DeleteEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -50,7 +54,7 @@ func (e *accountingEventHandler) Delete(
 	e.enqueueRequest(ctx, evt.Object, q)
 }
 
-func (e *accountingEventHandler) Generic(
+func (e *SecretEventHandler) Generic(
 	ctx context.Context,
 	evt event.GenericEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -58,68 +62,7 @@ func (e *accountingEventHandler) Generic(
 	// Intentionally blank
 }
 
-func (e *accountingEventHandler) enqueueRequest(
-	ctx context.Context,
-	obj client.Object,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	logger := log.FromContext(ctx)
-
-	accounting, ok := obj.(*slinkyv1beta1.Accounting)
-	if !ok {
-		return
-	}
-
-	list, err := e.refResolver.GetControllersForAccounting(ctx, accounting)
-	if err != nil {
-		logger.Error(err, "failed to list Controllers referencing Accounting")
-		return
-	}
-
-	for _, item := range list.Items {
-		objectutils.EnqueueRequest(q, &item)
-	}
-}
-
-var _ handler.EventHandler = &secretEventHandler{}
-
-type secretEventHandler struct {
-	client.Reader
-}
-
-func (e *secretEventHandler) Create(
-	ctx context.Context,
-	evt event.CreateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *secretEventHandler) Update(
-	ctx context.Context,
-	evt event.UpdateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.ObjectNew, q)
-}
-
-func (e *secretEventHandler) Delete(
-	ctx context.Context,
-	evt event.DeleteEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *secretEventHandler) Generic(
-	ctx context.Context,
-	evt event.GenericEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	// Intentionally blank
-}
-
-func (e *secretEventHandler) enqueueRequest(
+func (e *SecretEventHandler) enqueueRequest(
 	ctx context.Context,
 	obj client.Object,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
