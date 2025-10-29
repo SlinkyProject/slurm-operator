@@ -95,7 +95,7 @@ var _ = Describe("Slurm NodeSet", func() {
 			nodesetKey := k8sclient.ObjectKeyFromObject(nodeset)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, nodesetKey, createdNodeset)).To(Succeed())
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Waiting for N replicas")
 			podList := &corev1.PodList{}
@@ -106,7 +106,7 @@ var _ = Describe("Slurm NodeSet", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(ctx, podList, optsList)).To(Succeed())
 				g.Expect(len(podList.Items)).Should(Equal(replicas))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 		}, SpecTimeout(testutils.Timeout))
 	})
@@ -151,7 +151,7 @@ var _ = Describe("Slurm NodeSet", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(ctx, podList, optsList)).To(Succeed())
 				g.Expect(len(podList.Items)).Should(Equal(replicas))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			clientMap.Add(controllerKey, newFakeClientList(interceptor.Funcs{}))
 
@@ -162,13 +162,13 @@ var _ = Describe("Slurm NodeSet", func() {
 				g.Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 				replicas := int(ptr.Deref(nodeset.Spec.Replicas, 0))
 				g.Expect(replicas).Should(Equal(0))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Verifying pods were deleted")
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(ctx, podList, optsList)).To(Succeed())
 				g.Expect(len(podList.Items)).Should(Equal(0))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 
@@ -212,7 +212,7 @@ var _ = Describe("Slurm NodeSet", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(ctx, podList, optsList)).To(Succeed())
 				g.Expect(len(podList.Items)).Should(Equal(replicas))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Simulating Slurm functionality")
 			slurmNodes := make([]slurmtypes.V0043Node, 0)
@@ -251,7 +251,7 @@ var _ = Describe("Slurm NodeSet", func() {
 				g.Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 				replicas := int(ptr.Deref(nodeset.Spec.Replicas, 0))
 				g.Expect(replicas).Should(Equal(0))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Verifying Slurm nodes were drained first")
 			slurmClient := clientMap.Get(controllerKey)
@@ -261,13 +261,13 @@ var _ = Describe("Slurm NodeSet", func() {
 				for _, node := range slurmNodes.Items {
 					g.Expect(node.GetStateAsSet().Has(api.V0043NodeStateDRAIN)).Should(BeTrue())
 				}
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Verifying pods were deleted")
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.List(ctx, podList, optsList)).To(Succeed())
 				g.Expect(len(podList.Items)).Should(Equal(0))
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Simulating Slurm nodes being unregistered")
 			clientMap.Add(controllerKey, newFakeClientList(interceptor.Funcs{}))

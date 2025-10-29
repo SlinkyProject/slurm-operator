@@ -51,7 +51,7 @@ var _ = Describe("SlurmClient Controller", func() {
 			createdDeployment := &appsv1.Deployment{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, restapiDeploymentKey, createdDeployment)).To(Succeed())
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Simulating RestApi Deployment Ready Status")
 			Eventually(func(g Gomega) {
@@ -59,13 +59,13 @@ var _ = Describe("SlurmClient Controller", func() {
 				createdDeployment.Status.Replicas = 1
 				createdDeployment.Status.ReadyReplicas = 1
 				g.Expect(k8sClient.Status().Update(ctx, createdDeployment)).To(Succeed())
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Creating Slurm Client")
 			Eventually(func(g Gomega) {
 				slurmClient := clientMap.Get(controllerKey)
 				g.Expect(slurmClient).ShouldNot(BeNil())
-			}).Should(Succeed())
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
 
 			By("Deleting Controller")
 			Expect(k8sClient.Delete(ctx, controller.DeepCopy())).To(Succeed())
@@ -74,7 +74,7 @@ var _ = Describe("SlurmClient Controller", func() {
 			Eventually(func(g Gomega) {
 				slurmClient := clientMap.Get(controllerKey)
 				g.Expect(slurmClient).Should(BeNil())
-			}).Should(Succeed())
-		})
+			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+		}, SpecTimeout(testutils.Timeout))
 	})
 })
