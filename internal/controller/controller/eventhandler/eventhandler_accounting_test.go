@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package controller
+package eventhandler
 
 import (
 	"context"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,18 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func newHandler(c client.Client) *accountingEventHandler {
-	return &accountingEventHandler{
-		Reader:      c,
-		refResolver: refresolver.New(c),
-	}
-}
-
-func newQueue() workqueue.TypedRateLimitingInterface[reconcile.Request] {
-	return workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[reconcile.Request]())
-}
-
-func Test_controllerEventHandler_Create(t *testing.T) {
+func Test_AccountingEventHandler_Create(t *testing.T) {
 	type fields struct {
 		client client.Client
 	}
@@ -87,7 +75,7 @@ func Test_controllerEventHandler_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newHandler(tt.fields.client)
+			e := NewAccountingEventHandler(tt.fields.client)
 			e.Create(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Create() = %v, want %v", got, tt.want)
@@ -96,7 +84,7 @@ func Test_controllerEventHandler_Create(t *testing.T) {
 	}
 }
 
-func Test_controllerEventHandler_Update(t *testing.T) {
+func Test_AccountingEventHandler_Update(t *testing.T) {
 	type fields struct {
 		client client.Client
 	}
@@ -160,7 +148,7 @@ func Test_controllerEventHandler_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newHandler(tt.fields.client)
+			e := NewAccountingEventHandler(tt.fields.client)
 			e.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Create() = %v, want %v", got, tt.want)
@@ -169,7 +157,7 @@ func Test_controllerEventHandler_Update(t *testing.T) {
 	}
 }
 
-func Test_controllerEventHandler_Delete(t *testing.T) {
+func Test_AccountingEventHandler_Delete(t *testing.T) {
 	type fields struct {
 		client client.Client
 	}
@@ -228,7 +216,7 @@ func Test_controllerEventHandler_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newHandler(tt.fields.client)
+			e := NewAccountingEventHandler(tt.fields.client)
 			e.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Create() = %v, want %v", got, tt.want)
@@ -237,7 +225,7 @@ func Test_controllerEventHandler_Delete(t *testing.T) {
 	}
 }
 
-func Test_controllerEventHandler_Generic(t *testing.T) {
+func Test_AccountingEventHandler_Generic(t *testing.T) {
 	type fields struct {
 		client client.Client
 	}
@@ -267,7 +255,7 @@ func Test_controllerEventHandler_Generic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newHandler(tt.fields.client)
+			e := NewAccountingEventHandler(tt.fields.client)
 			e.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Create() = %v, want %v", got, tt.want)
