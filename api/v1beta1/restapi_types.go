@@ -7,9 +7,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 const (
 	RestApiKind = "RestApi"
 )
@@ -21,9 +18,6 @@ var (
 
 // RestApiSpec defines the desired state of RestApi
 type RestApiSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
 	ControllerRef ObjectReference `json:"controllerRef"`
@@ -53,9 +47,6 @@ type RestApiSpec struct {
 
 // RestApiStatus defines the observed state of Restapi
 type RestApiStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Represents the latest available observations of a Restapi's current state.
 	// +optional
 	// +patchMergeKey=type

@@ -9,9 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 const (
 	NodeSetKind = "NodeSet"
 )
@@ -23,9 +20,6 @@ var (
 
 // NodeSetSpec defines the desired state of NodeSet
 type NodeSetSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
 	ControllerRef ObjectReference `json:"controllerRef"`
@@ -191,9 +185,6 @@ type RollingUpdateNodeSetStrategy struct {
 
 // NodeSetStatus defines the observed state of NodeSet
 type NodeSetStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Total number of non-terminated pods targeted by this NodeSet (their labels match the Selector).
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`

@@ -8,9 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 const (
 	ControllerKind = "Controller"
 )
@@ -22,9 +19,6 @@ var (
 
 // ControllerSpec defines the desired state of Controller
 type ControllerSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// The Slurm ClusterName, which uniquely identifies the Slurm Cluster to
 	// itself and accounting.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName
@@ -119,9 +113,6 @@ type ControllerPersistence struct {
 
 // ControllerStatus defines the observed state of Controller
 type ControllerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Represents the latest available observations of a Controller's current state.
 	// +optional
 	// +patchMergeKey=type

@@ -8,9 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 const (
 	AccountingKind = "Accounting"
 )
@@ -22,9 +19,6 @@ var (
 
 // AccountingSpec defines the desired state of Accounting
 type AccountingSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Slurm `auth/slurm` key authentication.
 	// +required
 	SlurmKeyRef corev1.SecretKeySelector `json:"slurmKeyRef,omitzero"`
@@ -102,9 +96,6 @@ type StorageConfig struct {
 
 // AccountingStatus defines the observed state of Accounting
 type AccountingStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Represents the latest available observations of a Accounting's current state.
 	// +optional
 	// +patchMergeKey=type
