@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package nodeset
+package indexes
 
 import (
 	"context"
@@ -23,21 +23,23 @@ var indexers = []clientIndexer{
 	{
 		obj:   &corev1.Pod{},
 		field: "spec.nodeName",
-		fn: func(o client.Object) []string {
-			obj, ok := o.(runtime.Object)
-			if !ok {
-				return []string{}
-			}
-			pod, ok := obj.(*corev1.Pod)
-			if !ok {
-				return []string{}
-			}
-			return []string{pod.Spec.NodeName}
-		},
+		fn:    getPodNodeName,
 	},
 }
 
-func addIndexers(mgr ctrl.Manager) error {
+func getPodNodeName(o client.Object) []string {
+	obj, ok := o.(runtime.Object)
+	if !ok {
+		return []string{}
+	}
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		return []string{}
+	}
+	return []string{pod.Spec.NodeName}
+}
+
+func SetupWithManager(mgr ctrl.Manager) error {
 	for _, indexer := range indexers {
 		err := mgr.GetFieldIndexer().IndexField(context.Background(), indexer.obj, indexer.field, indexer.fn)
 		if err != nil {
@@ -47,8 +49,8 @@ func addIndexers(mgr ctrl.Manager) error {
 	return nil
 }
 
-// newFakeClientBuilderWithIndexes returns a client builder with the equivalent of addIndexers applied.
-func newFakeClientBuilderWithIndexes(initObjs ...runtime.Object) *fake.ClientBuilder {
+// NewFakeClientBuilderWithIndexes returns a client builder with the equivalent of addIndexers applied.
+func NewFakeClientBuilderWithIndexes(initObjs ...runtime.Object) *fake.ClientBuilder {
 	cb := fake.NewClientBuilder().WithRuntimeObjects(initObjs...)
 	for _, indexer := range indexers {
 		obj := indexer.obj.(runtime.Object)

@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 )
 
@@ -167,7 +168,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "Node cordoned - should enqueue NodeSet",
 			fields: fields{
-				Reader: newFakeClientBuilderWithIndexes(
+				Reader: indexes.NewFakeClientBuilderWithIndexes(
 					nodeset,
 					newNodeSetPod(nodeset, 0, "test-node"),
 					newNodeSetPod(nodeset, 1, "test-node2"),
@@ -186,7 +187,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "Node uncordoned - should enqueue NodeSet",
 			fields: fields{
-				Reader: newFakeClientBuilderWithIndexes(
+				Reader: indexes.NewFakeClientBuilderWithIndexes(
 					nodeset,
 					newNodeSetPod(nodeset, 0, "test-node"),
 				).Build(),
@@ -204,7 +205,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "No cordon change - should not enqueue",
 			fields: fields{
-				Reader: newFakeClientBuilderWithIndexes().Build(),
+				Reader: indexes.NewFakeClientBuilderWithIndexes().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -219,7 +220,7 @@ func Test_nodeEventHandler_Update(t *testing.T) {
 		{
 			name: "No worker pods on node - should not enqueue",
 			fields: fields{
-				Reader: newFakeClientBuilderWithIndexes().Build(), // No pods
+				Reader: indexes.NewFakeClientBuilderWithIndexes().Build(), // No pods
 			},
 			args: args{
 				ctx: context.TODO(),

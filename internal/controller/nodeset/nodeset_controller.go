@@ -26,6 +26,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
@@ -146,7 +147,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	nodeEventHandler := &nodeEventHandler{
 		Reader: mgr.GetCache(),
 	}
-	if err := addIndexers(mgr); err != nil {
+	if err := indexes.SetupWithManager(mgr); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
