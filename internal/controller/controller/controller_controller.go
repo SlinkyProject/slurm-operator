@@ -66,6 +66,7 @@ type ControllerReconciler struct {
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=accountings,verbs=get;list;watch
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
@@ -114,6 +115,7 @@ func (r *ControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
 		Watches(&slinkyv1beta1.Accounting{}, eventhandler.NewAccountingEventHandler(r.Client)).
+		Watches(&slinkyv1beta1.NodeSet{}, eventhandler.NewNodeSetEventHandler(r.Client)).
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
