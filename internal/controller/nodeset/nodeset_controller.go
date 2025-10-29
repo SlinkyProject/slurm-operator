@@ -26,6 +26,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
@@ -140,13 +141,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.podControl = podcontrol.NewPodControl(r.Client, r.eventRecorder)
 	r.slurmControl = slurmcontrol.NewSlurmControl(r.ClientMap)
 	r.expectations = kubecontroller.NewUIDTrackingControllerExpectations(kubecontroller.NewControllerExpectations())
-	podEventHandler := &podEventHandler{
-		Reader:       mgr.GetCache(),
-		expectations: r.expectations,
-	}
-	nodeEventHandler := &nodeEventHandler{
-		Reader: mgr.GetCache(),
-	}
+	podEventHandler := eventhandler.NewPodEventHandler(r.Client, r.expectations)
 	if err := indexes.SetupWithManager(mgr); err != nil {
 		return err
 	}
@@ -156,16 +151,10 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
 		Watches(&corev1.Pod{}, podEventHandler).
-		Watches(&corev1.Node{}, nodeEventHandler).
+		Watches(&corev1.Node{}, eventhandler.NewNodeEventHandler(r.Client)).
 		WatchesRawSource(source.Channel(r.EventCh, podEventHandler)).
-		Watches(&slinkyv1beta1.Controller{}, &controllerEventHandler{
-			Reader:      r.Client,
-			refResolver: r.refResolver,
-		}).
-		Watches(&corev1.Secret{}, &secretEventHandler{
-			Reader:      r.Client,
-			refResolver: r.refResolver,
-		}).
+		Watches(&slinkyv1beta1.Controller{}, eventhandler.NewControllerEventHandler(r.Client)).
+		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).

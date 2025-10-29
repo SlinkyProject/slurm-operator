@@ -23,7 +23,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
-	nodesetcontroller "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 )
 
@@ -106,7 +106,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	if err != nil {
 		return fmt.Errorf("failed to create slurm client: %w", err)
 	}
-	nodesetcontroller.SetEventHandler(slurmClient, r.EventCh)
+	eventhandler.SetEventHandler(slurmClient, r.EventCh)
 
 	if r.ClientMap.Add(controllerKey, slurmClient) {
 		logger.Info("Added slurm client", "controller", controllerKey.String())

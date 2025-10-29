@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: Copyright 2016 The Kubernetes Authors.
 // SPDX-License-Identifier: Apache-2.0
 
-package nodeset
+package eventhandler
 
 import (
 	"context"
@@ -35,17 +35,23 @@ import (
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
-var _ handler.EventHandler = &podEventHandler{}
+func NewPodEventHandler(reader client.Reader, expectations *kubecontroller.UIDTrackingControllerExpectations) *PodEventHandler {
+	return &PodEventHandler{
+		Reader:       reader,
+		expectations: expectations,
+	}
+}
 
-type podEventHandler struct {
+var _ handler.EventHandler = &PodEventHandler{}
+
+type PodEventHandler struct {
 	client.Reader
 	expectations *kubecontroller.UIDTrackingControllerExpectations
 }
 
-func (e *podEventHandler) Create(
+func (e *PodEventHandler) Create(
 	ctx context.Context,
 	evt event.CreateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -57,7 +63,7 @@ func (e *podEventHandler) Create(
 	e.createPod(ctx, pod, q)
 }
 
-func (e *podEventHandler) createPod(
+func (e *PodEventHandler) createPod(
 	ctx context.Context,
 	pod *corev1.Pod,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -101,7 +107,7 @@ func (e *podEventHandler) createPod(
 	}
 }
 
-func (e *podEventHandler) Update(
+func (e *PodEventHandler) Update(
 	ctx context.Context,
 	evt event.UpdateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -112,7 +118,7 @@ func (e *podEventHandler) Update(
 // When a pod is updated, figure out what replica nodeset/s manage it and wake them
 // up. If the labels of the pod have changed we need to awaken both the old
 // and new replica nodeset. old and cur must be *corev1.Pod types.
-func (e *podEventHandler) updatePod(
+func (e *PodEventHandler) updatePod(
 	ctx context.Context,
 	cur, old any,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -195,7 +201,7 @@ func (e *podEventHandler) updatePod(
 	}
 }
 
-func (e *podEventHandler) Delete(
+func (e *PodEventHandler) Delete(
 	ctx context.Context,
 	evt event.DeleteEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -205,7 +211,7 @@ func (e *podEventHandler) Delete(
 
 // When a pod is deleted, enqueue the replica nodeset that manages the pod and update its expectations.
 // obj could be an *corev1.Pod, or a DeletionFinalStateUnknown marker item.
-func (e *podEventHandler) deletePod(
+func (e *PodEventHandler) deletePod(
 	ctx context.Context,
 	obj any,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -249,7 +255,7 @@ func (e *podEventHandler) deletePod(
 	objectutils.EnqueueRequest(q, nodeset)
 }
 
-func (e *podEventHandler) Generic(
+func (e *PodEventHandler) Generic(
 	ctx context.Context,
 	evt event.GenericEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -275,7 +281,7 @@ func (e *podEventHandler) Generic(
 	}
 }
 
-func (e *podEventHandler) resolveControllerRef(
+func (e *PodEventHandler) resolveControllerRef(
 	ctx context.Context,
 	namespace string,
 	controllerRef *metav1.OwnerReference,
@@ -297,7 +303,7 @@ func (e *podEventHandler) resolveControllerRef(
 	return nodeset
 }
 
-func (e *podEventHandler) getPodNodeSets(ctx context.Context, pod *corev1.Pod) []*slinkyv1beta1.NodeSet {
+func (e *PodEventHandler) getPodNodeSets(ctx context.Context, pod *corev1.Pod) []*slinkyv1beta1.NodeSet {
 	logger := log.FromContext(ctx)
 	nodesetList := slinkyv1beta1.NodeSetList{}
 	if err := e.List(ctx, &nodesetList, client.InNamespace(pod.Namespace)); err != nil {
@@ -322,68 +328,6 @@ func (e *podEventHandler) getPodNodeSets(ctx context.Context, pod *corev1.Pod) [
 			"Pod", klog.KObj(pod), "NodeSets", nsMatched)
 	}
 	return nsMatched
-}
-
-var _ handler.EventHandler = &controllerEventHandler{}
-
-type controllerEventHandler struct {
-	client.Reader
-	refResolver *refresolver.RefResolver
-}
-
-func (e *controllerEventHandler) Create(
-	ctx context.Context,
-	evt event.CreateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *controllerEventHandler) Update(
-	ctx context.Context,
-	evt event.UpdateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.ObjectNew, q)
-}
-
-func (e *controllerEventHandler) Delete(
-	ctx context.Context,
-	evt event.DeleteEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *controllerEventHandler) Generic(
-	ctx context.Context,
-	evt event.GenericEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	// Intentionally blank
-}
-
-func (e *controllerEventHandler) enqueueRequest(
-	ctx context.Context,
-	obj client.Object,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	logger := log.FromContext(ctx)
-
-	controller, ok := obj.(*slinkyv1beta1.Controller)
-	if !ok {
-		return
-	}
-
-	list, err := e.refResolver.GetNodeSetsForController(ctx, controller)
-	if err != nil {
-		logger.Error(err, "failed to list NodeSets referencing Controller")
-		return
-	}
-
-	for _, item := range list.Items {
-		objectutils.EnqueueRequest(q, &item)
-	}
 }
 
 // SetEventHandler is a helper function to make slurm node updates propagate to
@@ -436,84 +380,5 @@ func podEvent(podInfo podinfo.PodInfo) event.GenericEvent {
 				Name:      podInfo.PodName,
 			},
 		},
-	}
-}
-
-var _ handler.EventHandler = &secretEventHandler{}
-
-type secretEventHandler struct {
-	client.Reader
-	refResolver *refresolver.RefResolver
-}
-
-func (e *secretEventHandler) Create(
-	ctx context.Context,
-	evt event.CreateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *secretEventHandler) Update(
-	ctx context.Context,
-	evt event.UpdateEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.ObjectNew, q)
-}
-
-func (e *secretEventHandler) Delete(
-	ctx context.Context,
-	evt event.DeleteEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	e.enqueueRequest(ctx, evt.Object, q)
-}
-
-func (e *secretEventHandler) Generic(
-	ctx context.Context,
-	evt event.GenericEvent,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	// Intentionally blank
-}
-
-func (e *secretEventHandler) enqueueRequest(
-	ctx context.Context,
-	obj client.Object,
-	q workqueue.TypedRateLimitingInterface[reconcile.Request],
-) {
-	logger := log.FromContext(ctx)
-
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		return
-	}
-	secretKey := client.ObjectKeyFromObject(secret)
-
-	controllerList := &slinkyv1beta1.ControllerList{}
-	if err := e.List(ctx, controllerList); err != nil {
-		logger.Error(err, "failed to list controller CRs")
-	}
-
-	for _, controller := range controllerList.Items {
-		slurmKeyKey := controller.AuthSlurmKey()
-		jwtHs256KeyKey := controller.AuthJwtHs256Key()
-		if secretKey.String() != slurmKeyKey.String() &&
-			secretKey.String() != jwtHs256KeyKey.String() {
-			continue
-		}
-
-		nodesetList, err := e.refResolver.GetNodeSetsForController(ctx, &controller)
-		if err != nil {
-			logger.Error(err, "failed to list NodeSet CRs")
-		}
-
-		for _, nodeset := range nodesetList.Items {
-			key := client.ObjectKeyFromObject(&controller)
-			if nodeset.Spec.ControllerRef.IsMatch(key) {
-				objectutils.EnqueueRequest(q, &nodeset)
-			}
-		}
 	}
 }

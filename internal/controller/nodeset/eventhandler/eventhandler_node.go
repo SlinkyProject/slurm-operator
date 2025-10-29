@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package nodeset
+package eventhandler
 
 import (
 	"context"
@@ -22,14 +22,20 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
-var _ handler.EventHandler = &nodeEventHandler{}
+func NewNodeEventHandler(reader client.Reader) *NodeEventHandler {
+	return &NodeEventHandler{
+		Reader: reader,
+	}
+}
 
-type nodeEventHandler struct {
+var _ handler.EventHandler = &NodeEventHandler{}
+
+type NodeEventHandler struct {
 	client.Reader
 }
 
 // Create implements handler.EventHandler
-func (h *nodeEventHandler) Create(
+func (h *NodeEventHandler) Create(
 	ctx context.Context,
 	evt event.CreateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -38,7 +44,7 @@ func (h *nodeEventHandler) Create(
 }
 
 // Delete implements handler.EventHandler
-func (h *nodeEventHandler) Delete(
+func (h *NodeEventHandler) Delete(
 	ctx context.Context,
 	evt event.DeleteEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -47,7 +53,7 @@ func (h *nodeEventHandler) Delete(
 }
 
 // Generic implements handler.EventHandler
-func (h *nodeEventHandler) Generic(
+func (h *NodeEventHandler) Generic(
 	ctx context.Context,
 	evt event.GenericEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -56,7 +62,7 @@ func (h *nodeEventHandler) Generic(
 }
 
 // Update implements handler.EventHandler
-func (h *nodeEventHandler) Update(
+func (h *NodeEventHandler) Update(
 	ctx context.Context,
 	evt event.UpdateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -81,7 +87,7 @@ func (h *nodeEventHandler) Update(
 	}
 }
 
-func (h *nodeEventHandler) enqueueNodeSetsForNode(
+func (h *NodeEventHandler) enqueueNodeSetsForNode(
 	ctx context.Context,
 	node *corev1.Node,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
@@ -119,7 +125,7 @@ func (h *nodeEventHandler) enqueueNodeSetsForNode(
 	}
 }
 
-func (h *nodeEventHandler) resolveControllerRef(
+func (h *NodeEventHandler) resolveControllerRef(
 	ctx context.Context,
 	namespace string,
 	controllerRef *metav1.OwnerReference,
