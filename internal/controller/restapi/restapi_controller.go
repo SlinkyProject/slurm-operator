@@ -23,6 +23,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -108,14 +109,8 @@ func (r *RestapiReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
-		Watches(&slinkyv1beta1.Controller{}, &controllerEventHandler{
-			Reader:      r.Client,
-			refResolver: r.refResolver,
-		}).
-		Watches(&corev1.Secret{}, &secretEventHandler{
-			Reader:      r.Client,
-			refResolver: r.refResolver,
-		}).
+		Watches(&slinkyv1beta1.Controller{}, eventhandler.NewControllerEventHandler(r.Client)).
+		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).
