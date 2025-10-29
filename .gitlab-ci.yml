@@ -19,12 +19,14 @@ variables:
   DOCKER_TLS_CERTDIR: '' # disable TLS
   FF_SCRIPT_SECTIONS: true
 
+default:
+  tags:
+    - schedmd-runners
+
 .template:
   image: docker:latest
   services:
     - docker:dind
-  tags:
-    - schedmd-runners
 
 include:
   - local: .gitlab/ci/build.yml

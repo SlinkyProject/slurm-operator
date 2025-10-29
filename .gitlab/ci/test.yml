@@ -36,8 +36,6 @@ audit:
 
 secret_detection:
   stage: test
-  tags:
-    - schedmd-runners
   allow_failure: false
   artifacts:
     when: on_failure
