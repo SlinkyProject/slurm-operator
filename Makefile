@@ -305,7 +305,7 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 	$(GOLANGCI_LINT) fmt
 
-CODECOV_PERCENT ?= 65.5
+CODECOV_PERCENT ?= 66
 
 .PHONY: test
 test: envtest ## Run tests.
