@@ -28,7 +28,7 @@ func init() {
 
 func TestRefResolver_GetController(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx context.Context
@@ -44,7 +44,7 @@ func TestRefResolver_GetController(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -60,7 +60,7 @@ func TestRefResolver_GetController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
@@ -87,9 +87,7 @@ func TestRefResolver_GetController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetController(tt.args.ctx, tt.args.ref)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetController() error = %v, wantErr %v", err, tt.wantErr)
@@ -104,7 +102,7 @@ func TestRefResolver_GetController(t *testing.T) {
 
 func TestRefResolver_GetAccounting(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx context.Context
@@ -120,7 +118,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -136,7 +134,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.Accounting{
 						ObjectMeta: metav1.ObjectMeta{
@@ -163,9 +161,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetAccounting(tt.args.ctx, tt.args.ref)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetAccounting() error = %v, wantErr %v", err, tt.wantErr)
@@ -180,7 +176,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 
 func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx        context.Context
@@ -196,7 +192,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -214,7 +210,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.NodeSet{
 						ObjectMeta: metav1.ObjectMeta{
@@ -256,9 +252,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetNodeSetsForController(tt.args.ctx, tt.args.controller)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetNodeSetsForController() error = %v, wantErr %v", err, tt.wantErr)
@@ -273,7 +267,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 
 func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx        context.Context
@@ -289,7 +283,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -307,7 +301,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.LoginSet{
 						ObjectMeta: metav1.ObjectMeta{
@@ -349,9 +343,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetLoginSetsForController(tt.args.ctx, tt.args.controller)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetLoginSetsForController() error = %v, wantErr %v", err, tt.wantErr)
@@ -366,7 +358,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 
 func TestRefResolver_GetRestapisForController(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx        context.Context
@@ -382,7 +374,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -400,7 +392,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
@@ -442,9 +434,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetRestapisForController(tt.args.ctx, tt.args.controller)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetRestapisForController() error = %v, wantErr %v", err, tt.wantErr)
@@ -459,7 +449,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 
 func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx        context.Context
@@ -475,7 +465,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -493,7 +483,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
@@ -535,9 +525,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetControllersForAccounting(tt.args.ctx, tt.args.accounting)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetControllersForAccounting() error = %v, wantErr %v", err, tt.wantErr)
@@ -552,7 +540,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 
 func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 	type fields struct {
-		client client.Client
+		reader client.Reader
 	}
 	type args struct {
 		ctx       context.Context
@@ -569,7 +557,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					Build(),
 			},
@@ -588,7 +576,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				reader: fake.NewClientBuilder().
 					WithScheme(scheme).
 					WithObjects(&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -616,9 +604,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RefResolver{
-				client: tt.fields.client,
-			}
+			r := New(tt.fields.reader)
 			got, err := r.GetSecretKeyRef(tt.args.ctx, tt.args.selector, tt.args.namespace)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetSecretKeyRef() error = %v, wantErr %v", err, tt.wantErr)
