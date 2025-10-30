@@ -6,6 +6,7 @@ package builder
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 const (
@@ -145,8 +147,11 @@ func mergeEnvVar(envVarList1, envVarList2 []corev1.EnvVar, sep string) []corev1.
 		}
 		envVarMap[env.Name] = ev
 	}
+	keys := structutils.Keys(envVarMap)
+	sort.Strings(keys)
 	envVarList := make([]corev1.EnvVar, 0, len(envVarMap))
-	for k, v := range envVarMap {
+	for _, k := range keys {
+		v := envVarMap[k]
 		envVar := corev1.EnvVar{
 			Name:      k,
 			Value:     strings.Join(v.Values, sep),
