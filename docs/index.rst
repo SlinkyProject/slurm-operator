@@ -27,6 +27,7 @@ Table of Contents
 
   - `Features <#features>`__
 
+    - `Controller <#controller>`__
     - `NodeSets <#nodesets>`__
     - `LoginSets <#loginsets>`__
     - `Hybrid Support <#hybrid-support>`__
@@ -97,6 +98,21 @@ For additional information about Slurm, see the
 
 Features
 --------
+
+Controller
+~~~~~~~~~~
+
+The Slurm control-plane is responsible for scheduling Slurm workload
+onto its worker nodes and managing their states.
+
+Changes to the Slurm configuration files are automatically detected and
+the Slurm cluster is reconfigured seamlessly with zero downtime of the
+Slurm control-plane.
+
+   [!NOTE] The kubelet’s ``configMapAndSecretChangeDetectionStrategy``
+   and ``syncFrequency`` settings directly affect when pods have their
+   mounted ConfigMaps and Secrets updated. By default, the kubelet is in
+   ``Watch`` mode with a polling frequency of 60 seconds.
 
 NodeSets
 ~~~~~~~~

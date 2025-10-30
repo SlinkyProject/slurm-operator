@@ -20,6 +20,7 @@ Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
   - [Overview](#overview)
     - [Slurm Cluster](#slurm-cluster)
   - [Features](#features)
+    - [Controller](#controller)
     - [NodeSets](#nodesets)
     - [LoginSets](#loginsets)
     - [Hybrid Support](#hybrid-support)
@@ -67,6 +68,21 @@ and tries to expose everything Slurm has to offer.
 For additional information about Slurm, see the [slurm][slurm-docs] docs.
 
 ## Features
+
+### Controller
+
+The Slurm control-plane is responsible for scheduling Slurm workload onto its
+worker nodes and managing their states.
+
+Changes to the Slurm configuration files are automatically detected and the
+Slurm cluster is reconfigured seamlessly with zero downtime of the Slurm
+control-plane.
+
+> [!NOTE]
+> The kubelet's `configMapAndSecretChangeDetectionStrategy` and `syncFrequency`
+> settings directly affect when pods have their mounted ConfigMaps and Secrets
+> updated. By default, the kubelet is in `Watch` mode with a polling frequency
+> of 60 seconds.
 
 ### NodeSets
 
