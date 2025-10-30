@@ -6,6 +6,7 @@ package builder
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -193,8 +194,16 @@ func mergeEnvVar(envVarList1, envVarList2 []corev1.EnvVar, sep string) []corev1.
 		}
 		envVarMap[env.Name] = ev
 	}
+	// Sort keys to ensure deterministic ordering of environment variables
+	keys := make([]string, 0, len(envVarMap))
+	for k := range envVarMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	envVarList := make([]corev1.EnvVar, 0, len(envVarMap))
-	for k, v := range envVarMap {
+	for _, k := range keys {
+		v := envVarMap[k]
 		envVar := corev1.EnvVar{
 			Name:      k,
 			Value:     strings.Join(v.Values, sep),
