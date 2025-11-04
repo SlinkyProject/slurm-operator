@@ -10,12 +10,29 @@ include:
     - docker info
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
     - apk update && apk upgrade
-    - apk add --no-cache bash git make go helm
+    - apk add --no-cache bash git make helm curl
+    # Detect system architecture
+    - ARCH=$(uname -m)
+    - |
+      if [ "$ARCH" = "aarch64" ]; then
+        GOARCH="arm64"
+      elif [ "$ARCH" = "x86_64" ]; then
+        GOARCH="amd64"
+      else
+        echo "Unsupported architecture: $ARCH"
+        exit 1
+      fi
+    - curl -sSL "https://go.dev/dl/go1.25.3.linux-${GOARCH}.tar.gz" -o go.tar.gz
+    - tar -C /usr/local -xzf go.tar.gz
+    - rm go.tar.gz
+    - export PATH="/usr/local/go/bin:$PATH"
     - go env -w GOPRIVATE=github.com/SlinkyProject/*
 
 test:
   stage: test
   extends: .test-template
+  tags:
+    - schedmd-slc
   script:
     - set -euo pipefail
     - apk update && apk upgrade

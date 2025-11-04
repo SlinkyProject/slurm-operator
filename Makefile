@@ -132,7 +132,7 @@ OPERATOR_SDK_VERSION ?= v1.41.1
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= latest
-GOLANGCI_LINT_VERSION ?= v2.1.6
+GOLANGCI_LINT_VERSION ?= v2.6.0
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.7.0.2
 

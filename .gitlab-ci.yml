@@ -17,6 +17,7 @@ variables:
   VERSION: 0.4.0
   CI_JOB_USER: gitlab-ci-token
   DOCKER_TLS_CERTDIR: '' # disable TLS
+  DOCKER_OPTS: ${DOCKER_OPTS} --registry-mirror=https://mirror.gcr.io
   FF_SCRIPT_SECTIONS: true
 
 default:
