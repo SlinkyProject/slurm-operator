@@ -49,21 +49,21 @@ var _ = Describe("Accounting controller", func() {
 			accountingKey := client.ObjectKeyFromObject(accounting)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, accountingKey, createdAccounting)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting Accounting CR Service")
 			serviceKey := accounting.ServiceKey()
 			service := &corev1.Service{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, serviceKey, service)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting Accounting CR Statefulset")
 			statefulsetKey := accounting.Key()
 			statefulset := &appsv1.StatefulSet{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, statefulsetKey, statefulset)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })

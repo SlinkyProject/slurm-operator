@@ -15,7 +15,7 @@ import (
 )
 
 const Timeout = 30 * time.Second
-const Internal = 2 * time.Second
+const Interval = 2 * time.Second
 
 func NewObjectRef(obj client.Object) slinkyv1beta1.ObjectReference {
 	return slinkyv1beta1.ObjectReference{

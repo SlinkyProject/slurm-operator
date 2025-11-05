@@ -45,21 +45,21 @@ var _ = Describe("Slurm Controller", func() {
 			controllerKey := client.ObjectKeyFromObject(controller)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, controllerKey, createdController)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting Controller CR service")
 			serviceKey := controller.ServiceKey()
 			service := &corev1.Service{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, serviceKey, service)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting Controller CR statefulset")
 			statefulsetKey := controller.Key()
 			statefulset := &appsv1.StatefulSet{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, statefulsetKey, statefulset)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })

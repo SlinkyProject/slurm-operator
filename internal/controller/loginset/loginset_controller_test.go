@@ -54,21 +54,21 @@ var _ = Describe("LoginSet Controller", func() {
 			loginsetKey := client.ObjectKeyFromObject(controller)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, loginsetKey, createdLoginset)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Creating LoginSet CR Service")
 			serviceKey := loginset.ServiceKey()
 			service := &corev1.Service{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, serviceKey, service)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Creating LoginSet CR Deployment")
 			deploymentKey := loginset.Key()
 			deployment := &appsv1.Deployment{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })

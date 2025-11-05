@@ -48,21 +48,21 @@ var _ = Describe("RestApi Controller", func() {
 			restapiKey := client.ObjectKeyFromObject(restapi)
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, restapiKey, createdRestapi)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting RestApi CR Service")
 			serviceKey := restapi.ServiceKey()
 			service := &corev1.Service{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, serviceKey, service)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Expecting RestApi CR Deployment")
 			deploymentKey := restapi.Key()
 			deployment := &appsv1.Deployment{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
-			}, testutils.Timeout, testutils.Internal).Should(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })
