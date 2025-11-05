@@ -76,9 +76,9 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 				},
 			}
 			c := fake.NewClientBuilder().WithRuntimeObjects(nodeset, podList, revision).WithStatusSubresource(nodeset).Build()
-			slurmNodeList := &slurmtypes.V0043NodeList{
-				Items: func(pods []*corev1.Pod) []slurmtypes.V0043Node {
-					nodeList := make([]slurmtypes.V0043Node, 0, len(pods))
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: func(pods []*corev1.Pod) []slurmtypes.V0044Node {
+					nodeList := make([]slurmtypes.V0044Node, 0, len(pods))
 					for _, pod := range pods {
 						slurmNode := newNodeSetPodSlurmNode(pod)
 						nodeList = append(nodeList, *slurmNode)
@@ -126,9 +126,9 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 				},
 			}
 			c := fake.NewClientBuilder().WithRuntimeObjects(nodeset, podList, revision).WithStatusSubresource(nodeset).Build()
-			slurmNodeList := &slurmtypes.V0043NodeList{
-				Items: func(pods []*corev1.Pod) []slurmtypes.V0043Node {
-					nodeList := make([]slurmtypes.V0043Node, 0, len(pods))
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: func(pods []*corev1.Pod) []slurmtypes.V0044Node {
+					nodeList := make([]slurmtypes.V0044Node, 0, len(pods))
 					for _, pod := range pods {
 						slurmNode := newNodeSetPodSlurmNode(pod)
 						nodeList = append(nodeList, *slurmNode)
@@ -202,9 +202,9 @@ func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			c := fake.NewClientBuilder().WithRuntimeObjects(nodeset, podList).WithStatusSubresource(nodeset).Build()
-			slurmNodeList := &slurmtypes.V0043NodeList{
-				Items: func(pods []*corev1.Pod) []slurmtypes.V0043Node {
-					nodeList := make([]slurmtypes.V0043Node, 0, len(pods))
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: func(pods []*corev1.Pod) []slurmtypes.V0044Node {
+					nodeList := make([]slurmtypes.V0044Node, 0, len(pods))
 					for _, pod := range pods {
 						slurmNode := newNodeSetPodSlurmNode(pod)
 						nodeList = append(nodeList, *slurmNode)
@@ -287,9 +287,9 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 				},
 			}
 			c := fake.NewClientBuilder().WithRuntimeObjects(nodeset, podList, revision).WithStatusSubresource(nodeset).Build()
-			slurmNodeList := &slurmtypes.V0043NodeList{
-				Items: func(pods []*corev1.Pod) []slurmtypes.V0043Node {
-					nodeList := make([]slurmtypes.V0043Node, 0, len(pods))
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: func(pods []*corev1.Pod) []slurmtypes.V0044Node {
+					nodeList := make([]slurmtypes.V0044Node, 0, len(pods))
 					for _, pod := range pods {
 						slurmNode := newNodeSetPodSlurmNode(pod)
 						nodeList = append(nodeList, *slurmNode)
@@ -347,9 +347,9 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 				},
 			}
 			c := fake.NewClientBuilder().WithRuntimeObjects(nodeset, podList, revision).WithStatusSubresource(nodeset).Build()
-			slurmNodeList := &slurmtypes.V0043NodeList{
-				Items: func(pods []*corev1.Pod) []slurmtypes.V0043Node {
-					nodeList := make([]slurmtypes.V0043Node, 0, len(pods))
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: func(pods []*corev1.Pod) []slurmtypes.V0044Node {
+					nodeList := make([]slurmtypes.V0044Node, 0, len(pods))
 					for _, pod := range pods {
 						slurmNode := newNodeSetPodSlurmNode(pod)
 						nodeList = append(nodeList, *slurmNode)

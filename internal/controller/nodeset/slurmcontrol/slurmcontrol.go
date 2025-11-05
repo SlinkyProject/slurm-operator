@@ -18,10 +18,11 @@ import (
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	api "github.com/SlinkyProject/slurm-client/api/v0043"
+	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
@@ -68,7 +69,7 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 		return nil
 	}
 
-	nodeList := &slurmtypes.V0043NodeList{}
+	nodeList := &slurmtypes.V0044NodeList{}
 	opts := &slurmclient.ListOptions{RefreshCache: true}
 	if err := slurmClient.List(ctx, nodeList, opts); err != nil {
 		return err
@@ -87,7 +88,7 @@ func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1be
 		return nil, nil
 	}
 
-	nodeList := &slurmtypes.V0043NodeList{}
+	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
 		return nil, err
 	}
@@ -121,7 +122,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 		return nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -146,7 +147,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 
 	logger.Info("Update Slurm Node with Kubernetes Pod info",
 		"Node", slurmNode.Name, "podInfo", podInfo)
-	req := api.V0043UpdateNodeMsg{
+	req := slurmapi.V0044UpdateNodeMsg{
 		Comment: ptr.To(podInfo.ToString()),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
@@ -157,8 +158,8 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 
 	if podInfoOld.Node != "" {
 		logger.Info("Update Slurm Node state due to Kubernetes node migration", "Node", slurmNode.Name)
-		req := api.V0043UpdateNodeMsg{
-			State: ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateIDLE}),
+		req := slurmapi.V0044UpdateNodeMsg{
+			State: ptr.To([]slurmapi.V0044UpdateNodeMsgState{slurmapi.V0044UpdateNodeMsgStateIDLE}),
 		}
 		if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
 			if tolerateError(err) {
@@ -183,7 +184,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		return nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -200,7 +201,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 
 	// If Slurm node is already drained and the reasons match, no need to drain it again
 	nodeReason := ptr.Deref(slurmNode.Reason, "")
-	if slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) && nodeReason == prefixedReason {
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) && nodeReason == prefixedReason {
 		logger.V(1).Info("Node is already drained, skipping drain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State, "nodeReason", nodeReason)
 		return nil
@@ -208,8 +209,8 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 
 	logger.V(1).Info("make slurm node drain",
 		"pod", klog.KObj(pod))
-	req := api.V0043UpdateNodeMsg{
-		State:  ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateDRAIN}),
+	req := slurmapi.V0044UpdateNodeMsg{
+		State:  ptr.To([]slurmapi.V0044UpdateNodeMsgState{slurmapi.V0044UpdateNodeMsgStateDRAIN}),
 		Reason: ptr.To(prefixedReason),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
@@ -233,7 +234,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -242,8 +243,8 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return err
 	}
 
-	if !slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) ||
-		slurmNode.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN) {
+	if !slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) ||
+		slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateUNDRAIN) {
 		logger.V(1).Info("Node is already undrained, skipping undrain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
 		return nil
@@ -257,8 +258,8 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 
 	logger.V(1).Info("make slurm node undrain",
 		"pod", klog.KObj(pod))
-	req := api.V0043UpdateNodeMsg{
-		State:  ptr.To([]api.V0043UpdateNodeMsgState{api.V0043UpdateNodeMsgStateUNDRAIN}),
+	req := slurmapi.V0044UpdateNodeMsg{
+		State:  ptr.To([]slurmapi.V0044UpdateNodeMsgState{slurmapi.V0044UpdateNodeMsgStateUNDRAIN}),
 		Reason: ptr.To(prefixedReason),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
@@ -282,7 +283,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 		return true, nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -291,7 +292,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 		return false, err
 	}
 
-	isDrain := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
+	isDrain := slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN)
 	return isDrain, nil
 }
 
@@ -306,7 +307,7 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 		return true, nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -317,8 +318,8 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 
 	// Drained is when a node has the DRAIN flag and is not doing any work (e.g. job step, prolog, epilog).
 	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3500
-	isBusy := slurmNode.GetStateAsSet().HasAny(api.V0043NodeStateALLOCATED, api.V0043NodeStateMIXED, api.V0043NodeStateCOMPLETING)
-	isDrain := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN) && !slurmNode.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN)
+	isBusy := slurmNode.GetStateAsSet().HasAny(slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateMIXED, slurmapi.V0044NodeStateCOMPLETING)
+	isDrain := slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) && !slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateUNDRAIN)
 	isDrained := isDrain && !isBusy
 
 	return isDrained, nil
@@ -335,7 +336,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 		return true, nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -346,7 +347,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 
 	// Slurm sets unresponsive nodes as `State=DOWN`, `Reason+="Not responding"`.
 	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/slurmctld/ping_nodes.c#L243
-	isDown := slurmNode.GetStateAsSet().Has(api.V0043NodeStateDOWN)
+	isDown := slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDOWN)
 	reasonNotResponding := strings.Contains(ptr.Deref(slurmNode.Reason, ""), "Not responding")
 	wasUnresponsive := isDown && reasonNotResponding
 
@@ -364,7 +365,7 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 		return true, nil
 	}
 
-	slurmNode := &slurmtypes.V0043Node{}
+	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
 		if tolerateError(err) {
@@ -422,7 +423,7 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 		return status, nil
 	}
 
-	nodeList := &slurmtypes.V0043NodeList{}
+	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
 		if tolerateError(err) {
 			return status, nil
@@ -444,72 +445,72 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 		status.Total++
 		// Slurm Node Base States
 		switch {
-		case node.GetStateAsSet().Has(api.V0043NodeStateALLOCATED):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateALLOCATED):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionAllocated))
 			status.Allocated++
-		case node.GetStateAsSet().Has(api.V0043NodeStateDOWN):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateDOWN):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionDown))
 			status.Down++
-		case node.GetStateAsSet().Has(api.V0043NodeStateERROR):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateERROR):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionError))
 			status.Error++
-		case node.GetStateAsSet().Has(api.V0043NodeStateFUTURE):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateFUTURE):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionFuture))
 			status.Future++
-		case node.GetStateAsSet().Has(api.V0043NodeStateIDLE):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateIDLE):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionIdle))
 			status.Idle++
-		case node.GetStateAsSet().Has(api.V0043NodeStateMIXED):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateMIXED):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionMixed))
 			status.Mixed++
-		case node.GetStateAsSet().Has(api.V0043NodeStateUNKNOWN):
+		case node.GetStateAsSet().Has(slurmapi.V0044NodeStateUNKNOWN):
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionUnknown))
 			status.Unknown++
 		}
 		// Slurm Node Flag State
-		if node.GetStateAsSet().Has(api.V0043NodeStateCOMPLETING) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateCOMPLETING) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionCompleting))
 			status.Completing++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateDRAIN) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionDrain))
 			status.Drain++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateFAIL) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateFAIL) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionFail))
 			status.Fail++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateINVALID) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALID) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionInvalid))
 			status.Invalid++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateINVALIDREG) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionInvalidReg))
 			status.InvalidReg++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateMAINTENANCE) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateMAINTENANCE) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionMaintenance))
 			status.Maintenance++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateNOTRESPONDING) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateNOTRESPONDING) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionNotResponding))
 			status.NotResponding++
 		}
-		if node.GetStateAsSet().Has(api.V0043NodeStateUNDRAIN) {
+		if node.GetStateAsSet().Has(slurmapi.V0044NodeStateUNDRAIN) {
 			status.NodeStates[nodeName] = append(status.NodeStates[nodeName],
 				nodeState(node, slurmconditions.PodConditionUndrain))
 			status.Undrain++
@@ -538,13 +539,13 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 		slurmNodeNamesSet.Insert(slurmNodeName)
 	}
 
-	jobList := &slurmtypes.V0043JobInfoList{}
+	jobList := &slurmtypes.V0044JobInfoList{}
 	if err := slurmClient.List(ctx, jobList); err != nil {
 		return nil, err
 	}
 
 	for _, job := range jobList.Items {
-		if !job.GetStateAsSet().Has(api.V0043JobInfoJobStateRUNNING) {
+		if !job.GetStateAsSet().Has(slurmapi.V0044JobInfoJobStateRUNNING) {
 			continue
 		}
 		slurmNodeNames, err := hostlist.Expand(ptr.Deref(job.Nodes, ""))
@@ -558,10 +559,10 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 		}
 
 		// Get startTime, when the job was launched on the Slurm worker.
-		startTime_NoVal := ptr.Deref(job.StartTime, api.V0043Uint64NoValStruct{})
+		startTime_NoVal := ptr.Deref(job.StartTime, slurmapi.V0044Uint64NoValStruct{})
 		startTime := time.Unix(ptr.Deref(startTime_NoVal.Number, 0), 0)
 		// Get the timeLimit, the wall time of the job.
-		timeLimit_NoVal := ptr.Deref(job.TimeLimit, api.V0043Uint32NoValStruct{})
+		timeLimit_NoVal := ptr.Deref(job.TimeLimit, slurmapi.V0044Uint32NoValStruct{})
 		timeLimit := time.Duration(ptr.Deref(timeLimit_NoVal.Number, 0)) * time.Minute
 		if ptr.Deref(timeLimit_NoVal.Infinite, false) {
 			timeLimit = infiniteDuration
@@ -602,7 +603,7 @@ func tolerateError(err error) bool {
 
 // Translate a Slurm node state to a plaintext state with a reason
 // and a flag to indicate if it is a base state or a flag state.
-func nodeState(node slurmtypes.V0043Node, condType corev1.PodConditionType) corev1.PodCondition {
+func nodeState(node slurmtypes.V0044Node, condType corev1.PodConditionType) corev1.PodCondition {
 	return corev1.PodCondition{
 		Type:    condType,
 		Status:  corev1.ConditionTrue,

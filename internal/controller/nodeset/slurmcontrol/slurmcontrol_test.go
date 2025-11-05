@@ -21,7 +21,7 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 
-	api "github.com/SlinkyProject/slurm-client/api/v0043"
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
 	"github.com/SlinkyProject/slurm-client/pkg/client"
 	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/SlinkyProject/slurm-client/pkg/object"
@@ -73,19 +73,19 @@ var _ = Describe("SlurmControlInterface", func() {
 
 	updateFn := func(_ context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {
 		switch o := obj.(type) {
-		case *types.V0043Node:
-			r, ok := req.(api.V0043UpdateNodeMsg)
+		case *types.V0044Node:
+			r, ok := req.(api.V0044UpdateNodeMsg)
 			if !ok {
 				return errors.New("failed to cast request object")
 			}
-			stateSet := set.New(ptr.Deref(o.State, []api.V0043NodeState{})...)
-			statesReq := ptr.Deref(r.State, []api.V0043UpdateNodeMsgState{})
+			stateSet := set.New(ptr.Deref(o.State, []api.V0044NodeState{})...)
+			statesReq := ptr.Deref(r.State, []api.V0044UpdateNodeMsgState{})
 			for _, stateReq := range statesReq {
 				switch stateReq {
-				case api.V0043UpdateNodeMsgStateUNDRAIN:
-					stateSet.Delete(api.V0043NodeStateDRAIN)
+				case api.V0044UpdateNodeMsgStateUNDRAIN:
+					stateSet.Delete(api.V0044NodeStateDRAIN)
 				default:
-					stateSet.Insert(api.V0043NodeState(stateReq))
+					stateSet.Insert(api.V0044NodeState(stateReq))
 				}
 			}
 			o.State = ptr.To(stateSet.UnsortedList())
@@ -103,11 +103,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			nodeset = newNodeSet("foo", controller.Name, 1)
 			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
 			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
+			node := &types.V0044Node{
+				V0044Node: api.V0044Node{
 					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
+					State: ptr.To([]api.V0044NodeState{
+						api.V0044NodeStateIDLE,
 					}),
 				},
 			}
@@ -125,7 +125,7 @@ var _ = Describe("SlurmControlInterface", func() {
 				PodName:   pod.GetName(),
 				Node:      pod.Spec.NodeName,
 			}
-			checkNode := &types.V0043Node{}
+			checkNode := &types.V0044Node{}
 			key := object.ObjectKey(slurmNodename)
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
@@ -142,11 +142,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			nodeset = newNodeSet("foo", controller.Name, 1)
 			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
 			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
+			node := &types.V0044Node{
+				V0044Node: api.V0044Node{
 					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
+					State: ptr.To([]api.V0044NodeState{
+						api.V0044NodeStateIDLE,
 					}),
 				},
 			}
@@ -159,11 +159,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Check Slurm Node state")
-			checkNode := &types.V0043Node{}
+			checkNode := &types.V0044Node{}
 			key := object.ObjectKey(slurmNodename)
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
-			isDrain := checkNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
+			isDrain := checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
 			Expect(isDrain).To(BeTrue())
 		})
 	})
@@ -174,11 +174,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			nodeset = newNodeSet("foo", controller.Name, 1)
 			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
 			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
+			node := &types.V0044Node{
+				V0044Node: api.V0044Node{
 					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
+					State: ptr.To([]api.V0044NodeState{
+						api.V0044NodeStateIDLE,
 					}),
 				},
 			}
@@ -196,7 +196,7 @@ var _ = Describe("SlurmControlInterface", func() {
 				PodName:   pod.GetName(),
 				Node:      pod.Spec.NodeName,
 			}
-			checkNode := &types.V0043Node{}
+			checkNode := &types.V0044Node{}
 			key := object.ObjectKey(slurmNodename)
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
@@ -222,7 +222,7 @@ var _ = Describe("SlurmControlInterface", func() {
 				PodName:   pod.GetName(),
 				Node:      pod.Spec.NodeName,
 			}
-			checkNode = &types.V0043Node{}
+			checkNode = &types.V0044Node{}
 			key = object.ObjectKey(slurmNodename)
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
@@ -232,11 +232,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
 
 			By("Check Slurm Node state")
-			checkNode = &types.V0043Node{}
+			checkNode = &types.V0044Node{}
 			key = object.ObjectKey(slurmNodename)
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
-			isIdle := checkNode.GetStateAsSet().Has(api.V0043NodeStateIDLE)
+			isIdle := checkNode.GetStateAsSet().Has(api.V0044NodeStateIDLE)
 			Expect(isIdle).To(BeTrue())
 		})
 	})
@@ -246,12 +246,12 @@ var _ = Describe("SlurmControlInterface", func() {
 			By("Setup initial system state")
 			nodeset = newNodeSet("foo", controller.Name, 1)
 			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
+			node := &types.V0044Node{
+				V0044Node: api.V0044Node{
 					Name: ptr.To(nodesetutils.GetNodeName(pod)),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
-						api.V0043NodeStateDRAIN,
+					State: ptr.To([]api.V0044NodeState{
+						api.V0044NodeStateIDLE,
+						api.V0044NodeStateDRAIN,
 					}),
 				},
 			}
@@ -264,11 +264,11 @@ var _ = Describe("SlurmControlInterface", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Check Slurm Node state")
-			checkNode := &types.V0043Node{}
+			checkNode := &types.V0044Node{}
 			key := object.ObjectKey(nodesetutils.GetNodeName(pod))
 			err = sclient.Get(ctx, key, checkNode)
 			Expect(err).ToNot(HaveOccurred())
-			isundrain := !checkNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
+			isundrain := !checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
 			Expect(isundrain).To(BeTrue())
 		})
 	})
@@ -282,34 +282,34 @@ var _ = Describe("SlurmControlInterface", func() {
 			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
 			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
 			pods := []*corev1.Pod{pod, pod2}
-			nodeList := &types.V0043NodeList{
-				Items: []types.V0043Node{
+			nodeList := &types.V0044NodeList{
+				Items: []types.V0044Node{
 					{
-						V0043Node: api.V0043Node{
+						V0044Node: api.V0044Node{
 							Name: ptr.To(nodesetutils.GetNodeName(pod)),
-							State: ptr.To([]api.V0043NodeState{
-								api.V0043NodeStateMIXED,
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateMIXED,
 							}),
 						},
 					},
 					{
-						V0043Node: api.V0043Node{
+						V0044Node: api.V0044Node{
 							Name: ptr.To(nodesetutils.GetNodeName(pod2)),
-							State: ptr.To([]api.V0043NodeState{
-								api.V0043NodeStateMIXED,
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateMIXED,
 							}),
 						},
 					},
 				},
 			}
-			jobList := &types.V0043JobInfoList{
-				Items: []types.V0043JobInfo{
+			jobList := &types.V0044JobInfoList{
+				Items: []types.V0044JobInfo{
 					{
-						V0043JobInfo: api.V0043JobInfo{
+						V0044JobInfo: api.V0044JobInfo{
 							JobId:     ptr.To[int32](1),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(30 * int32(time.Minute.Seconds()))}),
+							JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+							StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+							TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(30 * int32(time.Minute.Seconds()))}),
 							Nodes: func() *string {
 								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
 								if err != nil {
@@ -320,11 +320,11 @@ var _ = Describe("SlurmControlInterface", func() {
 						},
 					},
 					{
-						V0043JobInfo: api.V0043JobInfo{
+						V0044JobInfo: api.V0044JobInfo{
 							JobId:     ptr.To[int32](2),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(45 * int32(time.Minute.Seconds()))}),
+							JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+							StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+							TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(45 * int32(time.Minute.Seconds()))}),
 							Nodes: func() *string {
 								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
 								if err != nil {
@@ -335,11 +335,11 @@ var _ = Describe("SlurmControlInterface", func() {
 						},
 					},
 					{
-						V0043JobInfo: api.V0043JobInfo{
+						V0044JobInfo: api.V0044JobInfo{
 							JobId:     ptr.To[int32](3),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(int32(time.Hour.Seconds()))}),
+							JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+							StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+							TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(int32(time.Hour.Seconds()))}),
 							Nodes: func() *string {
 								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
 								if err != nil {
@@ -350,9 +350,9 @@ var _ = Describe("SlurmControlInterface", func() {
 						},
 					},
 					{
-						V0043JobInfo: api.V0043JobInfo{
+						V0044JobInfo: api.V0044JobInfo{
 							JobId:    ptr.To[int32](4),
-							JobState: ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateCOMPLETED}),
+							JobState: ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateCOMPLETED}),
 							Nodes: func() *string {
 								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
 								if err != nil {
@@ -363,9 +363,9 @@ var _ = Describe("SlurmControlInterface", func() {
 						},
 					},
 					{
-						V0043JobInfo: api.V0043JobInfo{
+						V0044JobInfo: api.V0044JobInfo{
 							JobId:    ptr.To[int32](5),
-							JobState: ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateCOMPLETED}),
+							JobState: ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateCOMPLETED}),
 							Nodes: func() *string {
 								hostlist, err := hostlist.Compress([]string{*nodeList.Items[1].Name})
 								if err != nil {
@@ -420,11 +420,11 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 		{
 			name: "Not DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -444,11 +444,11 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 		{
 			name: "Is DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -510,11 +510,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -534,11 +534,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "MIXED",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
 						}),
 					},
 				}
@@ -557,11 +557,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "DOWN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 					},
 				}
@@ -580,12 +580,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -604,12 +604,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "MIXED+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -628,12 +628,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "ALLOC+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateALLOCATED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateALLOCATED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -653,12 +653,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "DOWN+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -678,13 +678,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -703,13 +703,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -728,13 +728,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+UNDRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateUNDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateUNDRAIN,
 						}),
 					},
 				}
@@ -794,11 +794,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -818,11 +818,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "MIXED",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
 						}),
 					},
 				}
@@ -841,11 +841,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 					},
 				}
@@ -864,12 +864,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -888,12 +888,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "MIXED+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -912,12 +912,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "ALLOC+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateALLOCATED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateALLOCATED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -937,12 +937,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -962,13 +962,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -987,13 +987,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -1012,13 +1012,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+UNDRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateUNDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateUNDRAIN,
 						}),
 					},
 				}
@@ -1037,12 +1037,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+NOT_RESPONDING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateNOTRESPONDING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateNOTRESPONDING,
 						}),
 					},
 				}
@@ -1061,11 +1061,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+Reason Not responding",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("Not responding"),
 					},
@@ -1085,11 +1085,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+Other reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("test reason"),
 					},
@@ -1150,11 +1150,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "no reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -1173,11 +1173,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "internal reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To(nodeReasonPrefix + " " + "foo"),
 					},
@@ -1197,11 +1197,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "external reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("foo"),
 					},
@@ -1262,8 +1262,8 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Empty",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{},
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{},
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
@@ -1281,21 +1281,21 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Different NodeSets",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset2, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
@@ -1335,13 +1335,13 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Only base state",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
@@ -1381,15 +1381,15 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Base and flag state",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name:   ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
 								Reason: ptr.To("Node drain"),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
-									api.V0043NodeStateDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
+									api.V0044NodeStateDRAIN,
 								}),
 							},
 						},
@@ -1435,62 +1435,62 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All base states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateALLOCATED,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateALLOCATED,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDOWN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
 								}),
 								Reason: ptr.To("Node is down"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateERROR,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateERROR,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMIXED,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNKNOWN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNKNOWN,
 								}),
 							},
 						},
@@ -1584,71 +1584,71 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All flag states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateCOMPLETING,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateCOMPLETING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDRAIN,
 								}),
 								Reason: ptr.To("Node set to drain"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFAIL,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFAIL,
 								}),
 								Reason: ptr.To("Node set to fail"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateINVALID,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateINVALID,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateINVALIDREG,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateINVALIDREG,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMAINTENANCE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMAINTENANCE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateNOTRESPONDING,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateNOTRESPONDING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNDRAIN,
 								}),
 							},
 						},
@@ -1751,79 +1751,79 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateALLOCATED,
-									api.V0043NodeStateCOMPLETING,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateALLOCATED,
+									api.V0044NodeStateCOMPLETING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDOWN,
-									api.V0043NodeStateDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateDRAIN,
 								}),
 								Reason: ptr.To("Node set to down and drain"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateERROR,
-									api.V0043NodeStateFAIL,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateERROR,
+									api.V0044NodeStateFAIL,
 								}),
 								Reason: ptr.To("Node set to error and fail"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
-									api.V0043NodeStateINVALID,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
+									api.V0044NodeStateINVALID,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
-									api.V0043NodeStateINVALIDREG,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
+									api.V0044NodeStateINVALIDREG,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
-									api.V0043NodeStateMAINTENANCE,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
+									api.V0044NodeStateMAINTENANCE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMIXED,
-									api.V0043NodeStateNOTRESPONDING,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
+									api.V0044NodeStateNOTRESPONDING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
+							V0044Node: api.V0044Node{
 								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNKNOWN,
-									api.V0043NodeStateUNDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNKNOWN,
+									api.V0044NodeStateUNDRAIN,
 								}),
 							},
 						},
@@ -2044,7 +2044,7 @@ func Test_tolerateError(t *testing.T) {
 
 func Test_nodeState(t *testing.T) {
 	type args struct {
-		node  types.V0043Node
+		node  types.V0044Node
 		state corev1.PodConditionType
 	}
 	tests := []struct {
@@ -2055,8 +2055,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Idle state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To(""),
 					},
 				},
@@ -2071,8 +2071,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Drain state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To("Drain by admin"),
 					},
 				},
@@ -2087,8 +2087,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "InvalidReg state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To(""),
 					},
 				},
@@ -2103,8 +2103,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Maintenance state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To("Admin set to Maintenance"),
 					},
 				},
