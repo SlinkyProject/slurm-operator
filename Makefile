@@ -320,7 +320,7 @@ CODECOV_PERCENT ?= 66
 test: envtest ## Run tests.
 	rm -f cover.out cover.html
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test `go list ./... | grep -v "/api"` -v -coverprofile cover.out
+	go test `go list ./... | grep -v "/api" | grep -v "/e2e"` -v -coverprofile cover.out
 	go tool cover -func cover.out
 	go tool cover -html cover.out -o cover.html
 	@percentage=$$(go tool cover -func=cover.out | grep ^total | awk '{print $$3}' | tr -d '%'); \
@@ -329,3 +329,7 @@ test: envtest ## Run tests.
 			echo "Total test coverage ($${percentage}%) is less than the coverage threshold ($(CODECOV_PERCENT)%)."; \
 			exit 1; \
 		fi
+
+.PHONY: test-e2e
+test-e2e:
+	go test -timeout 15m ./test/e2e
