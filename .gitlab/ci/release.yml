@@ -60,17 +60,3 @@ release-tag:
   rules:
     - if: $CI_COMMIT_REF_PROTECTED == "true"
       when: manual
-
-release-branch:
-  stage: release
-  extends: .git
-  script:
-    - set -euo pipefail
-    - major_minor="$(echo ${VERSION} | grep -Eo "^[0-9]+\.[0-9]+")"
-    - branch_name="release-${major_minor}"
-    - echo "branch_name=${branch_name}"
-    - git branch ${branch_name}
-    - git push --set-upstream origin ${branch_name}
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
