@@ -57,7 +57,6 @@ type TokenStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=tokens;jwt
 // +kubebuilder:printcolumn:name="USER",type="string",JSONPath=".spec.username",description="The username issued to the JWT."

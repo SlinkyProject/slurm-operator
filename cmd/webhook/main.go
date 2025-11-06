@@ -22,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	slinkywebhook "github.com/SlinkyProject/slurm-operator/internal/webhook"
 	// +kubebuilder:scaffold:imports
@@ -36,7 +35,6 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }

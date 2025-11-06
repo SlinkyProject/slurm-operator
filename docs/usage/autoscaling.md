@@ -206,7 +206,7 @@ scaledobject.keda.sh/scale-radar created
 
 $ kubectl get -n slurm scaledobjects
 NAME           SCALETARGETKIND                     SCALETARGETNAME        MIN   MAX   TRIGGERS     AUTHENTICATION   READY   ACTIVE   FALLBACK   PAUSED    AGE
-scale-radar    slinky.slurm.net/v1alpha1.NodeSet   slurm-worker-radar    1     5     prometheus                    True    False    Unknown    Unknown   28s
+scale-radar    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-radar    1     5     prometheus                    True    False    Unknown    Unknown   28s
 
 $ kubectl get -n slurm hpa
 NAME                    REFERENCE                      TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
