@@ -211,6 +211,14 @@ helm-validate: helm-dependency-update helm-lint ## Validate Helm charts.
 helm-docs: helm-docs-bin ## Run helm-docs.
 	$(HELM_DOCS) --chart-search-root=helm
 
+.PHONY: helm-unittest
+helm-unittest: ## Run helm-unittest.
+	@if ! helm plugin list | grep -q "unittest"; then \
+		helm plugin install https://github.com/helm-unittest/helm-unittest ;\
+	fi
+	@echo "Running helm unittest for slurm-operator chart"
+	@helm unittest helm/slurm-operator
+
 .PHONY: helm-lint
 helm-lint: ## Lint Helm charts.
 	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm lint --strict
