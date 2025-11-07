@@ -324,7 +324,7 @@ Slurm.
 
 [cert-manager]: https://cert-manager.io/docs/installation/helm/
 [default-storageclass]: https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
-[mariadb-operator]: https://mariadb.com/docs/tools/mariadb-enterprise-operator/installation/helm
+[mariadb-operator]: https://github.com/mariadb-operator/mariadb-operator/blob/main/docs/helm.md
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
