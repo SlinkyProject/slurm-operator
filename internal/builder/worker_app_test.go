@@ -93,6 +93,14 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 				t.Errorf("Containers[0].Ports[0].ContainerPort = %v , want = %v",
 					got.Spec.Containers[0].Ports[0].Name, SlurmdPort)
 
+			case got.Spec.Containers[0].Ports[1].Name != "ssh":
+				t.Errorf("Containers[0].Ports[1].Name = %v , want = ssh",
+					got.Spec.Containers[0].Ports[1].Name)
+
+			case got.Spec.Containers[0].Ports[1].ContainerPort != SshPort:
+				t.Errorf("Containers[0].Ports[1].ContainerPort = %v , want = %v",
+					got.Spec.Containers[0].Ports[1].ContainerPort, SshPort)
+
 			case got.Spec.Subdomain == "":
 				t.Errorf("Subdomain = %v , want = non-empty", got.Spec.Subdomain)
 
