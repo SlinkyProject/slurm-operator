@@ -14,7 +14,6 @@ stages:
   - release
 
 variables:
-  VERSION: 1.0.0-rc1
   CI_JOB_USER: gitlab-ci-token
   DOCKER_TLS_CERTDIR: '' # disable TLS
   DOCKER_OPTS: ${DOCKER_OPTS} --registry-mirror=https://mirror.gcr.io
