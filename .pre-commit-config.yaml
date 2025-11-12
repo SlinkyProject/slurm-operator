@@ -84,6 +84,12 @@ repos:
       - id: go-build-mod
   - repo: local
     hooks:
+      - id: version-match
+        name: Version Match
+        entry: make version-match
+        language: system
+        require_serial: true
+        pass_filenames: false
       # https://github.com/norwoodj/helm-docs/blob/master/.pre-commit-hooks.yaml
       - id: make-helm-docs
         name: make-helm-docs
