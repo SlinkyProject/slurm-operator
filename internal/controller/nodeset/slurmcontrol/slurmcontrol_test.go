@@ -465,6 +465,35 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 			want:    true,
 			wantErr: false,
 		},
+		{
+			name: "No Slurm client - fail closed",
+			fields: fields{
+				clientMap: clientmap.NewClientMap(),
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "Node not found - fail closed",
+			fields: func() fields {
+				sclient := fake.NewClientBuilder().Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -749,6 +778,35 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				pod:     pod,
 			},
 			want: false,
+		},
+		{
+			name: "No Slurm client - fail closed",
+			fields: fields{
+				clientMap: clientmap.NewClientMap(),
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "Node not found - fail closed",
+			fields: func() fields {
+				sclient := fake.NewClientBuilder().Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
