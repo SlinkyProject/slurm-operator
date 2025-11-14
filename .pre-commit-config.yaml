@@ -146,9 +146,3 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
-      - id: make-tests
-        name: Make Tests
-        entry: make test
-        types: [go]
-        language: system
-        pass_filenames: false
