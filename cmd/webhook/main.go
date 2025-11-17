@@ -6,7 +6,9 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"net"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -42,6 +44,7 @@ func init() {
 // Input flags to the command
 type Flags struct {
 	enableLeaderElection bool
+	serverAddr           string
 	probeAddr            string
 	metricsAddr          string
 	secureMetrics        bool
@@ -49,6 +52,12 @@ type Flags struct {
 }
 
 func parseFlags(flags *Flags) {
+	flag.StringVar(
+		&flags.serverAddr,
+		"server-addr",
+		":9443",
+		"The address the webhook server binds to.",
+	)
 	flag.StringVar(
 		&flags.probeAddr,
 		"health-addr",
@@ -98,6 +107,17 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
+	webhookHost, webhookPortStr, err := net.SplitHostPort(flags.serverAddr)
+	if err != nil {
+		setupLog.Error(err, "unable to parse webhook server address", "addr", flags.serverAddr)
+		os.Exit(1)
+	}
+	webhookPort, err := strconv.Atoi(webhookPortStr)
+	if err != nil {
+		setupLog.Error(err, "unable to convert webhook port to integer", "port", webhookPortStr)
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
@@ -105,6 +125,8 @@ func main() {
 			TLSOpts:     tlsOpts,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    webhookHost,
+			Port:    webhookPort,
 			TLSOpts: tlsOpts,
 		}),
 		HealthProbeBindAddress:        flags.probeAddr,
