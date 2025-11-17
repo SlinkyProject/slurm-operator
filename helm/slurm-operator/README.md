@@ -68,6 +68,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
+| webhook.serverPort | int | `9443` | Set the port used for the webhook server |
 | webhook.serviceAccount.create | bool | `true` | Allows chart to create the service account. |
 | webhook.serviceAccount.name | string | `""` | Set the service account to use (and create). |
 | webhook.timeoutSeconds | int | `10` | Set the timeout period for calls. |

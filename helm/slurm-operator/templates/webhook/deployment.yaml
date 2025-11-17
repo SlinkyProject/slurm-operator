@@ -37,6 +37,10 @@ spec:
           args:
             - --zap-log-level
             - {{ default "info" .Values.webhook.logLevel | quote }}
+            {{- with .Values.webhook.serverPort }}
+            - --server-addr
+            - {{ printf ":%s" (toString .) | quote }}
+            {{- end }}{{- /* with .Values.webhook.serverPort */}}
             {{- with .Values.webhook.healthPort }}
             - --health-addr
             - {{ printf ":%s" (toString .) | quote }}

@@ -122,6 +122,8 @@ webhook:
     #   memory: 1Gi
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
+  # -- Set the port used for the webhook server
+  serverPort: 9443
   # -- Set the port used for health checks.
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
