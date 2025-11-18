@@ -27,4 +27,8 @@ spec:
   slurmrestd:
     {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
+  {{- if or (.Values.restapi.service.spec) (.Values.restapi.service.metadata) (omit .Values.restapi.service  "metadata" "spec") }}
   {{- include "format-service" .Values.restapi.service | nindent 2 }}
+  {{ else }}
+  service: {}
+  {{- end }}{{- /* if or (.Values.restapi.service.spec) (.Values.restapi.service.metadata) (omit .Values.restapi.service  "metadata" "spec") */}}

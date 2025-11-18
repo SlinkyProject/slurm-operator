@@ -55,6 +55,7 @@ spec:
   configFileRefs:
     - name: {{ include "slurm.controller.configName" $ }}
   {{- end }}{{- /* with .Values.configFiles */}}
+  {{- if or (.Values.prologScripts) (include "vendor.dcgm.enabled" .) }}
   prologScriptRefs:
     {{- with .Values.prologScripts }}
     - name: {{ include "slurm.controller.prologName" $ }}
@@ -62,6 +63,8 @@ spec:
     {{- if (include "vendor.dcgm.enabled" .) }}
     - name: {{ include "vendor.dcgm.prologName" . }}
     {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+  {{- end }}{{- /*  if or (.Values.prologScripts) (include "vendor.dcgm.enabled" .))  */}}
+  {{- if or (.Values.epilogScripts) (include "vendor.dcgm.enabled" .) }}
   epilogScriptRefs:
     {{- with .Values.epilogScripts }}
     - name: {{ include "slurm.controller.epilogName" $ }}
@@ -69,14 +72,19 @@ spec:
     {{- if (include "vendor.dcgm.enabled" .) }}
     - name: {{ include "vendor.dcgm.epilogName" . }}
     {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+  {{- end }}{{- /*  if or (.Values.epilogScripts) (include "vendor.dcgm.enabled" .))  */}}
+  {{- if .Values.prologSlurmctldScripts }}
   prologSlurmctldScriptRefs:
     {{- with .Values.prologSlurmctldScripts }}
     - name: {{ include "slurm.controller.prologSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.prologSlurmctldScripts */}}
+  {{- end }}{{- /* if .Values.prologSlurmctldScripts */}}
+  {{- if .Values.epilogSlurmctldScripts }}
   epilogSlurmctldScriptRefs:
     {{- with .Values.epilogSlurmctldScripts }}
     - name: {{ include "slurm.controller.epilogSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.epilogSlurmctldScripts */}}
+  {{- end }}{{- /* if .Values.epilogSlurmctldScripts */}}
   slurmctld:
     {{- $_ := set .Values.controller.slurmctld "imagePullPolicy" (default $.Values.imagePullPolicy .Values.controller.slurmctld.imagePullPolicy) -}}
     {{- include "format-container" .Values.controller.slurmctld | nindent 4 }}
@@ -87,11 +95,21 @@ spec:
     {{- $_ := set .Values.controller.logfile "imagePullPolicy" (default $.Values.imagePullPolicy .Values.controller.logfile.imagePullPolicy) -}}
     {{- include "format-container" .Values.controller.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
-  {{- with .Values.controller.persistence }}
   persistence:
+    {{- with .Values.controller.persistence.existingClaim }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* with .Values.controller.persistence */}}
+    {{- end }}{{- /* with .Values.controller.persistence.existingClaim */}}
+    {{- with .Values.controller.persistence.storageClassName }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.controller.persistence.storageClassName */}}
+    {{- with omit .Values.controller.persistence "existingClaim" "storageClassName"}}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with omit .Values.controller.persistence "existingClaim" "storageClassName" */}}
+  {{- if or (.Values.controller.service.spec) (.Values.controller.service.metadata) (omit .Values.controller.service  "metadata" "spec") }}
   {{- include "format-service" .Values.controller.service | nindent 2 }}
+  {{ else }}
+  service: {}
+  {{- end }}{{- /* if or (.Values.controller.service.spec) (.Values.controller.service.metadata) (omit .Values.controller.service  "metadata" "spec") */}}
   {{- with .Values.controller.metrics }}
   metrics:
     {{- toYaml . | nindent 4 }}
