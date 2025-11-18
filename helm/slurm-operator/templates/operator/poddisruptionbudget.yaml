@@ -1,0 +1,21 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.operator.enabled }}
+{{- if .Values.operator.pdb }}
+{{- if .Values.operator.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "slurm-operator.name" . }}
+  namespace: {{ include "slurm-operator.namespace" . }}
+spec:
+  minAvailable: {{ .Values.operator.pdb.minAvailable}}
+  selector:
+    matchLabels:
+      {{- include "slurm-operator.operator.selectorLabels" . | nindent 6 }}
+{{- end }}{{- /* if .Values.operator.pdb.enabled */}}
+{{- end }}{{- /* if .Values.operator.pdb */}}
+{{- end }}{{- /* if .Values.operator.enabled */}}

@@ -51,6 +51,8 @@ Kubernetes: `>= 1.29.0-0`
 | operator.loginsetWorkers | int | `4` | Set the max concurrent workers for the LoginSet controller. |
 | operator.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
 | operator.nodesetWorkers | int | `4` | Set the max concurrent workers for the NodeSet controller. |
+| operator.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
+| operator.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | operator.restapiWorkers | int | `4` | Set the max concurrent workers for the Restapi controller. |
@@ -68,6 +70,8 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
+| webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
+| webhook.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.serverPort | int | `9443` | Set the port used for the webhook server |
