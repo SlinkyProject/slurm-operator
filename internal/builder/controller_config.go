@@ -197,6 +197,7 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity,task/cgroup"))
 	} else {
 		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless"))
+		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/linuxproc"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
 	}
 	if metricsEnabled {
