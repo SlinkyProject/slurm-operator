@@ -32,6 +32,10 @@ live externally.
 
 ## Slurm
 
+Slinky currently requires that Slurm uses [configless], [auth/slurm],
+[auth/jwt], and [use_client_ids]. This dictates how Slurm clusters can be
+defined.
+
 Store `slurm.key` as a secret in Kubernetes.
 
 ```sh
@@ -58,9 +62,9 @@ Slurm expects a fully connected network with bidirectional communication between
 all Slurm daemons and clients This means NAT type networks will generally impede
 communication.
 
-Therefore network configuration needs to be made to allow Slurm components to
-directly communication over the network. There are two setups to choose from,
-each with their own benefits and drawbacks.
+Therefore, the network configuration needs to be configured to allow Slurm
+components to directly communicate over the network. There are two setups to
+choose from, each with their own benefits and drawbacks.
 
 ### Host Network
 
@@ -69,7 +73,7 @@ the Kubernetes node host network directly. While it is the simplest methodology,
 it does have [security][pod-security-standards] and Slurm configuration
 considerations.
 
-Generally speaking, each Slurm pod would be configured with the following.
+Each Slurm pod would be configured as follows.
 
 ```yaml
 hostNetwork: true
@@ -87,10 +91,9 @@ dNSPolicy: ClusterFirstWithHostNet
 
 ### Network Peering
 
-This approach is about configuring network peering such that internal and
-external services can directly communication. While it is the most complex
-methodology, it does not deminish security and minimal Slurm configurations are
-needed.
+This approach configures network peering such that internal and external
+services can directly communicate. While it is the most complex methodology, it
+does not diminish security and minimal Slurm configurations are needed.
 
 This typically involves configuring an advanced [CNI], like [Calico], with
 network [peering][bgp] for bidirectional communication across Kubernetes
@@ -100,8 +103,8 @@ Generally, no special configuration is required for the Slurm helm chart.
 
 ## Slurm Configuration
 
-Slinky currently imposes that Slurm use [configless], [auth/slurm], [auth/jwt],
-and [use_client_ids]. This limits how Slurm clusters can be defined.
+Slinky currently requires that Slurm use [configless], [auth/slurm], [auth/jwt],
+and [use_client_ids]. This dictates how Slurm clusters can be defined.
 
 Copy `slurm.key` as a secret in Kubernetes.
 

@@ -126,8 +126,8 @@ controller:
   # When `external=true`, `externalConfig` is used and all other fields are ignored.
   externalConfig:
     # -- The slurmdbd host address or IP.
-    host: slurmdbd.example.com
-    # -- The slurmdbd port. Default is 6819.
+    host: slurmctld.example.com
+    # -- The slurmctld port. Default is 6817.
     port: null
   # slurmctld container configurations.
   slurmctld:

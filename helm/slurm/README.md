@@ -53,8 +53,8 @@ Kubernetes: `>= 1.29.0-0`
 | clusterName | string | `nil` | The cluster name, which uniquely identifies the Slurm cluster. If empty, one will be derived from the Controller CR object. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName |
 | configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
 | controller.external | bool | `false` | Configures this component as external (not in Kubernetes). |
-| controller.externalConfig.host | string | `"slurmdbd.example.com"` | The slurmdbd host address or IP. |
-| controller.externalConfig.port | string | `nil` | The slurmdbd port. Default is 6819. |
+| controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmdbd host address or IP. |
+| controller.externalConfig.port | string | `nil` | The slurmctld port. Default is 6817. |
 | controller.extraConf | string | `nil` | Extra Slurm configuration lines appended to `slurm.conf`. Ref: https://slurm.schedmd.com/slurm.conf.html |
 | controller.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra Slurm configuration lines appended to `slurm.conf`. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html |
 | controller.logfile.image | object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
