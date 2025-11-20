@@ -11,8 +11,10 @@ endif
 UNAME_S ?= $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	CP_FLAGS = -v -n
+	SED = gsed
 else
 	CP_FLAGS = -v --update=none
+	SED = sed
 endif
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
@@ -53,7 +55,7 @@ version-match: version ## Check if versions are consistent.
 		echo "VERSION is not semver: $(VERSION)" ;\
 		exit 1 ;\
 	fi
-	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), sed -i -E 's/version:[[:space:]]+.+$$/version: $(VERSION)/g' ${chart} ;)
+	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), $(SED) -i -E 's/version:[[:space:]]+.+$$/version: $(VERSION)/g' ${chart} ;)
 
 ##@ Build
 
@@ -118,7 +120,7 @@ set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 GOBIN=$(LOCALBIN) go install $${package} ;\
-mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
+mv "$$(echo "$(1)" | $(SED) "s/-$(3)$$//")" $(1) ;\
 }
 endef
 
@@ -236,7 +238,7 @@ helm-dependency-update: ## Update Helm chart dependencies.
 
 .PHONY: values-dev
 values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
-	find "helm/" -type f -name "values.yaml" | sed 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
+	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -260,16 +262,16 @@ generate-docs: pandoc-bin
 	cat ./docs/_static/toc.rst >> docs/index.rst
 
 # In index.rst, find all instances of links to markdown files in the docs dir, and strip the directory prefix from them
-	sed -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, find all instances of links to svgs and strip the directory prefix from them
-	sed -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, find all instances of markdown files within a subdirectory of docs, and strip the directory and subdirectory prefix from them
-	sed -i -E '/<.\/docs\/[A-Za-z]*\/[A-Za-z]*.md>`/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/<.\/docs\/[A-Za-z]*\/[A-Za-z]*.md>`/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, replace all links to markdown files with links to HTML files, as will be present when using Myst Parser in Sphinx
-	sed -i -E '/[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
+	$(SED) -i -E '/[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
 
 DOCS_IMAGE ?= $(REGISTRY)/sphinx
 
