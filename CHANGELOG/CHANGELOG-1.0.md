@@ -1,3 +1,9 @@
+## v1.0.0
+
+### Fixed
+
+- Fixed Helm templates for Helm 4.0
+
 ## v1.0.0-rc1
 
 ### Added
