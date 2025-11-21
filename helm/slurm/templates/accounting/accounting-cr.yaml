@@ -52,6 +52,9 @@ spec:
   storageConfig:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.accounting.storageConfig */}}
-  {{- include "format-service" .Values.accounting.service | nindent 2 }}
+  {{- with .Values.accounting.service }}
+  service:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with Values.accounting.service */}}
 {{- end }}{{- /* if .Values.accounting.external */}}
 {{- end }}{{- /* if .Values.accounting.enabled */}}
