@@ -4,20 +4,21 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- if .Values.accounting.enabled }}
-{{- $podMetadata := .Values.accounting.metadata | default dict -}}
+{{- $metadata := merge dict .Values.accounting.metadata (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
 {{- $podSpec := .Values.accounting.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
 {{- $priorityClassName := $podSpec.priorityClassName | default .Values.priorityClassName -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
-{{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
+{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
 apiVersion: slinky.slurm.net/v1beta1
 kind: Accounting
 metadata:
   name: {{ include "slurm.fullname" . }}
   namespace: {{ include "slurm.namespace" . }}
-  labels:
-    {{- include "slurm.labels" . | nindent 4 }}
+{{- with $metadata }}
+  {{- toYaml . | nindent 2 }}
+{{- end }}{{- /* with $metadata */}}
 spec:
 {{- if .Values.accounting.external }}
   external: {{ .Values.accounting.external }}

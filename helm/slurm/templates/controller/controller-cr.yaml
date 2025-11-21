@@ -3,20 +3,21 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- $podMetadata := .Values.controller.metadata | default dict -}}
+{{- $metadata := merge dict .Values.controller.metadata (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
 {{- $podSpec := .Values.controller.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
 {{- $priorityClassName := $podSpec.priorityClassName | default .Values.priorityClassName -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
-{{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
+{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
 apiVersion: slinky.slurm.net/v1beta1
 kind: Controller
 metadata:
   name: {{ include "slurm.fullname" . }}
   namespace: {{ include "slurm.namespace" . }}
-  labels:
-    {{- include "slurm.labels" . | nindent 4 }}
+{{- with $metadata }}
+  {{- toYaml . | nindent 2 }}
+{{- end }}{{- /* with $metadata */}}
 spec:
   {{- if .Values.accounting.enabled }}
   accountingRef:
