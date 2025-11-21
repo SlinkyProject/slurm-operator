@@ -15,15 +15,16 @@ import (
 func (b *Builder) BuildAccountingService(accounting *slinkyv1beta1.Accounting) (*corev1.Service, error) {
 	spec := accounting.Spec.Service
 	opts := ServiceOpts{
-		Key:         accounting.ServiceKey(),
-		Metadata:    accounting.Spec.Service.Metadata,
+		Key: accounting.ServiceKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: structutils.MergeMaps(accounting.Annotations, accounting.Spec.Service.Metadata.Annotations),
+			Labels:      structutils.MergeMaps(accounting.Labels, accounting.Spec.Service.Metadata.Labels, labels.NewBuilder().WithAccountingLabels(accounting).Build()),
+		},
 		ServiceSpec: accounting.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithAccountingSelectorLabels(accounting).
 			Build(),
 	}
-
-	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithAccountingLabels(accounting).Build())
 
 	port := corev1.ServicePort{
 		Name:       labels.AccountingApp,

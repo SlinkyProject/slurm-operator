@@ -73,6 +73,8 @@ func (b *Builder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Deployme
 		WithLoginSelectorLabels(loginset).
 		Build()
 	objectMeta := metadata.NewBuilder(key).
+		WithAnnotations(loginset.Annotations).
+		WithLabels(loginset.Labels).
 		WithMetadata(loginset.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
 		Build()
@@ -116,6 +118,8 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 	}
 
 	objectMeta := metadata.NewBuilder(key).
+		WithAnnotations(loginset.Annotations).
+		WithLabels(loginset.Labels).
 		WithMetadata(loginset.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
 		WithAnnotations(hashMap).

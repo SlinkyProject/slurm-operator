@@ -15,8 +15,11 @@ import (
 func (b *Builder) BuildControllerService(controller *slinkyv1beta1.Controller) (*corev1.Service, error) {
 	spec := controller.Spec.Service
 	opts := ServiceOpts{
-		Key:         controller.ServiceKey(),
-		Metadata:    controller.Spec.Service.Metadata,
+		Key: controller.ServiceKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: structutils.MergeMaps(controller.Annotations, controller.Spec.Service.Metadata.Annotations),
+			Labels:      structutils.MergeMaps(controller.Labels, controller.Spec.Service.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
+		},
 		ServiceSpec: controller.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithControllerSelectorLabels(controller).

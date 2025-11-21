@@ -29,8 +29,11 @@ func (b *Builder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (*core
 	}
 
 	opts := SecretOpts{
-		Key:      loginset.SshHostKeys(),
-		Metadata: loginset.Spec.Template.Metadata,
+		Key: loginset.SshHostKeys(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: loginset.Annotations,
+			Labels:      structutils.MergeMaps(loginset.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build()),
+		},
 		Data: map[string][]byte{
 			sshHostEcdsaKeyFile:      keyPairRsa.PrivateKey(),
 			sshHostEcdsaPubKeyFile:   keyPairRsa.PublicKey(),

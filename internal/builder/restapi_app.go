@@ -37,6 +37,8 @@ func (b *Builder) BuildRestapi(restapi *slinkyv1beta1.RestApi) (*appsv1.Deployme
 		WithRestapiSelectorLabels(restapi).
 		Build()
 	objectMeta := metadata.NewBuilder(key).
+		WithAnnotations(restapi.Annotations).
+		WithLabels(restapi.Labels).
 		WithMetadata(restapi.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithRestapiLabels(restapi).Build()).
 		Build()
@@ -77,6 +79,8 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1beta1.RestApi) (corev1.Pod
 	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, slinkyv1beta1.ObjectReference{})
 
 	objectMeta := metadata.NewBuilder(key).
+		WithAnnotations(restapi.Annotations).
+		WithLabels(restapi.Labels).
 		WithMetadata(restapi.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithRestapiLabels(restapi).Build()).
 		WithAnnotations(map[string]string{

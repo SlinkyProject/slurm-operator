@@ -15,15 +15,16 @@ import (
 func (b *Builder) BuildLoginSshConfig(loginset *slinkyv1beta1.LoginSet) (*corev1.ConfigMap, error) {
 	spec := loginset.Spec
 	opts := ConfigMapOpts{
-		Key:      loginset.SshConfigKey(),
-		Metadata: loginset.Spec.Template.Metadata,
+		Key: loginset.SshConfigKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: loginset.Annotations,
+			Labels:      structutils.MergeMaps(loginset.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build()),
+		},
 		Data: map[string]string{
 			authorizedKeysFile: buildAuthorizedKeys(spec.RootSshAuthorizedKeys),
 			sshdConfigFile:     buildSshdConfig(spec.ExtraSshdConfig),
 		},
 	}
-
-	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build())
 
 	return b.BuildConfigMap(opts, loginset)
 }

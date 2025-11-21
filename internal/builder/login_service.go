@@ -15,8 +15,11 @@ import (
 func (b *Builder) BuildLoginService(loginset *slinkyv1beta1.LoginSet) (*corev1.Service, error) {
 	spec := loginset.Spec.Service
 	opts := ServiceOpts{
-		Key:         loginset.ServiceKey(),
-		Metadata:    loginset.Spec.Service.Metadata,
+		Key: loginset.ServiceKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: structutils.MergeMaps(loginset.Annotations, loginset.Spec.Service.Metadata.Annotations),
+			Labels:      structutils.MergeMaps(loginset.Labels, loginset.Spec.Service.Metadata.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build()),
+		},
 		ServiceSpec: loginset.Spec.Service.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithLoginSelectorLabels(loginset).

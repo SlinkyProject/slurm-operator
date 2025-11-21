@@ -32,6 +32,10 @@ func (b *Builder) BuildTokenSecret(token *slinkyv1beta1.Token) (*corev1.Secret, 
 
 	opts := SecretOpts{
 		Key: token.SecretKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: token.Annotations,
+			Labels:      token.Labels,
+		},
 		StringData: map[string]string{
 			token.SecretRef().Key: authToken,
 		},

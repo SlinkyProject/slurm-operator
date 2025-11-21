@@ -10,14 +10,18 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 func (b *Builder) BuildControllerServiceMonitor(controller *slinkyv1beta1.Controller) (*monitoringv1.ServiceMonitor, error) {
 	serviceMonitor := controller.Spec.Metrics.ServiceMonitor
 
 	opts := ServiceMonitorOpts{
-		Key:      controller.Key(),
-		Metadata: controller.Spec.Metrics.ServiceMonitor.Metadata,
+		Key: controller.Key(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: structutils.MergeMaps(controller.Annotations, controller.Spec.Metrics.ServiceMonitor.Annotations),
+			Labels:      structutils.MergeMaps(controller.Labels, controller.Spec.Metrics.ServiceMonitor.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
+		},
 		base: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: labels.NewBuilder().WithControllerSelectorLabels(controller).Build(),
