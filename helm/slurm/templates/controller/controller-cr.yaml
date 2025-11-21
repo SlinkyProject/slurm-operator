@@ -91,7 +91,10 @@ spec:
   persistence:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.controller.persistence */}}
-  {{- include "format-service" .Values.controller.service | nindent 2 }}
+  {{- with .Values.controller.service }}
+  service:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with Values.controller.service */}}
   {{- with .Values.controller.metrics }}
   metrics:
     {{- toYaml . | nindent 4 }}

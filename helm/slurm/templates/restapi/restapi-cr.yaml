@@ -27,4 +27,7 @@ spec:
   slurmrestd:
     {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
-  {{- include "format-service" .Values.restapi.service | nindent 2 }}
+  {{- with .Values.restapi.service }}
+  service:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with Values.restapi.service */}}
