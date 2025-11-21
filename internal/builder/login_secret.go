@@ -30,7 +30,7 @@ func (b *Builder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (*core
 
 	opts := SecretOpts{
 		Key:      loginset.SshHostKeys(),
-		Metadata: loginset.Spec.Template.PodMetadata,
+		Metadata: loginset.Spec.Template.Metadata,
 		Data: map[string][]byte{
 			sshHostEcdsaKeyFile:      keyPairRsa.PrivateKey(),
 			sshHostEcdsaPubKeyFile:   keyPairRsa.PublicKey(),

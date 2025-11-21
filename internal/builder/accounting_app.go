@@ -37,7 +37,7 @@ func (b *Builder) BuildAccounting(accounting *slinkyv1beta1.Accounting) (*appsv1
 		WithAccountingSelectorLabels(accounting).
 		Build()
 	objectMeta := metadata.NewBuilder(key).
-		WithMetadata(accounting.Spec.Template.PodMetadata).
+		WithMetadata(accounting.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithAccountingLabels(accounting).Build()).
 		Build()
 

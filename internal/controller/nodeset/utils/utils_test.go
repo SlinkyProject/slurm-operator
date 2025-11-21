@@ -49,7 +49,7 @@ func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMount
 	}
 
 	template := slinkyv1beta1.PodTemplate{
-		PodMetadata: slinkyv1beta1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Labels: map[string]string{"foo": "bar"},
 		},
 		PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{

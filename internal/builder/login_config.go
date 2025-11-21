@@ -16,7 +16,7 @@ func (b *Builder) BuildLoginSshConfig(loginset *slinkyv1beta1.LoginSet) (*corev1
 	spec := loginset.Spec
 	opts := ConfigMapOpts{
 		Key:      loginset.SshConfigKey(),
-		Metadata: loginset.Spec.Template.PodMetadata,
+		Metadata: loginset.Spec.Template.Metadata,
 		Data: map[string]string{
 			authorizedKeysFile: buildAuthorizedKeys(spec.RootSshAuthorizedKeys),
 			sshdConfigFile:     buildSshdConfig(spec.ExtraSshdConfig),

@@ -22,7 +22,7 @@ func (b *Builder) BuildAccountingConfig(accounting *slinkyv1beta1.Accounting) (*
 
 	opts := SecretOpts{
 		Key:      accounting.ConfigKey(),
-		Metadata: accounting.Spec.Template.PodMetadata,
+		Metadata: accounting.Spec.Template.Metadata,
 		StringData: map[string]string{
 			slurmdbdConfFile: buildSlurmdbdConf(accounting, string(storagePass)),
 		},

@@ -128,7 +128,7 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 
 	opts := ConfigMapOpts{
 		Key:      controller.ConfigKey(),
-		Metadata: controller.Spec.Template.PodMetadata,
+		Metadata: controller.Spec.Template.Metadata,
 		Data: map[string]string{
 			slurmConfFile: buildSlurmConf(
 				controller, accounting, nodesetList,
@@ -307,7 +307,7 @@ func (b *Builder) BuildControllerConfigExternal(controller *slinkyv1beta1.Contro
 
 	opts := ConfigMapOpts{
 		Key:      controller.ConfigKey(),
-		Metadata: controller.Spec.Template.PodMetadata,
+		Metadata: controller.Spec.Template.Metadata,
 		Data: map[string]string{
 			slurmConfFile: buildSlurmConfMinimal(controller, accounting),
 		},

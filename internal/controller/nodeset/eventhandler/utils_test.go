@@ -36,7 +36,7 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			},
 			Replicas: ptr.To(replicas),
 			Template: slinkyv1beta1.PodTemplate{
-				PodMetadata: slinkyv1beta1.Metadata{
+				Metadata: slinkyv1beta1.Metadata{
 					Labels: map[string]string{
 						"foo": "bar",
 					},

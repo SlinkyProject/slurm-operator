@@ -59,7 +59,7 @@ type PodTemplate struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	// +optional
-	PodMetadata Metadata `json:"metadata,omitempty"`
+	Metadata Metadata `json:"metadata,omitempty"`
 
 	// PodSpec is a description of a pod.
 	// +optional
