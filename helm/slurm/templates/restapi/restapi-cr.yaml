@@ -25,6 +25,7 @@ spec:
   replicas: {{ . }}
   {{- end }}{{- /* with .Values.restapi.replicas */}}
   slurmrestd:
+    {{- $_ := set .Values.restapi.slurmrestd "imagePullPolicy" (get .Values.restapi.slurmrestd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
     {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.restapi.service }}
