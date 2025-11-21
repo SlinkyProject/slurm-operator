@@ -53,5 +53,5 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.accounting.storageConfig */}}
   {{- include "format-service" .Values.accounting.service | nindent 2 }}
-{{- end }}{{- /* if .Values.accounting.enabled */}}
 {{- end }}{{- /* if .Values.accounting.external */}}
+{{- end }}{{- /* if .Values.accounting.enabled */}}
