@@ -94,6 +94,8 @@ Kubernetes: `>= 1.29.0-0`
 | jwtHs256KeyRef | secretKeyRef | `{}` | Slurm cluster JWT HS256 authentication key. If empty, one will be generated and used. Ref: https://slurm.schedmd.com/authentication.html#jwt |
 | loginsets.slinky.enabled | bool | `false` | Enable use of this LoginSet. |
 | loginsets.slinky.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html |
+| loginsets.slinky.initconf.image | object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
+| loginsets.slinky.initconf.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | loginsets.slinky.login.env | list | `[]` | Environment passed to the image. |
 | loginsets.slinky.login.image | object | `{"repository":"ghcr.io/slinkyproject/login","tag":"25.11-ubuntu24.04"}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | loginsets.slinky.login.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |

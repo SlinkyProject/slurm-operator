@@ -197,6 +197,12 @@ func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef 
 					Image: "login",
 				},
 			},
+			InitConf: slinkyv1beta1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "login",
+				},
+			},
+
 			SssdConfRef: sssdConfRef,
 		},
 	}

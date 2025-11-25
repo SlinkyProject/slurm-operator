@@ -41,6 +41,9 @@ spec:
     {{- $_ := set $loginset.login "imagePullPolicy" (default $.Values.imagePullPolicy $loginset.login.imagePullPolicy) -}}
     {{- include "format-container" $loginset.login | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
+  initconf:
+    {{- $_ := set $loginset.initconf "imagePullPolicy" (default $.Values.imagePullPolicy $loginset.initconf.imagePullPolicy) -}}
+    {{- include "format-container" $loginset.initconf | nindent 4 }}
   {{- with $loginset.service }}
   service:
     {{- toYaml . | nindent 4 }}
