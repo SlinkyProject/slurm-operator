@@ -23,8 +23,12 @@ const (
 	slurmUserUid = int64(401)
 	slurmUserGid = slurmUserUid
 
-	slurmEtcVolume = "slurm-etc"
-	slurmEtcDir    = "/etc/slurm"
+	slurmConfigVolume = "slurm-config"
+	slurmConfigDir    = "/mnt/slurm"
+
+	slurmEtcVolume   = "slurm-etc"
+	slurmEtcMountDir = "/mnt/etc/slurm"
+	slurmEtcDir      = "/etc/slurm"
 
 	slurmPidFileVolume = "run"
 	slurmPidFileDir    = "/run"
@@ -193,4 +197,45 @@ func slurmClusterWorkerPodDisruptionBudgetName(controllerName string) string {
 	// Derive service name dynamically from component constants
 	componentPlural := labels.WorkerComp + "s"
 	return fmt.Sprintf("slurm-%s-pdb-%s", componentPlural, controllerName)
+}
+
+func etcSlurmVolume() corev1.Volume {
+	out := corev1.Volume{
+		Name: slurmEtcVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				Medium: corev1.StorageMediumMemory,
+			},
+		},
+	}
+	return out
+}
+
+//go:embed scripts/initconf.sh
+var initConfScript string
+
+func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) corev1.Container {
+	opts := ContainerOpts{
+		base: corev1.Container{
+			Name: "initconf",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "SLURM_USER",
+					Value: slurmUser,
+				},
+			},
+			Command: []string{
+				"sh",
+				"-c",
+				initConfScript,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: slurmEtcVolume, MountPath: slurmEtcMountDir},
+				{Name: slurmConfigVolume, MountPath: slurmConfigDir, ReadOnly: true},
+			},
+		},
+		merge: container.Container,
+	}
+
+	return b.BuildContainer(opts)
 }
