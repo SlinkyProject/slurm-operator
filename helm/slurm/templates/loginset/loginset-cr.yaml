@@ -31,8 +31,8 @@ spec:
     {{- . | nindent 4 }}
   {{- end }}{{- /* with $loginset.extraSshdConfig */}}
   sssdConfRef:
-    name: {{ $name }}-sssd-conf
-    key: sssd.conf
+    name: {{ include "slurm.sssdConf.name" $ }}
+    key: {{ include "slurm.sssdConf.key" $ }}
   {{- with $loginset.rootSshAuthorizedKeys }}
   rootSshAuthorizedKeys: |
     {{- . | nindent 4 }}

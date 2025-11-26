@@ -462,6 +462,35 @@ accounting:
     # port: 6819
     # nodePort: 30819
 
+# Cluster SSSD configuration.
+sssd:
+  # -- (secretKeyRef) The `sssd.conf` by ref.
+  # NOTE: Takes presence over `conf` if not empty.
+  secretRef: {}
+    # name: slurm-sssd-conf
+    # key: sssd.conf
+  # -- The `sssd.conf` by raw file.
+  # Ref: https://man.archlinux.org/man/sssd.conf.5
+  conf: |
+    [sssd]
+    config_file_version = 2
+    services = nss,pam
+    domains = DEFAULT
+
+    [nss]
+    filter_groups = root,slurm
+    filter_users = root,slurm
+
+    [pam]
+
+    [domain/DEFAULT]
+    auth_provider = ldap
+    id_provider = ldap
+    ldap_uri = ldap://ldap.example.com
+    ldap_search_base = dc=example,dc=com
+    ldap_user_search_base = ou=Users,dc=example,dc=com
+    ldap_group_search_base = ou=Groups,dc=example,dc=com
+
 # Slurm LoginSet (sackd, sshd, sssd) configurations.
 loginsets:
   # Sample LoginSet.
@@ -504,27 +533,6 @@ loginsets:
     # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
     # Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
     extraSshdConfig: null
-    # -- The `sssd.conf` to use.
-    # Ref: https://man.archlinux.org/man/sssd.conf.5
-    sssdConf: |
-      [sssd]
-      config_file_version = 2
-      services = nss,pam
-      domains = DEFAULT
-
-      [nss]
-      filter_groups = root,slurm
-      filter_users = root,slurm
-
-      [pam]
-
-      [domain/DEFAULT]
-      auth_provider = ldap
-      id_provider = ldap
-      ldap_uri = ldap://ldap.example.com
-      ldap_search_base = dc=example,dc=com
-      ldap_user_search_base = ou=Users,dc=example,dc=com
-      ldap_group_search_base = ou=Groups,dc=example,dc=com
     # -- Labels and annotations.
     # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     metadata: {}
@@ -596,6 +604,10 @@ nodesets:
       # Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS
       args: []
         # - -vvv
+      # -- Environment passed to the image.
+      env: []
+        # - name: PAM_SLURM_ADOPT_OPTIONS
+        #   value: action_adopt_failure=deny action_generic_failure=deny
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
