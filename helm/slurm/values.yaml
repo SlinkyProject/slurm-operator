@@ -510,8 +510,8 @@ loginsets:
         tag: 25.11-ubuntu24.04
       # -- Environment passed to the image.
       env: []
-        # - name: SACKD_OPTIONS
-        #   value: -vvv
+        # - name: "SACKD_DEBUG"
+        #   value: "debug2"
       # -- The container security context to use.
       # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
       securityContext:
