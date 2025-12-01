@@ -75,26 +75,31 @@ type ControllerSpec struct {
 
 	// ConfigFileRefs is a list of ConfigMap references containing files to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html
+	// +nullable
 	// +optional
 	ConfigFileRefs []ObjectReference `json:"configFileRefs,omitzero"`
 
 	// PrologScriptRefs is a list of prolog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
+	// +nullable
 	// +optional
 	PrologScriptRefs []ObjectReference `json:"prologScriptRefs,omitzero"`
 
 	// EpilogScriptRefs is a list of epilog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
+	// +nullable
 	// +optional
 	EpilogScriptRefs []ObjectReference `json:"epilogScriptRefs,omitzero"`
 
 	// PrologSlurmctldScriptRefs is a list of PrologSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
+	// +nullable
 	// +optional
 	PrologSlurmctldScriptRefs []ObjectReference `json:"prologSlurmctldScriptRefs,omitzero"`
 
 	// EpilogSlurmctldScriptRefs is a list of EpilogSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
+	// +nullable
 	// +optional
 	EpilogSlurmctldScriptRefs []ObjectReference `json:"epilogSlurmctldScriptRefs,omitzero"`
 

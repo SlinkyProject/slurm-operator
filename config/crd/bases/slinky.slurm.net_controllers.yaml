@@ -86,6 +86,7 @@ spec:
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
+                nullable: true
                 type: array
               epilogScriptRefs:
                 description: |-
@@ -106,6 +107,7 @@ spec:
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
+                nullable: true
                 type: array
               epilogSlurmctldScriptRefs:
                 description: |-
@@ -126,6 +128,7 @@ spec:
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
+                nullable: true
                 type: array
               external:
                 default: false
@@ -200,6 +203,7 @@ spec:
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        nullable: true
                         type: object
                       enabled:
                         default: false
@@ -247,6 +251,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        nullable: true
                         type: object
                       scrapeTimeout:
                         description: |-
@@ -487,6 +492,7 @@ spec:
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
+                nullable: true
                 type: array
               prologSlurmctldScriptRefs:
                 description: |-
@@ -507,6 +513,7 @@ spec:
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
+                nullable: true
                 type: array
               reconfigure:
                 description: The reconfigure container configuration.
@@ -528,6 +535,7 @@ spec:
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        nullable: true
                         type: object
                       labels:
                         additionalProperties:
@@ -537,6 +545,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        nullable: true
                         type: object
                     type: object
                   nodePort:
@@ -606,6 +615,7 @@ spec:
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        nullable: true
                         type: object
                       labels:
                         additionalProperties:
@@ -615,6 +625,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        nullable: true
                         type: object
                     type: object
                   spec:

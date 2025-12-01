@@ -198,6 +198,7 @@ spec:
                           set by external tools to store and retrieve arbitrary metadata. They are not
                           queryable and should be preserved when modifying objects.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+                        nullable: true
                         type: object
                       labels:
                         additionalProperties:
@@ -207,6 +208,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+                        nullable: true
                         type: object
                     type: object
                   spec:
@@ -250,6 +252,7 @@ spec:
                   this list must have at least one matching (by name) volumeMount in one
                   container in the template. A claim in this list takes precedence over
                   any volumes in the template, with the same name.
+                nullable: true
                 x-kubernetes-preserve-unknown-fields: true
             required:
             - controllerRef
