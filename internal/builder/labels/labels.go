@@ -11,7 +11,7 @@ import (
 
 // Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels
 const (
-	appLabel       = "app.kubernetes.io/name"
+	AppLabel       = "app.kubernetes.io/name"
 	instanceLabel  = "app.kubernetes.io/instance"
 	componentLabel = "app.kubernetes.io/component"
 	partOfLabel    = "app.kubernetes.io/part-of"
@@ -29,7 +29,7 @@ func NewBuilder() *Builder {
 }
 
 func (b *Builder) WithApp(app string) *Builder {
-	b.labels[appLabel] = app
+	b.labels[AppLabel] = app
 	return b
 }
 

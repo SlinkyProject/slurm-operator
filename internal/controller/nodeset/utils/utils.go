@@ -48,6 +48,10 @@ func NewNodeSetPod(
 		historycontrol.SetRevision(pod.Labels, revisionHash)
 	}
 
+	// The pod's PodAntiAffinity will be updated to make sure the Pod is not
+	// scheduled on the same Node as another NodeSet pod.
+	pod.Spec.Affinity = updateNodeSetPodAntiAffinity(pod.Spec.Affinity)
+
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
 	// be avoided and priorityClass will not be honored.
 	pod.Spec.NodeName = ""
@@ -104,6 +108,54 @@ func UpdateStorage(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 		}
 	}
 	pod.Spec.Volumes = newVolumes
+}
+
+// updateNodeSetPodAntiAffinity will add PodAntiAffinity such that a Kube node can only have one NodeSet pod.
+func updateNodeSetPodAntiAffinity(affinity *corev1.Affinity) *corev1.Affinity {
+	labelSelectorRequirement := metav1.LabelSelectorRequirement{
+		Key:      labels.AppLabel,
+		Operator: metav1.LabelSelectorOpIn,
+		Values:   []string{labels.WorkerApp},
+	}
+
+	podAffinityTerm := corev1.PodAffinityTerm{
+		TopologyKey: corev1.LabelHostname,
+		LabelSelector: &metav1.LabelSelector{
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				labelSelectorRequirement,
+			},
+		},
+	}
+
+	podAffinityTerms := []corev1.PodAffinityTerm{
+		podAffinityTerm,
+	}
+
+	if affinity == nil {
+		return &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
+			},
+		}
+	}
+
+	if affinity.PodAntiAffinity == nil {
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
+		}
+		return affinity
+	}
+
+	podAntiAffinity := affinity.PodAntiAffinity
+
+	if podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = podAffinityTerms
+		return affinity
+	}
+
+	podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, podAffinityTerms...)
+
+	return affinity
 }
 
 // IsPodFromNodeSet returns if the name schema matches
