@@ -23,12 +23,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 )
 
-// refResolver := refresolver.New(b.client)
-// controller, err := refResolver.GetController(context.TODO(), nodeset.Spec.ControllerRef)
-// if err != nil {
-// 	return corev1.PodTemplateSpec{}, err
-// }
-
 // NewNodeSetPod returns a new Pod conforming to the nodeset's Spec with an identity generated from ordinal.
 func NewNodeSetPod(
 	client client.Client,
