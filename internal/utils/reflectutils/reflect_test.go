@@ -129,3 +129,118 @@ func BenchmarkUseNonZeroOrDefault_Pointer(b *testing.B) {
 		})
 	}
 }
+
+func TestIsEmpty(t *testing.T) {
+	testIsEmpty_string(t)
+	testIsEmpty_string_ptr(t)
+	testIsEmpty_int(t)
+	testIsEmpty_int_ptr(t)
+}
+
+func testIsEmpty_string(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{
+			name: "empty",
+			in:   "",
+			want: true,
+		},
+		{
+			name: "not empty",
+			in:   "foo",
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsEmpty(tt.in)
+			if got != tt.want {
+				t.Errorf("IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func testIsEmpty_string_ptr(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *string
+		want bool
+	}{
+		{
+			name: "empty",
+			in:   nil,
+			want: true,
+		},
+		{
+			name: "not empty",
+			in:   ptr.To(""),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsEmpty(tt.in)
+			if got != tt.want {
+				t.Errorf("IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func testIsEmpty_int(t *testing.T) {
+	tests := []struct {
+		name string
+		in   int
+		want bool
+	}{
+		{
+			name: "empty",
+			in:   0,
+			want: true,
+		},
+		{
+			name: "not empty",
+			in:   1,
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsEmpty(tt.in)
+			if got != tt.want {
+				t.Errorf("IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func testIsEmpty_int_ptr(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *int
+		want bool
+	}{
+		{
+			name: "empty",
+			in:   nil,
+			want: true,
+		},
+		{
+			name: "not empty",
+			in:   ptr.To(0),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsEmpty(tt.in)
+			if got != tt.want {
+				t.Errorf("IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

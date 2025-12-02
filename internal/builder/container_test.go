@@ -59,7 +59,8 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				Args:            []string{"-a", "-b", "-c"},
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						corev1.ResourceCPU: resource.MustParse("100m"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
 					},
 				},
 			},
