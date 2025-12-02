@@ -84,6 +84,8 @@ func parseFlags(flags *Flags) {
 	flag.Parse()
 }
 
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;create;update;patch
+
 func main() {
 	var flags Flags
 	opts := zap.Options{}
