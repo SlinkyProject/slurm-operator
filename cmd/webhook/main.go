@@ -43,12 +43,13 @@ func init() {
 
 // Input flags to the command
 type Flags struct {
-	enableLeaderElection bool
-	serverAddr           string
-	probeAddr            string
-	metricsAddr          string
-	secureMetrics        bool
-	enableHTTP2          bool
+	enableLeaderElection    bool
+	leaderElectionNamespace string
+	serverAddr              string
+	probeAddr               string
+	metricsAddr             string
+	secureMetrics           bool
+	enableHTTP2             bool
 }
 
 func parseFlags(flags *Flags) {
@@ -76,6 +77,12 @@ func parseFlags(flags *Flags) {
 		false,
 		("Enable leader election for controller manager. " +
 			"Enabling this will ensure there is only one active controller manager."),
+	)
+	flag.StringVar(
+		&flags.leaderElectionNamespace,
+		"leader-elect-namespace",
+		"",
+		"Determines the namespace in which the leader election resource will be created.",
 	)
 	flag.BoolVar(&flags.secureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
@@ -135,6 +142,7 @@ func main() {
 		LeaderElection:                flags.enableLeaderElection,
 		LeaderElectionID:              "slurm-operator-webhook",
 		LeaderElectionReleaseOnCancel: true,
+		LeaderElectionNamespace:       flags.leaderElectionNamespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
