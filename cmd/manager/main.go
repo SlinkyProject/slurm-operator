@@ -117,7 +117,7 @@ func main() {
 		},
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
-		LeaderElectionID:              "0033bda7.slinky.slurm.net",
+		LeaderElectionID:              "slurm-operator",
 		LeaderElectionReleaseOnCancel: true,
 	})
 	if err != nil {
