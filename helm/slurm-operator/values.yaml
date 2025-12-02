@@ -81,6 +81,8 @@ operator:
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 8080
+  # -- Enable leader election for slurm-operator
+  leaderElection: true
 
 
 # Webhook configurations.
@@ -128,6 +130,8 @@ webhook:
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 0
+  # -- Enable leader election for slurm-operator-webhook
+  leaderElection: true
 
 #
 # Cert-Manager certificate configurations.

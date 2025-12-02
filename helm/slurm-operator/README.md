@@ -46,6 +46,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.healthPort | int | `8081` | Set the port used for health checks. |
 | operator.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | operator.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
+| operator.leaderElection | bool | `true` | Enable leader election for slurm-operator |
 | operator.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | operator.loginsetWorkers | int | `4` | Set the max concurrent workers for the LoginSet controller. |
 | operator.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
@@ -64,6 +65,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
 | webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
+| webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
