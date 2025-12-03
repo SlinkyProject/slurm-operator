@@ -141,7 +141,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesets.slinky.slurmd.volumeMounts | list | `[]` | List of volume mounts to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | nodesets.slinky.ssh.enabled | bool | `false` | Enable SSH access to worker pods with pam_slurm_adopt. Ref: https://slurm.schedmd.com/pam_slurm_adopt.html |
 | nodesets.slinky.ssh.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html |
-| nodesets.slinky.taintKubeNodes | bool | `false` | Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute |
+| nodesets.slinky.taintKubeNodes | bool | `false` | Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute. |
 | nodesets.slinky.updateStrategy.rollingUpdate.maxUnavailable | string | `"25%"` | Maximum number of pods that can be unavailable during update. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | nodesets.slinky.updateStrategy.type | string | `"RollingUpdate"` | The strategy type. Can be one of: RollingUpdate; OnDelete. |
 | nodesets.slinky.useResourceLimits | bool | `true` | Enable propagation of container `resources.limits` into slurmd. |

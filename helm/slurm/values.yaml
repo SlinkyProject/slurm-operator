@@ -618,6 +618,8 @@ nodesets:
     enabled: true
     # -- Number of replicas to deploy.
     replicas: 1
+    # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
+    taintKubeNodes: false
     # slurmd container configurations.
     slurmd:
       # -- The image to use, `${repository}:${tag}`.
@@ -737,8 +739,6 @@ nodesets:
         #   nfs:
         #     server: nfs-server.example.com
         #     path: /exports/home
-    # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute
-    taintKubeNodes: false
 
 # Slurm partition configurations.
 partitions:
