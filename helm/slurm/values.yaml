@@ -620,6 +620,8 @@ nodesets:
     replicas: 1
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
     taintKubeNodes: false
+    # -- Enable propagation of container `resources.limits` into slurmd.
+    useResourceLimits: true
     # slurmd container configurations.
     slurmd:
       # -- The image to use, `${repository}:${tag}`.
@@ -690,8 +692,6 @@ nodesets:
       # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
       # Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
       extraSshdConfig: null
-    # -- Enable propagation of container `resources.limits` into slurmd.
-    useResourceLimits: true
     # Update strategy configuration.
     # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
     updateStrategy:
