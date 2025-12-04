@@ -8,7 +8,7 @@ The SchedMD official issue tracker is at <https://support.schedmd.com/>.
 
 <!--
 Describe what this is for and why it is needed.
-Link relevant issues which this addresses. (e.g. Resolves #123)
+Link relevant issues which this addresses.
 -->
 
 ## Breaking Changes
