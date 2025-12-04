@@ -194,7 +194,7 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless,enable_stepmgr"))
 		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/cgroup"))
 		conf.AddProperty(config.NewProperty("PrologFlags", "Contain"))
-		conf.AddProperty(config.NewProperty("TaskPlugin", "task/cgroup,task/affinity"))
+		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity,task/cgroup"))
 	} else {
 		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
