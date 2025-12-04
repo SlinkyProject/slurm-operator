@@ -296,6 +296,13 @@ spec:
                   any volumes in the template, with the same name.
                 nullable: true
                 x-kubernetes-preserve-unknown-fields: true
+              workloadDisruptionProtection:
+                default: true
+                description: |-
+                  WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
+                  a Pod Disruption Budget.
+                  See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
+                type: boolean
             required:
             - controllerRef
             type: object

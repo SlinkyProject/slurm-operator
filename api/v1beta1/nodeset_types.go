@@ -102,6 +102,13 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=false
 	TaintKubeNodes bool `json:"taintKubeNodes,omitempty"`
+
+	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
+	// a Pod Disruption Budget.
+	// See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
+	// +optional
+	// +default:=true
+	WorkloadDisruptionProtection bool `json:"workloadDisruptionProtection,omitempty"`
 }
 
 // NodeSetPartition defines the Slurm partition configuration for the NodeSet.

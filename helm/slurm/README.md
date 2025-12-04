@@ -112,6 +112,7 @@ Kubernetes: `>= 1.29.0-0`
 | loginsets.slinky.service | object | `{"metadata":{},"spec":{"type":"LoadBalancer"}}` | The service configuration. |
 | loginsets.slinky.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | loginsets.slinky.service.spec | corev1.ServiceSpec | `{"type":"LoadBalancer"}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
+| loginsets.slinky.workloadDisruptionProtection | bool | `true` | Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/ |
 | nameOverride | string | `nil` | Overrides the name of the release. |
 | namespaceOverride | string | `nil` | Overrides the namespace of the release. |
 | nodesets.slinky.enabled | bool | `true` | Enable use of this NodeSet. |

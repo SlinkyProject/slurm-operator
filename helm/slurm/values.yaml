@@ -538,6 +538,9 @@ loginsets:
     metadata: {}
       # annotations: {}
       # labels: {}
+    # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
+    # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+    workloadDisruptionProtection: true
     # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
     podSpec:

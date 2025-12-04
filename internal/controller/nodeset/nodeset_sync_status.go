@@ -206,7 +206,7 @@ func (r *NodeSetReconciler) syncNodeSetPodStatus(
 		return err
 	}
 
-	if err := r.updateNodeSetPodPDBLabels(ctx, pods); err != nil {
+	if err := r.updateNodeSetPodPDBLabels(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
@@ -295,6 +295,7 @@ func (r *NodeSetReconciler) updateNodeSetStatus(
 // updateNodeSetPodPDBLabels handles updating the NodeSet labels
 func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
 	logger := log.FromContext(ctx)
@@ -315,7 +316,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 		logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
 		toUpdate := pod.DeepCopy()
 
-		if podProtect {
+		if podProtect && nodeset.Spec.WorkloadDisruptionProtection {
 			podLabel := labels.NewBuilder().WithPodProtect().Build()
 			toUpdate.Labels = structutils.MergeMaps(toUpdate.Labels, podLabel)
 		} else {

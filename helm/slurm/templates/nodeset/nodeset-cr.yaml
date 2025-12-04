@@ -72,5 +72,6 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
+  workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection | default true }}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}
