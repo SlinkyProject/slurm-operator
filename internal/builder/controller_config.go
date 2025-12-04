@@ -212,6 +212,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("AccountingStorageTRES", "gres/gpu"))
 		if cgroupEnabled {
 			conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/cgroup"))
+		} else {
+			conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/linux"))
 		}
 	} else {
 		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/none"))
