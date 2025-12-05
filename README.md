@@ -1,14 +1,5 @@
 # Kubernetes Operator for Slurm Clusters
 
-<div align="center">
-
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](./LICENSES/Apache-2.0.txt)
-[![Tag](https://img.shields.io/github/v/tag/SlinkyProject/slurm-operator?style=for-the-badge)](https://github.com/SlinkyProject/slurm-operator/tags/)
-[![Go-Version](https://img.shields.io/github/go-mod/go-version/SlinkyProject/slurm-operator?style=for-the-badge)](./go.mod)
-[![Last-Commit](https://img.shields.io/github/last-commit/SlinkyProject/slurm-operator?style=for-the-badge)](https://github.com/SlinkyProject/slurm-operator/commits/)
-
-</div>
-
 Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
 
 ## Table of Contents

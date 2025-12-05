@@ -1,10 +1,6 @@
 Kubernetes Operator for Slurm Clusters
 ======================================
 
-.. container::
-
-   |License| |Tag| |Go-Version| |Last-Commit|
-
 Run `Slurm <https://slurm.schedmd.com/overview.html>`__ on
 `Kubernetes <https://kubernetes.io/>`__, by
 `SchedMD <https://schedmd.com/>`__. A `Slinky <https://slinky.ai/>`__
@@ -342,15 +338,6 @@ limitations under the License.
 .. raw:: html
 
    <!-- links -->
-
-.. |License| image:: https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge
-   :target: ./LICENSES/Apache-2.0.txt
-.. |Tag| image:: https://img.shields.io/github/v/tag/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/tags/
-.. |Go-Version| image:: https://img.shields.io/github/go-mod/go-version/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: ./go.mod
-.. |Last-Commit| image:: https://img.shields.io/github/last-commit/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/commits/
 
 .. toctree::
     :maxdepth: 2
