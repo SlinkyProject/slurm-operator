@@ -76,13 +76,10 @@ func (h *NodeEventHandler) Update(
 		return
 	}
 
-	// Detect node cordoning/uncordoning
-	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable {
-		h.enqueueNodeSetsForNode(ctx, newNode, q)
-	}
-
-	// Detect node annotation updates
-	if !apiequality.Semantic.DeepEqual(oldNode.Annotations, newNode.Annotations) {
+	// Detect node cordoning/uncordoning or metadata changed.
+	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable ||
+		!apiequality.Semantic.DeepEqual(oldNode.Annotations, newNode.Annotations) ||
+		!apiequality.Semantic.DeepEqual(oldNode.Labels, newNode.Labels) {
 		h.enqueueNodeSetsForNode(ctx, newNode, q)
 	}
 }

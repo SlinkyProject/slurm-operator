@@ -13,6 +13,7 @@ import (
 	"github.com/puttsk/hostlist"
 
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -36,6 +37,8 @@ type SlurmControlInterface interface {
 	RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// UpdateNodeWithPodInfo handles updating the Node with its pod info
 	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
+	// UpdateNodeTopology handles updating the Node with its topologyLine.
+	UpdateNodeTopology(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, topologyLine string) error
 	// MakeNodeDrain handles adding the DRAIN state to the slurm node.
 	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
@@ -135,6 +138,47 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 			return err
 		}
 	}
+	return nil
+}
+
+// UpdateNodeTopology implements SlurmControlInterface.
+func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, topologyLine string) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeTopology()",
+			"pod", klog.KObj(pod))
+		return nil
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	nodeTopology := ptr.Deref(slurmNode.Topology, "")
+	if apiequality.Semantic.DeepEqual(nodeTopology, topologyLine) {
+		logger.V(3).Info("Node topologyLine is identical to request, skipping update request",
+			"node", slurmNode.GetKey(), "topologyLine", nodeTopology)
+		return nil
+	}
+
+	logger.Info("Update Slurm Node topologyLine", "Node", slurmNode.GetKey(), "topologyLine", topologyLine)
+	req := slurmapi.V0044UpdateNodeMsg{
+		TopologyStr: ptr.To(topologyLine),
+	}
+	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
 	return nil
 }
 

@@ -2411,3 +2411,110 @@ func Test_syncPodUncordon(t *testing.T) {
 		})
 	}
 }
+
+func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
+	node := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node0",
+		},
+	}
+	node2 := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeTopologyLine: "topo-block:b0",
+			},
+		},
+	}
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 2)
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pod2 := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+	pod2.Spec.NodeName = node2.Name
+
+	tests := []struct {
+		name      string
+		client    client.Client
+		clientMap *clientmap.ClientMap
+		nodeset   *slinkyv1beta1.NodeSet
+		pods      []*corev1.Pod
+		wantErr   bool
+	}{
+		{
+			name:      "pending",
+			client:    fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod.DeepCopy()),
+			clientMap: newClientMap(controller.Name, newFakeClientList(sinterceptor.Funcs{})),
+			nodeset:   nodeset,
+			pods:      []*corev1.Pod{pod.DeepCopy()},
+		},
+		{
+			name:   "allocated",
+			client: fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod2.DeepCopy()),
+			clientMap: func() *clientmap.ClientMap {
+				nodeList := &slurmtypes.V0044NodeList{
+					Items: []slurmtypes.V0044Node{
+						{
+							V0044Node: slurmapi.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(pod2)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+								}),
+							},
+						},
+					},
+				}
+				sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+				return newClientMap(controller.Name, sclient)
+			}(),
+			nodeset: nodeset,
+			pods:    []*corev1.Pod{pod2.DeepCopy()},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			r := newNodeSetController(tt.client, tt.clientMap)
+			gotErr := r.syncSlurmTopology(context.Background(), tt.nodeset, tt.pods)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("syncSlurmTopology() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("syncSlurmTopology() succeeded unexpectedly")
+			}
+			for _, pod := range tt.pods {
+				checkPod := &corev1.Pod{}
+				if err := tt.client.Get(ctx, client.ObjectKeyFromObject(pod), checkPod); err != nil {
+					t.Errorf("Get() failed: %v", err)
+				}
+				if pod.Spec.NodeName == "" {
+					continue
+				}
+				checkNode := &corev1.Node{}
+				checkNodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
+				if err := tt.client.Get(ctx, checkNodeKey, checkNode); err != nil {
+					t.Errorf("Get() failed: %v", err)
+				}
+				topologyLine := checkNode.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine]
+				sclient := tt.clientMap.Get(tt.nodeset.Spec.ControllerRef.NamespacedName())
+				if sclient == nil {
+					continue
+				}
+				slurmNode := &slurmtypes.V0044Node{}
+				slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetNodeName(pod))
+				if err := sclient.Get(ctx, slurmNodeKey, slurmNode); err != nil {
+					t.Errorf("Get() failed: %v", err)
+				}
+				if !apiequality.Semantic.DeepEqual(topologyLine, ptr.Deref(slurmNode.Topology, "")) {
+					t.Errorf("Kube node and Slurm node topology are incongruent: Kube node = '%v' ; slurm node = '%v'", topologyLine, ptr.Deref(slurmNode.Topology, ""))
+				}
+			}
+		})
+	}
+}

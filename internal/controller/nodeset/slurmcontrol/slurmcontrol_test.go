@@ -51,6 +51,7 @@ func slurmUpdateFn(_ context.Context, obj object.Object, req any, opts ...client
 		o.State = ptr.To(stateSet.UnsortedList())
 		o.Comment = r.Comment
 		o.Reason = r.Reason
+		o.Topology = r.TopologyStr
 	default:
 		return errors.New("failed to cast slurm object")
 	}
@@ -309,6 +310,91 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			isUndrain := !checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
 			if isUndrain != tt.wantUndrain {
 				t.Fatalf("MakeNodeUndrain() = %v", isUndrain)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		node *types.V0044Node
+	}
+	type args struct {
+		ctx          context.Context
+		nodeset      *slinkyv1beta1.NodeSet
+		pod          *corev1.Pod
+		topologyLine string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:          ctx,
+				nodeset:      nodeset,
+				pod:          pod,
+				topologyLine: "",
+			},
+		},
+		{
+			name: "smoke",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:          ctx,
+				nodeset:      nodeset,
+				pod:          pod,
+				topologyLine: "foo:bar",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologyLine); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateNodeTopology() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() = %v", err)
+				}
+			}
+			got := ptr.Deref(checkNode.Topology, "")
+			if !apiequality.Semantic.DeepEqual(got, tt.args.topologyLine) {
+				t.Fatalf("UpdateNodeTopology() topologyLine = %v", got)
 			}
 		})
 	}

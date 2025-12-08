@@ -239,6 +239,10 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncSlurmTopology(ctx, nodeset, pods); err != nil {
+		return err
+	}
+
 	if err := r.syncCordon(ctx, nodeset, pods); err != nil {
 		return err
 	}
@@ -476,6 +480,46 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmDeadlineFn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// syncSlurmTopology handles the Slurm Node's topology.
+func (r *NodeSetReconciler) syncSlurmTopology(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	syncSlurmTopologyFn := func(i int) error {
+		pod := pods[i]
+
+		if pod.Spec.NodeName == "" {
+			// Skip if Pod has not been allocated to a Node.
+			return nil
+		}
+
+		node := &corev1.Node{}
+		nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
+		if err := r.Get(ctx, nodeKey, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		topologyLine := node.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine]
+		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologyLine); err != nil {
+			// Best effort, no guarantee the topology is valid from the admin.
+			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
+		}
+
+		return nil
+	}
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmTopologyFn); err != nil {
 		return err
 	}
 

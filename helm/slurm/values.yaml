@@ -69,6 +69,9 @@ configFiles: {}
   # Ref: https://slurm.schedmd.com/spank.html#SECTION_CONFIGURATION
   # plugstack.conf: |
   #   include /usr/share/pyxis/*
+  # Ref: https://slurm.schedmd.com/topology.yaml.html
+  # topology.yaml: |
+  #   ---
 
 # -- (map[string]string) The Slurm PrologSlurmctld scripts run on slurmctld at job allocation.
 # The map key represents the filename; the map value represents the script contents.
