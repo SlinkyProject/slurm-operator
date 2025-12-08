@@ -179,8 +179,10 @@ controller:
     enabled: true
     # -- Name of the existing `PersistentVolumeClaim` to use instead of creating one.
     # If this is not empty, then certain other fields will be ignored.
-    existingClaim: null
+    existingClaim: ""
     # -- (string) The name of the `StorageClass` for the created `PersistentVolumeClaim`.
+    # If set to "-" or "", it disables dynamic storage provisioning.
+    # If undefined or set to null, your default storage provisioner is used.
     # Ref: https://kubernetes.io/docs/concepts/storage/storage-classes/
     storageClassName: null
     # Create the `PersistentVolumeClaim` with the desired access modes.

@@ -69,9 +69,9 @@ Kubernetes: `>= 1.29.0-0`
 | controller.metrics.serviceMonitor.scrapeTimeout | string | `"25s"` | ScrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed (all endpoints). If empty, the Prometheus default will be used instead. |
 | controller.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | controller.persistence.enabled | bool | `true` | Enable persistence for slurmctld, retain save-state across recreations. |
-| controller.persistence.existingClaim | string | `nil` | Name of the existing `PersistentVolumeClaim` to use instead of creating one. If this is not empty, then certain other fields will be ignored. |
+| controller.persistence.existingClaim | string | `""` | Name of the existing `PersistentVolumeClaim` to use instead of creating one. If this is not empty, then certain other fields will be ignored. |
 | controller.persistence.resources | object | `{"requests":{"storage":"4Gi"}}` | The minimum resources for the `PersistentVolumeClaim` to be created with. Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources |
-| controller.persistence.storageClassName | string | `nil` | The name of the `StorageClass` for the created `PersistentVolumeClaim`. Ref: https://kubernetes.io/docs/concepts/storage/storage-classes/ |
+| controller.persistence.storageClassName | string | `nil` | The name of the `StorageClass` for the created `PersistentVolumeClaim`. If set to "-" or "", it disables dynamic storage provisioning. If undefined or set to null, your default storage provisioner is used. Ref: https://kubernetes.io/docs/concepts/storage/storage-classes/ |
 | controller.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | controller.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | controller.podSpec.initContainers | list | `[]` | Additional initContainers for the pod. Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ |

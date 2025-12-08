@@ -136,3 +136,18 @@ Ref: https://github.com/helm/helm/issues/11376#issuecomment-1256831105
 {{- end -}}
 {{- mulf (float64 $value) $unit -}}
 {{- end -}}
+
+{{/*
+ToYaml dict after handling storageClassName.
+Ref: https://github.com/helm/helm/issues/2600
+*/}}
+{{- define "toYaml-set-storageClassName" -}}
+{{- $out := . | default dict -}}
+{{ $storageClassName := get $out "storageClassName" }}
+{{- if or $storageClassName (eq $storageClassName "-") (eq $storageClassName "") }}
+  {{- $_ := set $out "storageClassName" $storageClassName -}}
+{{- else }}
+  {{- $out = omit $out "storageClassName" -}}
+{{- end }}
+{{- toYaml $out -}}
+{{- end -}}

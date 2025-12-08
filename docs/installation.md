@@ -91,13 +91,6 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --namespace=slurm --create-namespace
 ```
 
-> [!WARNING]
-> When using Helm 4, a values file must be provided when installing the Slurm
-> Helm chart. A sample values file is provided in the [slurm-operator] repo at
-> `helm/slurm/values.yaml`. Ensure that the tag of the values file used matches
-> the release of the Slurm Helm chart that you intend to deploy, as fields
-> change between releases.
-
 Check if the Slurm cluster deployed successfully:
 
 ```sh
@@ -335,6 +328,5 @@ Slurm.
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
-[slurm-operator]: https://github.com/SlinkyProject/slurm-operator
 [sssd]: https://sssd.io/
 [statesavelocation]: https://slurm.schedmd.com/slurm.conf.html#OPT_StateSaveLocation
