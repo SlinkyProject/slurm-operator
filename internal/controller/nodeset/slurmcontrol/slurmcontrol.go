@@ -78,39 +78,6 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	return nil
 }
 
-// GetNodeNames implements SlurmControlInterface.
-func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error) {
-	logger := log.FromContext(ctx)
-
-	slurmClient := r.lookupClient(nodeset)
-	if slurmClient == nil {
-		logger.V(2).Info("no client for nodeset, cannot do GetNodeNames()")
-		return nil, nil
-	}
-
-	nodeList := &slurmtypes.V0044NodeList{}
-	if err := slurmClient.List(ctx, nodeList); err != nil {
-		return nil, err
-	}
-
-	podNodeNameSet := set.New[string]()
-	for _, pod := range pods {
-		podNodeName := nodesetutils.GetNodeName(pod)
-		podNodeNameSet.Insert(podNodeName)
-	}
-
-	nodeNames := []string{}
-	for _, node := range nodeList.Items {
-		nodeName := ptr.Deref(node.Name, "")
-		if !podNodeNameSet.Has(nodeName) {
-			continue
-		}
-		nodeNames = append(nodeNames, nodeName)
-	}
-
-	return nodeNames, nil
-}
-
 // UpdateNodeWithPodInfo implements SlurmControlInterface.
 func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
