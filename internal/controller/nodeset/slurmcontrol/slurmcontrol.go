@@ -550,9 +550,9 @@ func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmcli
 
 var _ SlurmControlInterface = &realSlurmControl{}
 
-func NewSlurmControl(clusters *clientmap.ClientMap) SlurmControlInterface {
+func NewSlurmControl(clientMap *clientmap.ClientMap) SlurmControlInterface {
 	return &realSlurmControl{
-		clientMap: clusters,
+		clientMap: clientMap,
 	}
 }
 
