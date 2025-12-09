@@ -88,8 +88,9 @@ spec:
     {{- include "format-container" .Values.controller.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.controller.persistence }}
+  {{- $persistence := fromYaml (include "toYaml-set-storageClassName" .) }}
   persistence:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $persistence | nindent 4 }}
   {{- end }}{{- /* with .Values.controller.persistence */}}
   {{- with .Values.controller.service }}
   service:
