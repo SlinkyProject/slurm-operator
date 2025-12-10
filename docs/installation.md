@@ -246,12 +246,13 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace prometheus --create-namespace
 ```
 
-Then install a Slurm cluster via helm chart with the
-`--set 'slurm-exporter.enabled=true'` argument.
+Then enable Slurm metrics and the Prometheus service monitor, for metrics
+discovery.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
-  --set 'slurm-exporter.enabled=true' \
+  --set 'controller.metrics.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.enabled=true' \
   --namespace=slurm --create-namespace
 ```
 
