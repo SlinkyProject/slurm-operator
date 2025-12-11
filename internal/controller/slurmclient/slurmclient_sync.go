@@ -11,7 +11,6 @@ import (
 	"os"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,12 +48,6 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 			durationStore.Push(controllerKey.String(), 10*time.Second)
 			return nil
 		}
-		return err
-	}
-
-	if ok, err := r.isRestapiReady(ctx, controller); err != nil || !ok {
-		_ = r.ClientMap.Remove(controllerKey)
-		durationStore.Push(controllerKey.String(), 10*time.Second)
 		return err
 	}
 
@@ -133,27 +126,4 @@ func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller
 	}
 
 	return server, nil
-}
-
-func (r *SlurmClientReconciler) isRestapiReady(ctx context.Context, controller *slinkyv1beta1.Controller) (bool, error) {
-	logger := log.FromContext(ctx)
-
-	restapiList, err := r.refResolver.GetRestapisForController(ctx, controller)
-	if err != nil {
-		return false, err
-	}
-
-	for _, restapi := range restapiList.Items {
-		deployment := &appsv1.Deployment{}
-		deploymentKey := restapi.Key()
-		if err := r.Get(ctx, deploymentKey, deployment); err != nil {
-			return false, err
-		}
-		if deployment.Status.ReadyReplicas > 0 {
-			logger.V(2).Info("Restapi deployment ready replica count", "replicas", deployment.Status.ReadyReplicas)
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

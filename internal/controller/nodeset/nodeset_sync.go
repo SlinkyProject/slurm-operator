@@ -778,7 +778,7 @@ func (r *NodeSetReconciler) processCondemned(
 		return err
 	}
 
-	if podutils.IsRunning(pod) && !isDrained {
+	if !isDrained {
 		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in",
 			"pod", klog.KObj(pod))
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
