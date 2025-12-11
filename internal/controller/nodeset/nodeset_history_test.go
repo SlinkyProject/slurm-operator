@@ -11,8 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +21,6 @@ import (
 )
 
 func TestNodeSetReconciler_truncateHistory(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	const clusterName = "slurm"
 	type fields struct {
 		Client client.Client
@@ -146,7 +143,6 @@ func TestNodeSetReconciler_truncateHistory(t *testing.T) {
 }
 
 func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client client.Client
 	}

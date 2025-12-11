@@ -7,7 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -16,7 +16,8 @@ import (
 )
 
 func init() {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	utilruntime.Must(scheme.AddToScheme(scheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme.Scheme))
 }
 
 func newQueue() workqueue.TypedRateLimitingInterface[reconcile.Request] {

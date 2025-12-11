@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -142,7 +141,6 @@ func makePodHealthy(pod *corev1.Pod) *corev1.Pod {
 }
 
 func TestNodeSetReconciler_adoptOrphanRevisions(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -203,7 +201,6 @@ func TestNodeSetReconciler_adoptOrphanRevisions(t *testing.T) {
 }
 
 func TestNodeSetReconciler_doAdoptOrphanRevisions(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -274,7 +271,6 @@ func TestNodeSetReconciler_doAdoptOrphanRevisions(t *testing.T) {
 }
 
 func TestNodeSetReconciler_listRevisions(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -364,7 +360,6 @@ func TestNodeSetReconciler_listRevisions(t *testing.T) {
 }
 
 func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -425,7 +420,6 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 }
 
 func TestNodeSetReconciler_sync(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -455,7 +449,6 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -485,7 +478,6 @@ func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncTaint(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -687,7 +679,6 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 }
 
 func TestNodeSetReconciler_doPodScaleOut(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -718,7 +709,6 @@ func TestNodeSetReconciler_doPodScaleOut(t *testing.T) {
 }
 
 func TestNodeSetReconciler_doPodScaleIn(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -748,7 +738,6 @@ func TestNodeSetReconciler_doPodScaleIn(t *testing.T) {
 }
 
 func TestNodeSetReconciler_processCondemned(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -1067,7 +1056,6 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 }
 
 func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -1097,7 +1085,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 }
 
 func TestNodeSetReconciler_processReplica(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -1126,7 +1113,6 @@ func TestNodeSetReconciler_processReplica(t *testing.T) {
 }
 
 func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -1307,7 +1293,6 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 }
 
 func TestNodeSetReconciler_makePodCordon(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-0",
@@ -1392,7 +1377,6 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 }
 
 func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -1556,7 +1540,6 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 }
 
 func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	pod1 := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod-0",
@@ -1639,7 +1622,6 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncUpdate(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -1754,7 +1736,6 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -1912,7 +1893,6 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 }
 
 func TestNodeSetReconciler_splitUpdatePods(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -2130,7 +2110,6 @@ func Test_findUpdatedPods(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncClusterWorkerService(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -2172,7 +2151,6 @@ func TestNodeSetReconciler_syncClusterWorkerService(t *testing.T) {
 }
 
 func Test_isNodeCordoned(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 
 	type fields struct {
 		Client client.Client
@@ -2319,7 +2297,6 @@ func Test_isNodeCordoned(t *testing.T) {
 }
 
 func Test_syncPodUncordon(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
