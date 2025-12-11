@@ -143,8 +143,10 @@ Ref: https://github.com/helm/helm/issues/2600
 */}}
 {{- define "toYaml-set-storageClassName" -}}
 {{- $out := . | default dict -}}
-{{ $storageClassName := get $out "storageClassName" }}
-{{- if or $storageClassName (eq $storageClassName "-") (eq $storageClassName "") }}
+{{ $storageClassName := dig "storageClassName" nil $out }}
+{{- if or (eq $storageClassName "") (eq $storageClassName "-") -}}
+  {{- $_ := set $out "storageClassName" "" -}}
+{{- else if $storageClassName }}
   {{- $_ := set $out "storageClassName" $storageClassName -}}
 {{- else }}
   {{- $out = omit $out "storageClassName" -}}
