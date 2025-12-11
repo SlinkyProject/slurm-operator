@@ -512,6 +512,14 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		}
 
 		topologyLine := node.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine]
+
+		toUpdate := pod.DeepCopy()
+		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine] = topologyLine
+		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
+			return err
+		}
+
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologyLine); err != nil {
 			// Best effort, no guarantee the topology is valid from the admin.
 			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))

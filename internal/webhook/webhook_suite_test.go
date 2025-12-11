@@ -18,6 +18,7 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 	//+kubebuilder:scaffold:imports
 	"k8s.io/apimachinery/pkg/runtime"
+	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,6 +69,8 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 
 	scheme := runtime.NewScheme()
+	err = kubescheme.AddToScheme(scheme)
+	Expect(err).NotTo(HaveOccurred())
 	err = slinkyv1beta1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -114,6 +117,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&TokenWebhook{}).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = (&PodBindingWebhook{
+		Client: mgr.GetClient(),
+	}).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:webhook

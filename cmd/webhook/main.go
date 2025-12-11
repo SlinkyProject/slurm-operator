@@ -184,6 +184,12 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Token")
 		os.Exit(1)
 	}
+	if err = (&slinkywebhook.PodBindingWebhook{
+		Client: mgr.GetClient(),
+	}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "pods/binding")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

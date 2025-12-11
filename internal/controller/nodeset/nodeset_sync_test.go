@@ -2502,6 +2502,9 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 					t.Errorf("Get() failed: %v", err)
 				}
 				topologyLine := checkNode.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine]
+				if !apiequality.Semantic.DeepEqual(checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine], topologyLine) {
+					t.Errorf("pod and node topology are incongruent: node = '%v' ; pod = '%v'", topologyLine, checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine])
+				}
 				sclient := tt.clientMap.Get(tt.nodeset.Spec.ControllerRef.NamespacedName())
 				if sclient == nil {
 					continue

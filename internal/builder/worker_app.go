@@ -204,8 +204,18 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 
 	opts := ContainerOpts{
 		base: corev1.Container{
-			Name:  labels.WorkerApp,
-			Args:  slurmdArgs(nodeset, controller),
+			Name: labels.WorkerApp,
+			Args: slurmdArgs(nodeset, controller),
+			Env: []corev1.EnvVar{
+				{
+					Name: "POD_TOPOLOGY",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: fmt.Sprintf("metadata.annotations['%s']", slinkyv1beta1.AnnotationNodeTopologyLine),
+						},
+					},
+				},
+			},
 			Ports: ports,
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
