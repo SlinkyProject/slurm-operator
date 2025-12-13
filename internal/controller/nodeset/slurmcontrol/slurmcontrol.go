@@ -280,15 +280,12 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrain()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return false, nil
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
-		if tolerateError(err) {
-			return true, nil
-		}
 		return false, err
 	}
 
@@ -304,15 +301,12 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return false, nil
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
 	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
-		if tolerateError(err) {
-			return true, nil
-		}
 		return false, err
 	}
 

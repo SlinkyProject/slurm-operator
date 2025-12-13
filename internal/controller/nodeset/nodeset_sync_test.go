@@ -864,7 +864,8 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    false,
+				// Expect error when Slurm node is not found
+				wantErr:    true,
 				wantDrain:  false,
 				wantDelete: true,
 			}
@@ -1054,7 +1055,9 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 			}
 			pod := tt.args.condemned[tt.args.i]
 			if isDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, pod); err != nil {
-				t.Errorf("slurmControl.IsNodeDrain() error = %v", err)
+				if !tt.wantDelete {
+					t.Errorf("slurmControl.IsNodeDrain() error = %v", err)
+				}
 			} else if isDrain != tt.wantDrain && !tt.wantDelete {
 				t.Errorf("slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
 			}
@@ -1897,7 +1900,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 					pods:    []*corev1.Pod{pod1, pod2},
 					hash:    hash,
 				},
-				wantErr: false,
+				// Expect error when Slurm node is not found
+				wantErr: true,
 			}
 		}(),
 	}
