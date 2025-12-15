@@ -91,6 +91,7 @@ func parseFlags(flags *Flags) {
 	flag.Parse()
 }
 
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;create;update;patch;watch
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;create;update;patch
 
 func main() {
