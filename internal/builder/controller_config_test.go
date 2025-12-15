@@ -22,10 +22,11 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name        string
+		fields      fields
+		args        args
+		wantErr     bool
+		wantScripts []string
 	}{
 		{
 			name: "default",
@@ -144,6 +145,80 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "multiple prolog configmaps",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{Name: "prolog-1"},
+						Data: map[string]string{
+							"00-first.sh": strings.Join([]string{
+								"#!/usr/bin/sh",
+								"exit 0",
+							}, "\n"),
+						},
+					}).
+					WithObjects(&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{Name: "prolog-2"},
+						Data: map[string]string{
+							"90-second.sh": strings.Join([]string{
+								"#!/usr/bin/sh",
+								"exit 0",
+							}, "\n"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+					Spec: slinkyv1beta1.ControllerSpec{
+						PrologScriptRefs: []slinkyv1beta1.ObjectReference{
+							{Name: "prolog-1"},
+							{Name: "prolog-2"},
+						},
+					},
+				},
+			},
+			wantScripts: []string{"00-first.sh", "90-second.sh"},
+		},
+		{
+			name: "multiple epilog configmaps",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{Name: "epilog-1"},
+						Data: map[string]string{
+							"00-cleanup.sh": strings.Join([]string{
+								"#!/usr/bin/sh",
+								"exit 0",
+							}, "\n"),
+						},
+					}).
+					WithObjects(&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{Name: "epilog-2"},
+						Data: map[string]string{
+							"90-finalize.sh": strings.Join([]string{
+								"#!/usr/bin/sh",
+								"exit 0",
+							}, "\n"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+					Spec: slinkyv1beta1.ControllerSpec{
+						EpilogScriptRefs: []slinkyv1beta1.ObjectReference{
+							{Name: "epilog-1"},
+							{Name: "epilog-2"},
+						},
+					},
+				},
+			},
+			wantScripts: []string{"00-cleanup.sh", "90-finalize.sh"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -159,6 +234,13 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 
 			case got.Data[slurmConfFile] == "" && got.BinaryData[slurmConfFile] == nil:
 				t.Errorf("got.Data[%s] = %v", slurmConfFile, got.Data[slurmConfFile])
+			}
+
+			// Verify expected scripts are present in slurm.conf
+			for _, script := range tt.wantScripts {
+				if !strings.Contains(got.Data[slurmConfFile], script) {
+					t.Errorf("Expected %s in slurm.conf", script)
+				}
 			}
 		})
 	}
