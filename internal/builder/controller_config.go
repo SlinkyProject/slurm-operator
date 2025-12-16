@@ -78,8 +78,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		prologScripts = filenames
+		prologScripts = append(prologScripts, filenames...)
 	}
+	sort.Strings(prologScripts)
 
 	epilogScripts := []string{}
 	for _, ref := range controller.Spec.EpilogScriptRefs {
@@ -93,8 +94,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		epilogScripts = filenames
+		epilogScripts = append(epilogScripts, filenames...)
 	}
+	sort.Strings(epilogScripts)
 
 	prologSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
@@ -108,8 +110,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		prologSlurmctldScripts = filenames
+		prologSlurmctldScripts = append(prologSlurmctldScripts, filenames...)
 	}
+	sort.Strings(prologSlurmctldScripts)
 
 	epilogSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
@@ -123,8 +126,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		epilogSlurmctldScripts = filenames
+		epilogSlurmctldScripts = append(epilogSlurmctldScripts, filenames...)
 	}
+	sort.Strings(epilogSlurmctldScripts)
 
 	opts := ConfigMapOpts{
 		Key:      controller.ConfigKey(),
