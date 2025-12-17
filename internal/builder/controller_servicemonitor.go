@@ -11,6 +11,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"k8s.io/utils/ptr"
 )
 
 func (b *Builder) BuildControllerServiceMonitor(controller *slinkyv1beta1.Controller) (*monitoringv1.ServiceMonitor, error) {
@@ -39,7 +40,7 @@ func (b *Builder) BuildControllerServiceMonitor(controller *slinkyv1beta1.Contro
 			endpoint := monitoringv1.Endpoint{
 				Path:          metricEndpoint.Path,
 				Port:          labels.ControllerApp,
-				Scheme:        "http",
+				Scheme:        ptr.To(monitoringv1.Scheme("http")),
 				Interval:      reflectutils.UseNonZeroOrDefault(metricEndpoint.Interval, serviceMonitor.Interval),
 				ScrapeTimeout: reflectutils.UseNonZeroOrDefault(metricEndpoint.ScrapeTimeout, serviceMonitor.ScrapeTimeout),
 			}
@@ -51,7 +52,7 @@ func (b *Builder) BuildControllerServiceMonitor(controller *slinkyv1beta1.Contro
 			return monitoringv1.Endpoint{
 				Path:          path,
 				Port:          labels.ControllerApp,
-				Scheme:        "http",
+				Scheme:        ptr.To(monitoringv1.Scheme("http")),
 				Interval:      serviceMonitor.Interval,
 				ScrapeTimeout: serviceMonitor.ScrapeTimeout,
 			}
