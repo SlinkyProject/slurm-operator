@@ -55,13 +55,12 @@ Returns the parsed resource limits for POD_CPUS.
 {{- end -}}
 
 {{/*
-Returns the parsed resource limits for POD_MEMORY, in Megabytes.
-*/}}
+Returns the parsed resource limits for POD_MEMORY, in Mebibytes (MiB).*/}}
 {{- define "slurm.worker.podMemory" -}}
 {{- $out := 0 -}}
 {{- with .resources }}{{- with .limits }}{{- with .memory }}
-  {{- $megabytes := (include "resource-quantity" "1M") | float64 -}}
-  {{- $out = divf (include "resource-quantity" . | float64) $megabytes | ceil | int -}}
+  {{- $mebibytes := (include "resource-quantity" "1Mi") | float64 -}}
+  {{- $out = divf (include "resource-quantity" . | float64) $mebibytes | ceil | int -}}
 {{- end }}{{- end }}{{- end }}
 {{- print $out -}}
 {{- end -}}
