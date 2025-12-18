@@ -153,3 +153,10 @@ Ref: https://github.com/helm/helm/issues/2600
 {{- end }}
 {{- toYaml $out -}}
 {{- end -}}
+
+{{/*
+Allow the PriorityClassName to be overridden.
+*/}}
+{{- define "slurm.priorityClassName" -}}
+{{- default "slurm-priority-critical" .Values.priorityClass.name }}
+{{- end }}

@@ -21,7 +21,11 @@ imagePullPolicy: IfNotPresent
 
 # -- Set the priority class to use.
 # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
-priorityClassName: null
+priorityClass:
+  create: true
+  name: slurm-priority-critical
+  value: 1000000000
+  preemptionPolicy: PreemptLowerPriority # or Never
 
 # -- (secretKeyRef) Slurm shared authentication key.
 # If empty, one will be generated and used.

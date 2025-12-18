@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 {{- $podSpec := .Values.restapi.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default .Values.priorityClassName -}}
+{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" . | toString) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
 apiVersion: slinky.slurm.net/v1beta1
