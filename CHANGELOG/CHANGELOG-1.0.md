@@ -1,3 +1,24 @@
+## v1.0.1
+
+### Added
+
+- JobAcctGatherType will default to `jobacct_gather/linux` when accounting is
+  enabled but cgroups is disabled.
+
+### Fixed
+
+- Fixed installing charts with Helm 4, which has stricter syntax requirements
+  than Helm 3.
+- Fixed misconfiguration of `ProctrackType` when `CgroupPlugin=disabled`.
+- Avoid `storageClassName=null` error, which occurs when using the Slurm chart
+  default `values.yaml`, implicitly used by helm.
+- prolog/epilog scripts being overwritten instead of merged when multiple
+  ConfigMaps are referenced.
+- Upgrade k8s.io/kubernetes to at least v1.34.2 to avoid CVE-2025-13281.
+- Upgrade golang.org/x/crypto to at least v0.45.0 to avoid CVE-2025-58181 and
+  CVE-2025-47914.
+- Configure LoginSet /etc/slurm for SlurmUser access.
+
 ## v1.0.0
 
 ### Fixed
