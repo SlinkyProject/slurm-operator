@@ -36,6 +36,12 @@ type LoginSetSpec struct {
 	// +optional
 	Login ContainerWrapper `json:"login,omitempty"`
 
+	// The initconf container configuration.
+	// See corev1.Container spec.
+	// Ref: https://github.com/kubernetes/api/blob/master/core/v1/types.go#L2885
+	// +optional
+	InitConf ContainerWrapper `json:"initconf,omitzero"`
+
 	// Template is the object that describes the pod that will be created if
 	// insufficient replicas are detected.
 	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template

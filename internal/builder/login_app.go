@@ -139,6 +139,9 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 			Containers: []corev1.Container{
 				b.loginContainer(spec.Login.Container, controller),
 			},
+			InitContainers: []corev1.Container{
+				b.initconfContainer(spec.InitConf),
+			},
 			DNSConfig: &corev1.PodDNSConfig{
 				Searches: []string{
 					slurmClusterWorkerService(spec.ControllerRef.Name, loginset.Namespace),
@@ -154,6 +157,7 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 
 func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
+		etcSlurmVolume(),
 		{
 			Name: sackdVolume,
 			VolumeSource: corev1.VolumeSource{
@@ -163,7 +167,7 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 			},
 		},
 		{
-			Name: slurmEtcVolume,
+			Name: slurmConfigVolume,
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
 					DefaultMode: ptr.To[int32](0o600),
@@ -302,7 +306,7 @@ func loginEnv(container corev1.Container, controller *slinkyv1beta1.Controller) 
 			Value: strings.Join(configlessArgs(controller), " "),
 		},
 	}
-	return mergeEnvVar(env, container.Env, " ")
+	return mergeEnvVar(container.Env, env, " ")
 }
 
 const (

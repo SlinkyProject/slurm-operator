@@ -481,8 +481,8 @@ loginsets:
         tag: 25.11-ubuntu24.04
       # -- Environment passed to the image.
       env: []
-        # - name: SACKD_OPTIONS
-        #   value: -vvv
+        # - name: SACKD_DEBUG
+        #   value: debug2
       # -- The container security context to use.
       # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
       securityContext:
@@ -501,6 +501,19 @@ loginsets:
       volumeMounts: []
         # - name: nfs-home
         #   mountPath: /home
+    # InitConf container configurations.
+    initconf:
+      # -- The image to use, `${repository}:${tag}`.
+      # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
+      image:
+        repository: docker.io/library/alpine
+        tag: latest
+      # -- The container resource limits and requests.
+      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+      resources: {}
+        # limits:
+        #   cpu: 500m
+        #   memory: 100Mi
     # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
     rootSshAuthorizedKeys: null
     # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
