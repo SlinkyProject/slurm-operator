@@ -276,7 +276,47 @@ func CheckAccountingHealth(crClient crclient.Client, ctx context.Context, slurmN
 	}
 }
 
-func NewSlurmInstall(t *testing.T, slurmNamespace string, withAccounting bool) types.Feature {
+func CheckLoginSetHealth(crClient crclient.Client, ctx context.Context, slurmNamespace string, t *testing.T, config *envconf.Config) {
+	// Get LoginSet  CR
+	loginSet := &slinkyv1beta1.LoginSet{}
+
+	loginSetKey := crclient.ObjectKey{
+		Namespace: slurmNamespace,
+		Name:      "slurm-login-slinky",
+	}
+
+	err := crClient.Get(ctx, loginSetKey, loginSet)
+	if err != nil {
+		t.Fatal("failed to Get() loginSet using controller-runtime client")
+	}
+
+	loginSetUID := loginSet.UID
+
+	// Get loginSet Deployment using loginSet CR
+	deploymentKey := loginSet.Key()
+	deployment := &appsv1.Deployment{}
+	err = crClient.Get(ctx, deploymentKey, deployment)
+	if err != nil {
+		t.Fatal("failed to Get() deployment using controller-runtime client")
+	}
+
+	// Confirm ownership of loginSet deployment
+	for _, owner := range deployment.OwnerReferences {
+		if owner.UID != loginSetUID {
+			t.Fatalf("dubious ownership of deployment: %v", deployment)
+		}
+	}
+
+	// Check whether loginSet deployment is healthy
+	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
+		return object.(*appsv1.Deployment).Status.ReadyReplicas
+	}, 1))
+	if err != nil {
+		t.Fatalf("timed out waiting for Deployment %v to reach a ready state", deployment.Name)
+	}
+}
+
+func NewSlurmInstall(t *testing.T, slurmNamespace string, withAccounting bool, withLogin bool) types.Feature {
 	return features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			manager := helm.New(config.KubeconfigFile())
@@ -285,24 +325,26 @@ func NewSlurmInstall(t *testing.T, slurmNamespace string, withAccounting bool) t
 
 			var err error
 
-			if !withAccounting {
-				err = manager.RunInstall(
-					helm.WithName("slurm"),
-					helm.WithNamespace(slurmNamespace),
-					helm.WithChart(basepath+"helm/slurm"),
-					helm.WithArgs(setValuesFile),
-					helm.WithWait(),
-					helm.WithTimeout("10m"))
-			} else {
-				err = manager.RunInstall(
-					helm.WithName("slurm"),
-					helm.WithNamespace(slurmNamespace),
-					helm.WithChart(basepath+"helm/slurm"),
-					helm.WithArgs(setValuesFile),
-					helm.WithWait(),
-					helm.WithTimeout("10m"),
-					helm.WithArgs("--set 'accounting.enabled=true'"))
+			opts := []helm.Option{}
+			opts = append(
+				opts,
+				helm.WithName("slurm"),
+				helm.WithNamespace(slurmNamespace),
+				helm.WithChart(basepath+"helm/slurm"),
+				helm.WithArgs(setValuesFile),
+				helm.WithWait(),
+				helm.WithTimeout("10m"),
+			)
+
+			if withAccounting {
+				opts = append(opts, helm.WithArgs("--set 'accounting.enabled=true'"))
 			}
+
+			if withLogin {
+				opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.enabled=true'"))
+			}
+
+			err = manager.RunInstall(opts...)
 
 			if err != nil {
 				t.Fatal("failed to invoke helm install operation due to an error", err)
@@ -333,8 +375,13 @@ func NewSlurmInstall(t *testing.T, slurmNamespace string, withAccounting bool) t
 			CheckControllerHealth(crClient, ctx, slurmNamespace, t, config)
 			CheckRestAPIHealth(crClient, ctx, slurmNamespace, t, config)
 			CheckNodeSetHealth(crClient, ctx, slurmNamespace, t, config)
+
 			if withAccounting {
 				CheckAccountingHealth(crClient, ctx, slurmNamespace, t, config)
+			}
+
+			if withLogin {
+				CheckLoginSetHealth(crClient, ctx, slurmNamespace, t, config)
 			}
 
 			return ctx
