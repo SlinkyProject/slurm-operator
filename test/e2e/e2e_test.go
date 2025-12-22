@@ -304,6 +304,12 @@ func TestHelmInstallation(t *testing.T) {
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
 
+				cleanup_command := "kubectl"
+				cleanup_args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+				cleanup_cmd := exec.Command(cleanup_command, cleanup_args...)
+
+				_, _ = cleanup_cmd.Output() //nolint:errcheck
+
 				command := "kubectl"
 				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname"}
 				cmd := exec.Command(command, args...)
@@ -671,6 +677,12 @@ func TestHelmInstallationWithAccounting(t *testing.T) {
 	srun := features.New("srun functions").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
+
+				cleanup_command := "kubectl"
+				cleanup_args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+				cleanup_cmd := exec.Command(cleanup_command, cleanup_args...)
+
+				_, _ = cleanup_cmd.Output() //nolint:errcheck
 
 				command := "kubectl"
 				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname"}
