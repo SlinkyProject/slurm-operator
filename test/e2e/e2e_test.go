@@ -280,14 +280,18 @@ func TestHelmInstallation(t *testing.T) {
 	scontrolPing := features.New("scontrol ping succeeds").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
-				cmd := exec.Command("kubectl", "exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping")
+
+				command := "kubectl"
+				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping"}
+				cmd := exec.Command(command, args...)
+
 				_, err := cmd.Output()
 				if err == nil {
 					break
 				}
 
 				if retries == 3 {
-					t.Fatalf("failed running 'kubectl exec -n %s slurm-controller-0 -- scontrol ping': %v", slurmNamespace, err)
+					t.Fatalf("failed running '%v %v': %v", command, args, err)
 					break
 				}
 
@@ -299,14 +303,18 @@ func TestHelmInstallation(t *testing.T) {
 	srun := features.New("srun functions").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
-				cmd := exec.Command("kubectl", "exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname")
+
+				command := "kubectl"
+				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname"}
+				cmd := exec.Command(command, args...)
+
 				_, err := cmd.Output()
 				if err == nil {
 					break
 				}
 
 				if retries == 3 {
-					t.Fatalf("failed running 'kubectl exec -n %s slurm-controller-0 -- srun hostname': %v", slurmNamespace, err)
+					t.Fatalf("failed running '%v %v': %v", command, args, err)
 					break
 				}
 
@@ -640,14 +648,18 @@ func TestHelmInstallationWithAccounting(t *testing.T) {
 	scontrolPing := features.New("scontrol ping succeeds").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
-				cmd := exec.Command("kubectl", "exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping")
+
+				command := "kubectl"
+				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping"}
+				cmd := exec.Command(command, args...)
+
 				_, err := cmd.Output()
 				if err == nil {
 					break
 				}
 
 				if retries == 3 {
-					t.Fatalf("failed running 'kubectl exec -n %s slurm-controller-0 -- scontrol ping': %v", slurmNamespace, err)
+					t.Fatalf("failed running '%v %v': %v", command, args, err)
 					break
 				}
 
@@ -659,16 +671,18 @@ func TestHelmInstallationWithAccounting(t *testing.T) {
 	srun := features.New("srun functions").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			for retries := range 4 {
-				scancel := exec.Command("kubectl", "exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm")
-				_, _ = scancel.Output()
-				cmd := exec.Command("kubectl", "exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname")
+
+				command := "kubectl"
+				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname"}
+				cmd := exec.Command(command, args...)
+
 				_, err := cmd.Output()
 				if err == nil {
 					break
 				}
 
 				if retries == 3 {
-					t.Fatalf("failed running 'kubectl exec -n %s slurm-controller-0 -- srun hostname': %v", slurmNamespace, err)
+					t.Fatalf("failed running '%v %v': %v", command, args, err)
 					break
 				}
 
