@@ -9,6 +9,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +48,38 @@ func TestBuilder_BuildLogin(t *testing.T) {
 					Spec: slinkyv1beta1.LoginSetSpec{
 						ControllerRef: slinkyv1beta1.ObjectReference{
 							Name: "slurm",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "envars",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+						Login: slinkyv1beta1.ContainerWrapper{
+							Container: corev1.Container{
+								Env: []corev1.EnvVar{
+									{Name: "A", Value: "1"},
+									{Name: "B", Value: "2"},
+								},
+							},
 						},
 					},
 				},
@@ -100,6 +133,25 @@ func TestBuilder_BuildLogin(t *testing.T) {
 
 			case len(got.Spec.Template.Spec.DNSConfig.Searches) == 0:
 				t.Errorf("len(Template.Spec.DNSConfig.Searches) = %v , want = > 0", len(got.Spec.Template.Spec.DNSConfig.Searches))
+			}
+			if tt.name == "envars" {
+				envs := got.Spec.Template.Spec.Containers[0].Env
+				envMap := make(map[string]struct{})
+				for _, env := range envs {
+					if _, exists := envMap[env.Name]; exists {
+						t.Errorf("duplicate env var: %s", env.Name)
+					}
+					envMap[env.Name] = struct{}{}
+				}
+				if _, ok := envMap["A"]; !ok {
+					t.Errorf("env var A not found")
+				}
+				if _, ok := envMap["B"]; !ok {
+					t.Errorf("env var B not found")
+				}
+				if _, ok := envMap["SACKD_OPTIONS"]; !ok {
+					t.Errorf("env var SACKD_OPTIONS not found")
+				}
 			}
 		})
 	}
