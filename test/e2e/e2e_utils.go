@@ -682,62 +682,103 @@ func installPrometheus() types.Feature {
 		}).Feature()
 }
 
-func scontrolPing(slurmNamespace string) types.Feature {
-	return features.New("scontrol ping succeeds").
+func testSlurmController(slurmNamespace string) types.Feature {
+	return features.New("Assess the functionality of the Slurm controller").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			for retries := range 4 {
+			return ctx
+		}).
+		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
-				command := "kubectl"
-				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping"}
-				cmd := exec.Command(command, args...)
+			command := "kubectl"
+			args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scontrol", "ping"}
+			var wants string
 
-				_, err := cmd.Output()
-				if err == nil {
-					break
-				}
+			var cleanup_command string
+			var cleanup_args []string
 
-				if retries == 3 {
-					t.Fatalf("failed running '%v %v': %v", command, args, err)
-					break
-				}
+			retryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 7, time.Duration(15*time.Second))
 
-				time.Sleep(30 * time.Second)
-			}
+			return ctx
+		}).
+		Assess("job launch & execution succeeds (srun)", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
+			wants := "slinky-0"
+
+			cleanup_command := "kubectl"
+			cleanup_args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+
+			retryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 7, time.Duration(15*time.Second))
 
 			return ctx
 		}).Feature()
 }
 
-func srun(slurmNamespace string) types.Feature {
-	return features.New("srun functions").
+func testSlurmNodeSet(slurmNamespace string) types.Feature {
+	return features.New("Assess the functionality of the Slurm NodeSet").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			for retries := range 4 {
+			return ctx
+		}).
+		Assess("Nodeset can contact controller", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
-				cleanup_command := "kubectl"
-				cleanup_args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
-				cleanup_cmd := exec.Command(cleanup_command, cleanup_args...)
+			command := "kubectl"
+			args := []string{"exec", "-n", slurmNamespace, "slurm-worker-slinky-0", "--", "scontrol", "ping"}
+			var wants string
 
-				_, _ = cleanup_cmd.Output() //nolint:errcheck
+			var cleanup_command string
+			var cleanup_args []string
 
-				command := "kubectl"
-				args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "srun", "hostname"}
-				cmd := exec.Command(command, args...)
+			retryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 7, time.Duration(15*time.Second))
 
-				_, err := cmd.Output()
-				if err == nil {
-					break
-				}
+			return ctx
+		}).
+		Assess("NodeSet is idle", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
-				if retries == 3 {
-					t.Fatalf("failed running '%v %v': %v", command, args, err)
-					break
-				}
+			command := "kubectl"
+			args := []string{"exec", "-n", slurmNamespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "-p", "slinky", "--Format=StateLong", "-h"}
+			wants := "idle"
 
-				time.Sleep(30 * time.Second)
-			}
+			cleanup_command := "kubectl"
+			cleanup_args := []string{"exec", "-n", slurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+
+			retryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 7, time.Duration(15*time.Second))
 
 			return ctx
 		}).Feature()
+}
+
+func retryCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanup_command string, cleanup_args []string, retries int, retryDelay time.Duration) context.Context {
+	for retry := range retries {
+
+		if cleanup_command != "" && len(cleanup_args) > 0 {
+			cleanup_cmd := exec.Command(cleanup_command, cleanup_args...)
+
+			_, _ = cleanup_cmd.Output() //nolint:errcheck
+		}
+
+		cmd := exec.Command(command, args...)
+
+		output, err := cmd.Output()
+		if err == nil && (wants == "" || strings.TrimSpace(string(output)) == wants) {
+			return ctx
+		}
+
+		if retry == retries-retry {
+			if err != nil {
+				t.Fatalf("failed running '%v %v': %v", command, args, err)
+			}
+			if string(output) != "" {
+				t.Fatalf("assertion failed. wants: %v, got: %v", wants, string(output))
+			}
+
+			return ctx
+		}
+
+		time.Sleep(retryDelay)
+	}
+
+	return ctx
 }
 
 func uninstallSlurm(slurmNamespace string) types.Feature {
