@@ -320,7 +320,7 @@ func CheckLoginSetHealth(crClient crclient.Client, ctx context.Context, slurmNam
 	}
 }
 
-func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool) types.Feature {
+func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool, withMetrics bool) types.Feature {
 	return features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			manager := helm.New(config.KubeconfigFile())
@@ -346,6 +346,11 @@ func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool) ty
 
 			if withLogin {
 				opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.enabled=true'"))
+			}
+
+			if withMetrics {
+				opts = append(opts, helm.WithArgs("--set 'controller.metrics.enabled=true'"))
+				opts = append(opts, helm.WithArgs("--set 'controller.metrics.serviceMonitor.enabled=true'"))
 			}
 
 			err = manager.RunInstall(opts...)
@@ -632,6 +637,46 @@ func applyMariaDBYaml(slurmNamespace string) types.Feature {
 			err := wait.For(conditions.New(config.Client().Resources()).PodRunning(pod))
 			if err != nil {
 				t.Fatal("failed waiting for the mariadb-0 pod to reach a ready state")
+			}
+			return ctx
+		}).Feature()
+}
+
+func installPrometheus() types.Feature {
+	return features.New("Helm install prometheus").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			manager := helm.New(config.KubeconfigFile())
+
+			err := manager.RunRepo(helm.WithArgs("add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"))
+			if err != nil {
+				t.Fatal("failed to add prometheus-community helm chart repo")
+			}
+			err = manager.RunRepo(helm.WithArgs("update"))
+			if err != nil {
+				t.Fatal("failed to update helm repo")
+			}
+			err = manager.RunInstall(helm.WithName("prometheus"), helm.WithNamespace("prometheus"),
+				helm.WithReleaseName("prometheus-community/kube-prometheus-stack"),
+				helm.WithArgs("--set 'installCRDs=true'"),
+			)
+			if err != nil {
+				t.Fatal("failed to install prometheus Helm chart", err)
+			}
+
+			return ctx
+		}).
+		Assess("prometheus deployment Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prometheus-kube-prometheus-operator",
+					Namespace: "prometheus",
+				},
+			}
+			err := wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
+				return object.(*appsv1.Deployment).Status.ReadyReplicas
+			}, 1))
+			if err != nil {
+				t.Fatal("failed waiting for the prometheus deployment to reach a ready state")
 			}
 			return ctx
 		}).Feature()

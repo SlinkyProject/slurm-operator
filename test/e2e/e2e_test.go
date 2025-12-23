@@ -58,6 +58,7 @@ func TestMain(m *testing.M) {
 		envfuncs.CreateNamespace("slurm"),
 		envfuncs.CreateNamespace("cert-manager"),
 		envfuncs.CreateNamespace("mariadb"),
+		envfuncs.CreateNamespace("prometheus"),
 	)
 
 	// Use pre-defined environment funcs to teardown kind cluster after tests
@@ -66,6 +67,7 @@ func TestMain(m *testing.M) {
 		envfuncs.DeleteNamespace("slurm"),
 		envfuncs.DeleteNamespace("cert-manager"),
 		envfuncs.DeleteNamespace("mariadb"),
+		envfuncs.DeleteNamespace("prometheus"),
 		envfuncs.DestroyCluster(kindClusterName),
 	)
 
@@ -92,7 +94,7 @@ func TestHelmInstallation(t *testing.T) {
 		{
 			name: "Install Slurm",
 			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, false),
+				installSlurm(slurmNamespace, false, false, false),
 				scontrolPing(slurmNamespace),
 				srun(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -101,7 +103,17 @@ func TestHelmInstallation(t *testing.T) {
 		{
 			name: "Install Slurm with login",
 			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, true),
+				installSlurm(slurmNamespace, false, true, false),
+				scontrolPing(slurmNamespace),
+				srun(slurmNamespace),
+				uninstallSlurm(slurmNamespace),
+			},
+		},
+		{
+			name: "Install Slurm with metrics",
+			steps: []types.Feature{
+				installPrometheus(),
+				installSlurm(slurmNamespace, false, false, true),
 				scontrolPing(slurmNamespace),
 				srun(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -112,7 +124,7 @@ func TestHelmInstallation(t *testing.T) {
 			steps: []types.Feature{
 				installMariadbOperator(),
 				applyMariaDBYaml(slurmNamespace),
-				installSlurm(slurmNamespace, true, false),
+				installSlurm(slurmNamespace, true, false, false),
 				scontrolPing(slurmNamespace),
 				srun(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -132,5 +144,4 @@ func TestHelmInstallation(t *testing.T) {
 			_ = testenv.Test(t, tt.steps...)
 		})
 	}
-
 }
