@@ -264,7 +264,12 @@ func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1bet
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: labels.LoginApp,
-			Env:  loginEnv(merge, controller),
+			Env: []corev1.EnvVar{
+				{
+					Name:  "SACKD_OPTIONS",
+					Value: strings.Join(configlessArgs(controller), " "),
+				},
+			},
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          labels.LoginApp,
@@ -301,16 +306,6 @@ func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1bet
 	}
 
 	return b.BuildContainer(opts)
-}
-
-func loginEnv(container corev1.Container, controller *slinkyv1beta1.Controller) []corev1.EnvVar {
-	env := []corev1.EnvVar{
-		{
-			Name:  "SACKD_OPTIONS",
-			Value: strings.Join(configlessArgs(controller), " "),
-		},
-	}
-	return mergeEnvVar(container.Env, env, " ")
 }
 
 func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (map[string]string, error) {
