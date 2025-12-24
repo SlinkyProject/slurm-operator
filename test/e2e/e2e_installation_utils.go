@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -185,16 +186,25 @@ func applyMariaDBYaml(slurmNamespace string) types.Feature {
 			return ctx
 		}).
 		Assess("Pod mariadb-0 running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "mariadb-0",
-					Namespace: slurmNamespace,
-				},
-			}
-			err := wait.For(conditions.New(config.Client().Resources()).PodRunning(pod))
+
+			var scheme = k8sruntime.NewScheme()
+			err := mariadbv1alpha1.AddToScheme(scheme)
 			if err != nil {
-				t.Fatal("failed waiting for the mariadb-0 pod to reach a ready state")
+				t.Fatalf("failed adding api mariadb")
 			}
+
+			err = appsv1.AddToScheme(scheme)
+			if err != nil {
+				t.Fatalf("failed adding api appsv1 to scheme: %v", err)
+			}
+
+			crClient, err := klient.NewControllerRuntimeClient(config.Client().RESTConfig(), scheme)
+			if err != nil {
+				t.Fatalf("failed creating new controller-runtime client: %v", err)
+			}
+
+			checkMariaDBHealth(crClient, ctx, slurmNamespace, t, config)
+
 			return ctx
 		}).Feature()
 }

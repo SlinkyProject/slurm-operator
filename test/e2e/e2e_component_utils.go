@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,6 +20,55 @@ import (
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 )
+
+// Dependency Component Health Checks
+
+func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, slurmNamespace string, t *testing.T, config *envconf.Config) context.Context {
+	// Get MariaDB CR
+
+	mariadb := &mariadbv1alpha1.MariaDB{}
+
+	mariadbKey := crclient.ObjectKey{
+		Namespace: slurmNamespace,
+		Name:      "mariadb",
+	}
+
+	err := crClient.Get(ctx, mariadbKey, mariadb)
+	if err != nil {
+		t.Fatal("failed to Get() mariadb using controller-runtime client")
+	}
+
+	// Get every StatefulSet
+	statefulSetList := appsv1.StatefulSetList{}
+	err = crClient.List(ctx, &statefulSetList)
+	if err != nil {
+		t.Fatal("failed to List() StatefulSets using controller-runtime client")
+	}
+
+	// Build a list of StatefulSets owned by this MariaDB CR
+	ownedStatefulSets := appsv1.StatefulSetList{}
+	for _, statefulSet := range statefulSetList.Items {
+		for _, owner := range statefulSet.OwnerReferences {
+			if owner.UID == mariadb.UID {
+				ownedStatefulSets.Items = append(ownedStatefulSets.Items, statefulSet)
+			}
+		}
+	}
+
+	// Get MariaDB StatefulSet using CR
+	for _, statefulSet := range ownedStatefulSets.Items {
+		err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(&statefulSet, func(object k8s.Object) int32 {
+			return object.(*appsv1.StatefulSet).Status.ReadyReplicas
+		}, 1))
+		if err != nil {
+			t.Fatalf("timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
+		}
+	}
+
+	return ctx
+}
+
+// Slinky Component Health Checks
 
 func checkControllerHealth(crClient crclient.Client, ctx context.Context, slurmNamespace string, t *testing.T, config *envconf.Config) {
 	// Get Controller CR
@@ -182,7 +232,7 @@ func checkAccountingHealth(crClient crclient.Client, ctx context.Context, slurmN
 }
 
 func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, slurmNamespace string, t *testing.T, config *envconf.Config) {
-	// Get LoginSet  CR
+	// Get LoginSet CR
 	loginSet := &slinkyv1beta1.LoginSet{}
 
 	loginSetKey := crclient.ObjectKey{
