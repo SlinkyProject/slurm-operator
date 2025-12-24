@@ -8,14 +8,13 @@ import (
 	"os"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/action"
+
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 	"sigs.k8s.io/e2e-framework/support/kind"
-
-	"helm.sh/helm/v3/pkg/action"
-	// mariadb "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
 )
 
 var (
