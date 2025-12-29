@@ -24,6 +24,7 @@ func (b *Builder) BuildAccountingService(accounting *slinkyv1beta1.Accounting) (
 		Selector: labels.NewBuilder().
 			WithAccountingSelectorLabels(accounting).
 			Build(),
+		Headless: accounting.Spec.Service.ServiceSpecWrapper.ServiceSpec.ClusterIP == corev1.ClusterIPNone,
 	}
 
 	port := corev1.ServicePort{
