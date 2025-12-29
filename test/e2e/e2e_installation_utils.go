@@ -251,7 +251,7 @@ func installPrometheus() types.Feature {
 
 // Slinky Components Installation
 
-func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool, withMetrics bool) types.Feature {
+func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool, withMetrics bool, withPyxis bool) types.Feature {
 	return features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			manager := helm.New(config.KubeconfigFile())
@@ -275,13 +275,20 @@ func installSlurm(slurmNamespace string, withAccounting bool, withLogin bool, wi
 				opts = append(opts, helm.WithArgs("--set 'accounting.enabled=true'"))
 			}
 
-			if withLogin {
+			if withLogin || withPyxis {
 				opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.enabled=true'"))
 			}
 
 			if withMetrics {
 				opts = append(opts, helm.WithArgs("--set 'controller.metrics.enabled=true'"))
 				opts = append(opts, helm.WithArgs("--set 'controller.metrics.serviceMonitor.enabled=true'"))
+			}
+
+			if withPyxis {
+				opts = append(opts, helm.WithArgs(`--set-json 'configFiles={"plugstack.conf":"include /usr/share/pyxis/*"}'`))
+				opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.login.image.repository=ghcr.io/slinkyproject/login-pyxis'"))
+				opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.securityContext.privileged=true'"))
+				opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository=ghcr.io/slinkyproject/slurmd-pyxis'"))
 			}
 
 			err = manager.RunInstall(opts...)

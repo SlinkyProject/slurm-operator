@@ -73,7 +73,7 @@ func TestMain(m *testing.M) {
 	os.Exit(testenv.Run(m))
 }
 
-func TestHelmInstallation(t *testing.T) {
+func TestInstallation(t *testing.T) {
 	const slinkyNamespace = "slinky"
 	const slurmNamespace = "slurm"
 
@@ -92,7 +92,7 @@ func TestHelmInstallation(t *testing.T) {
 		{
 			name: "Install Slurm",
 			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, false, false),
+				installSlurm(slurmNamespace, false, false, false, false),
 				testSlurmController(slurmNamespace),
 				testSlurmNodeSet(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -101,7 +101,7 @@ func TestHelmInstallation(t *testing.T) {
 		{
 			name: "Install Slurm with login",
 			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, true, false),
+				installSlurm(slurmNamespace, false, true, false, false),
 				testSlurmController(slurmNamespace),
 				testSlurmNodeSet(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -111,7 +111,7 @@ func TestHelmInstallation(t *testing.T) {
 			name: "Install Slurm with metrics",
 			steps: []types.Feature{
 				installPrometheus(),
-				installSlurm(slurmNamespace, false, false, true),
+				installSlurm(slurmNamespace, false, false, true, false),
 				testSlurmController(slurmNamespace),
 				testSlurmNodeSet(slurmNamespace),
 				uninstallSlurm(slurmNamespace),
@@ -122,7 +122,25 @@ func TestHelmInstallation(t *testing.T) {
 			steps: []types.Feature{
 				installMariadbOperator(),
 				applyMariaDBYaml(slurmNamespace),
-				installSlurm(slurmNamespace, true, false, false),
+				installSlurm(slurmNamespace, true, false, false, false),
+				testSlurmController(slurmNamespace),
+				testSlurmNodeSet(slurmNamespace),
+				uninstallSlurm(slurmNamespace),
+			},
+		},
+		{
+			name: "Install Slurm with Pyxis and Login",
+			steps: []types.Feature{
+				installSlurm(slurmNamespace, false, false, false, true),
+				testSlurmController(slurmNamespace),
+				testSlurmNodeSet(slurmNamespace),
+				uninstallSlurm(slurmNamespace),
+			},
+		},
+		{
+			name: "Install Slurm with Pyxis, Login, and Accounting",
+			steps: []types.Feature{
+				installSlurm(slurmNamespace, true, false, false, true),
 				testSlurmController(slurmNamespace),
 				testSlurmNodeSet(slurmNamespace),
 				uninstallSlurm(slurmNamespace),

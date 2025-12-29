@@ -332,4 +332,4 @@ test: envtest ## Run tests.
 
 .PHONY: test-e2e
 test-e2e:
-	go test -timeout 10m ./test/e2e
+	go test -timeout 15m ./test/e2e
