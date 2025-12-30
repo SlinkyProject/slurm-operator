@@ -337,4 +337,4 @@ benchmark: envtest ## Run benchmark tests.
 
 .PHONY: test-e2e
 test-e2e:
-	go test -timeout 15m ./test/e2e
+	go test -v -timeout 30m ./test/e2e

@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/SlinkyProject/slurm-operator/test"
 	"helm.sh/helm/v3/pkg/action"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -16,21 +17,17 @@ import (
 	"sigs.k8s.io/e2e-framework/support/kind"
 )
 
-var (
-	testenv env.Environment
-	testUID string
-)
-
+// TestMain configures the environment within which all e2e-tests are run
 func TestMain(m *testing.M) {
-	testenv = env.New()
+	test.Testenv = env.New()
 	kindClusterName := envconf.RandomName("test-e2e", 16)
-	basepath = getBasePath()
+	test.Basepath = test.GetBasePath()
 
 	// Build images for Slurm-operator and Slurm-operator-webhook
-	testUID = envconf.RandomName("testing", 16)
-	operatorName := "ghcr.io/slinkyproject/slurm-operator:" + testUID
-	webhookName := "ghcr.io/slinkyproject/slurm-operator-webhook:" + testUID
-	err := BuildOperatorImages(operatorName, webhookName)
+	test.TestUID = envconf.RandomName("testing", 16)
+	operatorName := "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
+	webhookName := "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
+	err := test.BuildOperatorImages(operatorName, webhookName)
 	if err != nil {
 		fmt.Printf("Failed to build images for Slurm-operator: %v", err)
 		os.Exit(1)
@@ -39,17 +36,17 @@ func TestMain(m *testing.M) {
 	// Build the slurm-operator-crds Helm chart
 	slurmOperatorCRDs := action.Package{
 		DependencyUpdate: true,
-		Destination:      basepath + "helm/slurm-operator/charts",
+		Destination:      test.Basepath + "helm/slurm-operator/charts",
 	}
-	_, err = slurmOperatorCRDs.Run(basepath+"helm/slurm-operator-crds", nil)
+	_, err = slurmOperatorCRDs.Run(test.Basepath+"helm/slurm-operator-crds", nil)
 	if err != nil {
 		fmt.Printf("Failed to build Helm chart for Slurm-operator: %v", err)
 		os.Exit(1)
 	}
 
 	// Use pre-defined environment funcs to create a kind cluster prior to test run
-	testenv.Setup(
-		envfuncs.CreateCluster(kind.NewProvider(), kindClusterName),
+	test.Testenv.Setup(
+		envfuncs.CreateClusterWithConfig(kind.NewProvider(), kindClusterName, test.Basepath+"hack/kind.yaml"),
 		envfuncs.LoadDockerImageToCluster(kindClusterName, operatorName),
 		envfuncs.LoadDockerImageToCluster(kindClusterName, webhookName),
 		envfuncs.CreateNamespace("slinky"),
@@ -60,7 +57,7 @@ func TestMain(m *testing.M) {
 	)
 
 	// Use pre-defined environment funcs to teardown kind cluster after tests
-	testenv.Finish(
+	test.Testenv.Finish(
 		envfuncs.DeleteNamespace("slinky"),
 		envfuncs.DeleteNamespace("slurm"),
 		envfuncs.DeleteNamespace("cert-manager"),
@@ -70,94 +67,90 @@ func TestMain(m *testing.M) {
 	)
 
 	// launch package tests
-	os.Exit(testenv.Run(m))
+	os.Exit(test.Testenv.Run(m))
 }
 
 func TestInstallation(t *testing.T) {
-	const slinkyNamespace = "slinky"
-	const slurmNamespace = "slurm"
-
 	tests := []struct {
-		name  string
-		steps []types.Feature
+		name         string
+		install      bool
+		test         bool
+		dependencies []types.Feature
+		config       test.SlurmInstallationConfig
 	}{
 		{
 			name: "Install slurm-operator",
-			steps: []types.Feature{
+			dependencies: []types.Feature{
 				installCertMgr(),
-				installSlurmOperatorCRDS(slinkyNamespace),
-				installSlurmOperator(testUID, slinkyNamespace),
+				installSlurmOperatorCRDS(),
+				installSlurmOperator(),
 			},
 		},
 		{
-			name: "Install Slurm",
-			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, false, false, false),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
+			name:    "Install Slurm",
+			install: true,
+			test:    true,
+			config:  test.SlurmInstallationConfig{},
+		},
+		{
+			name:    "Install Slurm with login",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Login: true,
 			},
 		},
 		{
-			name: "Install Slurm with login",
-			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, true, false, false),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
+			name:    "Install Slurm with metrics",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Metrics: true,
 			},
 		},
 		{
-			name: "Install Slurm with metrics",
-			steps: []types.Feature{
-				installPrometheus(),
-				installSlurm(slurmNamespace, false, false, true, false),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
-			},
-		},
-		{
-			name: "Install Slurm with accounting",
-			steps: []types.Feature{
+			name:    "Install Slurm with accounting",
+			install: true,
+			test:    true,
+			dependencies: []types.Feature{
 				installMariadbOperator(),
-				applyMariaDBYaml(slurmNamespace),
-				installSlurm(slurmNamespace, true, false, false, false),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
+				applyMariaDBYaml(),
+			},
+			config: test.SlurmInstallationConfig{
+				Accounting: true,
 			},
 		},
 		{
-			name: "Install Slurm with Pyxis and Login",
-			steps: []types.Feature{
-				installSlurm(slurmNamespace, false, false, false, true),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
+			name:    "Install Slurm with Pyxis and Login",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Pyxis: true,
 			},
 		},
 		{
-			name: "Install Slurm with Pyxis, Login, and Accounting",
-			steps: []types.Feature{
-				installSlurm(slurmNamespace, true, false, false, true),
-				testSlurmController(slurmNamespace),
-				testSlurmNodeSet(slurmNamespace),
-				uninstallSlurm(slurmNamespace),
+			name:    "Install Slurm with Pyxis, Login, and Accounting",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Pyxis:      true,
+				Accounting: true,
 			},
 		},
 		{
 			name: "Uninstall slurm-operator",
-			steps: []types.Feature{
-				uninstallSlurmOperator(slinkyNamespace),
-				uninstallSlurmOperatorCRDs(slinkyNamespace),
+			dependencies: []types.Feature{
+				uninstallSlurmOperator(),
+				uninstallSlurmOperatorCRDs(),
 			},
 		},
 	}
 
 	for _, tt := range tests {
+		steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
+
 		t.Run(tt.name, func(t *testing.T) {
-			_ = testenv.Test(t, tt.steps...)
+			_ = test.Testenv.Test(t, steps...)
 		})
 	}
 }
