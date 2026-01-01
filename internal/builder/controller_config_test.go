@@ -296,3 +296,143 @@ ignoresystemd=yes`,
 		})
 	}
 }
+
+func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
+	tests := []struct {
+		name       string
+		c          client.Client
+		controller *slinkyv1beta1.Controller
+		want       *corev1.ConfigMap
+		wantErr    bool
+	}{
+		{
+			name: "default",
+			c:    fake.NewFakeClient(),
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "slurm",
+				},
+			},
+			want: &corev1.ConfigMap{
+				Data: map[string]string{
+					slurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "With config",
+			c:    fake.NewFakeClient(),
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "slurm",
+				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					ExtraConf: strings.Join([]string{
+						"MinJobAge=2",
+					}, "\n"),
+				},
+			},
+			want: &corev1.ConfigMap{
+				Data: map[string]string{
+					slurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "With accounting, nodesets, config",
+			c: fake.NewClientBuilder().
+				WithObjects(&slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				}).
+				WithObjects(&slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				}).
+				WithObjects(&slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm-foo",
+					},
+					Spec: slinkyv1beta1.NodeSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+						ExtraConf: strings.Join([]string{
+							"features=bar",
+						}, " "),
+						Partition: slinkyv1beta1.NodeSetPartition{
+							Enabled: true,
+						},
+						Template: slinkyv1beta1.PodTemplate{
+							PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
+								PodSpec: corev1.PodSpec{
+									Hostname: "foo-",
+								},
+							},
+						},
+					},
+				}).
+				WithObjects(&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm-config",
+					},
+					Data: map[string]string{
+						cgroupConfFile: `# Override cgroup.conf
+							CgroupPlugin=autodetect
+							IgnoreSystemd=yes
+							ConstrainCores=yes
+							ConstrainRAMSpace=yes
+							ConstrainDevices=yes
+							ConstrainSwapSpace=yes`,
+						"foo.conf": "Foo=bar",
+					},
+				}).
+				Build(),
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "slurm",
+				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					AccountingRef: slinkyv1beta1.ObjectReference{
+						Name: "slurm",
+					},
+					ConfigFileRefs: []slinkyv1beta1.ObjectReference{
+						{Name: "slurm-config"},
+					},
+				},
+			},
+			want: &corev1.ConfigMap{
+				Data: map[string]string{
+					slurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/slurmdbd\nAccountingStorageHost=slurm-accounting\nAccountingStoragePort=6819\n",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := New(tt.c)
+			got, gotErr := b.BuildControllerConfigExternal(tt.controller)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("BuildControllerConfigExternal() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("BuildControllerConfigExternal() succeeded unexpectedly")
+			}
+			if got.Data[slurmConfFile] == "" && got.BinaryData[slurmConfFile] == nil {
+				t.Errorf("got.Data[%s] = %v", slurmConfFile, got.Data[slurmConfFile])
+			}
+			if got.Data[slurmConfFile] != tt.want.Data[slurmConfFile] {
+				t.Errorf("got.Data[%s] = %v\nwant.Data[%s] = %v", slurmConfFile, got.Data[slurmConfFile], slurmConfFile, tt.want.Data[slurmConfFile])
+
+			}
+		})
+	}
+}

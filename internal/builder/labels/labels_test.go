@@ -8,6 +8,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewBuilder(t *testing.T) {
@@ -106,6 +107,187 @@ func TestNewBuilder(t *testing.T) {
 			},
 			want: map[string]string{
 				"foo": "bar",
+			},
+		},
+		{
+			name: "WithControllerSelectorLabels",
+			args: args{
+				builder: NewBuilder().
+					WithControllerSelectorLabels(
+						&slinkyv1beta1.Controller{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel: "test",
+				AppLabel:      ControllerApp,
+			},
+		},
+		{
+			name: "WithControllerLabels",
+			args: args{
+				builder: NewBuilder().
+					WithControllerLabels(
+						&slinkyv1beta1.Controller{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel:  "test",
+				AppLabel:       ControllerApp,
+				componentLabel: ControllerComp,
+			},
+		},
+		{
+			name: "WithRestapiSelectorLabels",
+			args: args{
+				builder: NewBuilder().
+					WithRestapiSelectorLabels(
+						&slinkyv1beta1.RestApi{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel: "test",
+				AppLabel:      RestapiApp,
+			},
+		},
+		{
+			name: "WithRestapiLabels",
+			args: args{
+				builder: NewBuilder().
+					WithRestapiLabels(
+						&slinkyv1beta1.RestApi{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel:  "test",
+				AppLabel:       RestapiApp,
+				componentLabel: RestapiComp,
+			},
+		},
+		{
+			name: "WithAccountingSelectorLabels",
+			args: args{
+				builder: NewBuilder().
+					WithAccountingSelectorLabels(
+						&slinkyv1beta1.Accounting{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel: "test",
+				AppLabel:      AccountingApp,
+			},
+		},
+		{
+			name: "WithAccountingLabels",
+			args: args{
+				builder: NewBuilder().
+					WithAccountingLabels(
+						&slinkyv1beta1.Accounting{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel:  "test",
+				AppLabel:       AccountingApp,
+				componentLabel: AccountingComp,
+			},
+		},
+		{
+			name: "WithWorkerSelectorLabels",
+			args: args{
+				builder: NewBuilder().
+					WithWorkerSelectorLabels(
+						&slinkyv1beta1.NodeSet{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel: "test",
+				AppLabel:      WorkerApp,
+			},
+		},
+		{
+			name: "WithWorkerLabels",
+			args: args{
+				builder: NewBuilder().
+					WithWorkerLabels(
+						&slinkyv1beta1.NodeSet{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+							Spec: slinkyv1beta1.NodeSetSpec{
+								ControllerRef: slinkyv1beta1.ObjectReference{
+									Name: "slurm",
+								},
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel:  "test",
+				AppLabel:       WorkerApp,
+				componentLabel: WorkerComp,
+				clusterLabel:   "slurm",
+			},
+		},
+		{
+			name: "WithLoginSelectorLabels",
+			args: args{
+				builder: NewBuilder().
+					WithLoginSelectorLabels(
+						&slinkyv1beta1.LoginSet{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel: "test",
+				AppLabel:      LoginApp,
+			},
+		},
+		{
+			name: "WithLoginLabels",
+			args: args{
+				builder: NewBuilder().
+					WithLoginLabels(
+						&slinkyv1beta1.LoginSet{
+							ObjectMeta: v1.ObjectMeta{
+								Name: "test",
+							},
+						},
+					),
+			},
+			want: map[string]string{
+				instanceLabel:  "test",
+				AppLabel:       LoginApp,
+				componentLabel: LoginComp,
 			},
 		},
 	}
