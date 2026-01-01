@@ -107,17 +107,20 @@ func TestInstallation(t *testing.T) {
 			config: test.SlurmInstallationConfig{
 				Metrics: true,
 			},
+			dependencies: []types.Feature{
+				installPrometheus(),
+			},
 		},
 		{
 			name:    "Install Slurm with accounting",
 			install: true,
 			test:    true,
+			config: test.SlurmInstallationConfig{
+				Accounting: true,
+			},
 			dependencies: []types.Feature{
 				installMariadbOperator(),
 				applyMariaDBYaml(),
-			},
-			config: test.SlurmInstallationConfig{
-				Accounting: true,
 			},
 		},
 		{
@@ -129,9 +132,7 @@ func TestInstallation(t *testing.T) {
 			},
 		},
 		{
-			name:    "Install Slurm with Pyxis, Login, and Accounting",
-			install: true,
-			test:    true,
+			name: "Install Slurm with Pyxis, Login, and Accounting",
 			config: test.SlurmInstallationConfig{
 				Pyxis:      true,
 				Accounting: true,

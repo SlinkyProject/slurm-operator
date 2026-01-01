@@ -245,6 +245,115 @@ func testSlurmNodeSet() types.Feature {
 		}).Feature()
 }
 
+func testSlurmAccounting() types.Feature {
+	return features.New("Assess the functionality of the Slurm Accounting").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
+		Assess("Controller can contact accounting", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "ping"}
+			var wants string
+
+			var cleanup_command string
+			var cleanup_args []string
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+
+			return ctx
+		}).
+		Assess("Sacctmgr has cluster entry", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "cluster", "format=cluster%30", "-n"}
+
+			cmd := exec.Command(command, args...)
+			output, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr show cluster returned non-zero error code")
+			}
+
+			if strings.TrimSpace(string(output)) != "slurm_slurm" {
+				t.Fatalf("Clustername in slurmdbd %s does not match expected slurm_slurm", string(output))
+			}
+
+			return ctx
+		}).
+		Assess("Sacctmgr add account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "cluster=slurm_slurm", "name=test", "-i"}
+
+			cmd := exec.Command(command, args...)
+			_, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr add account returned non-zero error code")
+			}
+
+			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
+			cmd = exec.Command(command, args...)
+			output, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr show account returned non-zero error code")
+			}
+
+			if strings.TrimSpace(string(output)) != "test" {
+				t.Fatal("Account test does not exist in slurmdbd")
+			}
+
+			return ctx
+		}).
+		Assess("Sacctmgr add user", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "cluster=slurm_slurm", "account=test", "name=testuser", "-i"}
+
+			cmd := exec.Command(command, args...)
+			_, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr add user returned non-zero error code")
+			}
+
+			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
+			cmd = exec.Command(command, args...)
+			output, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr show user returned non-zero error code")
+			}
+
+			if strings.TrimSpace(string(output)) != "testuser" {
+				t.Fatal("User testuser does not exist in slurmdbd")
+			}
+
+			return ctx
+		}).
+		Assess("Sacctmgr delete account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "delete", "account", "test", "-i"}
+
+			cmd := exec.Command(command, args...)
+			_, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr add account returned non-zero error code")
+			}
+
+			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
+			cmd = exec.Command(command, args...)
+			output, err := cmd.Output()
+			if err != nil {
+				t.Fatal("sacctmgr show account returned non-zero error code")
+			}
+
+			if strings.TrimSpace(string(output)) == "test" {
+				t.Fatal("Account test was not deleted from slurmdbd")
+			}
+
+			return ctx
+		}).Feature()
+}
+
 func GetControllerRuntimeClient(config *envconf.Config) (crclient.Client, error) {
 	var scheme = k8sruntime.NewScheme()
 	err := slinkyv1beta1.AddToScheme(scheme)
