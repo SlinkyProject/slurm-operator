@@ -67,6 +67,18 @@ manifest should match snapshot:
           - update
           - watch
       - apiGroups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
           - policy
         resources:
           - poddisruptionbudgets
@@ -119,6 +131,15 @@ manifest should match snapshot:
           - get
           - patch
           - update
+      - apiGroups:
+          - coordination.k8s.io
+        resources:
+          - leases
+        verbs:
+          - get
+          - create
+          - update
+          - patch
   3: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding

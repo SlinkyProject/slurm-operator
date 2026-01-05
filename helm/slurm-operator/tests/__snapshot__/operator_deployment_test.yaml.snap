@@ -49,6 +49,9 @@ manifest should match snapshot:
                 - :8081
                 - --metrics-addr
                 - :8080
+                - --leader-elect
+                - --leader-elect-namespace
+                - test-namespace
               image: ghcr.io/slinkyproject/slurm-operator:1.2.3
               imagePullPolicy: IfNotPresent
               livenessProbe:

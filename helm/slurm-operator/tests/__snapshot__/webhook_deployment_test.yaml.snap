@@ -35,8 +35,13 @@ manifest should match snapshot:
             - args:
                 - --zap-log-level
                 - info
+                - --server-addr
+                - :9443
                 - --health-addr
                 - :8081
+                - --leader-elect
+                - --leader-elect-namespace
+                - test-namespace
               image: ghcr.io/slinkyproject/slurm-operator-webhook:1.2.3
               imagePullPolicy: IfNotPresent
               livenessProbe:
