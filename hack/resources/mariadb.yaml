@@ -18,7 +18,7 @@ spec:
   database: slurm_acct_db
 
   storage:
-    size: 1Gi
+    size: 16Gi
 
   replicas: 1
 

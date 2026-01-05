@@ -31,13 +31,14 @@ import (
 
 // NewNodeSetPod returns a new Pod conforming to the nodeset's Spec with an identity generated from ordinal.
 func NewNodeSetPod(
+	client client.Client,
 	nodeset *slinkyv1beta1.NodeSet,
 	controller *slinkyv1beta1.Controller,
 	ordinal int,
 	revisionHash string,
 ) *corev1.Pod {
 	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK)
-	podTemplate := builder.New(nil).BuildWorkerPodTemplate(nodeset, controller)
+	podTemplate := builder.New(client).BuildWorkerPodTemplate(nodeset, controller)
 	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
 	pod.Name = GetPodName(nodeset, ordinal)
 	initIdentity(nodeset, pod)
@@ -46,6 +47,10 @@ func NewNodeSetPod(
 	if revisionHash != "" {
 		historycontrol.SetRevision(pod.Labels, revisionHash)
 	}
+
+	// The pod's PodAntiAffinity will be updated to make sure the Pod is not
+	// scheduled on the same Node as another NodeSet pod.
+	pod.Spec.Affinity = updateNodeSetPodAntiAffinity(pod.Spec.Affinity)
 
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
 	// be avoided and priorityClass will not be honored.
@@ -105,6 +110,54 @@ func UpdateStorage(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	pod.Spec.Volumes = newVolumes
 }
 
+// updateNodeSetPodAntiAffinity will add PodAntiAffinity such that a Kube node can only have one NodeSet pod.
+func updateNodeSetPodAntiAffinity(affinity *corev1.Affinity) *corev1.Affinity {
+	labelSelectorRequirement := metav1.LabelSelectorRequirement{
+		Key:      labels.AppLabel,
+		Operator: metav1.LabelSelectorOpIn,
+		Values:   []string{labels.WorkerApp},
+	}
+
+	podAffinityTerm := corev1.PodAffinityTerm{
+		TopologyKey: corev1.LabelHostname,
+		LabelSelector: &metav1.LabelSelector{
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				labelSelectorRequirement,
+			},
+		},
+	}
+
+	podAffinityTerms := []corev1.PodAffinityTerm{
+		podAffinityTerm,
+	}
+
+	if affinity == nil {
+		return &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
+			},
+		}
+	}
+
+	if affinity.PodAntiAffinity == nil {
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: podAffinityTerms,
+		}
+		return affinity
+	}
+
+	podAntiAffinity := affinity.PodAntiAffinity
+
+	if podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = podAffinityTerms
+		return affinity
+	}
+
+	podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, podAffinityTerms...)
+
+	return affinity
+}
+
 // IsPodFromNodeSet returns if the name schema matches
 func IsPodFromNodeSet(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	found, err := regexp.MatchString(fmt.Sprintf("^%s-", nodeset.Name), pod.Name)
@@ -151,8 +204,11 @@ func GetPodName(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
 	return fmt.Sprintf("%s-%d", nodeset.Name, ordinal)
 }
 
-// GetPodName gets the name of nodeset's child Pod with an ordinal index of ordinal
+// GetNodeName returns the Slurm node name
 func GetNodeName(pod *corev1.Pod) string {
+	if pod.Spec.HostNetwork {
+		return pod.Spec.NodeName
+	}
 	if pod.Spec.Hostname != "" {
 		return pod.Spec.Hostname
 	}

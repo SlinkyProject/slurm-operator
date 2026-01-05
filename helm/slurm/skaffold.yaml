@@ -14,6 +14,7 @@ deploy:
           - ./values-dev.yaml
         namespace: slurm
         createNamespace: true
+        skipBuildDependencies: true
 # https://skaffold.dev/docs/port-forwarding/
 portForward:
   - resourceType: service

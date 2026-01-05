@@ -39,6 +39,9 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		{
 			Name: "Service",
 			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
+				if accounting.Spec.External {
+					return nil
+				}
 				object, err := r.builder.BuildAccountingService(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -46,13 +49,15 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 				if err := objectutils.SyncObject(r.Client, ctx, object, true); err != nil {
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
 				}
-
 				return nil
 			},
 		},
 		{
 			Name: "Config",
 			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
+				if accounting.Spec.External {
+					return nil
+				}
 				object, err := r.builder.BuildAccountingConfig(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -66,6 +71,9 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		{
 			Name: "StatefulSet",
 			Sync: func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error {
+				if accounting.Spec.External {
+					return nil
+				}
 				object, err := r.builder.BuildAccounting(accounting)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)

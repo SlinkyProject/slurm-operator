@@ -9,6 +9,7 @@ const (
 
 	NodeSetPrefix  = "nodeset." + SlinkyPrefix
 	LoginSetPrefix = "loginset." + SlinkyPrefix
+	TopologyPrefix = "topology." + SlinkyPrefix
 )
 
 // Well Known Annotations
@@ -34,6 +35,10 @@ const (
 	// AnnotationNodeCordonReason indicates a custom reason for the Slurm DRAIN action taken when the Kube node on which
 	// a NodeSet pod is scheduled is cordoned
 	AnnotationNodeCordonReason = NodeSetPrefix + "node-cordon-reason"
+
+	// AnnotationNodeTopologyLine indicates the Slurm dynamic topology line (e.g. "topo-switch:s2,topo-block:b2").
+	// Ref: https://slurm.schedmd.com/topology.html#dynamic_topo
+	AnnotationNodeTopologyLine = TopologyPrefix + "line"
 )
 
 // Well Known Labels

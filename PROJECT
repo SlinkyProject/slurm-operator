@@ -12,77 +12,77 @@ projectName: slurm-operator
 repo: github.com/SlinkyProject/slurm-operator
 resources:
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: Controller
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: RestApi
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: Accounting
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: NodeSet
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: LoginSet
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
-    crdVersion: v1alpha1
+    crdVersion: v1beta1
     namespaced: true
   controller: true
   domain: slurm.net
   group: slinky
   kind: Token
-  path: github.com/SlinkyProject/slurm-operator/api/v1alpha1
-  version: v1alpha1
+  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  version: v1beta1
   webhooks:
     validation: true
-    webhookVersion: v1alpha1
+    webhookVersion: v1beta1
 - api:
     crdVersion: v1
     namespaced: true

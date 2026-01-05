@@ -73,7 +73,9 @@ func (b *Builder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Deployme
 		WithLoginSelectorLabels(loginset).
 		Build()
 	objectMeta := metadata.NewBuilder(key).
-		WithMetadata(loginset.Spec.Template.PodMetadata).
+		WithAnnotations(loginset.Annotations).
+		WithLabels(loginset.Labels).
+		WithMetadata(loginset.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
 		Build()
 
@@ -116,7 +118,9 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 	}
 
 	objectMeta := metadata.NewBuilder(key).
-		WithMetadata(loginset.Spec.Template.PodMetadata).
+		WithAnnotations(loginset.Annotations).
+		WithLabels(loginset.Labels).
+		WithMetadata(loginset.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
 		WithAnnotations(hashMap).
 		WithAnnotations(map[string]string{
@@ -139,6 +143,9 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 			Containers: []corev1.Container{
 				b.loginContainer(spec.Login.Container, controller),
 			},
+			InitContainers: []corev1.Container{
+				b.initconfContainer(spec.InitConf),
+			},
 			DNSConfig: &corev1.PodDNSConfig{
 				Searches: []string{
 					slurmClusterWorkerService(spec.ControllerRef.Name, loginset.Namespace),
@@ -154,6 +161,7 @@ func (b *Builder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev1.Pod
 
 func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Controller) []corev1.Volume {
 	out := []corev1.Volume{
+		etcSlurmVolume(),
 		{
 			Name: sackdVolume,
 			VolumeSource: corev1.VolumeSource{
@@ -163,7 +171,7 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 			},
 		},
 		{
-			Name: slurmEtcVolume,
+			Name: slurmConfigVolume,
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
 					DefaultMode: ptr.To[int32](0o600),
@@ -256,7 +264,12 @@ func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1bet
 	opts := ContainerOpts{
 		base: corev1.Container{
 			Name: labels.LoginApp,
-			Env:  loginEnv(merge, controller),
+			Env: []corev1.EnvVar{
+				{
+					Name:  "SACKD_OPTIONS",
+					Value: strings.Join(configlessArgs(controller), " "),
+				},
+			},
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          labels.LoginApp,
@@ -294,22 +307,6 @@ func (b *Builder) loginContainer(merge corev1.Container, controller *slinkyv1bet
 
 	return b.BuildContainer(opts)
 }
-
-func loginEnv(container corev1.Container, controller *slinkyv1beta1.Controller) []corev1.EnvVar {
-	env := []corev1.EnvVar{
-		{
-			Name:  "SACKD_OPTIONS",
-			Value: strings.Join(configlessArgs(controller), " "),
-		},
-	}
-	return mergeEnvVar(env, container.Env, " ")
-}
-
-const (
-	annotationSshdConfHash    = slinkyv1beta1.LoginSetPrefix + "sshd-conf-hash"
-	annotationSssdConfHash    = slinkyv1beta1.LoginSetPrefix + "sssd-conf-hash"
-	annotationSshHostKeysHash = slinkyv1beta1.LoginSetPrefix + "ssh-host-keys-hash"
-)
 
 func (b *Builder) getLoginHashes(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (map[string]string, error) {
 	sshConfig := &corev1.ConfigMap{}

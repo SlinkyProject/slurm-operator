@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -47,6 +48,8 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		oldObj = &slinkyv1beta1.LoginSet{}
 	case *policyv1.PodDisruptionBudget:
 		oldObj = &policyv1.PodDisruptionBudget{}
+	case *monitoringv1.ServiceMonitor:
+		oldObj = &monitoringv1.ServiceMonitor{}
 	default:
 		return errors.New("unhandled object, this is a bug")
 	}
@@ -165,6 +168,31 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
 		obj.Spec.MinAvailable = o.Spec.MinAvailable
 		obj.Spec.Selector = o.Spec.Selector
+	case *monitoringv1.ServiceMonitor:
+		obj := oldObj.(*monitoringv1.ServiceMonitor)
+		patch = client.MergeFrom(obj.DeepCopy())
+		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		obj.Spec.JobLabel = o.Spec.JobLabel
+		obj.Spec.TargetLabels = o.Spec.TargetLabels
+		obj.Spec.PodTargetLabels = o.Spec.PodTargetLabels
+		obj.Spec.Endpoints = o.Spec.Endpoints
+		obj.Spec.Selector = o.Spec.Selector
+		obj.Spec.SelectorMechanism = o.Spec.SelectorMechanism
+		obj.Spec.NamespaceSelector = o.Spec.NamespaceSelector
+		obj.Spec.SampleLimit = o.Spec.SampleLimit
+		obj.Spec.ScrapeProtocols = o.Spec.ScrapeProtocols
+		obj.Spec.FallbackScrapeProtocol = o.Spec.FallbackScrapeProtocol
+		obj.Spec.TargetLimit = o.Spec.TargetLimit
+		obj.Spec.LabelLimit = o.Spec.LabelLimit
+		obj.Spec.LabelNameLengthLimit = o.Spec.LabelNameLengthLimit
+		obj.Spec.LabelValueLengthLimit = o.Spec.LabelValueLengthLimit
+		obj.Spec.NativeHistogramConfig = o.Spec.NativeHistogramConfig
+		obj.Spec.KeepDroppedTargets = o.Spec.KeepDroppedTargets
+		obj.Spec.AttachMetadata = o.Spec.AttachMetadata
+		obj.Spec.ScrapeClassName = o.Spec.ScrapeClassName
+		obj.Spec.BodySizeLimit = o.Spec.BodySizeLimit
+		obj.Spec.ServiceDiscoveryRole = o.Spec.ServiceDiscoveryRole
 	default:
 		return errors.New("unhandled patch object, this is a bug")
 	}

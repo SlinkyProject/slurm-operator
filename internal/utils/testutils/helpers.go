@@ -15,6 +15,7 @@ import (
 )
 
 const Timeout = 30 * time.Second
+const Interval = 2 * time.Second
 
 func NewObjectRef(obj client.Object) slinkyv1beta1.ObjectReference {
 	return slinkyv1beta1.ObjectReference{
@@ -124,11 +125,6 @@ func NewAccounting(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySele
 					Image: "slurmdbd",
 				},
 			},
-			InitConf: slinkyv1beta1.ContainerWrapper{
-				Container: corev1.Container{
-					Image: "sackd",
-				},
-			},
 		},
 	}
 }
@@ -201,6 +197,12 @@ func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef 
 					Image: "login",
 				},
 			},
+			InitConf: slinkyv1beta1.ContainerWrapper{
+				Container: corev1.Container{
+					Image: "login",
+				},
+			},
+
 			SssdConfRef: sssdConfRef,
 		},
 	}

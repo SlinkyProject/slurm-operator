@@ -12,22 +12,18 @@ import (
 
 // Get keys from map
 func Keys[K comparable, V any](items map[K]V) []K {
-	keys := make([]K, len(items))
-	i := 0
+	keys := make([]K, 0, len(items))
 	for k := range items {
-		keys[i] = k
-		i++
+		keys = append(keys, k)
 	}
 	return keys
 }
 
 // Get values from map
 func Values[K comparable, V any](items map[K]V) []V {
-	vals := make([]V, len(items))
-	i := 0
+	vals := make([]V, 0, len(items))
 	for _, v := range items {
-		vals[i] = v
-		i++
+		vals = append(vals, v)
 	}
 	return vals
 }

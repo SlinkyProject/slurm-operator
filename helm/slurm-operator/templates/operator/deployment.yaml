@@ -71,6 +71,11 @@ spec:
             - --metrics-addr
             - {{ printf ":%s" (toString .) | quote }}
             {{- end }}{{- /* with .Values.operator.metricsPort */}}
+            {{- if .Values.operator.leaderElection }}
+            - --leader-elect
+            {{- end }}{{- /* if .Values.operator.leaderElection */}}
+            - --leader-elect-namespace
+            - {{ include "slurm-operator.namespace" . }}
           livenessProbe:
             httpGet:
               path: /healthz

@@ -1,14 +1,5 @@
 # Kubernetes Operator for Slurm Clusters
 
-<div align="center">
-
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](./LICENSES/Apache-2.0.txt)
-[![Tag](https://img.shields.io/github/v/tag/SlinkyProject/slurm-operator?style=for-the-badge)](https://github.com/SlinkyProject/slurm-operator/tags/)
-[![Go-Version](https://img.shields.io/github/go-mod/go-version/SlinkyProject/slurm-operator?style=for-the-badge)](./go.mod)
-[![Last-Commit](https://img.shields.io/github/last-commit/SlinkyProject/slurm-operator?style=for-the-badge)](https://github.com/SlinkyProject/slurm-operator/commits/)
-
-</div>
-
 Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
 
 ## Table of Contents
@@ -20,6 +11,7 @@ Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
   - [Overview](#overview)
     - [Slurm Cluster](#slurm-cluster)
   - [Features](#features)
+    - [Controller](#controller)
     - [NodeSets](#nodesets)
     - [LoginSets](#loginsets)
     - [Hybrid Support](#hybrid-support)
@@ -68,6 +60,21 @@ For additional information about Slurm, see the [slurm][slurm-docs] docs.
 
 ## Features
 
+### Controller
+
+The Slurm control-plane is responsible for scheduling Slurm workload onto its
+worker nodes and managing their states.
+
+Changes to the Slurm configuration files are automatically detected and the
+Slurm cluster is reconfigured seamlessly with zero downtime of the Slurm
+control-plane.
+
+> [!NOTE]
+> The kubelet's `configMapAndSecretChangeDetectionStrategy` and `syncFrequency`
+> settings directly affect when pods have their mounted ConfigMaps and Secrets
+> updated. By default, the kubelet is in `Watch` mode with a polling frequency
+> of 60 seconds.
+
 ### NodeSets
 
 A set of homogeneous Slurm workers (compute nodes), which are delegated to
@@ -102,7 +109,7 @@ zero can be best paired with LoginSets.
 ### Hybrid Support
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRD are designed support these use cases.
+Kubernetes. The operator and its CRDs are designed support these use cases.
 
 ### Slurm
 
@@ -136,7 +143,7 @@ Slurm is a full featured HPC workload manager. To highlight a few features:
 | Software   |                             Minimum Version                              |
 | :--------- | :----------------------------------------------------------------------: |
 | Kubernetes | [v1.29](https://kubernetes.io/blog/2023/12/13/kubernetes-v1-29-release/) |
-| Slurm      | [25.05](https://www.schedmd.com/slurm-version-25-05-0-is-now-available/) |
+| Slurm      | [25.11](https://www.schedmd.com/slurm-version-25-11-0-is-now-available/) |
 | Cgroup     |         [v2](https://docs.kernel.org/admin-guide/cgroup-v2.html)         |
 
 ## Quick Start

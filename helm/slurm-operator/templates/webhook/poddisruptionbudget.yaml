@@ -1,0 +1,21 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.webhook.enabled }}
+{{- if .Values.webhook.pdb }}
+{{- if .Values.webhook.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "slurm-operator.webhook.name" . }}
+  namespace: {{ include "slurm-operator.namespace" . }}
+spec:
+  minAvailable: {{ .Values.webhook.pdb.minAvailable}}
+  selector:
+    matchLabels:
+      {{- include "slurm-operator.webhook.selectorLabels" . | nindent 6 }}
+{{- end }}{{- /* if .Values.webhook.pdb.enabled */}}
+{{- end }}{{- /* if .Values.webhook.pdb */}}
+{{- end }}{{- /* if .Values.webhook.enabled */}}

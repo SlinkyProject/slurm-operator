@@ -37,6 +37,10 @@ spec:
           args:
             - --zap-log-level
             - {{ default "info" .Values.webhook.logLevel | quote }}
+            {{- with .Values.webhook.serverPort }}
+            - --server-addr
+            - {{ printf ":%s" (toString .) | quote }}
+            {{- end }}{{- /* with .Values.webhook.serverPort */}}
             {{- with .Values.webhook.healthPort }}
             - --health-addr
             - {{ printf ":%s" (toString .) | quote }}
@@ -45,6 +49,11 @@ spec:
             - --metrics-addr
             - {{ printf ":%s" (toString .) | quote }}
             {{- end }}{{- /* with .Values.webhook.metricsPort */}}
+            {{- if .Values.webhook.leaderElection }}
+            - --leader-elect
+            {{- end }}{{- /* if .Values.webhook.leaderElection */}}
+            - --leader-elect-namespace
+            - {{ include "slurm-operator.namespace" . }}
           livenessProbe:
             httpGet:
               path: /healthz

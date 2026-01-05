@@ -44,6 +44,7 @@ var cancel context.CancelFunc
 var clientMap *clientmap.ClientMap
 
 func init() {
+	utilruntime.Must(scheme.AddToScheme(scheme.Scheme))
 	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme.Scheme))
 }
 

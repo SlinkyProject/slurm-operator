@@ -6,7 +6,9 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"net"
 	"os"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -22,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	slinkyv1alpha1 "github.com/SlinkyProject/slurm-operator/api/v1alpha1"
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	slinkywebhook "github.com/SlinkyProject/slurm-operator/internal/webhook"
 	// +kubebuilder:scaffold:imports
@@ -36,21 +37,28 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(slinkyv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
 // Input flags to the command
 type Flags struct {
-	enableLeaderElection bool
-	probeAddr            string
-	metricsAddr          string
-	secureMetrics        bool
-	enableHTTP2          bool
+	enableLeaderElection    bool
+	leaderElectionNamespace string
+	serverAddr              string
+	probeAddr               string
+	metricsAddr             string
+	secureMetrics           bool
+	enableHTTP2             bool
 }
 
 func parseFlags(flags *Flags) {
+	flag.StringVar(
+		&flags.serverAddr,
+		"server-addr",
+		":9443",
+		"The address the webhook server binds to.",
+	)
 	flag.StringVar(
 		&flags.probeAddr,
 		"health-addr",
@@ -70,12 +78,21 @@ func parseFlags(flags *Flags) {
 		("Enable leader election for controller manager. " +
 			"Enabling this will ensure there is only one active controller manager."),
 	)
+	flag.StringVar(
+		&flags.leaderElectionNamespace,
+		"leader-elect-namespace",
+		"",
+		"Determines the namespace in which the leader election resource will be created.",
+	)
 	flag.BoolVar(&flags.secureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.Parse()
 }
+
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;create;update;patch;watch
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;create;update;patch
 
 func main() {
 	var flags Flags
@@ -100,6 +117,17 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
+	webhookHost, webhookPortStr, err := net.SplitHostPort(flags.serverAddr)
+	if err != nil {
+		setupLog.Error(err, "unable to parse webhook server address", "addr", flags.serverAddr)
+		os.Exit(1)
+	}
+	webhookPort, err := strconv.Atoi(webhookPortStr)
+	if err != nil {
+		setupLog.Error(err, "unable to convert webhook port to integer", "port", webhookPortStr)
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
@@ -107,12 +135,15 @@ func main() {
 			TLSOpts:     tlsOpts,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
+			Host:    webhookHost,
+			Port:    webhookPort,
 			TLSOpts: tlsOpts,
 		}),
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
-		LeaderElectionID:              "0033bda7.slinky.slurm.net",
+		LeaderElectionID:              "slurm-operator-webhook",
 		LeaderElectionReleaseOnCancel: true,
+		LeaderElectionNamespace:       flags.leaderElectionNamespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -151,6 +182,12 @@ func main() {
 	}
 	if err = (&slinkywebhook.TokenWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Token")
+		os.Exit(1)
+	}
+	if err = (&slinkywebhook.PodBindingWebhook{
+		Client: mgr.GetClient(),
+	}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "pods/binding")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

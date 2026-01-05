@@ -61,9 +61,14 @@ operator:
     # requests:
     #   cpu: 1
     #   memory: 1Gi
-    # limits:
-    #   cpu: 2
-    #   memory: 4Gi
+  # PodDisruptionBudget configuration.
+  # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  pdb:
+    # -- Enable PodDisruptionBudget.
+    enabled: false
+    # -- Minimum number of pods that must still be available after eviction.
+    # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
+    minAvailable: 1
   # -- Set the max concurrent workers for the Accounting controller.
   accountingWorkers: 4
   # -- Set the max concurrent workers for the Controller controller.
@@ -84,6 +89,8 @@ operator:
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 8080
+  # -- Enable leader election for slurm-operator
+  leaderElection: true
 
 
 # Webhook configurations.
@@ -123,15 +130,24 @@ webhook:
     # requests:
     #   cpu: 1
     #   memory: 1Gi
-    # limits:
-    #   cpu: 2
-    #   memory: 4Gi
+  # PodDisruptionBudget configuration.
+  # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  pdb:
+    # -- Enable PodDisruptionBudget.
+    enabled: false
+    # -- Minimum number of pods that must still be available after eviction.
+    # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
+    minAvailable: 1
   # -- Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5).
   logLevel: info
+  # -- Set the port used for the webhook server
+  serverPort: 9443
   # -- Set the port used for health checks.
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 0
+  # -- Enable leader election for slurm-operator-webhook
+  leaderElection: true
 
 #
 # Cert-Manager certificate configurations.

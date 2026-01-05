@@ -18,6 +18,7 @@ var (
 )
 
 // ControllerSpec defines the desired state of Controller
+// +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
 type ControllerSpec struct {
 	// The Slurm ClusterName, which uniquely identifies the Slurm Cluster to
 	// itself and accounting.
@@ -36,6 +37,16 @@ type ControllerSpec struct {
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
 	AccountingRef ObjectReference `json:"accountingRef"`
+
+	// external indicates if this component is external to Kubernetes or not.
+	// If true, then externalConfig is used and other fields are ignored.
+	// +optional
+	// +default:=false
+	External bool `json:"external,omitzero"`
+
+	// ExternalConfig describes how to communicate with this external component.
+	// +optional
+	ExternalConfig ExternalConfig `json:"externalConfig,omitzero"`
 
 	// The slurmctld container configuration.
 	// See corev1.Container spec.
@@ -64,26 +75,31 @@ type ControllerSpec struct {
 
 	// ConfigFileRefs is a list of ConfigMap references containing files to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html
+	// +nullable
 	// +optional
 	ConfigFileRefs []ObjectReference `json:"configFileRefs,omitzero"`
 
 	// PrologScriptRefs is a list of prolog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
+	// +nullable
 	// +optional
 	PrologScriptRefs []ObjectReference `json:"prologScriptRefs,omitzero"`
 
 	// EpilogScriptRefs is a list of epilog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
+	// +nullable
 	// +optional
 	EpilogScriptRefs []ObjectReference `json:"epilogScriptRefs,omitzero"`
 
 	// PrologSlurmctldScriptRefs is a list of PrologSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
+	// +nullable
 	// +optional
 	PrologSlurmctldScriptRefs []ObjectReference `json:"prologSlurmctldScriptRefs,omitzero"`
 
 	// EpilogSlurmctldScriptRefs is a list of EpilogSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
+	// +nullable
 	// +optional
 	EpilogSlurmctldScriptRefs []ObjectReference `json:"epilogSlurmctldScriptRefs,omitzero"`
 
@@ -95,6 +111,10 @@ type ControllerSpec struct {
 	// Service defines a template for a Kubernetes Service object.
 	// +optional
 	Service ServiceSpec `json:"service,omitzero"`
+
+	// Metrics defines the metric collection configuration.
+	// +optional
+	Metrics Metrics `json:"metrics,omitzero"`
 }
 
 type ControllerPersistence struct {
@@ -123,7 +143,6 @@ type ControllerStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=slurmctld
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"

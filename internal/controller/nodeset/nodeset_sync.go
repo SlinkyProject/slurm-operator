@@ -231,7 +231,15 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncSshConfig(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.syncSlurmDeadline(ctx, nodeset, pods); err != nil {
+		return err
+	}
+
+	if err := r.syncSlurmTopology(ctx, nodeset, pods); err != nil {
 		return err
 	}
 
@@ -478,6 +486,54 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 	return nil
 }
 
+// syncSlurmTopology handles the Slurm Node's topology.
+func (r *NodeSetReconciler) syncSlurmTopology(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	syncSlurmTopologyFn := func(i int) error {
+		pod := pods[i]
+
+		if pod.Spec.NodeName == "" {
+			// Skip if Pod has not been allocated to a Node.
+			return nil
+		}
+
+		node := &corev1.Node{}
+		nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
+		if err := r.Get(ctx, nodeKey, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		topologyLine := node.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine]
+
+		toUpdate := pod.DeepCopy()
+		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologyLine] = topologyLine
+		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
+			return err
+		}
+
+		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologyLine); err != nil {
+			// Best effort, no guarantee the topology is valid from the admin.
+			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
+		}
+
+		return nil
+	}
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmTopologyFn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // syncNodeSet will reconcile NodeSet pod replica counts.
 // Pods will be:
 //   - Scaled out when: `replicaCount < replicasWant“
@@ -544,7 +600,7 @@ func (r *NodeSetReconciler) doPodScaleOut(
 		for usedOrdinals.Has(ordinal) {
 			ordinal++
 		}
-		pod, err := r.newNodeSetPod(ctx, nodeset, ordinal, hash)
+		pod, err := r.newNodeSetPod(r.Client, ctx, nodeset, ordinal, hash)
 		if err != nil {
 			return err
 		}
@@ -598,6 +654,7 @@ func (r *NodeSetReconciler) doPodScaleOut(
 }
 
 func (r *NodeSetReconciler) newNodeSetPod(
+	client client.Client,
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	ordinal int,
@@ -609,7 +666,7 @@ func (r *NodeSetReconciler) newNodeSetPod(
 		return nil, err
 	}
 
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, ordinal, revisionHash)
+	pod := nodesetutils.NewNodeSetPod(client, nodeset, controller, ordinal, revisionHash)
 
 	return pod, nil
 }
@@ -721,7 +778,7 @@ func (r *NodeSetReconciler) processCondemned(
 		return err
 	}
 
-	if podutils.IsRunning(pod) && !isDrained {
+	if !isDrained {
 		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in",
 			"pod", klog.KObj(pod))
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
@@ -1115,6 +1172,28 @@ func (r *NodeSetReconciler) syncClusterWorkerPDB(
 	// Sync the PodDisruptionBudget for each cluster
 	if err := objectutils.SyncObject(r.Client, ctx, podDisruptionBudget, true); err != nil {
 		return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(podDisruptionBudget), err)
+	}
+
+	return nil
+}
+
+// syncSshConfig manages SSH config for the NodeSet if SSH is enabled
+func (r *NodeSetReconciler) syncSshConfig(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+) error {
+	// Only create SSH config keys if SSH is enabled
+	if !nodeset.Spec.Ssh.Enabled {
+		return nil
+	}
+
+	config, err := r.builder.BuildWorkerSshConfig(nodeset)
+	if err != nil {
+		return fmt.Errorf("failed to build SSH config: %w", err)
+	}
+
+	if err := objectutils.SyncObject(r.Client, ctx, config, true); err != nil {
+		return fmt.Errorf("failed to sync SSH config (%s): %w", klog.KObj(config), err)
 	}
 
 	return nil

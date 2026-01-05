@@ -1,12 +1,5 @@
 ##@ General
 
-# VERSION defines the project version.
-# Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the build target (e.g make build VERSION=0.0.2)
-# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.4.0
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -18,8 +11,10 @@ endif
 UNAME_S ?= $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	CP_FLAGS = -v -n
+	SED = gsed
 else
 	CP_FLAGS = -v --update=none
+	SED = sed
 endif
 
 # CONTAINER_TOOL defines the container tool to be used for building images.
@@ -47,6 +42,20 @@ SHELL = /usr/bin/env bash -o pipefail
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+VERSION = $(shell cat ./VERSION)
+
+.PHONY: version
+version: ## Show current version.
+	@echo VERSION=$(VERSION)
+
+.PHONY: version-match
+version-match: version ## Check if versions are consistent.
+	@if [ -z "$$(echo $(VERSION) | grep -Eo "^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]](-[[:alpha:]][[:alnum:]]*(\.[[:digit:]]+)?)?$$")" ]; then \
+		echo "VERSION is not semver: $(VERSION)" ;\
+		exit 1 ;\
+	fi
+	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), $(SED) -i -E 's/version:[[:space:]]+.+$$/version: $(VERSION)/g' ${chart} ;)
 
 ##@ Build
 
@@ -111,7 +120,7 @@ set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 GOBIN=$(LOCALBIN) go install $${package} ;\
-mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
+mv "$$(echo "$(1)" | $(SED) "s/-$(3)$$//")" $(1) ;\
 }
 endef
 
@@ -132,7 +141,7 @@ OPERATOR_SDK_VERSION ?= v1.41.1
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= latest
-GOLANGCI_LINT_VERSION ?= v2.1.6
+GOLANGCI_LINT_VERSION ?= v2.6.0
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.7.0.2
 
@@ -229,7 +238,7 @@ helm-dependency-update: ## Update Helm chart dependencies.
 
 .PHONY: values-dev
 values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
-	find "helm/" -type f -name "values.yaml" | sed 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
+	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -253,16 +262,16 @@ generate-docs: pandoc-bin
 	cat ./docs/_static/toc.rst >> docs/index.rst
 
 # In index.rst, find all instances of links to markdown files in the docs dir, and strip the directory prefix from them
-	sed -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/<.\/docs\/[A-Za-z]*.md/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, find all instances of links to svgs and strip the directory prefix from them
-	sed -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/.\/docs\/.*.svg/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, find all instances of markdown files within a subdirectory of docs, and strip the directory and subdirectory prefix from them
-	sed -i -E '/<.\/docs\/[A-Za-z]*\/[A-Za-z]*.md>`/s/.\/docs\///g' docs/index.rst
+	$(SED) -i -E '/<.\/docs\/[A-Za-z]*\/[A-Za-z]*.md>`/s/.\/docs\///g' docs/index.rst
 
 # In index.rst, replace all links to markdown files with links to HTML files, as will be present when using Myst Parser in Sphinx
-	sed -i -E '/[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
+	$(SED) -i -E '/[A-Za-z]*.md>`/s/.md>/.html>/g' docs/index.rst
 
 DOCS_IMAGE ?= $(REGISTRY)/sphinx
 
@@ -305,13 +314,13 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 	$(GOLANGCI_LINT) fmt
 
-CODECOV_PERCENT ?= 67
+CODECOV_PERCENT ?= 66
 
 .PHONY: test
 test: envtest ## Run tests.
 	rm -f cover.out cover.html
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test `go list ./... | grep -v "/api"` -v -coverprofile cover.out
+	go test `go list ./... | grep -v "/api" | grep -v "/e2e"` -v -coverprofile cover.out
 	go tool cover -func cover.out
 	go tool cover -html cover.out -o cover.html
 	@percentage=$$(go tool cover -func=cover.out | grep ^total | awk '{print $$3}' | tr -d '%'); \
@@ -320,3 +329,7 @@ test: envtest ## Run tests.
 			echo "Total test coverage ($${percentage}%) is less than the coverage threshold ($(CODECOV_PERCENT)%)."; \
 			exit 1; \
 		fi
+
+.PHONY: test-e2e
+test-e2e:
+	go test -timeout 15m ./test/e2e

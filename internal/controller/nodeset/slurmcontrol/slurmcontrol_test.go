@@ -11,8 +11,16 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
+	"github.com/SlinkyProject/slurm-client/pkg/client"
+	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
+	"github.com/SlinkyProject/slurm-client/pkg/object"
+	"github.com/SlinkyProject/slurm-client/pkg/types"
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 	"github.com/puttsk/hostlist"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -20,19 +28,35 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
-
-	api "github.com/SlinkyProject/slurm-client/api/v0043"
-	"github.com/SlinkyProject/slurm-client/pkg/client"
-	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
-	"github.com/SlinkyProject/slurm-client/pkg/object"
-	"github.com/SlinkyProject/slurm-client/pkg/types"
-
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	kubefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func slurmUpdateFn(_ context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {
+	switch o := obj.(type) {
+	case *types.V0044Node:
+		r, ok := req.(api.V0044UpdateNodeMsg)
+		if !ok {
+			return errors.New("failed to cast request object")
+		}
+		stateSet := set.New(ptr.Deref(o.State, []api.V0044NodeState{})...)
+		statesReq := ptr.Deref(r.State, []api.V0044UpdateNodeMsgState{})
+		for _, stateReq := range statesReq {
+			switch stateReq {
+			case api.V0044UpdateNodeMsgStateUNDRAIN:
+				stateSet.Delete(api.V0044NodeStateDRAIN)
+			default:
+				stateSet.Insert(api.V0044NodeState(stateReq))
+			}
+		}
+		o.State = ptr.To(stateSet.UnsortedList())
+		o.Comment = r.Comment
+		o.Reason = r.Reason
+		o.Topology = r.TopologyStr
+	default:
+		return errors.New("failed to cast slurm object")
+	}
+	return nil
+}
 
 func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.NodeSet {
 	return &slinkyv1beta1.NodeSet{
@@ -60,338 +84,321 @@ func newSlurmClientMap(controllerName string, client client.Client) *clientmap.C
 	return cm
 }
 
-var _ = Describe("SlurmControlInterface", func() {
+func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	pod.Spec.NodeName = "foo"
+	type fields struct {
+		node *types.V0044Node
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pod     *corev1.Pod
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantPodInfo podinfo.PodInfo
+		wantErr     bool
+	}{
+		{
+			name: "smoke",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			wantPodInfo: podinfo.PodInfo{
+				Namespace: nodeset.Namespace,
+				PodName:   pod.Name,
+				Node:      pod.Spec.NodeName,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.UpdateNodeWithPodInfo(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateNodeWithPodInfo() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() err = %v", err)
+				}
+			}
+			checkPodInfo := podinfo.PodInfo{}
+			_ = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
+			if !apiequality.Semantic.DeepEqual(checkPodInfo, tt.wantPodInfo) {
+				t.Errorf("UpdateNodeWithPodInfo() podInfo = %v, want %v", checkPodInfo, tt.wantPodInfo)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		node *types.V0044Node
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pod     *corev1.Pod
+		reason  string
+	}
+	tests := []struct {
+		name      string
+		fields    fields
+		args      args
+		wantDrain bool
+		wantErr   bool
+	}{
+		{
+			name: "smoke",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+				reason:  "test",
+			},
+			wantDrain: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
+				t.Errorf("MakeNodeDrain() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() err = %v", err)
+				}
+			}
+			isDrain := checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
+			if isDrain != tt.wantDrain {
+				t.Fatalf("MakeNodeDrain() isDrain = %v", isDrain)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		node *types.V0044Node
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pod     *corev1.Pod
+		reason  string
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantUndrain bool
+		wantErr     bool
+	}{
+		{
+			name: "drain",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDRAIN,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+				reason:  "test",
+			},
+			wantUndrain: true,
+		},
+		{
+			name: "idle",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+				reason:  "test",
+			},
+			wantUndrain: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.MakeNodeUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
+				t.Errorf("MakeNodeUndrain() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() = %v", err)
+				}
+			}
+			isUndrain := !checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
+			if isUndrain != tt.wantUndrain {
+				t.Fatalf("MakeNodeUndrain() = %v", isUndrain)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
+	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
 		},
 	}
-	var slurmcontrol SlurmControlInterface
-	var nodeset *slinkyv1beta1.NodeSet
-	var pod *corev1.Pod
-	var sclient client.Client
-
-	updateFn := func(_ context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {
-		switch o := obj.(type) {
-		case *types.V0043Node:
-			r, ok := req.(api.V0043UpdateNodeMsg)
-			if !ok {
-				return errors.New("failed to cast request object")
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		node *types.V0044Node
+	}
+	type args struct {
+		ctx          context.Context
+		nodeset      *slinkyv1beta1.NodeSet
+		pod          *corev1.Pod
+		topologyLine string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:          ctx,
+				nodeset:      nodeset,
+				pod:          pod,
+				topologyLine: "",
+			},
+		},
+		{
+			name: "smoke",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				},
+			},
+			args: args{
+				ctx:          ctx,
+				nodeset:      nodeset,
+				pod:          pod,
+				topologyLine: "foo:bar",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologyLine); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateNodeTopology() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			stateSet := set.New(ptr.Deref(o.State, []api.V0043NodeState{})...)
-			statesReq := ptr.Deref(r.State, []api.V0043UpdateNodeMsgState{})
-			for _, stateReq := range statesReq {
-				switch stateReq {
-				case api.V0043UpdateNodeMsgStateUNDRAIN:
-					stateSet.Delete(api.V0043NodeStateDRAIN)
-				default:
-					stateSet.Insert(api.V0043NodeState(stateReq))
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() = %v", err)
 				}
 			}
-			o.State = ptr.To(stateSet.UnsortedList())
-			o.Comment = r.Comment
-			o.Reason = r.Reason
-		default:
-			return errors.New("failed to cast slurm object")
-		}
-		return nil
+			got := ptr.Deref(checkNode.Topology, "")
+			if !apiequality.Semantic.DeepEqual(got, tt.args.topologyLine) {
+				t.Fatalf("UpdateNodeTopology() topologyLine = %v", got)
+			}
+		})
 	}
-
-	Context("UpdateNodeWithPodInfo()", func() {
-		It("Should update node comment with podInfo", func() {
-			By("Setup initial system state")
-			nodeset = newNodeSet("foo", controller.Name, 1)
-			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
-					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
-					}),
-				},
-			}
-			sclient = fake.NewClientBuilder().WithUpdateFn(updateFn).WithObjects(node).Build()
-			controllers := newSlurmClientMap(controller.Name, sclient)
-			slurmcontrol = NewSlurmControl(controllers)
-
-			By("Update Slurm pod info")
-			err := slurmcontrol.UpdateNodeWithPodInfo(ctx, nodeset, pod)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check Slurm Node podInfo")
-			wantPodInfo := podinfo.PodInfo{
-				Namespace: pod.GetNamespace(),
-				PodName:   pod.GetName(),
-				Node:      pod.Spec.NodeName,
-			}
-			checkNode := &types.V0043Node{}
-			key := object.ObjectKey(slurmNodename)
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			checkPodInfo := podinfo.PodInfo{}
-			err = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
-		})
-	})
-
-	Context("MakeNodeDrain()", func() {
-		It("Should DRAIN the IDLE Slurm node", func() {
-			By("Setup initial system state")
-			nodeset = newNodeSet("foo", controller.Name, 1)
-			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
-					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
-					}),
-				},
-			}
-			sclient = fake.NewClientBuilder().WithUpdateFn(updateFn).WithObjects(node).Build()
-			controllers := newSlurmClientMap(controller.Name, sclient)
-			slurmcontrol = NewSlurmControl(controllers)
-
-			By("Draining matching Slurm node")
-			err := slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain")
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check Slurm Node state")
-			checkNode := &types.V0043Node{}
-			key := object.ObjectKey(slurmNodename)
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			isDrain := checkNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
-			Expect(isDrain).To(BeTrue())
-		})
-	})
-
-	Context("UpdateNodeWithPodInfo()", func() {
-		It("Should reset Slurm node state when podInfo indicates migration to a new Kube node", func() {
-			By("Setup initial system state")
-			nodeset = newNodeSet("foo", controller.Name, 1)
-			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			slurmNodename := nodesetutils.GetNodeName(pod)
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
-					Name: ptr.To(slurmNodename),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
-					}),
-				},
-			}
-			sclient = fake.NewClientBuilder().WithUpdateFn(updateFn).WithObjects(node).Build()
-			controllers := newSlurmClientMap(controller.Name, sclient)
-			slurmcontrol = NewSlurmControl(controllers)
-
-			By("Update Slurm pod info")
-			err := slurmcontrol.UpdateNodeWithPodInfo(ctx, nodeset, pod)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check Slurm Node podInfo")
-			wantPodInfo := podinfo.PodInfo{
-				Namespace: pod.GetNamespace(),
-				PodName:   pod.GetName(),
-				Node:      pod.Spec.NodeName,
-			}
-			checkNode := &types.V0043Node{}
-			key := object.ObjectKey(slurmNodename)
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			checkPodInfo := podinfo.PodInfo{}
-			err = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
-
-			By("Make node drain")
-			err = slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain")
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Migrate pod to a new Kube node")
-			pod.Spec.NodeName = "bar"
-
-			By("Update Slurm pod info")
-			err = slurmcontrol.UpdateNodeWithPodInfo(ctx, nodeset, pod)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check Slurm Node podInfo")
-			wantPodInfo = podinfo.PodInfo{
-				Namespace: pod.GetNamespace(),
-				PodName:   pod.GetName(),
-				Node:      pod.Spec.NodeName,
-			}
-			checkNode = &types.V0043Node{}
-			key = object.ObjectKey(slurmNodename)
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			checkPodInfo = podinfo.PodInfo{}
-			err = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
-
-			By("Check Slurm Node state")
-			checkNode = &types.V0043Node{}
-			key = object.ObjectKey(slurmNodename)
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			isIdle := checkNode.GetStateAsSet().Has(api.V0043NodeStateIDLE)
-			Expect(isIdle).To(BeTrue())
-		})
-	})
-
-	Context("MakeNodeUndrain()", func() {
-		It("Should UNDRAIN the IDLE Slurm node", func() {
-			By("Setup initial system state")
-			nodeset = newNodeSet("foo", controller.Name, 1)
-			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			node := &types.V0043Node{
-				V0043Node: api.V0043Node{
-					Name: ptr.To(nodesetutils.GetNodeName(pod)),
-					State: ptr.To([]api.V0043NodeState{
-						api.V0043NodeStateIDLE,
-						api.V0043NodeStateDRAIN,
-					}),
-				},
-			}
-			sclient = fake.NewClientBuilder().WithUpdateFn(updateFn).WithObjects(node).Build()
-			controllers := newSlurmClientMap(controller.Name, sclient)
-			slurmcontrol = NewSlurmControl(controllers)
-
-			By("Draining matching Slurm node")
-			err := slurmcontrol.MakeNodeUndrain(ctx, nodeset, pod, "undrain")
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check Slurm Node state")
-			checkNode := &types.V0043Node{}
-			key := object.ObjectKey(nodesetutils.GetNodeName(pod))
-			err = sclient.Get(ctx, key, checkNode)
-			Expect(err).ToNot(HaveOccurred())
-			isundrain := !checkNode.GetStateAsSet().Has(api.V0043NodeStateDRAIN)
-			Expect(isundrain).To(BeTrue())
-		})
-	})
-
-	Context("GetNodeDeadlines()", func() {
-		now := time.Now()
-
-		It("Should get completion time for jobs", func() {
-			By("Setup initial system state")
-			nodeset = newNodeSet("bar", controller.Name, 1)
-			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
-			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
-			pods := []*corev1.Pod{pod, pod2}
-			nodeList := &types.V0043NodeList{
-				Items: []types.V0043Node{
-					{
-						V0043Node: api.V0043Node{
-							Name: ptr.To(nodesetutils.GetNodeName(pod)),
-							State: ptr.To([]api.V0043NodeState{
-								api.V0043NodeStateMIXED,
-							}),
-						},
-					},
-					{
-						V0043Node: api.V0043Node{
-							Name: ptr.To(nodesetutils.GetNodeName(pod2)),
-							State: ptr.To([]api.V0043NodeState{
-								api.V0043NodeStateMIXED,
-							}),
-						},
-					},
-				},
-			}
-			jobList := &types.V0043JobInfoList{
-				Items: []types.V0043JobInfo{
-					{
-						V0043JobInfo: api.V0043JobInfo{
-							JobId:     ptr.To[int32](1),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(30 * int32(time.Minute.Seconds()))}),
-							Nodes: func() *string {
-								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
-								if err != nil {
-									panic(err)
-								}
-								return ptr.To(hostlist)
-							}(),
-						},
-					},
-					{
-						V0043JobInfo: api.V0043JobInfo{
-							JobId:     ptr.To[int32](2),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(45 * int32(time.Minute.Seconds()))}),
-							Nodes: func() *string {
-								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
-								if err != nil {
-									panic(err)
-								}
-								return ptr.To(hostlist)
-							}(),
-						},
-					},
-					{
-						V0043JobInfo: api.V0043JobInfo{
-							JobId:     ptr.To[int32](3),
-							JobState:  ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateRUNNING}),
-							StartTime: ptr.To(api.V0043Uint64NoValStruct{Number: ptr.To(now.Unix())}),
-							TimeLimit: ptr.To(api.V0043Uint32NoValStruct{Number: ptr.To(int32(time.Hour.Seconds()))}),
-							Nodes: func() *string {
-								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
-								if err != nil {
-									panic(err)
-								}
-								return ptr.To(hostlist)
-							}(),
-						},
-					},
-					{
-						V0043JobInfo: api.V0043JobInfo{
-							JobId:    ptr.To[int32](4),
-							JobState: ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateCOMPLETED}),
-							Nodes: func() *string {
-								hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
-								if err != nil {
-									panic(err)
-								}
-								return ptr.To(hostlist)
-							}(),
-						},
-					},
-					{
-						V0043JobInfo: api.V0043JobInfo{
-							JobId:    ptr.To[int32](5),
-							JobState: ptr.To([]api.V0043JobInfoJobState{api.V0043JobInfoJobStateCOMPLETED}),
-							Nodes: func() *string {
-								hostlist, err := hostlist.Compress([]string{*nodeList.Items[1].Name})
-								if err != nil {
-									panic(err)
-								}
-								return ptr.To(hostlist)
-							}(),
-						},
-					},
-				},
-			}
-			sclient = fake.NewClientBuilder().WithLists(nodeList, jobList).Build()
-			controllers := newSlurmClientMap(controller.Name, sclient)
-			slurmcontrol = NewSlurmControl(controllers)
-
-			By("Getting TimeStore")
-			ts, err := slurmcontrol.GetNodeDeadlines(ctx, nodeset, pods)
-			Expect(err).ToNot(HaveOccurred())
-
-			By("Check TimeStore for Slurm Nodes")
-			for _, node := range nodeList.Items {
-				Expect(ts.Peek(*node.Name).After(now)).To(BeTrue())
-			}
-		})
-	})
-})
+}
 
 func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 	ctx := context.Background()
@@ -401,7 +408,7 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		clientMap *clientmap.ClientMap
 	}
@@ -420,11 +427,11 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 		{
 			name: "Not DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -444,11 +451,11 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 		{
 			name: "Is DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -491,7 +498,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		clientMap *clientmap.ClientMap
 	}
@@ -510,11 +517,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -534,11 +541,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "MIXED",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
 						}),
 					},
 				}
@@ -557,11 +564,11 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "DOWN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 					},
 				}
@@ -580,12 +587,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -604,12 +611,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "MIXED+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -628,12 +635,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "ALLOC+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateALLOCATED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateALLOCATED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -653,12 +660,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "DOWN+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -678,13 +685,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -703,13 +710,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -728,13 +735,13 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+UNDRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateUNDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateUNDRAIN,
 						}),
 					},
 				}
@@ -775,7 +782,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		clientMap *clientmap.ClientMap
 	}
@@ -794,11 +801,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -818,11 +825,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "MIXED",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
 						}),
 					},
 				}
@@ -841,11 +848,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 					},
 				}
@@ -864,12 +871,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -888,12 +895,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "MIXED+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateMIXED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateMIXED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -912,12 +919,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "ALLOC+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateALLOCATED,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateALLOCATED,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -937,12 +944,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+DRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateDRAIN,
 						}),
 					},
 				}
@@ -962,13 +969,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -987,13 +994,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+COMPLETING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateCOMPLETING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateCOMPLETING,
 						}),
 					},
 				}
@@ -1012,13 +1019,13 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "IDLE+DRAIN+UNDRAIN",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
-							api.V0043NodeStateDRAIN,
-							api.V0043NodeStateUNDRAIN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+							api.V0044NodeStateUNDRAIN,
 						}),
 					},
 				}
@@ -1037,12 +1044,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+NOT_RESPONDING",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
-							api.V0043NodeStateNOTRESPONDING,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
+							api.V0044NodeStateNOTRESPONDING,
 						}),
 					},
 				}
@@ -1061,11 +1068,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+Reason Not responding",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("Not responding"),
 					},
@@ -1085,11 +1092,11 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 		{
 			name: "DOWN+Other reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("test reason"),
 					},
@@ -1131,7 +1138,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		clientMap *clientmap.ClientMap
 	}
@@ -1150,11 +1157,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "no reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateIDLE,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
 						}),
 					},
 				}
@@ -1173,11 +1180,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "internal reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To(nodeReasonPrefix + " " + "foo"),
 					},
@@ -1197,11 +1204,11 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 		{
 			name: "external reason",
 			fields: func() fields {
-				node := &types.V0043Node{
-					V0043Node: api.V0043Node{
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
 						Name: ptr.To(nodesetutils.GetNodeName(pod)),
-						State: ptr.To([]api.V0043NodeState{
-							api.V0043NodeStateDOWN,
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateDOWN,
 						}),
 						Reason: ptr.To("foo"),
 					},
@@ -1262,8 +1269,8 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Empty",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{},
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{},
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
@@ -1281,21 +1288,21 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Different NodeSets",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset2, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset2, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
@@ -1310,7 +1317,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1320,7 +1327,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionIdle,
 							Status:  corev1.ConditionTrue,
@@ -1335,13 +1342,13 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Only base state",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
@@ -1356,7 +1363,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1366,7 +1373,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionIdle,
 							Status:  corev1.ConditionTrue,
@@ -1381,15 +1388,15 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "Base and flag state",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name:   ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
+							V0044Node: api.V0044Node{
+								Name:   ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
 								Reason: ptr.To("Node drain"),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
-									api.V0043NodeStateDRAIN,
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
+									api.V0044NodeStateDRAIN,
 								}),
 							},
 						},
@@ -1404,7 +1411,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1415,7 +1422,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionIdle,
 							Status:  corev1.ConditionTrue,
@@ -1435,62 +1442,62 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All base states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateALLOCATED,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateALLOCATED,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDOWN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
 								}),
 								Reason: ptr.To("Node is down"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateERROR,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateERROR,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMIXED,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNKNOWN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNKNOWN,
 								}),
 							},
 						},
@@ -1505,13 +1512,13 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1527,49 +1534,49 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionAllocated,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionDown,
 							Status:  corev1.ConditionTrue,
 							Message: "Node is down",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionError,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionFuture,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionIdle,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionMixed,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionUnknown,
 							Status:  corev1.ConditionTrue,
@@ -1584,71 +1591,71 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All flag states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateCOMPLETING,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateCOMPLETING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDRAIN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDRAIN,
 								}),
 								Reason: ptr.To("Node set to drain"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFAIL,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFAIL,
 								}),
 								Reason: ptr.To("Node set to fail"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateINVALID,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateINVALID,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateINVALIDREG,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateINVALIDREG,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMAINTENANCE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMAINTENANCE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateNOTRESPONDING,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateNOTRESPONDING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNDRAIN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNDRAIN,
 								}),
 							},
 						},
@@ -1663,14 +1670,14 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1687,56 +1694,56 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionCompleting,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionDrain,
 							Status:  corev1.ConditionTrue,
 							Message: "Node set to drain",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionFail,
 							Status:  corev1.ConditionTrue,
 							Message: "Node set to fail",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionInvalid,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionInvalidReg,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionMaintenance,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionNotResponding,
 							Status:  corev1.ConditionTrue,
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionUndrain,
 							Status:  corev1.ConditionTrue,
@@ -1751,79 +1758,79 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 		{
 			name: "All states",
 			fields: func() fields {
-				nodeList := &types.V0043NodeList{
-					Items: []types.V0043Node{
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateALLOCATED,
-									api.V0043NodeStateCOMPLETING,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateALLOCATED,
+									api.V0044NodeStateCOMPLETING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateDOWN,
-									api.V0043NodeStateDRAIN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateDRAIN,
 								}),
 								Reason: ptr.To("Node set to down and drain"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateERROR,
-									api.V0043NodeStateFAIL,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateERROR,
+									api.V0044NodeStateFAIL,
 								}),
 								Reason: ptr.To("Node set to error and fail"),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
-									api.V0043NodeStateINVALID,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
+									api.V0044NodeStateINVALID,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateFUTURE,
-									api.V0043NodeStateINVALIDREG,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateFUTURE,
+									api.V0044NodeStateINVALIDREG,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateIDLE,
-									api.V0043NodeStateMAINTENANCE,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateIDLE,
+									api.V0044NodeStateMAINTENANCE,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateMIXED,
-									api.V0043NodeStateNOTRESPONDING,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
+									api.V0044NodeStateNOTRESPONDING,
 								}),
 							},
 						},
 						{
-							V0043Node: api.V0043Node{
-								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))),
-								State: ptr.To([]api.V0043NodeState{
-									api.V0043NodeStateUNKNOWN,
-									api.V0043NodeStateUNDRAIN,
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""))),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateUNKNOWN,
+									api.V0044NodeStateUNDRAIN,
 								}),
 							},
 						},
@@ -1838,14 +1845,14 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				ctx:     ctx,
 				nodeset: nodeset,
 				pods: []*corev1.Pod{
-					nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""),
-					nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""),
+					nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""),
 				},
 			},
 			want: SlurmNodeStatus{
@@ -1870,7 +1877,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 
 				NodeStates: func() map[string][]corev1.PodCondition {
 					nodeStates := make(map[string][]corev1.PodCondition)
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 0, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionAllocated,
 							Status:  corev1.ConditionTrue,
@@ -1882,7 +1889,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 1, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 1, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionDown,
 							Status:  corev1.ConditionTrue,
@@ -1894,7 +1901,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "Node set to down and drain",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 2, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 2, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionError,
 							Status:  corev1.ConditionTrue,
@@ -1906,7 +1913,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "Node set to error and fail",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 3, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 3, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionFuture,
 							Status:  corev1.ConditionTrue,
@@ -1918,7 +1925,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 4, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 4, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionFuture,
 							Status:  corev1.ConditionTrue,
@@ -1930,7 +1937,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 5, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 5, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionIdle,
 							Status:  corev1.ConditionTrue,
@@ -1942,7 +1949,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 6, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 6, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionMixed,
 							Status:  corev1.ConditionTrue,
@@ -1954,7 +1961,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 							Message: "",
 						},
 					}
-					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(nodeset, controller, 7, ""))] = []corev1.PodCondition{
+					nodeStates[nodesetutils.GetNodeName(nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 7, ""))] = []corev1.PodCondition{
 						{
 							Type:    slurmconditions.PodConditionUnknown,
 							Status:  corev1.ConditionTrue,
@@ -1983,6 +1990,165 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 			}
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	kclient := kubefake.NewFakeClient()
+	pod := nodesetutils.NewNodeSetPod(kclient, nodeset, controller, 0, "")
+	pod2 := nodesetutils.NewNodeSetPod(kclient, nodeset, controller, 1, "")
+	pods := []*corev1.Pod{pod, pod2}
+	now := time.Now()
+	type fields struct {
+		nodeList *types.V0044NodeList
+		jobList  *types.V0044JobInfoList
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pods    []*corev1.Pod
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "smoke",
+			fields: func() fields {
+				nodeList := &types.V0044NodeList{
+					Items: []types.V0044Node{
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(pod)),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
+								}),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To(nodesetutils.GetNodeName(pod2)),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateMIXED,
+								}),
+							},
+						},
+					},
+				}
+				jobList := &types.V0044JobInfoList{
+					Items: []types.V0044JobInfo{
+						{
+							V0044JobInfo: api.V0044JobInfo{
+								JobId:     ptr.To[int32](1),
+								JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+								StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+								TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(30 * int32(time.Minute.Seconds()))}),
+								Nodes: func() *string {
+									hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
+									if err != nil {
+										panic(err)
+									}
+									return ptr.To(hostlist)
+								}(),
+							},
+						},
+						{
+							V0044JobInfo: api.V0044JobInfo{
+								JobId:     ptr.To[int32](2),
+								JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+								StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+								TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(45 * int32(time.Minute.Seconds()))}),
+								Nodes: func() *string {
+									hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
+									if err != nil {
+										panic(err)
+									}
+									return ptr.To(hostlist)
+								}(),
+							},
+						},
+						{
+							V0044JobInfo: api.V0044JobInfo{
+								JobId:     ptr.To[int32](3),
+								JobState:  ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateRUNNING}),
+								StartTime: ptr.To(api.V0044Uint64NoValStruct{Number: ptr.To(now.Unix())}),
+								TimeLimit: ptr.To(api.V0044Uint32NoValStruct{Number: ptr.To(int32(time.Hour.Seconds()))}),
+								Nodes: func() *string {
+									hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name})
+									if err != nil {
+										panic(err)
+									}
+									return ptr.To(hostlist)
+								}(),
+							},
+						},
+						{
+							V0044JobInfo: api.V0044JobInfo{
+								JobId:    ptr.To[int32](4),
+								JobState: ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateCOMPLETED}),
+								Nodes: func() *string {
+									hostlist, err := hostlist.Compress([]string{*nodeList.Items[0].Name, *nodeList.Items[1].Name})
+									if err != nil {
+										panic(err)
+									}
+									return ptr.To(hostlist)
+								}(),
+							},
+						},
+						{
+							V0044JobInfo: api.V0044JobInfo{
+								JobId:    ptr.To[int32](5),
+								JobState: ptr.To([]api.V0044JobInfoJobState{api.V0044JobInfoJobStateCOMPLETED}),
+								Nodes: func() *string {
+									hostlist, err := hostlist.Compress([]string{*nodeList.Items[1].Name})
+									if err != nil {
+										panic(err)
+									}
+									return ptr.To(hostlist)
+								}(),
+							},
+						},
+					},
+				}
+
+				return fields{
+					nodeList: nodeList,
+					jobList:  jobList,
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pods:    pods,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithLists(tt.fields.nodeList, tt.fields.jobList).Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			got, err := r.GetNodeDeadlines(tt.args.ctx, tt.args.nodeset, tt.args.pods)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetNodeDeadlines() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			for _, node := range tt.fields.nodeList.Items {
+				if ts := got.Peek(ptr.Deref(node.Name, "")); !ts.After(now) {
+					t.Errorf("timestamp = %v, after = %v", ts, ts.After(now))
+				}
+
 			}
 		})
 	}
@@ -2044,7 +2210,7 @@ func Test_tolerateError(t *testing.T) {
 
 func Test_nodeState(t *testing.T) {
 	type args struct {
-		node  types.V0043Node
+		node  types.V0044Node
 		state corev1.PodConditionType
 	}
 	tests := []struct {
@@ -2055,8 +2221,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Idle state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To(""),
 					},
 				},
@@ -2071,8 +2237,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Drain state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To("Drain by admin"),
 					},
 				},
@@ -2087,8 +2253,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "InvalidReg state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To(""),
 					},
 				},
@@ -2103,8 +2269,8 @@ func Test_nodeState(t *testing.T) {
 		{
 			name: "Maintenance state",
 			args: args{
-				node: types.V0043Node{
-					V0043Node: api.V0043Node{
+				node: types.V0044Node{
+					V0044Node: api.V0044Node{
 						Reason: ptr.To("Admin set to Maintenance"),
 					},
 				},

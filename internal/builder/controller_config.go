@@ -64,6 +64,8 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 	}
 
+	metricsEnabled := controller.Spec.Metrics.Enabled
+
 	prologScripts := []string{}
 	for _, ref := range controller.Spec.PrologScriptRefs {
 		cm := &corev1.ConfigMap{}
@@ -76,8 +78,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		prologScripts = filenames
+		prologScripts = append(prologScripts, filenames...)
 	}
+	sort.Strings(prologScripts)
 
 	epilogScripts := []string{}
 	for _, ref := range controller.Spec.EpilogScriptRefs {
@@ -91,8 +94,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		epilogScripts = filenames
+		epilogScripts = append(epilogScripts, filenames...)
 	}
+	sort.Strings(epilogScripts)
 
 	prologSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
@@ -106,8 +110,9 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		prologSlurmctldScripts = filenames
+		prologSlurmctldScripts = append(prologSlurmctldScripts, filenames...)
 	}
+	sort.Strings(prologSlurmctldScripts)
 
 	epilogSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
@@ -121,21 +126,27 @@ func (b *Builder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*
 		}
 		filenames := structutils.Keys(cm.Data)
 		sort.Strings(filenames)
-		epilogSlurmctldScripts = filenames
+		epilogSlurmctldScripts = append(epilogSlurmctldScripts, filenames...)
 	}
+	sort.Strings(epilogSlurmctldScripts)
 
 	opts := ConfigMapOpts{
-		Key:      controller.ConfigKey(),
-		Metadata: controller.Spec.Template.PodMetadata,
+		Key: controller.ConfigKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: controller.Annotations,
+			Labels:      structutils.MergeMaps(controller.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
+		},
 		Data: map[string]string{
-			slurmConfFile: buildSlurmConf(controller, accounting, nodesetList, prologScripts, epilogScripts, prologSlurmctldScripts, epilogSlurmctldScripts, cgroupEnabled),
+			slurmConfFile: buildSlurmConf(
+				controller, accounting, nodesetList,
+				prologScripts, epilogScripts,
+				prologSlurmctldScripts, epilogSlurmctldScripts,
+				cgroupEnabled, metricsEnabled),
 		},
 	}
 	if !hasCgroupConfFile {
 		opts.Data[cgroupConfFile] = buildCgroupConf()
 	}
-
-	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build())
 
 	return b.BuildConfigMap(opts, controller)
 }
@@ -147,7 +158,7 @@ func buildSlurmConf(
 	nodesetList *slinkyv1beta1.NodeSetList,
 	prologScripts, epilogScripts []string,
 	prologSlurmctldScripts, epilogSlurmctldScripts []string,
-	cgroupEnabled bool,
+	cgroupEnabled, metricsEnabled bool,
 ) string {
 	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
 
@@ -187,10 +198,14 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless,enable_stepmgr"))
 		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/cgroup"))
 		conf.AddProperty(config.NewProperty("PrologFlags", "Contain"))
-		conf.AddProperty(config.NewProperty("TaskPlugin", "task/cgroup,task/affinity"))
+		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity,task/cgroup"))
 	} else {
 		conf.AddProperty(config.NewProperty("SlurmctldParameters", "enable_configless"))
+		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/linuxproc"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
+	}
+	if metricsEnabled {
+		conf.AddProperty(config.NewProperty("MetricsType", "metrics/openmetrics"))
 	}
 
 	conf.AddProperty(config.NewPropertyRaw("#"))
@@ -202,6 +217,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("AccountingStorageTRES", "gres/gpu"))
 		if cgroupEnabled {
 			conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/cgroup"))
+		} else {
+			conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/linux"))
 		}
 	} else {
 		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/none"))
@@ -283,4 +300,61 @@ func isCgroupEnabled(cgroupConf string) bool {
 	r := regexp.MustCompile(`(?im)^CgroupPlugin=disabled`)
 	found := r.FindStringSubmatch(cgroupConf)
 	return len(found) == 0
+}
+
+// BuildControllerConfigExternal returns a minimal slurm.conf for slurmrestd (lacks configless).
+func (b *Builder) BuildControllerConfigExternal(controller *slinkyv1beta1.Controller) (*corev1.ConfigMap, error) {
+	ctx := context.TODO()
+
+	accounting, err := b.refResolver.GetAccounting(ctx, controller.Spec.AccountingRef)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	opts := ConfigMapOpts{
+		Key:      controller.ConfigKey(),
+		Metadata: controller.Spec.Template.Metadata,
+		Data: map[string]string{
+			slurmConfFile: buildSlurmConfMinimal(controller, accounting),
+		},
+	}
+
+	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build())
+
+	return b.BuildConfigMap(opts, controller)
+}
+
+// https://slurm.schedmd.com/slurm.conf.html
+func buildSlurmConfMinimal(
+	controller *slinkyv1beta1.Controller,
+	accounting *slinkyv1beta1.Accounting,
+) string {
+	conf := config.NewBuilder()
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
+	conf.AddProperty(config.NewProperty("ClusterName", controller.ClusterName()))
+	conf.AddProperty(config.NewProperty("SlurmUser", slurmUser))
+	conf.AddProperty(config.NewProperty("SlurmctldHost", controller.PrimaryName()))
+	conf.AddProperty(config.NewProperty("SlurmctldPort", SlurmctldPort))
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### PLUGINS & PARAMETERS ###"))
+	conf.AddProperty(config.NewProperty("AuthType", authType))
+	conf.AddProperty(config.NewProperty("CredType", credType))
+	conf.AddProperty(config.NewProperty("AuthAltTypes", authAltTypes))
+
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### ACCOUNTING ###"))
+	if accounting != nil {
+		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/slurmdbd"))
+		conf.AddProperty(config.NewProperty("AccountingStorageHost", accounting.ServiceKey().Name))
+		conf.AddProperty(config.NewProperty("AccountingStoragePort", SlurmdbdPort))
+	} else {
+		conf.AddProperty(config.NewProperty("AccountingStorageType", "accounting_storage/none"))
+	}
+
+	return conf.Build()
 }

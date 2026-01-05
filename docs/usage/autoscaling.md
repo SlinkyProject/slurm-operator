@@ -33,14 +33,33 @@ Metrics Server is needed to report CPU and memory usage for tools like
 `kubectl top`. KEDA is recommended for autoscaling as it provides usability
 improvements over standard the Horizontal Pod Autoscaler ([HPA]).
 
-To add KEDA in the helm install, run
+To install the Prometheus helm chart, run the following:
+
+```sh
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --set 'installCRDs=true' \
+  --namespace prometheus --create-namespace
+```
+
+To install the KEDA helm chart, run the following:
 
 ```sh
 helm repo add kedacore https://kedacore.github.io/charts
+helm repo update
+helm install keda kedacore/keda \
+  --namespace keda --create-namespace
 ```
 
-Install the [slurm-exporter]. This chart is installed as a dependency of the
-slurm helm chart by default. Configure using helm/slurm/values.yaml.
+Install the Slurm helm chart with the following:
+
+```sh
+helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set 'controller.metrics.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --namespace slurm --create-namespace
+```
 
 #### Verify KEDA Metrics API Server is running
 
@@ -136,13 +155,14 @@ spec:
       metricType: Value
       metadata:
         serverAddress: http://prometheus-kube-prometheus-prometheus.prometheus:9090
-        query: slurm_partition_pending_jobs{partition="radar"}
+        query: slurm_partition_jobs_pending{partition="radar"}
         threshold: '5'
 ```
 
-**Note**: The Prometheus trigger is using `metricType: Value` instead of the
-default `AverageValue`. `AverageValue` calculates the replica count by averaging
-the threshold across the current replica count.
+> [!NOTE]
+> The Prometheus trigger is using `metricType: Value` instead of the default
+> `AverageValue`. `AverageValue` calculates the replica count by averaging the
+> threshold across the current replica count.
 
 Check [ScaledObject] documentation for a full list of allowable options.
 
@@ -157,8 +177,9 @@ on the trigger after a configurable amount of time, KEDA will scale the NodeSet
 to `idleReplicaCount`. See the [KEDA] documentation on [idleReplicaCount] for
 more examples.
 
-**Note**: The only supported value for `idleReplicaCount` is 0 due to
-limitations on how the HPA controller works.
+> [!NOTE]
+> The only supported value for `idleReplicaCount` is 0 due to limitations on how
+> the HPA controller works.
 
 To verify a KEDA ScaledObject, apply it to the cluster in the appropriate
 namespace on a NodeSet that has no replicas.
@@ -185,7 +206,7 @@ scaledobject.keda.sh/scale-radar created
 
 $ kubectl get -n slurm scaledobjects
 NAME           SCALETARGETKIND                     SCALETARGETNAME        MIN   MAX   TRIGGERS     AUTHENTICATION   READY   ACTIVE   FALLBACK   PAUSED    AGE
-scale-radar    slinky.slurm.net/v1alpha1.NodeSet   slurm-worker-radar    1     5     prometheus                    True    False    Unknown    Unknown   28s
+scale-radar    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-radar    1     5     prometheus                    True    False    Unknown    Unknown   28s
 
 $ kubectl get -n slurm hpa
 NAME                    REFERENCE                      TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
@@ -205,9 +226,10 @@ trigger. Once the number of pending jobs crosses the configured `threshold`
 handle the additional demand. Until the `threshold` is exceeded, the NodeSet
 will remain at `minReplicaCount`.
 
-**Note**: This example only works well for single node jobs, unless `threshold`
-is set to 1. In this case, HPA will continue to scale up NodeSet as long as
-there is a pending job until up until it reaches the `maxReplicaCount`.
+> [!NOTE]
+> This example only works well for single node jobs, unless `threshold` is set
+> to 1. In this case, HPA will continue to scale up NodeSet as long as there is
+> a pending job until up until it reaches the `maxReplicaCount`.
 
 After the default `coolDownPeriod` of 5 minutes without activity on the trigger,
 KEDA will scale the NodeSet down to 0.
@@ -222,4 +244,3 @@ KEDA will scale the NodeSet down to 0.
 [prometheus adapter]: https://github.com/kubernetes-sigs/prometheus-adapter
 [scale subresource]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#scale-subresource
 [scaledobject]: https://keda.sh/docs/concepts/scaling-deployments/
-[slurm-exporter]: https://github.com/SlinkyProject/slurm-exporter

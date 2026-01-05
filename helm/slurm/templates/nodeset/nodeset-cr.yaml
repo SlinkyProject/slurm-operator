@@ -6,14 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 {{- range $key, $nodeset := $.Values.nodesets -}}
 {{- if $nodeset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
-{{- $podMetadata := $nodeset.metadata | default dict -}}
+{{- $metadata := merge dict $nodeset.metadata (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
 {{- $podSpec := $nodeset.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) ($.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default $.Values.priorityClassName -}}
+{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
-{{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
+{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
 {{- if $nodeset.useResourceLimits }}
   {{- $envLimts := list (dict "name" "POD_CPUS" "value" (include "slurm.worker.podCpus" $nodeset.slurmd | toString)) (dict "name" "POD_MEMORY" "value" (include "slurm.worker.podMemory" $nodeset.slurmd | toString)) -}}
   {{- $slurmdEnv := concat list ($nodeset.slurmd.env | default list) $envLimts -}}
@@ -35,8 +35,9 @@ kind: NodeSet
 metadata:
   name: {{ $name }}
   namespace: {{ include "slurm.namespace" $ }}
-  labels:
-    {{- include "slurm.labels" $ | nindent 4 }}
+  {{- with $metadata }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}{{- /* with $metadata */}}
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
@@ -51,12 +52,19 @@ spec:
     config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
+  {{- if $nodeset.ssh.enabled }}
+  {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
+  {{- with $nodeset.ssh }}
+  ssh:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with $nodeset.ssh */}}
+  {{- end }}{{- /* if $nodeset.ssh.enabled */}}
   replicas: {{ $nodeset.replicas }}
   slurmd:
-    {{- $_ := set $nodeset.slurmd "imagePullPolicy" (default $.Values.imagePullPolicy $nodeset.slurmd.imagePullPolicy) -}}
+    {{- $_ := set $nodeset.slurmd "imagePullPolicy" (get $nodeset.slurmd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
     {{- include "format-container" $nodeset.slurmd | nindent 4 }}
   logfile:
-    {{- $_ := set $nodeset.logfile "imagePullPolicy" (default $.Values.imagePullPolicy $nodeset.logfile.imagePullPolicy) -}}
+    {{- $_ := set $nodeset.logfile "imagePullPolicy" (get $nodeset.logfile "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
     {{- include "format-container" $nodeset.logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with $nodeset.updateStrategy }}
@@ -64,5 +72,6 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
+  workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection | default true }}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}

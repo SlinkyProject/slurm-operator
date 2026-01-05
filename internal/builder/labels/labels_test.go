@@ -33,7 +33,7 @@ func TestNewBuilder(t *testing.T) {
 					WithApp("foo"),
 			},
 			want: map[string]string{
-				appLabel: "foo",
+				AppLabel: "foo",
 			},
 		},
 		{

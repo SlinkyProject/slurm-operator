@@ -104,31 +104,6 @@ spec:
 {{- end -}}
 
 {{/*
-Format pod service object.
-*/}}
-{{- define "format-service" -}}
-{{- with . -}}
-{{- $service := omit . "metadata" "spec" -}}
-service:
-  {{- include "format-metadata" . | nindent 2 -}}
-  {{- include "format-serviceSpec" . | nindent 2 -}}
-  {{- with $service -}}
-  {{- toYaml . | nindent 2 -}}
-  {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Format service spec object.
-*/}}
-{{- define "format-serviceSpec" -}}
-{{- with .spec -}}
-spec:
-  {{- toYaml . | nindent 2 }}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Converts a list to a key value CSV.
 Ref: https://github.com/helm/helm/issues/9379
 */}}
@@ -161,3 +136,27 @@ Ref: https://github.com/helm/helm/issues/11376#issuecomment-1256831105
 {{- end -}}
 {{- mulf (float64 $value) $unit -}}
 {{- end -}}
+
+{{/*
+ToYaml dict after handling storageClassName.
+Ref: https://github.com/helm/helm/issues/2600
+*/}}
+{{- define "toYaml-set-storageClassName" -}}
+{{- $out := . | default dict -}}
+{{ $storageClassName := dig "storageClassName" nil $out }}
+{{- if or (eq $storageClassName "") (eq $storageClassName "-") -}}
+  {{- $_ := set $out "storageClassName" "" -}}
+{{- else if $storageClassName }}
+  {{- $_ := set $out "storageClassName" $storageClassName -}}
+{{- else }}
+  {{- $out = omit $out "storageClassName" -}}
+{{- end }}
+{{- toYaml $out -}}
+{{- end -}}
+
+{{/*
+Allow the PriorityClassName to be overridden.
+*/}}
+{{- define "slurm.priorityClassName" -}}
+{{- default "slurm-priority-critical" .Values.priorityClass.name }}
+{{- end }}

@@ -21,14 +21,15 @@ func (b *Builder) BuildAccountingConfig(accounting *slinkyv1beta1.Accounting) (*
 	}
 
 	opts := SecretOpts{
-		Key:      accounting.ConfigKey(),
-		Metadata: accounting.Spec.Template.PodMetadata,
+		Key: accounting.ConfigKey(),
+		Metadata: slinkyv1beta1.Metadata{
+			Annotations: accounting.Annotations,
+			Labels:      structutils.MergeMaps(accounting.Labels, labels.NewBuilder().WithAccountingLabels(accounting).Build()),
+		},
 		StringData: map[string]string{
 			slurmdbdConfFile: buildSlurmdbdConf(accounting, string(storagePass)),
 		},
 	}
-
-	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithAccountingLabels(accounting).Build())
 
 	return b.BuildSecret(opts, accounting)
 }

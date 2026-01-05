@@ -24,6 +24,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -65,10 +66,12 @@ type ControllerReconciler struct {
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=accountings,verbs=get;list;watch
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -111,13 +114,9 @@ func (r *ControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
-		Watches(&slinkyv1beta1.Accounting{}, &accountingEventHandler{
-			Reader:      r.Client,
-			refResolver: r.refResolver,
-		}).
-		Watches(&corev1.Secret{}, &secretEventHandler{
-			Reader: r.Client,
-		}).
+		Watches(&slinkyv1beta1.Accounting{}, eventhandler.NewAccountingEventHandler(r.Client)).
+		Watches(&slinkyv1beta1.NodeSet{}, eventhandler.NewNodeSetEventHandler(r.Client)).
+		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).

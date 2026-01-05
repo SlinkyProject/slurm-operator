@@ -1,6 +1,6 @@
 # slurm-operator
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.05](https://img.shields.io/badge/AppVersion-25.05-informational?style=flat-square)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
 
 Slurm Operator
 
@@ -22,7 +22,7 @@ Kubernetes: `>= 1.29.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../slurm-operator-crds | slurm-operator-crds | 0.4.0 |
+| file://../slurm-operator-crds | slurm-operator-crds | 1.0.0 |
 
 ## Values
 
@@ -46,10 +46,13 @@ Kubernetes: `>= 1.29.0-0`
 | operator.healthPort | int | `8081` | Set the port used for health checks. |
 | operator.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | operator.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
+| operator.leaderElection | bool | `true` | Enable leader election for slurm-operator |
 | operator.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | operator.loginsetWorkers | int | `4` | Set the max concurrent workers for the LoginSet controller. |
 | operator.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
 | operator.nodesetWorkers | int | `4` | Set the max concurrent workers for the NodeSet controller. |
+| operator.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
+| operator.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | operator.restapiWorkers | int | `4` | Set the max concurrent workers for the Restapi controller. |
@@ -64,10 +67,14 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
 | webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
+| webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
+| webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
+| webhook.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
+| webhook.serverPort | int | `9443` | Set the port used for the webhook server |
 | webhook.serviceAccount.create | bool | `true` | Allows chart to create the service account. |
 | webhook.serviceAccount.name | string | `""` | Set the service account to use (and create). |
 | webhook.timeoutSeconds | int | `10` | Set the timeout period for calls. |

@@ -6,6 +6,7 @@ package builder
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 const (
@@ -54,44 +56,25 @@ const (
 	annotationAuthJwtHs256KeyHash = slinkyv1beta1.SlinkyPrefix + "jwt-hs256-key-hash"
 )
 
+const (
+	annotationSshdConfHash    = slinkyv1beta1.SlinkyPrefix + "sshd-conf-hash"
+	annotationSssdConfHash    = slinkyv1beta1.SlinkyPrefix + "sssd-conf-hash"
+	annotationSshHostKeysHash = slinkyv1beta1.SlinkyPrefix + "ssh-host-keys-hash"
+)
+
 func configlessArgs(controller *slinkyv1beta1.Controller) []string {
+	host := controller.ServiceFQDNShort()
+	port := SlurmctldPort
+	if controller.Spec.External {
+		externalConfig := controller.Spec.ExternalConfig
+		host = externalConfig.Host
+		port = externalConfig.Port
+	}
 	args := []string{
 		"--conf-server",
-		fmt.Sprintf("%s:%d", controller.ServiceFQDNShort(), SlurmctldPort),
+		fmt.Sprintf("%s:%d", host, port),
 	}
 	return args
-}
-
-//go:embed scripts/initconf.sh
-var initConfScript string
-
-func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) corev1.Container {
-	opts := ContainerOpts{
-		base: corev1.Container{
-			Name: "initconf",
-			Env: []corev1.EnvVar{
-				{
-					Name:  "SLURM_USER",
-					Value: slurmUser,
-				},
-			},
-			Command: []string{
-				"tini",
-				"-g",
-				"--",
-				"bash",
-				"-c",
-				initConfScript,
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: slurmEtcVolume, MountPath: slurmEtcMountDir},
-				{Name: slurmConfigVolume, MountPath: slurmConfigDir, ReadOnly: true},
-			},
-		},
-		merge: container.Container,
-	}
-
-	return b.BuildContainer(opts)
 }
 
 //go:embed scripts/logfile.sh
@@ -126,18 +109,6 @@ func (b *Builder) logfileContainer(container slinkyv1beta1.ContainerWrapper, log
 func logFileVolume() corev1.Volume {
 	out := corev1.Volume{
 		Name: slurmLogFileVolume,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{
-				Medium: corev1.StorageMediumMemory,
-			},
-		},
-	}
-	return out
-}
-
-func etcSlurmVolume() corev1.Volume {
-	out := corev1.Volume{
-		Name: slurmEtcVolume,
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{
 				Medium: corev1.StorageMediumMemory,
@@ -193,8 +164,11 @@ func mergeEnvVar(envVarList1, envVarList2 []corev1.EnvVar, sep string) []corev1.
 		}
 		envVarMap[env.Name] = ev
 	}
+	keys := structutils.Keys(envVarMap)
+	sort.Strings(keys)
 	envVarList := make([]corev1.EnvVar, 0, len(envVarMap))
-	for k, v := range envVarMap {
+	for _, k := range keys {
+		v := envVarMap[k]
 		envVar := corev1.EnvVar{
 			Name:      k,
 			Value:     strings.Join(v.Values, sep),
@@ -223,4 +197,45 @@ func slurmClusterWorkerPodDisruptionBudgetName(controllerName string) string {
 	// Derive service name dynamically from component constants
 	componentPlural := labels.WorkerComp + "s"
 	return fmt.Sprintf("slurm-%s-pdb-%s", componentPlural, controllerName)
+}
+
+func etcSlurmVolume() corev1.Volume {
+	out := corev1.Volume{
+		Name: slurmEtcVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				Medium: corev1.StorageMediumMemory,
+			},
+		},
+	}
+	return out
+}
+
+//go:embed scripts/initconf.sh
+var initConfScript string
+
+func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) corev1.Container {
+	opts := ContainerOpts{
+		base: corev1.Container{
+			Name: "initconf",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "SLURM_USER",
+					Value: slurmUser,
+				},
+			},
+			Command: []string{
+				"sh",
+				"-c",
+				initConfScript,
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{Name: slurmEtcVolume, MountPath: slurmEtcMountDir},
+				{Name: slurmConfigVolume, MountPath: slurmConfigDir, ReadOnly: true},
+			},
+		},
+		merge: container.Container,
+	}
+
+	return b.BuildContainer(opts)
 }

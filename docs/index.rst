@@ -1,10 +1,6 @@
 Kubernetes Operator for Slurm Clusters
 ======================================
 
-.. container::
-
-   |License| |Tag| |Go-Version| |Last-Commit|
-
 Run `Slurm <https://slurm.schedmd.com/overview.html>`__ on
 `Kubernetes <https://kubernetes.io/>`__, by
 `SchedMD <https://schedmd.com/>`__. A `Slinky <https://slinky.ai/>`__
@@ -27,6 +23,7 @@ Table of Contents
 
   - `Features <#features>`__
 
+    - `Controller <#controller>`__
     - `NodeSets <#nodesets>`__
     - `LoginSets <#loginsets>`__
     - `Hybrid Support <#hybrid-support>`__
@@ -98,6 +95,21 @@ For additional information about Slurm, see the
 Features
 --------
 
+Controller
+~~~~~~~~~~
+
+The Slurm control-plane is responsible for scheduling Slurm workload
+onto its worker nodes and managing their states.
+
+Changes to the Slurm configuration files are automatically detected and
+the Slurm cluster is reconfigured seamlessly with zero downtime of the
+Slurm control-plane.
+
+   [!NOTE] The kubelet’s ``configMapAndSecretChangeDetectionStrategy``
+   and ``syncFrequency`` settings directly affect when pods have their
+   mounted ConfigMaps and Secrets updated. By default, the kubelet is in
+   ``Watch`` mode with a polling frequency of 60 seconds.
+
 NodeSets
 ~~~~~~~~
 
@@ -138,7 +150,7 @@ Hybrid Support
 ~~~~~~~~~~~~~~
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRD are designed support these use
+Kubernetes. The operator and its CRDs are designed support these use
 cases.
 
 Slurm
@@ -185,7 +197,7 @@ Compatibility
 +============+=============================================================================+
 | Kubernetes | `v1.29 <https://kubernetes.io/blog/2023/12/13/kubernetes-v1-29-release/>`__ |
 +------------+-----------------------------------------------------------------------------+
-| Slurm      | `25.05 <https://www.schedmd.com/slurm-version-25-05-0-is-now-available/>`__ |
+| Slurm      | `25.11 <https://www.schedmd.com/slurm-version-25-11-0-is-now-available/>`__ |
 +------------+-----------------------------------------------------------------------------+
 | Cgroup     | `v2 <https://docs.kernel.org/admin-guide/cgroup-v2.html>`__                 |
 +------------+-----------------------------------------------------------------------------+
@@ -326,15 +338,6 @@ limitations under the License.
 .. raw:: html
 
    <!-- links -->
-
-.. |License| image:: https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge
-   :target: ./LICENSES/Apache-2.0.txt
-.. |Tag| image:: https://img.shields.io/github/v/tag/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/tags/
-.. |Go-Version| image:: https://img.shields.io/github/go-mod/go-version/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: ./go.mod
-.. |Last-Commit| image:: https://img.shields.io/github/last-commit/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/commits/
 
 .. toctree::
     :maxdepth: 2

@@ -37,6 +37,10 @@ type NodeSetSpec struct {
 	// +optional
 	Slurmd ContainerWrapper `json:"slurmd,omitempty"`
 
+	// SSH configuration for worker pods.
+	// +optional
+	Ssh NodeSetSsh `json:"ssh,omitzero"`
+
 	// The logfile sidecar configuration.
 	// +optional
 	LogFile ContainerWrapper `json:"logfile,omitzero"`
@@ -62,6 +66,7 @@ type NodeSetSpec struct {
 	// this list must have at least one matching (by name) volumeMount in one
 	// container in the template. A claim in this list takes precedence over
 	// any volumes in the template, with the same name.
+	// +nullable
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
@@ -97,6 +102,13 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=false
 	TaintKubeNodes bool `json:"taintKubeNodes,omitempty"`
+
+	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
+	// a Pod Disruption Budget.
+	// See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
+	// +optional
+	// +default:=true
+	WorkloadDisruptionProtection bool `json:"workloadDisruptionProtection,omitempty"`
 }
 
 // NodeSetPartition defines the Slurm partition configuration for the NodeSet.
@@ -109,6 +121,22 @@ type NodeSetPartition struct {
 	// Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
 	// +optional
 	Config string `json:"config,omitzero"`
+}
+
+// NodeSetSsh defines SSH configuration for NodeSet worker pods.
+type NodeSetSsh struct {
+	// Enabled controls whether SSH access is enabled for this NodeSet.
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// ExtraSshdConfig is added to the end of `sshd_config`.
+	// Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
+	// +optional
+	ExtraSshdConfig string `json:"extraSshdConfig,omitzero"`
+
+	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
+	// +required
+	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
 }
 
 // NodeSetUpdateStrategy indicates the strategy that the NodeSet
@@ -264,7 +292,6 @@ type NodeSetStatus struct {
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=nodesets;nss;slurmd
 // +kubebuilder:subresource:scale:specpath=".spec.replicas",statuspath=".status.replicas",selectorpath=".status.selector"

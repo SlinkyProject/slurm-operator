@@ -6,6 +6,8 @@ package v1beta1
 import (
 	"encoding/json"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -57,7 +59,7 @@ type PodTemplate struct {
 	// Standard object's metadata.
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	// +optional
-	PodMetadata Metadata `json:"metadata,omitempty"`
+	Metadata Metadata `json:"metadata,omitempty"`
 
 	// PodSpec is a description of a pod.
 	// +optional
@@ -70,6 +72,7 @@ type Metadata struct {
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+	// +nullable
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
@@ -77,6 +80,7 @@ type Metadata struct {
 	// set by external tools to store and retrieve arbitrary metadata. They are not
 	// queryable and should be preserved when modifying objects.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+	// +nullable
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
@@ -173,4 +177,75 @@ func (o *ServiceSpecWrapper) DeepCopy() *ServiceSpecWrapper {
 	return &ServiceSpecWrapper{
 		ServiceSpec: o.ServiceSpec,
 	}
+}
+
+// Metrics defines the metric collection configuration.
+type Metrics struct {
+	// Enabled controls if metrics will be configured.
+	// +optional
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// +optional
+	ServiceMonitor ServiceMonitor `json:"serviceMonitor,omitzero"`
+}
+
+// ServiceMonitor defines a Prometheus service monitor to metrics discovery.
+type ServiceMonitor struct {
+	// Enabled controls if metrics will be configured.
+	// +optional
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// +nullable
+	// +optional
+	Metadata `json:",inline"`
+
+	// interval at which Prometheus scrapes the metrics from the target.
+	//
+	// If empty, Prometheus uses the global scrape interval.
+	// +optional
+	Interval monitoringv1.Duration `json:"interval,omitempty"`
+
+	// scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+	//
+	// If empty, Prometheus uses the global scrape timeout unless it is less
+	// than the target's scrape interval value in which the latter is used.
+	// The value cannot be greater than the scrape interval otherwise the operator will reject the resource.
+	// +optional
+	ScrapeTimeout monitoringv1.Duration `json:"scrapeTimeout,omitempty"`
+
+	// endpoints to scrape.
+	// +nullable
+	// +optional
+	MetricEndpoints []MetricEndpoint `json:"endpoints,omitempty"`
+}
+
+type MetricEndpoint struct {
+	// path defines the HTTP path from which to scrape for metrics.
+	// +required
+	Path string `json:"path,omitempty"`
+
+	// interval at which Prometheus scrapes the metrics from the target.
+	//
+	// If empty, the local global value will be used.
+	// +optional
+	Interval monitoringv1.Duration `json:"interval,omitzero"`
+
+	// scrapeTimeout defines the timeout after which Prometheus considers the scrape to be failed.
+	//
+	// If empty, the local global value will be used.
+	// +optional
+	ScrapeTimeout monitoringv1.Duration `json:"scrapeTimeout,omitzero"`
+}
+
+// ExternalConfig describes how to communicate with an external service.
+type ExternalConfig struct {
+	// Host defines the hostname or IP address to communicate with.
+	// +required
+	Host string `json:"host,omitzero"`
+
+	// Port defines the port to communicate over.
+	// +required
+	Port int `json:"port,omitzero"`
 }

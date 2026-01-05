@@ -41,7 +41,9 @@ func (b *Builder) BuildController(controller *slinkyv1beta1.Controller) (*appsv1
 		WithControllerSelectorLabels(controller).
 		Build()
 	objectMeta := metadata.NewBuilder(key).
-		WithMetadata(controller.Spec.Template.PodMetadata).
+		WithAnnotations(controller.Annotations).
+		WithLabels(controller.Labels).
+		WithMetadata(controller.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithControllerLabels(controller).Build()).
 		Build()
 
@@ -125,7 +127,9 @@ func (b *Builder) controllerPodTemplate(controller *slinkyv1beta1.Controller) (c
 	}
 
 	objectMeta := metadata.NewBuilder(key).
-		WithMetadata(controller.Spec.Template.PodMetadata).
+		WithAnnotations(controller.Annotations).
+		WithLabels(controller.Labels).
+		WithMetadata(controller.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithControllerLabels(controller).Build()).
 		WithAnnotations(map[string]string{
 			annotationDefaultContainer: labels.ControllerApp,
@@ -242,8 +246,9 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 			},
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 				FailureThreshold: 6,
@@ -251,15 +256,17 @@ func (b *Builder) slurmctldContainer(merge corev1.Container, clusterName string)
 			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/readyz",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 			},
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(SlurmctldPort),
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: "/livez",
+						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
 				FailureThreshold: 6,

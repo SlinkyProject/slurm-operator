@@ -159,7 +159,7 @@ func newRevision(nodeset *slinkyv1beta1.NodeSet, revision int64, collisionCount 
 	cr, err := history.NewControllerRevision(
 		nodeset,
 		slinkyv1beta1.NodeSetGVK,
-		nodeset.Spec.Template.PodMetadata.Labels,
+		nodeset.Spec.Template.Metadata.Labels,
 		runtime.RawExtension{Raw: patch},
 		revision,
 		collisionCount)
@@ -204,6 +204,10 @@ func getPatch(nodeset *slinkyv1beta1.NodeSet) ([]byte, error) {
 	if logfile, ok := spec["logfile"].(map[string]any); ok {
 		logfile["$patch"] = "replace"
 		specCopy["logfile"] = logfile
+	}
+	if ssh, ok := spec["ssh"].(map[string]any); ok {
+		ssh["$patch"] = "replace"
+		specCopy["ssh"] = ssh
 	}
 	objCopy["spec"] = specCopy
 	patch, err := json.Marshal(objCopy)

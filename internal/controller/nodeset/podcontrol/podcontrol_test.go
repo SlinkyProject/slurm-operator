@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/ktesting"
@@ -30,6 +30,11 @@ import (
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 )
+
+func init() {
+	utilruntime.Must(scheme.AddToScheme(scheme.Scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme.Scheme))
+}
 
 func newPodControl(client client.Client, recorder record.EventRecorder) *realPodControl {
 	return &realPodControl{
@@ -70,7 +75,7 @@ func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.Volum
 	}
 
 	template := slinkyv1beta1.PodTemplate{
-		PodMetadata: slinkyv1beta1.Metadata{
+		Metadata: slinkyv1beta1.Metadata{
 			Labels: map[string]string{"foo": "bar"},
 		},
 		PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
@@ -129,14 +134,13 @@ func newPVC(name string) corev1.PersistentVolumeClaim {
 }
 
 func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -203,14 +207,13 @@ func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -264,14 +267,13 @@ func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := ptr.To(newPVC("datadir-foo-0"))
 	type fields struct {
 		Client   client.Client
@@ -347,14 +349,13 @@ func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
 }
 
 func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(2)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := newPVC("datadir-foo-0")
 	type fields struct {
 		Client   client.Client
@@ -438,14 +439,13 @@ func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
 }
 
 func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client   client.Client
 		recorder record.EventRecorder
@@ -506,7 +506,6 @@ func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
 }
 
 func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	const missing = "missing"
 	const exists = "exists"
 	const stale = "stale"
@@ -617,14 +616,13 @@ func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
 }
 
 func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
 	}
 	nodeset := newNodeSet(1)
-	pod := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+	pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pvc := newPVC("datadir-foo-0")
 	type fields struct {
 		Client   client.Client
