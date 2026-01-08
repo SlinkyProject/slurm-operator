@@ -105,6 +105,13 @@ repos:
         files: ^helm/
         language: system
         pass_filenames: false
+      - id: make-helm-unittest
+        name: Make Helm Unittest
+        entry: make helm-unittest
+        types: [yaml]
+        files: ^helm/
+        language: system
+        pass_filenames: false
       # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
       - id: make-golangci-lint
         name: make-golangci-lint
