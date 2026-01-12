@@ -64,6 +64,62 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "merge envFrom",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				base: corev1.Container{
+					Name: "app",
+					Env: []corev1.EnvVar{
+						{Name: "BASE_VAR", Value: "base"},
+					},
+				},
+				merge: corev1.Container{
+					Env: []corev1.EnvVar{
+						{Name: "MERGE_VAR", Value: "merge"},
+					},
+					EnvFrom: []corev1.EnvFromSource{
+						{
+							ConfigMapRef: &corev1.ConfigMapEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "my-configmap",
+								},
+							},
+						},
+						{
+							SecretRef: &corev1.SecretEnvSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "my-secret",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "app",
+				Env: []corev1.EnvVar{
+					{Name: "BASE_VAR", Value: "base"},
+					{Name: "MERGE_VAR", Value: "merge"},
+				},
+				EnvFrom: []corev1.EnvFromSource{
+					{
+						ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "my-configmap",
+							},
+						},
+					},
+					{
+						SecretRef: &corev1.SecretEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "my-secret",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
