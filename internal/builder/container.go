@@ -23,6 +23,7 @@ func (b *Builder) BuildContainer(opts ContainerOpts) corev1.Container {
 	out.Command = structutils.MergeList(opts.base.Command, opts.merge.Command)
 	out.Args = structutils.MergeList(opts.base.Args, opts.merge.Args)
 	out.Env = structutils.MergeList(opts.base.Env, opts.merge.Env)
+	out.EnvFrom = structutils.MergeList(opts.base.EnvFrom, opts.merge.EnvFrom)	
 	out.WorkingDir = reflectutils.UseNonZeroOrDefault(opts.merge.WorkingDir, opts.base.WorkingDir)
 	out.Ports = structutils.MergeList(opts.base.Ports, opts.merge.Ports)
 	out.Resources = reflectutils.UseNonZeroOrDefault(opts.merge.Resources, opts.base.Resources)
