@@ -76,3 +76,53 @@ func TestBuilder_BuildContainer(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildContainer(b *testing.B) {
+	benchmarks := []struct {
+		name   string
+		client client.Client
+		opts   ContainerOpts
+	}{
+		{
+			name:   "empty",
+			client: fake.NewFakeClient(),
+			opts:   ContainerOpts{},
+		},
+		{
+			name:   "merge",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				base: corev1.Container{
+					Name:            "foo",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Args:            []string{"-a", "-b"},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("250m"),
+							corev1.ResourceMemory: resource.MustParse("500Mi"),
+						},
+					},
+				},
+				merge: corev1.Container{
+					Name:  "bar",
+					Image: "nginx",
+					Args:  []string{"-c"},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("100m"),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.client)
+
+			for b.Loop() {
+				build.BuildContainer(bb.opts)
+			}
+		})
+	}
+}

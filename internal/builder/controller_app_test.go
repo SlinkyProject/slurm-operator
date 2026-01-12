@@ -123,3 +123,77 @@ func TestBuilder_BuildController(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildController(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		controller *slinkyv1beta1.Controller
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				},
+			},
+		},
+		{
+			name: "with persistence",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.ControllerSpec{
+						Persistence: slinkyv1beta1.ControllerPersistence{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with persistence from claim",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.ControllerSpec{
+						Persistence: slinkyv1beta1.ControllerPersistence{
+							Enabled:       true,
+							ExistingClaim: "pvc",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildController(bb.args.controller) //nolint:errcheck
+			}
+		})
+	}
+}

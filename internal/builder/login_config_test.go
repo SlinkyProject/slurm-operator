@@ -67,3 +67,46 @@ func TestBuilder_BuildLoginSshConfig(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildLoginSshConfig(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		loginset *slinkyv1beta1.LoginSet
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						RootSshAuthorizedKeys: strings.Join([]string{
+							"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@example.com",
+						}, "\n"),
+						ExtraSshdConfig: `LoginGraceTime 600`,
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildLoginSshConfig(bb.args.loginset) //nolint:errcheck
+			}
+		})
+	}
+}

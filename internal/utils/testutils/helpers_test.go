@@ -56,6 +56,47 @@ func TestNewObjectRef(t *testing.T) {
 	}
 }
 
+func BenchmarkNewObjectRef(b *testing.B) {
+	type args struct {
+		obj client.Object
+	}
+	benchmarks := []struct {
+		name string
+		args args
+		want slinkyv1beta1.ObjectReference
+	}{
+		{
+			name: "empty",
+			args: args{
+				obj: &corev1.Pod{},
+			},
+			want: slinkyv1beta1.ObjectReference{},
+		},
+		{
+			name: "named",
+			args: args{
+				obj: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: corev1.NamespaceDefault,
+					},
+				},
+			},
+			want: slinkyv1beta1.ObjectReference{
+				Namespace: corev1.NamespaceDefault,
+				Name:      "foo",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewObjectRef(bb.args.obj)
+			}
+		})
+	}
+}
+
 func TestNewController(t *testing.T) {
 	type args struct {
 		name           string
@@ -99,6 +140,45 @@ func TestNewController(t *testing.T) {
 	}
 }
 
+func BenchmarkNewController(b *testing.B) {
+	type args struct {
+		name           string
+		slurmKeyRef    corev1.SecretKeySelector
+		jwtHs256KeyRef corev1.SecretKeySelector
+		accounting     *slinkyv1beta1.Accounting
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "without accounting",
+			args: args{
+				name:           "foo",
+				slurmKeyRef:    NewSlurmKeyRef("foo"),
+				jwtHs256KeyRef: NewJwtHs256KeyRef("foo"),
+				accounting:     nil,
+			},
+		},
+		{
+			name: "with accounting",
+			args: args{
+				name:           "foo",
+				slurmKeyRef:    NewSlurmKeyRef("foo"),
+				jwtHs256KeyRef: NewJwtHs256KeyRef("foo"),
+				accounting:     NewAccounting("foo", NewSlurmKeyRef("foo"), NewJwtHs256KeyRef("foo"), NewPasswordRef("name")),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewController(bb.args.name, bb.args.slurmKeyRef, bb.args.jwtHs256KeyRef, bb.args.accounting)
+			}
+		})
+	}
+}
+
 func TestNewSlurmKeyRef(t *testing.T) {
 	type args struct {
 		name string
@@ -119,6 +199,30 @@ func TestNewSlurmKeyRef(t *testing.T) {
 			got := NewSlurmKeyRef(tt.args.name)
 			if !strings.Contains(got.Name, tt.args.name) {
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewSlurmKeyRef(b *testing.B) {
+	type args struct {
+		name string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name: "foo",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewSlurmKeyRef(bb.args.name)
 			}
 		})
 	}
@@ -152,6 +256,30 @@ func TestNewSlurmKeySecret(t *testing.T) {
 	}
 }
 
+func BenchmarkNewSlurmKeySecret(b *testing.B) {
+	type args struct {
+		ref corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				ref: NewSlurmKeyRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewSlurmKeySecret(bb.args.ref)
+			}
+		})
+	}
+}
+
 func TestNewJwtHs256KeyRef(t *testing.T) {
 	type args struct {
 		name string
@@ -172,6 +300,30 @@ func TestNewJwtHs256KeyRef(t *testing.T) {
 			got := NewJwtHs256KeyRef(tt.args.name)
 			if !strings.Contains(got.Name, tt.args.name) {
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewJwtHs256KeyRef(b *testing.B) {
+	type args struct {
+		name string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name: "foo",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewJwtHs256KeyRef(bb.args.name)
 			}
 		})
 	}
@@ -200,6 +352,30 @@ func TestNewJwtHs256KeySecret(t *testing.T) {
 				t.Error("returned object was nil")
 			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewJwtHs256KeySecret(b *testing.B) {
+	type args struct {
+		ref corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				ref: NewJwtHs256KeyRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewJwtHs256KeySecret(bb.args.ref)
 			}
 		})
 	}
@@ -238,6 +414,35 @@ func TestNewAccounting(t *testing.T) {
 	}
 }
 
+func BenchmarkNewAccounting(b *testing.B) {
+	type args struct {
+		name           string
+		slurmKeyRef    corev1.SecretKeySelector
+		jwtHs256KeyRef corev1.SecretKeySelector
+		passwordRef    corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name:           "foo",
+				slurmKeyRef:    NewSlurmKeyRef("foo"),
+				jwtHs256KeyRef: NewJwtHs256KeyRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewAccounting(bb.args.name, bb.args.slurmKeyRef, bb.args.jwtHs256KeyRef, bb.args.passwordRef)
+			}
+		})
+	}
+}
+
 func TestNewPasswordRef(t *testing.T) {
 	type args struct {
 		name string
@@ -258,6 +463,30 @@ func TestNewPasswordRef(t *testing.T) {
 			got := NewPasswordRef(tt.args.name)
 			if !strings.Contains(got.Name, tt.args.name) {
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewPasswordRef(b *testing.B) {
+	type args struct {
+		name string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name: "foo",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewPasswordRef(bb.args.name)
 			}
 		})
 	}
@@ -286,6 +515,30 @@ func TestNewPasswordSecret(t *testing.T) {
 				t.Error("returned object was nil")
 			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewPasswordSecret(b *testing.B) {
+	type args struct {
+		ref corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				ref: NewPasswordRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewPasswordSecret(bb.args.ref)
 			}
 		})
 	}
@@ -325,6 +578,34 @@ func TestNewNodeset(t *testing.T) {
 	}
 }
 
+func BenchmarkNewNodeset(b *testing.B) {
+	type args struct {
+		name       string
+		controller *slinkyv1beta1.Controller
+		replicas   int32
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name:       "foo",
+				controller: NewController("foo", NewSlurmKeyRef("foo"), NewJwtHs256KeyRef("foo"), nil),
+				replicas:   2,
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewNodeset(bb.args.name, bb.args.controller, bb.args.replicas)
+			}
+		})
+	}
+}
+
 func TestNewLoginset(t *testing.T) {
 	type args struct {
 		name        string
@@ -357,6 +638,34 @@ func TestNewLoginset(t *testing.T) {
 	}
 }
 
+func BenchmarkNewLoginset(b *testing.B) {
+	type args struct {
+		name        string
+		controller  *slinkyv1beta1.Controller
+		sssdConfRef corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name:        "foo",
+				controller:  NewController("foo", NewSlurmKeyRef("foo"), NewJwtHs256KeyRef("foo"), nil),
+				sssdConfRef: NewSssdConfRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewLoginset(bb.args.name, bb.args.controller, bb.args.sssdConfRef)
+			}
+		})
+	}
+}
+
 func TestNewSssdConfRef(t *testing.T) {
 	type args struct {
 		name string
@@ -377,6 +686,30 @@ func TestNewSssdConfRef(t *testing.T) {
 			got := NewSssdConfRef(tt.args.name)
 			if !strings.Contains(got.Name, tt.args.name) {
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewSssdConfRef(b *testing.B) {
+	type args struct {
+		name string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name: "foo",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewSssdConfRef(bb.args.name)
 			}
 		})
 	}
@@ -410,6 +743,30 @@ func TestNewSssdConfSecret(t *testing.T) {
 	}
 }
 
+func BenchmarkNewSssdConfSecret(b *testing.B) {
+	type args struct {
+		ref corev1.SecretKeySelector
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				ref: NewSssdConfRef("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewSssdConfSecret(bb.args.ref)
+			}
+		})
+	}
+}
+
 func TestNewRestapi(t *testing.T) {
 	type args struct {
 		name       string
@@ -435,6 +792,32 @@ func TestNewRestapi(t *testing.T) {
 				t.Error("returned object was nil")
 			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
 				t.Error("name does not match")
+			}
+		})
+	}
+}
+
+func BenchmarkNewRestapi(b *testing.B) {
+	type args struct {
+		name       string
+		controller *slinkyv1beta1.Controller
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "smoke",
+			args: args{
+				name:       "foo",
+				controller: NewController("foo", NewSlurmKeyRef("foo"), NewJwtHs256KeyRef("foo"), nil),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewRestapi(bb.args.name, bb.args.controller)
 			}
 		})
 	}

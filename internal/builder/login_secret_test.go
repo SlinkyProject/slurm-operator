@@ -69,3 +69,40 @@ func TestBuilder_BuildLoginSshHostKeys(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildLoginSshHostKeys(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		loginset *slinkyv1beta1.LoginSet
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildLoginSshHostKeys(bb.args.loginset) //nolint:errcheck
+			}
+		})
+	}
+}

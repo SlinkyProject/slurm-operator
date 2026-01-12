@@ -107,3 +107,85 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildTokenSecret(b *testing.B) {
+	jwtHs256Secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm-jwths256key",
+		},
+		Data: map[string][]byte{
+			"jwt_hs256.key": []byte("foo"),
+		},
+	}
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		token *slinkyv1beta1.Token
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(jwtHs256Secret).
+					Build(),
+			},
+			args: args{
+				token: &slinkyv1beta1.Token{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.TokenSpec{
+						Username: "foo",
+						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
+							SecretKeySelector: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "slurm-jwths256key",
+								},
+								Key: "jwt_hs256.key",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "not found",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				token: &slinkyv1beta1.Token{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.TokenSpec{
+						Username: "foo",
+						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
+							SecretKeySelector: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "slurm-jwths256key",
+								},
+								Key: "jwt_hs256.key",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildTokenSecret(bb.args.token) //nolint:errcheck
+			}
+		})
+	}
+}

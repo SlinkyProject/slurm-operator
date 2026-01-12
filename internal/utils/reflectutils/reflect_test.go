@@ -42,6 +42,34 @@ func TestUseNonZeroOrDefault_String(t *testing.T) {
 	}
 }
 
+func BenchmarkUseNonZeroOrDefault_String(b *testing.B) {
+	benchmarks := []struct {
+		name string
+		in   string
+		def  string
+	}{
+		{
+			name: "zeroes",
+		},
+		{
+			name: "non-zero",
+			in:   "foo",
+			def:  "bar",
+		},
+		{
+			name: "default",
+			def:  "foo",
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				UseNonZeroOrDefault(bb.in, bb.def)
+			}
+		})
+	}
+}
+
 func TestUseNonZeroOrDefault_Pointer(t *testing.T) {
 	tests := []struct {
 		name string
@@ -69,6 +97,34 @@ func TestUseNonZeroOrDefault_Pointer(t *testing.T) {
 			got := UseNonZeroOrDefault(tt.in, tt.def)
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("UseNonZeroOrDefault() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkUseNonZeroOrDefault_Pointer(b *testing.B) {
+	benchmarks := []struct {
+		name string
+		in   *string
+		def  *string
+	}{
+		{
+			name: "zeroes",
+		},
+		{
+			name: "non-zero",
+			in:   ptr.To("foo"),
+			def:  ptr.To("bar"),
+		},
+		{
+			name: "default",
+			def:  ptr.To("foo"),
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				UseNonZeroOrDefault(bb.in, bb.def)
 			}
 		})
 	}

@@ -146,3 +146,100 @@ func Test_mergeEnvVar(t *testing.T) {
 		})
 	}
 }
+
+func Benchmark_mergeEnvVar(b *testing.B) {
+	type args struct {
+		envVarList1 []corev1.EnvVar
+		envVarList2 []corev1.EnvVar
+		sep         string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{},
+		},
+		{
+			name: "list 1",
+			args: args{
+				envVarList1: []corev1.EnvVar{
+					{Name: "foo", Value: "bar"},
+				},
+				envVarList2: []corev1.EnvVar{},
+				sep:         ",",
+			},
+		},
+		{
+			name: "list 2",
+			args: args{
+				envVarList1: []corev1.EnvVar{},
+				envVarList2: []corev1.EnvVar{
+					{Name: "fizz", Value: "buzz"},
+				},
+				sep: ",",
+			},
+		},
+		{
+			name: "both",
+			args: args{
+				envVarList1: []corev1.EnvVar{
+					{Name: "foo", Value: "bar"},
+				},
+				envVarList2: []corev1.EnvVar{
+					{Name: "fizz", Value: "buzz"},
+				},
+				sep: ",",
+			},
+		},
+		{
+			name: "append",
+			args: args{
+				envVarList1: []corev1.EnvVar{
+					{Name: "foo", Value: "bar"},
+					{Name: "fizz", Value: "buzz"},
+				},
+				envVarList2: []corev1.EnvVar{
+					{Name: "foo", Value: "baz"},
+				},
+				sep: ",",
+			},
+		},
+		{
+			name: "overwrite",
+			args: args{
+				envVarList1: []corev1.EnvVar{
+					{Name: "foo", Value: "bar"},
+					{Name: "foo", ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "config",
+							},
+							Key: "key",
+						},
+					}},
+				},
+				envVarList2: []corev1.EnvVar{
+					{Name: "fizz", Value: "buzz"},
+					{Name: "foo", ValueFrom: &corev1.EnvVarSource{
+						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "config",
+							},
+							Key: "key",
+						},
+					}},
+				},
+				sep: ",",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				mergeEnvVar(bb.args.envVarList1, bb.args.envVarList2, bb.args.sep)
+			}
+		})
+	}
+}

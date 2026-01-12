@@ -330,6 +330,11 @@ test: envtest ## Run tests.
 			exit 1; \
 		fi
 
+.PHONY: benchmark
+benchmark: envtest ## Run benchmark tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+	go test `go list ./... | grep -v "/api" | grep -v "/e2e"` -bench=. -benchmem
+
 .PHONY: test-e2e
 test-e2e:
 	go test -timeout 15m ./test/e2e

@@ -59,6 +59,43 @@ func Test_NodeEventHandler_Create(t *testing.T) {
 	}
 }
 
+func Benchmark_NodeEventHandler_Create(b *testing.B) {
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.CreateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Empty",
+			fields: fields{
+				Reader: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{},
+				q:   newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewNodeEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Create(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_NodeEventHandler_Delete(t *testing.T) {
 	type fields struct {
 		Reader client.Reader
@@ -98,6 +135,43 @@ func Test_NodeEventHandler_Delete(t *testing.T) {
 	}
 }
 
+func Benchmark_NodeEventHandler_Delete(b *testing.B) {
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.DeleteEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Empty",
+			fields: fields{
+				Reader: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{},
+				q:   newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewNodeEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Delete(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_NodeEventHandler_Generic(t *testing.T) {
 	type fields struct {
 		Reader client.Reader
@@ -132,6 +206,43 @@ func Test_NodeEventHandler_Generic(t *testing.T) {
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("NodeEventHandler.Generic() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_NodeEventHandler_Generic(b *testing.B) {
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.GenericEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Empty",
+			fields: fields{
+				Reader: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.GenericEvent{},
+				q:   newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewNodeEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Generic(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}
@@ -228,6 +339,97 @@ func Test_NodeEventHandler_Update(t *testing.T) {
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("NodeEventHandler.Update() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_NodeEventHandler_Update(b *testing.B) {
+	nodeset := newNodeSet("foo", "slurm", 0)
+	cl := fake.NewFakeClient()
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.UpdateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Node cordoned - should enqueue NodeSet",
+			fields: fields{
+				Reader: indexes.NewFakeClientBuilderWithIndexes(
+					nodeset,
+					newNodeSetPod(cl, nodeset, 0, "test-node"),
+					newNodeSetPod(cl, nodeset, 1, "test-node2"),
+				).Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: newNode("test-node", false),
+					ObjectNew: newNode("test-node", true),
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "Node uncordoned - should enqueue NodeSet",
+			fields: fields{
+				Reader: indexes.NewFakeClientBuilderWithIndexes(
+					nodeset,
+					newNodeSetPod(cl, nodeset, 0, "test-node"),
+				).Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: newNode("test-node", true),
+					ObjectNew: newNode("test-node", false),
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "No cordon change - should not enqueue",
+			fields: fields{
+				Reader: indexes.NewFakeClientBuilderWithIndexes().Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: newNode("test-node", false),
+					ObjectNew: newNode("test-node", false),
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "No worker pods on node - should not enqueue",
+			fields: fields{
+				Reader: indexes.NewFakeClientBuilderWithIndexes().Build(), // No pods
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: newNode("test-node", false),
+					ObjectNew: newNode("test-node", true),
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewNodeEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Update(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}

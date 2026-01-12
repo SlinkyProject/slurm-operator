@@ -84,6 +84,71 @@ func Test_AccountingEventHandler_Create(t *testing.T) {
 	}
 }
 
+func Benchmark_AccountingEventHandler_Create(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		ctx context.Context
+		evt event.CreateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{},
+				q:   newQueue(),
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
+								Name: "slurm",
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{
+					Object: &slinkyv1beta1.Accounting{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					},
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			e := NewAccountingEventHandler(bb.fields.client)
+
+			for b.Loop() {
+				e.Create(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_AccountingEventHandler_Update(t *testing.T) {
 	type fields struct {
 		client client.Client
@@ -157,6 +222,76 @@ func Test_AccountingEventHandler_Update(t *testing.T) {
 	}
 }
 
+func Benchmark_AccountingEventHandler_Update(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		ctx context.Context
+		evt event.UpdateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{},
+				q:   newQueue(),
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
+								Name: "slurm",
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectNew: &slinkyv1beta1.Accounting{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					},
+					ObjectOld: &slinkyv1beta1.Accounting{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					},
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			e := NewAccountingEventHandler(bb.fields.client)
+
+			for b.Loop() {
+				e.Update(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_AccountingEventHandler_Delete(t *testing.T) {
 	type fields struct {
 		client client.Client
@@ -225,6 +360,71 @@ func Test_AccountingEventHandler_Delete(t *testing.T) {
 	}
 }
 
+func Benchmark_AccountingEventHandler_Delete(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		ctx context.Context
+		evt event.DeleteEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{},
+				q:   newQueue(),
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
+								Name: "slurm",
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{
+					Object: &slinkyv1beta1.Accounting{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					},
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			e := NewAccountingEventHandler(bb.fields.client)
+
+			for b.Loop() {
+				e.Delete(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_AccountingEventHandler_Generic(t *testing.T) {
 	type fields struct {
 		client client.Client
@@ -259,6 +459,43 @@ func Test_AccountingEventHandler_Generic(t *testing.T) {
 			e.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Create() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_AccountingEventHandler_Generic(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		ctx context.Context
+		evt event.GenericEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.GenericEvent{},
+				q:   newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			e := NewAccountingEventHandler(bb.fields.client)
+
+			for b.Loop() {
+				e.Generic(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}

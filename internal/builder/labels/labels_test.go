@@ -118,3 +118,85 @@ func TestNewBuilder(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkNewBuilder(b *testing.B) {
+	type args struct {
+		builder *Builder
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Empty",
+			args: args{
+				builder: NewBuilder(),
+			},
+		},
+		{
+			name: "WithApp",
+			args: args{
+				builder: NewBuilder().
+					WithApp("foo"),
+			},
+		},
+		{
+			name: "WithComponent",
+			args: args{
+				builder: NewBuilder().
+					WithComponent("foo"),
+			},
+		},
+		{
+			name: "WithInstance",
+			args: args{
+				builder: NewBuilder().
+					WithInstance("foo"),
+			},
+		},
+		{
+			name: "WithManagedBy",
+			args: args{
+				builder: NewBuilder().
+					WithManagedBy("foo"),
+			},
+		},
+		{
+			name: "WithPartOf",
+			args: args{
+				builder: NewBuilder().
+					WithPartOf("foo"),
+			},
+		},
+		{
+			name: "WithCluster",
+			args: args{
+				builder: NewBuilder().
+					WithCluster("slurm"),
+			},
+		},
+		{
+			name: "WithPodProtect",
+			args: args{
+				builder: NewBuilder().
+					WithPodProtect(),
+			},
+		},
+		{
+			name: "WithLabels",
+			args: args{
+				builder: NewBuilder().
+					WithLabels(map[string]string{
+						"foo": "bar",
+					}),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				bb.args.builder.Build()
+			}
+		})
+	}
+}

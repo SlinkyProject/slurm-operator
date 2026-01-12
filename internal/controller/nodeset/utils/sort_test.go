@@ -293,6 +293,225 @@ func TestSortingActivePods(t *testing.T) {
 	}
 }
 
+func BenchmarkSortingActivePods(b *testing.B) {
+	now := metav1.Now()
+	then := metav1.Time{Time: now.AddDate(0, -1, 0)}
+
+	benchmarks := []struct {
+		name string
+		pods []corev1.Pod
+	}{
+		{
+			name: "Sorts by active pod",
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "unscheduled"},
+					Spec:       corev1.PodSpec{NodeName: ""},
+					Status:     corev1.PodStatus{Phase: corev1.PodPending},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "scheduledButPending"},
+					Spec:       corev1.PodSpec{NodeName: "bar"},
+					Status:     corev1.PodStatus{Phase: corev1.PodPending},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "unknownPhase"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status:     corev1.PodStatus{Phase: corev1.PodUnknown},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "runningButNotReady"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "runningNoLastTransitionTime"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "runningWithLastTransitionTime"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: now},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "runningLongerTime"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: then},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "oldest", CreationTimestamp: then},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: then},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "runningWithCost",
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodDeletionCost: "1"},
+					},
+					Spec: corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "runningWithCordon",
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodCordon: "True"},
+					},
+					Spec: corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "runningWithOrdinal-1"},
+					Spec:       corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "runningWithDeadline",
+						Annotations: map[string]string{slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339)},
+					},
+					Spec: corev1.PodSpec{NodeName: "foo"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Sort ordinals",
+			pods: []corev1.Pod{
+				newRunningPod("ordinal-0", nil),
+				newRunningPod("ordinal-1", nil),
+				newRunningPod("ordinal-2", nil),
+			},
+		},
+		{
+			name: "Sort cordon",
+			pods: []corev1.Pod{
+				newRunningPod("regular", nil),
+				newRunningPod("podCordon", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon: "True",
+				}),
+			},
+		},
+		{
+			name: "Sort deadlines",
+			pods: []corev1.Pod{
+				newRunningPod("noDeadline", nil),
+				newRunningPod("deadlineBefore", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(-time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("deadlineNow", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+				}),
+				newRunningPod("deadlineLater", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}),
+			},
+		},
+		{
+			name: "Sort deletion cost",
+			pods: []corev1.Pod{
+				newRunningPod("costNeg10", map[string]string{
+					slinkyv1beta1.AnnotationPodDeletionCost: "-10",
+				}),
+				newRunningPod("cost0", nil),
+				newRunningPod("costPos10", map[string]string{
+					slinkyv1beta1.AnnotationPodDeletionCost: "10",
+				}),
+			},
+		},
+		{
+			name: "Sort mixed",
+			pods: []corev1.Pod{
+				newRunningPod("ordinal-0", nil),
+				newRunningPod("ordinal-1", nil),
+				newRunningPod("deadlineNow", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+				}),
+				newRunningPod("deadlineLater", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("podCordoned", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon: "True",
+				}),
+				newRunningPod("podCordonedAndDeadlineNow", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+				}),
+				newRunningPod("podCordonedAndDeadlineLater", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("deletionCostNeg10", map[string]string{
+					slinkyv1beta1.AnnotationPodDeletionCost: "-10",
+				}),
+				newRunningPod("deletionCostPos10", map[string]string{
+					slinkyv1beta1.AnnotationPodDeletionCost: "1",
+				}),
+				newRunningPod("cordonedDeadlineCost100", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:       "True",
+					slinkyv1beta1.AnnotationPodDeadline:     time.Now().Format(time.RFC3339),
+					slinkyv1beta1.AnnotationPodDeletionCost: "100",
+				}),
+			},
+		},
+	}
+
+	for _, bench := range benchmarks {
+		numPods := len(bench.pods)
+
+		b.Run(bench.name, func(b *testing.B) {
+			idx := rand.Perm(numPods)
+			randomizedPods := make([]*corev1.Pod, numPods)
+			for j := range numPods {
+				randomizedPods[j] = &bench.pods[idx[j]]
+			}
+			for b.Loop() {
+				sort.Sort(ActivePods(randomizedPods))
+			}
+		})
+	}
+}
+
 func newRunningPod(name string, annotations map[string]string) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -356,6 +575,53 @@ func Test_afterOrZero(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := afterOrZero(tt.args.t1, tt.args.t2); got != tt.want {
 				t.Errorf("afterOrZero() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_afterOrZero(b *testing.B) {
+	type args struct {
+		t1 time.Time
+		t2 time.Time
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "unit time",
+			args: args{
+				t1: time.Time{},
+				t2: time.Time{},
+			},
+		},
+		{
+			name: "equal, not zero",
+			args: args{
+				t1: time.Unix(0, 0),
+				t2: time.Unix(0, 0),
+			},
+		},
+		{
+			name: "after",
+			args: args{
+				t1: time.Unix(10, 0),
+				t2: time.Unix(0, 0),
+			},
+		},
+		{
+			name: "before",
+			args: args{
+				t1: time.Unix(0, 0),
+				t2: time.Unix(10, 0),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				afterOrZero(bb.args.t1, bb.args.t2)
 			}
 		})
 	}
@@ -441,6 +707,62 @@ func TestSplitActivePods(t *testing.T) {
 	}
 }
 
+func BenchmarkSplitActivePods(b *testing.B) {
+	type args struct {
+		pods      []*corev1.Pod
+		partition int
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Empty",
+			args: args{
+				pods:      nil,
+				partition: 0,
+			},
+		},
+		{
+			name: "Partition 0",
+			args: args{
+				pods: []*corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-0"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-1"}},
+				},
+				partition: 0,
+			},
+		},
+		{
+			name: "Partition 1",
+			args: args{
+				pods: []*corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-0"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-1"}},
+				},
+				partition: 1,
+			},
+		},
+		{
+			name: "Partition 2",
+			args: args{
+				pods: []*corev1.Pod{
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-0"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "foo-1"}},
+				},
+				partition: 2,
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				SplitActivePods(bb.args.pods, bb.args.partition)
+			}
+		})
+	}
+}
+
 func TestSplitUnhealthyPods(t *testing.T) {
 	type args struct {
 		pods []*corev1.Pod
@@ -505,6 +827,50 @@ func TestSplitUnhealthyPods(t *testing.T) {
 			}
 			if !apiequality.Semantic.DeepEqual(gotHealthyPods, tt.wantHealthyPods) {
 				t.Errorf("SplitUnhealthyPods() gotHealthyPods = %v, want %v", gotHealthyPods, tt.wantHealthyPods)
+			}
+		})
+	}
+}
+
+func BenchmarkSplitUnhealthyPods(b *testing.B) {
+	type args struct {
+		pods []*corev1.Pod
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				pods: nil,
+			},
+		},
+		{
+			name: "mixed",
+			args: args{
+				pods: []*corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
+						Status:     corev1.PodStatus{Phase: corev1.PodPending},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "pod2"},
+						Status: corev1.PodStatus{
+							Phase: corev1.PodRunning,
+							Conditions: []corev1.PodCondition{
+								{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				SplitUnhealthyPods(bb.args.pods)
 			}
 		})
 	}

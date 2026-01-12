@@ -115,3 +115,95 @@ func TestNewKeyPair(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkNewKeyPair(b *testing.B) {
+	type args struct {
+		opts []Option
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "RSA",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairRsa),
+				},
+			},
+		},
+		{
+			name: "RSA, with options",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairRsa),
+					WithRsaLength(4096),
+					WithPassphrase("foo"),
+					WithComment("user@example.com"),
+				},
+			},
+		},
+		{
+			name: "RSA, insecure length",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairRsa),
+					WithRsaLength(256),
+				},
+			},
+		},
+		{
+			name: "Ecdsa",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairEcdsa),
+				},
+			},
+		},
+		{
+			name: "Ecdsa, with options",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairEcdsa),
+					WithEcdsaCurve(elliptic.P521()),
+					WithPassphrase("foo"),
+					WithComment("user@example.com"),
+				},
+			},
+		},
+		{
+			name: "Ecdsa, invalid curve",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairEcdsa),
+					WithEcdsaCurve(nil),
+				},
+			},
+		},
+		{
+			name: "Ed25519",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairEd25519),
+				},
+			},
+		},
+		{
+			name: "Ed25519, with options",
+			args: args{
+				opts: []Option{
+					WithType(KeyPairEd25519),
+					WithPassphrase("foo"),
+					WithComment("user@example.com"),
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewKeyPair(bb.args.opts...) //nolint:errcheck
+			}
+		})
+	}
+}

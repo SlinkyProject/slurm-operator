@@ -149,6 +149,21 @@ func TestIsPodFromNodeSet(t *testing.T) {
 	}
 }
 
+func BenchmarkIsPodFromNodeSet(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	nodeset := newNodeSet("foo")
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		IsPodFromNodeSet(nodeset, pod)
+	}
+}
+
 func TestGetParentName(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -187,6 +202,20 @@ func TestGetParentName(t *testing.T) {
 	}
 }
 
+func BenchmarkGetParentName(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("bar"), controller, 1, "")
+
+	for b.Loop() {
+		GetParentName(pod)
+	}
+}
+
 func TestGetOrdinal(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -222,6 +251,20 @@ func TestGetOrdinal(t *testing.T) {
 				t.Errorf("GetOrdinal() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkGetOrdinal(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		GetOrdinal(pod)
 	}
 }
 
@@ -270,6 +313,20 @@ func TestGetParentNameAndOrdinal(t *testing.T) {
 	}
 }
 
+func BenchmarkGetParentNameAndOrdinal(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		GetParentNameAndOrdinal(pod)
+	}
+}
+
 func TestGetPodName(t *testing.T) {
 	type args struct {
 		nodeset *slinkyv1beta1.NodeSet
@@ -303,6 +360,15 @@ func TestGetPodName(t *testing.T) {
 				t.Errorf("GetPodName() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkGetPodName(b *testing.B) {
+	nodeset := newNodeSet("foo")
+	ordinal := 0
+
+	for b.Loop() {
+		GetPodName(nodeset, ordinal)
 	}
 }
 
@@ -341,6 +407,20 @@ func TestGetNodeName(t *testing.T) {
 				t.Errorf("GetNodeName() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkGetNodeName(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		GetNodeName(pod)
 	}
 }
 
@@ -385,6 +465,21 @@ func TestIsIdentityMatch(t *testing.T) {
 	}
 }
 
+func BenchmarkIsIdentityMatch(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	nodeset := newNodeSet("foo")
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		IsIdentityMatch(nodeset, pod)
+	}
+}
+
 func TestIsStorageMatch(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -423,6 +518,21 @@ func TestIsStorageMatch(t *testing.T) {
 				t.Errorf("IsStorageMatch() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkIsStorageMatch(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	nodeset := newNodeSet("foo")
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	for b.Loop() {
+		IsStorageMatch(nodeset, pod)
 	}
 }
 
@@ -493,6 +603,39 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 	}
 }
 
+func BenchmarkGetPersistentVolumeClaims(b *testing.B) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	nodesetWithoutClaims := &slinkyv1beta1.NodeSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "foo",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+	}
+	nodesetWithClaims := newNodeSet("foo")
+	pod := NewNodeSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+
+	b.Run("Without claims", func(b *testing.B) {
+		for b.Loop() {
+			GetPersistentVolumeClaims(nodesetWithoutClaims, pod)
+		}
+	})
+
+	b.Run("With claims", func(b *testing.B) {
+		for b.Loop() {
+			GetPersistentVolumeClaims(nodesetWithClaims, pod)
+		}
+	})
+
+}
+
 func TestGetPersistentVolumeClaimName(t *testing.T) {
 	type args struct {
 		nodeset *slinkyv1beta1.NodeSet
@@ -540,4 +683,26 @@ func TestGetPersistentVolumeClaimName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func BenchmarkGetPersistentVolumeClaimName(b *testing.B) {
+	nodeset := newNodeSet("foo")
+	claim := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "test",
+		},
+	}
+
+	b.Run("Ordinal Zero", func(b *testing.B) {
+		for b.Loop() {
+			GetPersistentVolumeClaimName(nodeset, claim, 0)
+		}
+	})
+
+	b.Run("Non-Zero Ordinal", func(b *testing.B) {
+		for b.Loop() {
+			GetPersistentVolumeClaimName(nodeset, claim, 1)
+		}
+	})
 }

@@ -90,3 +90,59 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildAccountingService(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		accounting *slinkyv1beta1.Accounting
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "mariadb",
+						},
+						Data: map[string][]byte{
+							"password": []byte("mariadb-password"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.AccountingSpec{
+						StorageConfig: slinkyv1beta1.StorageConfig{
+							PasswordKeyRef: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "mariadb",
+								},
+								Key: "password",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildAccountingService(bb.args.accounting) //nolint:errcheck
+			}
+		})
+	}
+}

@@ -51,6 +51,39 @@ func TestNewBuilder(t *testing.T) {
 	}
 }
 
+func BenchmarkNewBuilder(b *testing.B) {
+	type args struct {
+		key types.NamespacedName
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				key: types.NamespacedName{},
+			},
+		},
+		{
+			name: "non-empty",
+			args: args{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				NewBuilder(bb.args.key).Build()
+			}
+		})
+	}
+}
+
 func TestMetadataBuilder_WithMetadata(t *testing.T) {
 	type fields struct {
 		key types.NamespacedName
@@ -120,6 +153,61 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 	}
 }
 
+func BenchmarkMetadataBuilder_WithMetadata(b *testing.B) {
+	type fields struct {
+		key types.NamespacedName
+	}
+	type args struct {
+		meta slinkyv1beta1.Metadata
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				meta: slinkyv1beta1.Metadata{},
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				meta: slinkyv1beta1.Metadata{
+					Annotations: map[string]string{
+						"foo": "bar",
+					},
+					Labels: map[string]string{
+						"fizz": "buzz",
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := NewBuilder(bb.fields.key)
+
+			for b.Loop() {
+				build.WithMetadata(bb.args.meta).Build()
+			}
+		})
+	}
+}
+
 func TestMetadataBuilder_WithAnnotations(t *testing.T) {
 	type fields struct {
 		key types.NamespacedName
@@ -181,6 +269,56 @@ func TestMetadataBuilder_WithAnnotations(t *testing.T) {
 	}
 }
 
+func BenchmarkMetadataBuilder_WithAnnotations(b *testing.B) {
+	type fields struct {
+		key types.NamespacedName
+	}
+	type args struct {
+		annotations map[string]string
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				annotations: map[string]string{},
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				annotations: map[string]string{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := NewBuilder(bb.fields.key)
+
+			for b.Loop() {
+				build.WithAnnotations(bb.args.annotations).Build()
+			}
+		})
+	}
+}
+
 func TestMetadataBuilder_WithLabels(t *testing.T) {
 	type fields struct {
 		key types.NamespacedName
@@ -237,6 +375,56 @@ func TestMetadataBuilder_WithLabels(t *testing.T) {
 			b := NewBuilder(tt.fields.key)
 			if got := b.WithLabels(tt.args.labels).Build(); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("MetadataBuilder.WithLabels() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkMetadataBuilder_WithLabels(b *testing.B) {
+	type fields struct {
+		key types.NamespacedName
+	}
+	type args struct {
+		labels map[string]string
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				labels: map[string]string{},
+			},
+		},
+		{
+			name: "non-empty",
+			fields: fields{
+				key: types.NamespacedName{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+			},
+			args: args{
+				labels: map[string]string{
+					"fizz": "buzz",
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := NewBuilder(bb.fields.key)
+
+			for b.Loop() {
+				build.WithLabels(bb.args.labels).Build()
 			}
 		})
 	}

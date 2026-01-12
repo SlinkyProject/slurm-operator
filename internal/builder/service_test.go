@@ -128,3 +128,91 @@ func TestBuilder_BuildService(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildService(b *testing.B) {
+	type args struct {
+		opts  ServiceOpts
+		owner metav1.Object
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				owner: &appsv1.Deployment{},
+			},
+		},
+		{
+			name: "bad owner",
+		},
+		{
+			name: "with options",
+			args: args{
+				opts: ServiceOpts{
+					Key: types.NamespacedName{
+						Name:      "foo",
+						Namespace: "bar",
+					},
+					Metadata: slinkyv1beta1.Metadata{
+						Annotations: map[string]string{
+							"foo": "bar",
+						},
+						Labels: map[string]string{
+							"fizz": "buzz",
+						},
+					},
+					Selector: map[string]string{
+						"fizz": "buzz",
+					},
+					ServiceSpec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{Name: "foo", Port: 0},
+							{Name: "bar", Port: 1},
+						},
+					},
+					Headless: true,
+				},
+				owner: &appsv1.Deployment{},
+			},
+		},
+		{
+			name: "duplicate port name",
+			args: args{
+				opts: ServiceOpts{
+					ServiceSpec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{Name: "foo", Port: 0},
+							{Name: "foo", Port: 1},
+						},
+					},
+				},
+				owner: &appsv1.Deployment{},
+			},
+		},
+		{
+			name: "duplicate port number",
+			args: args{
+				opts: ServiceOpts{
+					ServiceSpec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
+							{Name: "foo", Port: 0},
+							{Name: "bar", Port: 0},
+						},
+					},
+				},
+				owner: &appsv1.Deployment{},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(fake.NewFakeClient())
+
+			for b.Loop() {
+				build.BuildService(bb.args.opts, bb.args.owner) //nolint:errcheck
+			}
+		})
+	}
+}

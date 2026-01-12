@@ -40,6 +40,36 @@ func TestCheckSum(t *testing.T) {
 	}
 }
 
+func BenchmarkCheckSum(b *testing.B) {
+	type args struct {
+		b []byte
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				b: []byte{},
+			},
+		},
+		{
+			name: "non-empty",
+			args: args{
+				b: []byte("foo"),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				CheckSum(bb.args.b)
+			}
+		})
+	}
+}
+
 func TestCheckSumFromMap(t *testing.T) {
 	type args struct {
 		items map[string]string
@@ -71,6 +101,39 @@ func TestCheckSumFromMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := CheckSumFromMap(tt.args.items); got != tt.want {
 				t.Errorf("CheckSumFromMap() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkCheckSumFromMap(b *testing.B) {
+	type args struct {
+		items map[string]string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				items: map[string]string{},
+			},
+		},
+		{
+			name: "non-empty",
+			args: args{
+				items: map[string]string{
+					"foo":  "bar",
+					"fizz": "buzz",
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				CheckSumFromMap(bb.args.items)
 			}
 		})
 	}

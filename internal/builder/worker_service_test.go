@@ -74,3 +74,43 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildClusterWorkerService(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		nodeset *slinkyv1beta1.NodeSet
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				nodeset: &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "gpu-1",
+						Namespace: "slinky",
+					},
+					Spec: slinkyv1beta1.NodeSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+			build.BuildClusterWorkerService(bb.args.nodeset) //nolint:errcheck
+		})
+	}
+}

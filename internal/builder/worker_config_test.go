@@ -62,3 +62,45 @@ func TestBuilder_BuildWorkerSshConfig(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildWorkerSshConfig(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		nodeset *slinkyv1beta1.NodeSet
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				nodeset: &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.NodeSetSpec{
+						Ssh: slinkyv1beta1.NodeSetSsh{
+							ExtraSshdConfig: `LoginGraceTime 600`,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildWorkerSshConfig(bb.args.nodeset) //nolint:errcheck
+			}
+		})
+	}
+}

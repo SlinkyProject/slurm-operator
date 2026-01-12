@@ -80,3 +80,48 @@ func TestSlowStartBatch(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkSlowStartBatch(b *testing.B) {
+	fakeErr := fmt.Errorf("fake error")
+	var lock sync.Mutex
+
+	benchmarks := []struct {
+		name      string
+		count     int
+		callLimit int
+	}{
+		{
+			name:      "callLimit = 0 (all fail)",
+			count:     10,
+			callLimit: 0,
+		},
+		{
+			name:      "callLimit = count (all succeed)",
+			count:     10,
+			callLimit: 10,
+		},
+		{
+			name:      "callLimit < count (some succeed)",
+			count:     10,
+			callLimit: 5,
+		},
+	}
+
+	for _, bb := range benchmarks {
+		callCnt := 0
+		fn := func(idx int) error {
+			lock.Lock()
+			defer lock.Unlock()
+			callCnt++
+			if callCnt > bb.callLimit {
+				return fakeErr
+			}
+			return nil
+		}
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				SlowStartBatch(bb.count, 1, fn) //nolint:errcheck
+			}
+		})
+	}
+}

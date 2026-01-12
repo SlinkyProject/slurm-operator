@@ -45,3 +45,35 @@ func Test_clusterDomain(t *testing.T) {
 		})
 	}
 }
+
+func Benchmark_clusterDomain(b *testing.B) {
+	benchmarks := []struct {
+		name        string
+		resolveConf string
+	}{
+		{
+			name:        "empty",
+			resolveConf: "empty.conf",
+		},
+		{
+			name:        "kubernetes",
+			resolveConf: "kubernetes.conf",
+		},
+		{
+			name:        "custom",
+			resolveConf: "custom.conf",
+		},
+		{
+			name:        "malformed",
+			resolveConf: "malformed.conf",
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			resolvConfPath = path.Join(".testdata", bb.resolveConf)
+			for b.Loop() {
+				clusterDomain()
+			}
+		})
+	}
+}

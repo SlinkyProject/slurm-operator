@@ -57,6 +57,46 @@ func TestSetRevision(t *testing.T) {
 	}
 }
 
+func BenchmarkSetRevision(b *testing.B) {
+	type args struct {
+		labels   map[string]string
+		revision string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				labels:   nil,
+				revision: "",
+			},
+		},
+		{
+			name: "empty map",
+			args: args{
+				labels:   map[string]string{},
+				revision: "",
+			},
+		},
+		{
+			name: "hash",
+			args: args{
+				labels:   map[string]string{},
+				revision: "00000",
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				SetRevision(bb.args.labels, bb.args.revision)
+			}
+		})
+	}
+}
+
 func TestGetRevision(t *testing.T) {
 	type args struct {
 		labels map[string]string
@@ -94,6 +134,44 @@ func TestGetRevision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GetRevision(tt.args.labels); got != tt.want {
 				t.Errorf("GetRevision() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkGetRevision(b *testing.B) {
+	type args struct {
+		labels map[string]string
+	}
+	benchmarks := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "empty",
+			args: args{
+				labels: nil,
+			},
+		},
+		{
+			name: "empty map",
+			args: args{
+				labels: map[string]string{},
+			},
+		},
+		{
+			name: "hash",
+			args: args{
+				labels: map[string]string{
+					history.ControllerRevisionHashLabel: "00000",
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			for b.Loop() {
+				GetRevision(bb.args.labels)
 			}
 		})
 	}

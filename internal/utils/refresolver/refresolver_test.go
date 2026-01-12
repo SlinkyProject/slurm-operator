@@ -100,6 +100,66 @@ func TestRefResolver_GetController(t *testing.T) {
 	}
 }
 
+func BenchmarkRefResolver_GetController(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		ref slinkyv1beta1.ObjectReference
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "not found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				ref: slinkyv1beta1.ObjectReference{
+					Name:      "slurm",
+					Namespace: metav1.NamespaceDefault,
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm",
+							Namespace: metav1.NamespaceDefault,
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				ref: slinkyv1beta1.ObjectReference{
+					Name:      "slurm",
+					Namespace: metav1.NamespaceDefault,
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetController(bb.args.ctx, bb.args.ref) //nolint:errcheck
+			}
+		})
+	}
+}
+
 func TestRefResolver_GetAccounting(t *testing.T) {
 	type fields struct {
 		reader client.Reader
@@ -169,6 +229,66 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			}
 			if got != nil && objectutils.KeyFunc(got) != objectutils.KeyFunc(tt.want) {
 				t.Errorf("RefResolver.GetAccounting() = %v, want %v", objectutils.KeyFunc(got), objectutils.KeyFunc(tt.want))
+			}
+		})
+	}
+}
+
+func BenchmarkRefResolver_GetAccounting(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		ref slinkyv1beta1.ObjectReference
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "not found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				ref: slinkyv1beta1.ObjectReference{
+					Name:      "slurm",
+					Namespace: metav1.NamespaceDefault,
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.Accounting{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm",
+							Namespace: metav1.NamespaceDefault,
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				ref: slinkyv1beta1.ObjectReference{
+					Name:      "slurm",
+					Namespace: metav1.NamespaceDefault,
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetAccounting(bb.args.ctx, bb.args.ref) //nolint:errcheck
 			}
 		})
 	}
@@ -265,6 +385,76 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 	}
 }
 
+func BenchmarkRefResolver_GetNodeSetsForController(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx        context.Context
+		controller *slinkyv1beta1.Controller
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.NodeSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm-foo",
+							Namespace: metav1.NamespaceDefault,
+						},
+						Spec: slinkyv1beta1.NodeSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
+								Name:      "slurm",
+								Namespace: metav1.NamespaceDefault,
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetNodeSetsForController(bb.args.ctx, bb.args.controller) //nolint:errcheck
+			}
+		})
+	}
+}
+
 func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 	type fields struct {
 		reader client.Reader
@@ -351,6 +541,76 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			}
 			if len(got.Items) != tt.want {
 				t.Errorf("RefResolver.GetLoginSetsForController() = %v, want %v", len(got.Items), tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkRefResolver_GetLoginSetsForController(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx        context.Context
+		controller *slinkyv1beta1.Controller
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.LoginSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm-foo",
+							Namespace: metav1.NamespaceDefault,
+						},
+						Spec: slinkyv1beta1.LoginSetSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
+								Name:      "slurm",
+								Namespace: metav1.NamespaceDefault,
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetLoginSetsForController(bb.args.ctx, bb.args.controller) //nolint:errcheck
 			}
 		})
 	}
@@ -447,6 +707,76 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 	}
 }
 
+func BenchmarkRefResolver_GetRestapisForController(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx        context.Context
+		controller *slinkyv1beta1.Controller
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.RestApi{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm-foo",
+							Namespace: metav1.NamespaceDefault,
+						},
+						Spec: slinkyv1beta1.RestApiSpec{
+							ControllerRef: slinkyv1beta1.ObjectReference{
+								Name:      "slurm",
+								Namespace: metav1.NamespaceDefault,
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetRestapisForController(bb.args.ctx, bb.args.controller) //nolint:errcheck
+			}
+		})
+	}
+}
+
 func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 	type fields struct {
 		reader client.Reader
@@ -538,6 +868,76 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 	}
 }
 
+func BenchmarkRefResolver_GetControllersForAccounting(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx        context.Context
+		accounting *slinkyv1beta1.Accounting
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "slurm-foo",
+							Namespace: metav1.NamespaceDefault,
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: slinkyv1beta1.ObjectReference{
+								Name:      "slurm",
+								Namespace: metav1.NamespaceDefault,
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetControllersForAccounting(bb.args.ctx, bb.args.accounting) //nolint:errcheck
+			}
+		})
+	}
+}
+
 func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 	type fields struct {
 		reader client.Reader
@@ -612,6 +1012,76 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 			}
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("RefResolver.GetSecretKeyRef() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkRefResolver_GetSecretKeyRef(b *testing.B) {
+	type fields struct {
+		reader client.Reader
+	}
+	type args struct {
+		ctx       context.Context
+		selector  *corev1.SecretKeySelector
+		namespace string
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "empty",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				selector: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "secret",
+					},
+					Key: "password",
+				},
+				namespace: metav1.NamespaceDefault,
+			},
+		},
+		{
+			name: "found",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "secret",
+							Namespace: metav1.NamespaceDefault,
+						},
+						Data: map[string][]byte{
+							"password": []byte("password1"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				selector: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "secret",
+					},
+					Key: "password",
+				},
+				namespace: metav1.NamespaceDefault,
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := New(bb.fields.reader)
+			for b.Loop() {
+				r.GetSecretKeyRef(bb.args.ctx, bb.args.selector, bb.args.namespace) //nolint:errcheck
 			}
 		})
 	}

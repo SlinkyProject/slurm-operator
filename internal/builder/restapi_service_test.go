@@ -83,3 +83,51 @@ func TestBuilder_BuildRestapiService(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildRestapiService(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		restapi *slinkyv1beta1.RestApi
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			build := New(bb.fields.client)
+
+			for b.Loop() {
+				build.BuildRestapiService(bb.args.restapi) //nolint:errcheck
+			}
+		})
+	}
+}

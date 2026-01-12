@@ -142,6 +142,126 @@ func TestNodeSetReconciler_truncateHistory(t *testing.T) {
 	}
 }
 
+func BenchmarkNodeSetReconciler_truncateHistory(b *testing.B) {
+	const clusterName = "slurm"
+	type fields struct {
+		Client client.Client
+	}
+	type args struct {
+		ctx       context.Context
+		nodeset   *slinkyv1beta1.NodeSet
+		revisions []*appsv1.ControllerRevision
+		current   *appsv1.ControllerRevision
+		update    *appsv1.ControllerRevision
+	}
+	type testCaseFields struct {
+		name   string
+		fields fields
+		args   args
+	}
+	benchmarks := []testCaseFields{
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", clusterName, 0)
+			nodeset.Spec.RevisionHistoryLimit = ptr.To[int32](0)
+			revisionList := &appsv1.ControllerRevisionList{
+				Items: []appsv1.ControllerRevision{
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-0"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-1"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-2"}},
+				},
+			}
+			kclient := fake.NewFakeClient(nodeset, revisionList)
+
+			return testCaseFields{
+				name: "no pods",
+				fields: fields{
+					Client: kclient,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset.DeepCopy(),
+					revisions: structutils.ReferenceList(revisionList.Items),
+					current:   revisionList.Items[0].DeepCopy(),
+					update:    revisionList.Items[1].DeepCopy(),
+				},
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", clusterName, 3)
+			nodeset.Spec.RevisionHistoryLimit = ptr.To[int32](2)
+			podList := &corev1.PodList{
+				Items: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod-0",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: "12345",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod-1",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: "98765",
+							},
+						},
+					},
+					{ObjectMeta: metav1.ObjectMeta{Name: "pod-2"}},
+				},
+			}
+			revisionList := &appsv1.ControllerRevisionList{
+				Items: []appsv1.ControllerRevision{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rev-0",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: "12345",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rev-1",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: "98765",
+							},
+						},
+					},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-2"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-3"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-4"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "rev-5"}},
+				},
+			}
+			kclient := fake.NewFakeClient(nodeset, podList, revisionList)
+
+			return testCaseFields{
+				name: "with pods",
+				fields: fields{
+					Client: kclient,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset.DeepCopy(),
+					revisions: structutils.ReferenceList(revisionList.Items),
+					current:   revisionList.Items[0].DeepCopy(),
+					update:    revisionList.Items[1].DeepCopy(),
+				},
+			}
+		}(),
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := newNodeSetController(bb.fields.Client, nil)
+
+			for b.Loop() {
+				r.truncateHistory(bb.args.ctx, bb.args.nodeset, bb.args.revisions, bb.args.current, bb.args.update) //nolint:errcheck
+			}
+		})
+	}
+}
+
 func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 	type fields struct {
 		Client client.Client
@@ -264,6 +384,111 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 			}
 			if got2 != tt.want2 {
 				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got2 = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}
+
+func BenchmarkNodeSetReconciler_getNodeSetRevisions(b *testing.B) {
+	type fields struct {
+		Client client.Client
+	}
+	type args struct {
+		nodeset   *slinkyv1beta1.NodeSet
+		revisions []*appsv1.ControllerRevision
+	}
+	type testCaseFields struct {
+		name   string
+		fields fields
+		args   args
+	}
+	benchmarks := []testCaseFields{
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", "slurm", 2)
+			revisionList := &appsv1.ControllerRevisionList{
+				Items: []appsv1.ControllerRevision{
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 0, ptr.To[int32](0))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 1, ptr.To[int32](1))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 2, ptr.To[int32](2))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+				},
+			}
+
+			return testCaseFields{
+				name: "nodeset hash not match",
+				fields: fields{
+					Client: fake.NewFakeClient(nodeset, revisionList),
+				},
+				args: args{
+					nodeset:   nodeset.DeepCopy(),
+					revisions: structutils.ReferenceList(revisionList.Items),
+				},
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", "slurm", 2)
+			revisionList := &appsv1.ControllerRevisionList{
+				Items: []appsv1.ControllerRevision{
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 0, ptr.To[int32](0))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 1, ptr.To[int32](1))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+					func() appsv1.ControllerRevision {
+						cr, err := newRevision(nodeset, 2, ptr.To[int32](2))
+						if err != nil {
+							panic(err)
+						}
+						return *cr
+					}(),
+				},
+			}
+			nodeset.Status.NodeSetHash = revisionList.Items[1].Name
+
+			return testCaseFields{
+				name: "nodeset hash does match",
+				fields: fields{
+					Client: fake.NewFakeClient(nodeset, revisionList),
+				},
+				args: args{
+					nodeset:   nodeset.DeepCopy(),
+					revisions: structutils.ReferenceList(revisionList.Items),
+				},
+			}
+		}(),
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			r := newNodeSetController(bb.fields.Client, nil)
+
+			for b.Loop() {
+				r.getNodeSetRevisions(bb.args.nodeset, bb.args.revisions) //nolint:errcheck
 			}
 		})
 	}

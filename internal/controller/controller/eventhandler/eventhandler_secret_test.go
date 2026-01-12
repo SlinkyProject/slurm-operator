@@ -87,6 +87,75 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 	}
 }
 
+func Benchmark_SecretEventHandler_Create(b *testing.B) {
+	name := "slurm"
+	slurmKeyRef := testutils.NewSlurmKeyRef(name)
+	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef(name)
+	slurmKeySecret := testutils.NewSlurmKeySecret(slurmKeyRef)
+	jwtHs256KeySecret := testutils.NewJwtHs256KeySecret(jwtHs256KeyRef)
+	controller := testutils.NewController(name, slurmKeyRef, jwtHs256KeyRef, nil)
+	nodeset := testutils.NewNodeset(name, controller, 2)
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.CreateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "slurm key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtHs256KeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{
+					Object: slurmKeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "hs256 key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtHs256KeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{
+					Object: jwtHs256KeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewSecretEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Create(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_SecretEventHandler_Delete(t *testing.T) {
 	slurmKeyRef := testutils.NewSlurmKeyRef("foo")
 	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef("foo")
@@ -157,6 +226,73 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 	}
 }
 
+func Benchmark_SecretEventHandler_Delete(b *testing.B) {
+	name := "slurm"
+	slurmKeyRef := testutils.NewSlurmKeyRef(name)
+	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef(name)
+	slurmKeySecret := testutils.NewSlurmKeySecret(slurmKeyRef)
+	jwtHs256KeySecret := testutils.NewJwtHs256KeySecret(jwtHs256KeyRef)
+	controller := testutils.NewController(name, slurmKeyRef, jwtHs256KeyRef, nil)
+	nodeset := testutils.NewNodeset(name, controller, 2)
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.DeleteEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "slurm key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{
+					Object: slurmKeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "hs256 key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtHs256KeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{
+					Object: jwtHs256KeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewSecretEventHandler(bb.fields.Reader)
+			for b.Loop() {
+				h.Delete(bb.args.ctx, bb.args.evt, bb.args.q)
+			}
+		})
+	}
+}
+
 func Test_SecretEventHandler_Generic(t *testing.T) {
 	type fields struct {
 		Reader client.Reader
@@ -191,6 +327,43 @@ func Test_SecretEventHandler_Generic(t *testing.T) {
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("SecretEventHandler.Generic() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_SecretEventHandler_Generic(b *testing.B) {
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.GenericEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Empty",
+			fields: fields{
+				Reader: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.GenericEvent{},
+				q:   newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewSecretEventHandler(bb.fields.Reader)
+
+			for b.Loop() {
+				h.Generic(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}
@@ -263,6 +436,75 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("SecretEventHandler.Update() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_SecretEventHandler_Update(b *testing.B) {
+	name := "slurm"
+	slurmKeyRef := testutils.NewSlurmKeyRef(name)
+	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef(name)
+	slurmKeySecret := testutils.NewSlurmKeySecret(slurmKeyRef)
+	jwtHs256KeySecret := testutils.NewJwtHs256KeySecret(jwtHs256KeyRef)
+	controller := testutils.NewController(name, slurmKeyRef, jwtHs256KeyRef, nil)
+	nodeset := testutils.NewNodeset(name, controller, 2)
+	type fields struct {
+		Reader client.Reader
+	}
+	type args struct {
+		ctx context.Context
+		evt event.UpdateEvent
+		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "slurm key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: slurmKeySecret,
+					ObjectNew: slurmKeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+		{
+			name: "hs256 key",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtHs256KeySecret,
+					controller,
+					nodeset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: jwtHs256KeySecret,
+					ObjectNew: jwtHs256KeySecret,
+				},
+				q: newQueue(),
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			h := NewSecretEventHandler(bb.fields.Reader)
+			for b.Loop() {
+				h.Update(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}
