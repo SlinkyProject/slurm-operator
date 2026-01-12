@@ -18,6 +18,7 @@
     - [With Login](#with-login)
       - [With root Authorized Keys](#with-root-authorized-keys)
       - [Testing Slurm](#testing-slurm)
+    - [With GPUs](#with-gpus)
 
 <!-- mdformat-toc end -->
 
@@ -321,12 +322,65 @@ sacct
 See [Slurm Commands][slurm-commands] for more details on how to interact with
 Slurm.
 
+### With GPUs
+
+The following describes how to make GPUs present on a Kubernetes cluster
+available within Slurm when using Slurm-operator.
+
+The `gres.conf` must have [GRES] defined for each node with GPUs. For dynamic
+GRES detection, it is recommended to use [AutoDetect]. The following example
+uses dynamic GRES with NVIDIA GPUs.
+
+```yaml
+configFiles:
+  gres.conf: |
+    AutoDetect=nvidia
+```
+
+Slurm requires that [GresTypes] contains the "gpu" resource. Slinky sets this by
+default, otherwise set the value in `controller.extraConf` or
+`controller.extraConfMap`.
+
+```yaml
+controller:
+  ...
+  extraConfMap:
+    GresTypes: "gpu"
+```
+
+NodeSets should request GPUs in accordance with [device plugins][device-plugins]
+or [DRA]. In addition, `extraConf` or `extraConfMap` needs to define a [GRES] in
+accordance with the GPUs it should be allocated to.
+
+The following is an example is of a `gpu-h100` NodeSet which has 8 H100 GPUs.
+This example assumes that the [NVIDIA gpu-operator][nvidia-gpu-operator] is
+running on the Kubernetes cluster.
+
+```yaml
+nodesets:
+  gpu-h100:
+    ...
+    slurmd:
+      ...
+      resources:
+        limits:
+          nvidia.com/gpu: 8
+    extraConfMap:
+      Gres: ["gpu:h100:8"]
+```
+
 <!-- Links -->
 
+[autodetect]: https://slurm.schedmd.com/gres.conf.html#OPT_AutoDetect
 [cert-manager]: https://cert-manager.io/docs/installation/helm/
 [default-storageclass]: https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
-[mariadb-operator]: https://mariadb.com/docs/tools/mariadb-enterprise-operator/installation/helm
+[device-plugins]: https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/#using-device-plugins
+[dra]: https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/
+[gres]: https://slurm.schedmd.com/gres.html
+[grestypes]: https://slurm.schedmd.com/slurm.conf.html#OPT_GresTypes
+[mariadb-operator]: https://github.com/mariadb-operator/mariadb-operator/blob/main/docs/helm.md
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
+[nvidia-gpu-operator]: https://github.com/NVIDIA/gpu-operator
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
 [sssd]: https://sssd.io/
