@@ -298,7 +298,7 @@ function main() {
 
 	kind::start "$cluster_name" "$OPT_CONFIG"
 
-	make values-dev || true
+	make -C "$ROOT_DIR" values-dev || true
 
 	if $OPT_EXTRAS; then
 		extras::install
