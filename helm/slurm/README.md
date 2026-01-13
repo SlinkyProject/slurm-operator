@@ -150,7 +150,10 @@ Kubernetes: `>= 1.29.0-0`
 | partitions.all.configMap | map[string]string \| map[string][]string | `{"Default":"YES","MaxTime":"UNLIMITED","State":"UP"}` | The Slurm partition configuration options added to the partition line. If `config` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | partitions.all.enabled | bool | `true` | Enable this partition to be defined in Slurm config. |
 | partitions.all.nodesets | list | `["ALL"]` | List of NodeSets to be associated with this partition. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Nodes_1 |
-| priorityClass | object | `{"create":true,"name":"slurm-priority-critical","preemptionPolicy":"PreemptLowerPriority","value":1000000000}` | Set the priority class to use. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass |
+| priorityClass.create | bool | `true` | The priority class will be created when true. |
+| priorityClass.name | string | `"slurm-priority-critical"` | The name of the priority class to (create and) use. |
+| priorityClass.preemptionPolicy | string | `"PreemptLowerPriority"` | The preemption policy upon creation. One of: `PreemptLowerPriority`; `Never`. |
+| priorityClass.value | int | `1000000000` | The priority value upon creation. |
 | prologScripts | map[string]string | `{}` | The Slurm Prolog scripts ran on all NodeSets. The map key represents the filename; the map value represents the script contents. WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Prolog Ref: https://slurm.schedmd.com/prolog_epilog.html Ref: https://en.wikipedia.org/wiki/Shebang_(Unix) |
 | prologSlurmctldScripts | map[string]string | `{}` | The Slurm PrologSlurmctld scripts run on slurmctld at job allocation. The map key represents the filename; the map value represents the script contents. WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld Ref: https://slurm.schedmd.com/prolog_epilog.html Ref: https://en.wikipedia.org/wiki/Shebang_(Unix) |
 | restapi.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |

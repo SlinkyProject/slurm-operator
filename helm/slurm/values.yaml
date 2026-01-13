@@ -19,13 +19,17 @@ imagePullSecrets: []
 # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
 imagePullPolicy: IfNotPresent
 
-# -- Set the priority class to use.
+# Configure the priority class used by all Slurm components.
 # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 priorityClass:
+  # -- The priority class will be created when true.
   create: true
+  # -- The name of the priority class to (create and) use.
   name: slurm-priority-critical
+  # -- The priority value upon creation.
   value: 1000000000
-  preemptionPolicy: PreemptLowerPriority # or Never
+  # -- The preemption policy upon creation. One of: `PreemptLowerPriority`; `Never`.
+  preemptionPolicy: PreemptLowerPriority
 
 # -- (secretKeyRef) Slurm shared authentication key.
 # If empty, one will be generated and used.
