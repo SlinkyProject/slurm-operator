@@ -666,10 +666,12 @@ nodesets:
         #   cpu: 500m
         #   memory: 128Mi
     # -- (string) Raw extra configuration added to the `--conf` argument.
+    # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
     extraConf: null
-    # -- (map[string]string \| map[string][]string) Extra configuration added to the `--conf` argument.
+    # -- (map[string]string \| map[string][]string) Extra configuration added to the `--conf` option.
     # If `extraConf` is not empty, it takes precedence.
+    # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
     extraConfMap: {}
       # Features: []
