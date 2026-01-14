@@ -644,7 +644,7 @@ nodesets:
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
-        # requests:
+        # limits:
         #   cpu: 1
         #   memory: 1Gi
       # -- List of volume mounts to use.
@@ -719,7 +719,7 @@ nodesets:
       # -- The pod resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
-        # requests:
+        # limits:
         #   cpu: 1
         #   memory: 1Gi
       # -- Additional initContainers for the pod.
