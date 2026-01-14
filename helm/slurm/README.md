@@ -152,7 +152,7 @@ Kubernetes: `>= 1.29.0-0`
 | partitions.all.nodesets | list | `["ALL"]` | List of NodeSets to be associated with this partition. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Nodes_1 |
 | priorityClass.create | bool | `true` | The priority class will be created when true. |
 | priorityClass.description | string | `nil` | Description for the PriorityClass. |
-| priorityClass.name | string | `"slurm-priority-critical"` | The name of the priority class to (create and) use. |
+| priorityClass.name | string | `"slurm-system-critical"` | The name of the priority class to (create and) use. |
 | priorityClass.preemptionPolicy | string | `"PreemptLowerPriority"` | The preemption policy upon creation. One of: `PreemptLowerPriority`; `Never`. |
 | priorityClass.value | int | `1000000000` | The priority value upon creation. |
 | prologScripts | map[string]string | `{}` | The Slurm Prolog scripts ran on all NodeSets. The map key represents the filename; the map value represents the script contents. WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Prolog Ref: https://slurm.schedmd.com/prolog_epilog.html Ref: https://en.wikipedia.org/wiki/Shebang_(Unix) |
