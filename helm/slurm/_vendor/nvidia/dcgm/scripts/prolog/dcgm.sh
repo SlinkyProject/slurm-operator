@@ -17,8 +17,8 @@ function set_globals() {
 }
 
 function make_gpu_job_files() {
-	if [[ -z ${CUDA_VISIBLE_DEVICES:-} ]]; then
-		log_msg "no gres cuda devices requested by user"
+	if [[ -z ${SLURM_JOB_GPUS:-} ]]; then
+		log_msg "no gres gpus requested by user"
 		return
 	fi
 
@@ -29,7 +29,7 @@ function make_gpu_job_files() {
 		)
 	fi
 
-	mapfile -t -d ',' cuda_devs <<<"${CUDA_VISIBLE_DEVICES:-}"
+	mapfile -t -d ',' cuda_devs <<<"${SLURM_JOB_GPUS:-}"
 	cuda_devs[-1]="${cuda_devs[-1]%$'\n'}"
 
 	for gpu_id in "${cuda_devs[@]}"; do
