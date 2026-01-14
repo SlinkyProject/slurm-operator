@@ -9,6 +9,9 @@ fullnameOverride: null
 # -- Overrides the namespace of the release.
 namespaceOverride: null
 
+# -- Toggle ASCII art in Helm installation notes.
+asciiArt: true
+
 # -- Set the secrets for image pull.
 # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []

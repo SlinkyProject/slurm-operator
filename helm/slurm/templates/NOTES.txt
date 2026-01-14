@@ -1,3 +1,4 @@
+{{- if .Values.asciiArt }}
 ********************************************************************************
 
                                  SSSSSSS
@@ -37,6 +38,7 @@ SSSSSSSSSSSSS   SSS   SSSSSSSSSSSSSSS   SSSS        SSSS     SSSS     SSSS
 SSSSSSSSSSSS    SSS    SSSSSSSSSSSSS    SSSS        SSSS     SSSS     SSSS
 
 ********************************************************************************
+{{- end }}{{- /* if .Values.asciiArt */}}
 
 CHART NAME: {{ .Chart.Name }}
 CHART VERSION: {{ .Chart.Version }}
