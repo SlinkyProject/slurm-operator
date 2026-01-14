@@ -10,8 +10,8 @@ kind: PriorityClass
 metadata:
   name: {{ include "slurm.priorityClassName" . }}
 description: {{ .Values.priorityClass.description }}
-value: {{ .Values.priorityClass.value | default 1000000000 }}
+value: {{ .Values.priorityClass.value }}
 globalDefault: false
-preemptionPolicy: {{ .Values.priorityClass.preemptionPolicy | default "PreemptLowerPriority" }}
+preemptionPolicy: {{ .Values.priorityClass.preemptionPolicy }}
 {{- end }}{{- /* if .Values.priorityClass.create */}}
 {{- end }}{{- /* if .Values.priorityClass */}}
