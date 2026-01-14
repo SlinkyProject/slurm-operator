@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 Check if DCGM integration is enabled
 */}}
 {{- define "vendor.dcgm.enabled" -}}
-{{- .Values.vendor.nvidia.dcgm.enabled | ternary "true" "" -}}
+{{- .Values.vendor.nvidia.dcgm.enabled -}}
 {{- end }}
 
 {{/*
