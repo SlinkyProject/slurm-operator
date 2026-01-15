@@ -710,7 +710,8 @@ nodesets:
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute
     taintKubeNodes: false
 
-# Slurm partition configurations.
+# -- (map[string]object) Slurm partition configurations.
+# The map key represents the partition name (must be unique); the map value represents the partition definition.
 partitions:
   # Example partition containing all NodeSets.
   all:
