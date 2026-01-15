@@ -745,10 +745,10 @@ nodesets:
 partitions:
   # Example partition containing all NodeSets.
   all:
-    # -- Enable use of this partition.
+    # -- Enable this partition to be defined in Slurm config.
     enabled: true
-    # -- NodeSets to associate with this partition.
-    # NOTE: NodeSet "ALL" is mapped to all NodeSet configured in the cluster.
+    # -- List of NodeSets to be associated with this partition.
+    # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Nodes_1
     nodesets:
       - ALL
     # -- The Slurm partition configuration options added to the partition line.
