@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/workerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 )
 

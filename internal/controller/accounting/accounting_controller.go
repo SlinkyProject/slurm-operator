@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/accountingbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/accounting/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
@@ -54,7 +54,7 @@ type AccountingReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	builder       *builder.Builder
+	builder       *builder.AccountingBuilder
 	refResolver   *refresolver.RefResolver
 	eventRecorder record.EventRecorderLogger
 }

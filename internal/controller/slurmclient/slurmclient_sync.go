@@ -21,7 +21,7 @@ import (
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/restapibuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 )

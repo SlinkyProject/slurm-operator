@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/workerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
@@ -74,7 +74,7 @@ type NodeSetReconciler struct {
 	ClientMap *clientmap.ClientMap
 	EventCh   chan event.GenericEvent
 
-	builder        *builder.Builder
+	builder        *builder.WorkerBuilder
 	refResolver    *refresolver.RefResolver
 	podControl     podcontrol.PodControlInterface
 	slurmControl   slurmcontrol.SlurmControlInterface

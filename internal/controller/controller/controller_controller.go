@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/controllerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
@@ -57,7 +57,7 @@ type ControllerReconciler struct {
 
 	ClientMap *clientmap.ClientMap
 
-	builder       *builder.Builder
+	builder       *builder.ControllerBuilder
 	refResolver   *refresolver.RefResolver
 	eventRecorder record.EventRecorderLogger
 }

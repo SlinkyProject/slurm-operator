@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
+	builder "github.com/SlinkyProject/slurm-operator/internal/builder/common"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -51,7 +51,7 @@ type TokenReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	builder       *builder.Builder
+	builder       *builder.CommonBuilder
 	refResolver   *refresolver.RefResolver
 	eventRecorder record.EventRecorderLogger
 }
