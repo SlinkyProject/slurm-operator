@@ -115,6 +115,10 @@ type ControllerSpec struct {
 	// Metrics defines the metric collection configuration.
 	// +optional
 	Metrics Metrics `json:"metrics,omitzero"`
+
+	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
+	// +optional
+	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
 }
 
 type ControllerPersistence struct {

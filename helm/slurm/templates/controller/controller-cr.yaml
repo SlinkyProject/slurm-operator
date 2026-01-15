@@ -101,4 +101,9 @@ spec:
   metrics:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with .Values.controller.metrics */}}
+  {{- if or .Values.sssd.conf .Values.sssd.secretRef }}
+  sssdConfRef:
+    name: {{ include "slurm.sssdConf.name" . }}
+    key: {{ include "slurm.sssdConf.key" . }}
+  {{- end }}{{- /* if or .Values.sssd.conf .Values.sssd.secretRef */}}
 {{- end }}{{- /* if .Values.controller.external */}}
