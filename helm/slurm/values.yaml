@@ -194,7 +194,7 @@ controller:
     resources:
       requests:
         storage: 4Gi
-  # -- Extra Slurm configuration lines appended to `slurm.conf`.
+  # -- (string) Raw extra Slurm configuration lines appended to `slurm.conf`.
   # Ref: https://slurm.schedmd.com/slurm.conf.html
   extraConf: null
   # -- (map[string]string \| map[string][]string) Extra Slurm configuration lines appended to `slurm.conf`.
@@ -402,7 +402,7 @@ accounting:
     passwordKeyRef:
       name: mariadb-password
       key: password
-  # -- Extra Slurm configuration lines appended to `slurmdbd.conf`.
+  # -- (string) Raw extra Slurm configuration lines appended to `slurmdbd.conf`.
   # Ref: https://slurm.schedmd.com/slurmdbd.conf.html
   extraConf: null
   # -- (map[string]string \| map[string][]string) Extra Slurm configuration lines appended to `slurmdbd.conf`.
@@ -635,7 +635,7 @@ nodesets:
         # requests:
         #   cpu: 500m
         #   memory: 128Mi
-    # -- Extra configuration added to the `--conf` argument.
+    # -- (string) Raw extra configuration added to the `--conf` argument.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
     extraConf: null
     # -- (map[string]string \| map[string][]string) Extra configuration added to the `--conf` argument.
@@ -649,7 +649,7 @@ nodesets:
     partition:
       # -- Enable NodeSet partition creation.
       enabled: true
-      # -- The Slurm partition configuration options added to the partition line added to the partition line.
+      # -- (string) Raw Slurm partition configuration options added to the partition line added to the partition line.
       # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
       config: null
       # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.
@@ -710,17 +710,18 @@ nodesets:
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute
     taintKubeNodes: false
 
-# Slurm partition configurations.
+# -- (map[string]object) Slurm partition configurations.
+# The map key represents the partition name (must be unique); the map value represents the partition definition.
 partitions:
   # Example partition containing all NodeSets.
   all:
-    # -- Enable use of this partition.
+    # -- Enable this partition to be defined in Slurm config.
     enabled: true
-    # -- NodeSets to associate with this partition.
-    # NOTE: NodeSet "ALL" is mapped to all NodeSet configured in the cluster.
+    # -- List of NodeSets to be associated with this partition.
+    # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Nodes_1
     nodesets:
       - ALL
-    # -- The Slurm partition configuration options added to the partition line.
+    # -- (string) Raw Slurm partition configuration options added to the partition line.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
     config: null
     # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.
