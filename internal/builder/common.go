@@ -225,7 +225,7 @@ func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) co
 				},
 			},
 			Command: []string{
-				"sh",
+				"bash",
 				"-c",
 				initConfScript,
 			},
