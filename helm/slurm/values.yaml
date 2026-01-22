@@ -229,6 +229,9 @@ controller:
     # labels: {}
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+  # NOTE: To allow operator defaults to be applied, initContainers, containers,
+  # volumes, and ephemeralContainers should not be set to empty slices.
+  # Only specify these fields when you want to override the operator's defaults.
   podSpec:
     # -- The pod resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
@@ -239,7 +242,11 @@ controller:
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-    initContainers: []
+    # WARNING: Setting this field will override operator defaults. Uncomment only
+    # when you want to explicitly add or replace initContainers provided by the operator.
+    # initContainers:
+    #   - name: my-init
+    #     image: alpine:latest
     # -- (map[string]string) Node label selector for pod assignment.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
     nodeSelector:
@@ -329,6 +336,9 @@ restapi:
     # labels: {}
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+  # NOTE: To allow operator defaults to be applied, initContainers, containers,
+  # volumes, and ephemeralContainers should not be set to empty slices.
+  # Only specify these fields when you want to override the operator's defaults.
   podSpec:
     # -- The pod resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
@@ -339,7 +349,11 @@ restapi:
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-    initContainers: []
+    # WARNING: Setting this field will override operator defaults. Uncomment only
+    # when you want to explicitly add or replace initContainers provided by the operator.
+    # initContainers:
+    #   - name: my-init
+    #     image: alpine:latest
     # -- (map[string]string) Node label selector for pod assignment.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
     nodeSelector:
@@ -441,6 +455,9 @@ accounting:
     # labels: {}
   # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
   # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+  # NOTE: To allow operator defaults to be applied, initContainers, containers,
+  # volumes, and ephemeralContainers should not be set to empty slices.
+  # Only specify these fields when you want to override the operator's defaults.
   podSpec:
     # -- The pod resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
@@ -451,7 +468,11 @@ accounting:
     # -- Additional initContainers for the pod.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-    initContainers: []
+    # WARNING: Setting this field will override operator defaults. Uncomment only
+    # when you want to explicitly add or replace initContainers provided by the operator.
+    # initContainers:
+    #   - name: my-init
+    #     image: alpine:latest
     # -- (map[string]string) Node label selector for pod assignment.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
     nodeSelector:
@@ -573,6 +594,9 @@ loginsets:
     workloadDisruptionProtection: true
     # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+    # NOTE: To allow operator defaults to be applied, initContainers, containers,
+    # volumes, and ephemeralContainers should not be set to empty slices.
+    # Only specify these fields when you want to override the operator's defaults.
     podSpec:
       # -- The pod resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
@@ -583,7 +607,11 @@ loginsets:
       # -- Additional initContainers for the pod.
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-      initContainers: []
+      # WARNING: Setting this field will override operator defaults. Uncomment only
+      # when you want to explicitly add or replace initContainers provided by the operator.
+      # initContainers:
+      #   - name: my-init
+      #     image: alpine:latest
       # -- (map[string]string) Node label selector for pod assignment.
       # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
       nodeSelector:
@@ -599,11 +627,13 @@ loginsets:
         #   effect: NoSchedule
       # -- List of volumes to use.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumes: []
-        # - name: nfs-home
-        #   nfs:
-        #     server: nfs-server.example.com
-        #     path: /exports/home
+      # WARNING: Setting this field will override operator defaults. Uncomment only
+      # when you want to explicitly add or replace volumes provided by the operator.
+      # volumes:
+      #   - name: nfs-home
+      #     nfs:
+      #       server: nfs-server.example.com
+      #       path: /exports/home
     # -- The service configuration.
     service:
       # -- Labels and annotations.
@@ -719,6 +749,9 @@ nodesets:
       # labels: {}
     # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
     # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+    # NOTE: To allow operator defaults to be applied, initContainers, containers,
+    # volumes, and ephemeralContainers should not be set to empty slices.
+    # Only specify these fields when you want to override the operator's defaults.
     podSpec:
       # -- The pod resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
@@ -729,7 +762,11 @@ nodesets:
       # -- Additional initContainers for the pod.
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-      initContainers: []
+      # WARNING: Setting this field will override operator defaults. Uncomment only
+      # when you want to explicitly add or replace initContainers provided by the operator.
+      # initContainers:
+      #   - name: my-init
+      #     image: alpine:latest
       # -- (map[string]string) Node label selector for pod assignment.
       # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
       nodeSelector:
@@ -744,11 +781,13 @@ nodesets:
         #   effect: NoSchedule
       # -- List of volumes to use.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumes: []
-        # - name: nfs-home
-        #   nfs:
-        #     server: nfs-server.example.com
-        #     path: /exports/home
+      # WARNING: Setting this field will override operator defaults. Uncomment only
+      # when you want to explicitly add or replace volumes provided by the operator.
+      # volumes:
+      #   - name: nfs-home
+      #     nfs:
+      #       server: nfs-server.example.com
+      #       path: /exports/home
 
 # -- (map[string]object) Slurm partition configurations.
 # The map key represents the partition name (must be unique); the map value represents the partition definition.
