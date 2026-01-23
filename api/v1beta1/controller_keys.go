@@ -98,3 +98,20 @@ func (o *Controller) ConfigKey() types.NamespacedName {
 		Namespace: o.Namespace,
 	}
 }
+
+func (o *Controller) SssdSecretKey() types.NamespacedName {
+	return types.NamespacedName{
+		Name:      o.Spec.SssdConfRef.Name,
+		Namespace: o.Namespace,
+	}
+}
+
+func (o *Controller) SssdSecretRef() *corev1.SecretKeySelector {
+	key := o.SssdSecretKey()
+	return &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: key.Name,
+		},
+		Key: o.Spec.SssdConfRef.Key,
+	}
+}

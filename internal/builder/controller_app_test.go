@@ -96,17 +96,13 @@ func TestBuilder_BuildController(t *testing.T) {
 				t.Errorf("Template.Labels = %v , Selector.MatchLabels = %v",
 					got.Spec.Template.Labels, got.Spec.Selector.MatchLabels)
 
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, false) != true:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, true)
+			case got.Spec.Template.Spec.Containers[0].SecurityContext != nil:
+				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext = %v , want = nil",
+					got.Spec.Template.Spec.Containers[0].SecurityContext)
 
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser, 0) != slurmUserUid:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser, slurmUserUid)
-
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, 0) != slurmUserGid:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, slurmUserGid)
+			case ptr.Deref(got.Spec.Template.Spec.SecurityContext.FSGroup, 0) != slurmUserGid:
+				t.Errorf("got.Spec.Template.Spec.SecurityContext.FSGroup = %v , want = %v",
+					got.Spec.Template.Spec.SecurityContext.FSGroup, slurmUserGid)
 
 			case got.Spec.Template.Spec.Containers[0].Name != labels.ControllerApp:
 				t.Errorf("Template.Spec.Containers[0].Name = %v , want = %v",
