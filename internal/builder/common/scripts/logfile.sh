@@ -4,8 +4,7 @@
 
 set -eu
 
-# Assume env contains:
-# SOCKET - Named socket to read from
+SOCKET="/tmp/logfile.log"
 
 mkdir -v -p "$(dirname "$SOCKET")"
 rm -f "$SOCKET"
