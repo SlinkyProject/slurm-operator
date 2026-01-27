@@ -10,7 +10,7 @@ annotations:
   license: Apache-2.0
 
 home: https://slinky.schedmd.com/
-icon: https://github.com/SlinkyProject/docs/blob/main/docs/_static/images/slinky.svg
+icon: https://raw.githubusercontent.com/SlinkyProject/docs/refs/heads/main/docs/_static/images/slinky.svg
 
 sources:
   - https://github.com/SlinkyProject/slurm-operator
