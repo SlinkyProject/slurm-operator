@@ -258,6 +258,9 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("Epilog", filename))
 	}
 
+	sort.Slice(nodesetList.Items, func(i, j int) bool {
+		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
+	})
 	if len(nodesetList.Items) > 0 {
 		conf.AddProperty(config.NewPropertyRaw("#"))
 		conf.AddProperty(config.NewPropertyRaw("### COMPUTE & PARTITION ###"))
