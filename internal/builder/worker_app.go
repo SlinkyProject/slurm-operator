@@ -121,19 +121,17 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
-				FailureThreshold: 6,
+				FailureThreshold: 30,
 				PeriodSeconds:    10,
 			},
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
 				FailureThreshold: 6,
@@ -141,9 +139,8 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/readyz",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
 			},
