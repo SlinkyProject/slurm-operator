@@ -84,6 +84,10 @@ spec:
             httpGet:
               path: /readyz
               port: {{ .Values.operator.healthPort | default 8081 }}
+          {{- with .Values.operator.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.operator.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
