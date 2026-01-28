@@ -590,3 +590,74 @@ Epilog=epilog-2.sh`,
 		})
 	}
 }
+
+func Test_buildPrologEpilogSlurmctldConf(t *testing.T) {
+	tests := []struct {
+		name                   string
+		prologSlurmctldScripts []string
+		epilogSlurmctldScripts []string
+		want                   string
+	}{
+		{
+			name:                   "empty",
+			prologSlurmctldScripts: []string{},
+			epilogSlurmctldScripts: []string{},
+			want:                   "",
+		},
+		{
+			name:                   "prolog",
+			prologSlurmctldScripts: []string{"prolog-slurmctld-0.sh", "prolog-slurmctld-1.sh", "prolog-slurmctld-2.sh"},
+			epilogSlurmctldScripts: []string{},
+			want: `#
+### SLURMCTLD PROLOG & EPILOG ###
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-0.sh
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-1.sh
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-2.sh`,
+		},
+		{
+			name:                   "epilog",
+			prologSlurmctldScripts: []string{},
+			epilogSlurmctldScripts: []string{"epilog-slurmctld-0.sh", "epilog-slurmctld-1.sh", "epilog-slurmctld-2.sh"},
+			want: `#
+### SLURMCTLD PROLOG & EPILOG ###
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-0.sh
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-1.sh
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-2.sh`,
+		},
+		{
+			name:                   "both",
+			prologSlurmctldScripts: []string{"prolog-slurmctld-0.sh", "prolog-slurmctld-1.sh", "prolog-slurmctld-2.sh"},
+			epilogSlurmctldScripts: []string{"epilog-slurmctld-0.sh", "epilog-slurmctld-1.sh", "epilog-slurmctld-2.sh"},
+			want: `#
+### SLURMCTLD PROLOG & EPILOG ###
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-0.sh
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-1.sh
+PrologSlurmctld=/etc/slurm/prolog-slurmctld-2.sh
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-0.sh
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-1.sh
+EpilogSlurmctld=/etc/slurm/epilog-slurmctld-2.sh`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prologSlurmctldScriptsSize := len(tt.prologSlurmctldScripts)
+			epilogSlurmctldScriptsSize := len(tt.epilogSlurmctldScripts)
+			for range 5 {
+				idx := rand.Perm(prologSlurmctldScriptsSize)
+				randomizedPrologSlurmctldScripts := make([]string, prologSlurmctldScriptsSize)
+				for i := range prologSlurmctldScriptsSize {
+					randomizedPrologSlurmctldScripts[i] = tt.prologSlurmctldScripts[idx[i]]
+				}
+				jdx := rand.Perm(epilogSlurmctldScriptsSize)
+				randomizedEpilogSlurmctldScripts := make([]string, epilogSlurmctldScriptsSize)
+				for i := range epilogSlurmctldScriptsSize {
+					randomizedEpilogSlurmctldScripts[i] = tt.epilogSlurmctldScripts[jdx[i]]
+				}
+				got := buildPrologEpilogSlurmctldConf(tt.prologSlurmctldScripts, tt.epilogSlurmctldScripts)
+				if got != tt.want {
+					t.Errorf("buildPrologEpilogSlurmctldConf() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}

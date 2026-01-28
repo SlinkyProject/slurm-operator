@@ -230,19 +230,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/none"))
 	}
 
-	sort.Strings(prologSlurmctldScripts)
-	sort.Strings(epilogSlurmctldScripts)
-	if len(prologSlurmctldScripts) > 0 || len(epilogSlurmctldScripts) > 0 {
-		conf.AddProperty(config.NewPropertyRaw("#"))
-		conf.AddProperty(config.NewPropertyRaw("### SLURMCTLD PROLOG & EPILOG ###"))
-	}
-	for _, filename := range prologSlurmctldScripts {
-		scriptPath := path.Join(common.SlurmEtcDir, filename)
-		conf.AddProperty(config.NewProperty("PrologSlurmctld", scriptPath))
-	}
-	for _, filename := range epilogSlurmctldScripts {
-		scriptPath := path.Join(common.SlurmEtcDir, filename)
-		conf.AddProperty(config.NewProperty("EpilogSlurmctld", scriptPath))
+	if snippet := buildPrologEpilogSlurmctldConf(prologSlurmctldScripts, epilogSlurmctldScripts); snippet != "" {
+		conf.AddProperty(config.NewPropertyRaw(snippet))
 	}
 
 	if snippet := buildPrologEpilogConf(prologScripts, epilogScripts); snippet != "" {
@@ -259,6 +248,32 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewPropertyRaw(extraConf))
 
 	return conf.Build()
+}
+
+// buildPrologEpilogConf() returns a slurm.conf snippet containing PrologSlurmctld and EpilogSlurmctld config.
+//
+// https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
+// https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
+// https://slurm.schedmd.com/slurm.conf.html#SECTION_PROLOG-AND-EPILOG-SCRIPTS
+func buildPrologEpilogSlurmctldConf(prologSlurmctldScripts, epilogSlurmctldScripts []string) string {
+	conf := config.NewBuilder()
+
+	sort.Strings(prologSlurmctldScripts)
+	sort.Strings(epilogSlurmctldScripts)
+	if len(prologSlurmctldScripts) > 0 || len(epilogSlurmctldScripts) > 0 {
+		conf.AddProperty(config.NewPropertyRaw("#"))
+		conf.AddProperty(config.NewPropertyRaw("### SLURMCTLD PROLOG & EPILOG ###"))
+	}
+	for _, filename := range prologSlurmctldScripts {
+		scriptPath := path.Join(common.SlurmEtcDir, filename)
+		conf.AddProperty(config.NewProperty("PrologSlurmctld", scriptPath))
+	}
+	for _, filename := range epilogSlurmctldScripts {
+		scriptPath := path.Join(common.SlurmEtcDir, filename)
+		conf.AddProperty(config.NewProperty("EpilogSlurmctld", scriptPath))
+	}
+
+	return conf.WithFinalNewline(false).Build()
 }
 
 // buildPrologEpilogConf() returns a slurm.conf snippet containing Prolog and Epilog config.
