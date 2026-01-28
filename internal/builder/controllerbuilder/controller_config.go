@@ -86,7 +86,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		sort.Strings(filenames)
 		prologScripts = append(prologScripts, filenames...)
 	}
-	sort.Strings(prologScripts)
 
 	epilogScripts := []string{}
 	for _, ref := range controller.Spec.EpilogScriptRefs {
@@ -102,7 +101,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		sort.Strings(filenames)
 		epilogScripts = append(epilogScripts, filenames...)
 	}
-	sort.Strings(epilogScripts)
 
 	prologSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
@@ -118,7 +116,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		sort.Strings(filenames)
 		prologSlurmctldScripts = append(prologSlurmctldScripts, filenames...)
 	}
-	sort.Strings(prologSlurmctldScripts)
 
 	epilogSlurmctldScripts := []string{}
 	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
@@ -134,7 +131,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		sort.Strings(filenames)
 		epilogSlurmctldScripts = append(epilogSlurmctldScripts, filenames...)
 	}
-	sort.Strings(epilogSlurmctldScripts)
 
 	opts := common.ConfigMapOpts{
 		Key: controller.ConfigKey(),
@@ -234,6 +230,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("JobAcctGatherType", "jobacct_gather/none"))
 	}
 
+	sort.Strings(prologSlurmctldScripts)
+	sort.Strings(epilogSlurmctldScripts)
 	if len(prologSlurmctldScripts) > 0 || len(epilogSlurmctldScripts) > 0 {
 		conf.AddProperty(config.NewPropertyRaw("#"))
 		conf.AddProperty(config.NewPropertyRaw("### SLURMCTLD PROLOG & EPILOG ###"))
@@ -247,6 +245,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("EpilogSlurmctld", scriptPath))
 	}
 
+	sort.Strings(prologScripts)
+	sort.Strings(epilogScripts)
 	if len(prologScripts) > 0 || len(epilogScripts) > 0 {
 		conf.AddProperty(config.NewPropertyRaw("#"))
 		conf.AddProperty(config.NewPropertyRaw("### PROLOG & EPILOG ###"))
