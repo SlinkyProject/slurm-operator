@@ -4,6 +4,7 @@
 package controllerbuilder
 
 import (
+	"math/rand/v2"
 	"strings"
 	"testing"
 
@@ -432,6 +433,88 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 			if got.Data[SlurmConfFile] != tt.want.Data[SlurmConfFile] {
 				t.Errorf("got.Data[%s] = %v\nwant.Data[%s] = %v", SlurmConfFile, got.Data[SlurmConfFile], SlurmConfFile, tt.want.Data[SlurmConfFile])
 
+			}
+		})
+	}
+}
+
+func Test_buildNodeSetConf(t *testing.T) {
+	tests := []struct {
+		name        string
+		nodesetList *slinkyv1beta1.NodeSetList
+		want        string
+	}{
+		{
+			name: "empty",
+			nodesetList: &slinkyv1beta1.NodeSetList{
+				Items: []slinkyv1beta1.NodeSet{},
+			},
+			want: "",
+		},
+		{
+			name: "non-empty",
+			nodesetList: &slinkyv1beta1.NodeSetList{
+				Items: []slinkyv1beta1.NodeSet{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: metav1.NamespaceDefault,
+							Name:      "nodeset-0",
+						},
+						Spec: slinkyv1beta1.NodeSetSpec{
+							Partition: slinkyv1beta1.NodeSetPartition{
+								Enabled: false,
+								Config:  "MaxTime=UNLIMITED OverSubscribe=EXCLUSIVE",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: metav1.NamespaceDefault,
+							Name:      "nodeset-1",
+						},
+						Spec: slinkyv1beta1.NodeSetSpec{
+							Partition: slinkyv1beta1.NodeSetPartition{
+								Enabled: true,
+								Config:  "MaxTime=UNLIMITED OverSubscribe=EXCLUSIVE",
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: metav1.NamespaceDefault,
+							Name:      "nodeset-2",
+						},
+						Spec: slinkyv1beta1.NodeSetSpec{
+							Partition: slinkyv1beta1.NodeSetPartition{
+								Enabled: true,
+								Config:  "MaxTime=UNLIMITED PreemptMode=REQUEUE",
+							},
+						},
+					},
+				},
+			},
+			want: `#
+### COMPUTE & PARTITION ###
+NodeSet=nodeset-0 Feature=nodeset-0
+NodeSet=nodeset-1 Feature=nodeset-1
+PartitionName=nodeset-1 Nodes=nodeset-1 MaxTime=UNLIMITED OverSubscribe=EXCLUSIVE
+NodeSet=nodeset-2 Feature=nodeset-2
+PartitionName=nodeset-2 Nodes=nodeset-2 MaxTime=UNLIMITED PreemptMode=REQUEUE`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			size := len(tt.nodesetList.Items)
+			for range 5 {
+				idx := rand.Perm(size)
+				randomized := make([]slinkyv1beta1.NodeSet, size)
+				for j := range size {
+					randomized[j] = tt.nodesetList.Items[idx[j]]
+				}
+				got := buildNodeSetConf(tt.nodesetList)
+				if got != tt.want {
+					t.Errorf("buildNodeSetConf() = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}

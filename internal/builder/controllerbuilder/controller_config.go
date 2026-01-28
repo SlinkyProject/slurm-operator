@@ -258,6 +258,25 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("Epilog", filename))
 	}
 
+	if snippet := buildNodeSetConf(nodesetList); snippet != "" {
+		conf.AddProperty(config.NewPropertyRaw(snippet))
+	}
+
+	extraConf := controller.Spec.ExtraConf
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
+	conf.AddProperty(config.NewPropertyRaw(extraConf))
+
+	return conf.Build()
+}
+
+// buildNodeSetConf() returns a slurm.conf snippet containing NodeSets and their Partitions.
+//
+// https://slurm.schedmd.com/slurm.conf.html#SECTION_NODESET-CONFIGURATION
+// https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
+func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
+	conf := config.NewBuilder()
+
 	sort.Slice(nodesetList.Items, func(i, j int) bool {
 		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
 	})
@@ -290,12 +309,7 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewPropertyRaw(partitionLineRendered))
 	}
 
-	extraConf := controller.Spec.ExtraConf
-	conf.AddProperty(config.NewPropertyRaw("#"))
-	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
-	conf.AddProperty(config.NewPropertyRaw(extraConf))
-
-	return conf.Build()
+	return conf.WithFinalNewline(false).Build()
 }
 
 // https://slurm.schedmd.com/cgroup.conf.html
