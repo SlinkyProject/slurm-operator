@@ -118,7 +118,7 @@ type NodeSetPartition struct {
 	Enabled bool `json:"enabled"`
 
 	// Config is added to the NodeSet's partition line.
-	// Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
+	// Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
 	// +optional
 	Config string `json:"config,omitzero"`
 }
