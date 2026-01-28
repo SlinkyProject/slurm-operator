@@ -519,3 +519,74 @@ PartitionName=nodeset-2 Nodes=nodeset-2 MaxTime=UNLIMITED PreemptMode=REQUEUE`,
 		})
 	}
 }
+
+func Test_buildPrologEpilogConf(t *testing.T) {
+	tests := []struct {
+		name          string
+		prologScripts []string
+		epilogScripts []string
+		want          string
+	}{
+		{
+			name:          "empty",
+			prologScripts: []string{},
+			epilogScripts: []string{},
+			want:          "",
+		},
+		{
+			name:          "prolog",
+			prologScripts: []string{"prolog-0.sh", "prolog-1.sh", "prolog-2.sh"},
+			epilogScripts: []string{},
+			want: `#
+### PROLOG & EPILOG ###
+Prolog=prolog-0.sh
+Prolog=prolog-1.sh
+Prolog=prolog-2.sh`,
+		},
+		{
+			name:          "epilog",
+			prologScripts: []string{},
+			epilogScripts: []string{"epilog-0.sh", "epilog-1.sh", "epilog-2.sh"},
+			want: `#
+### PROLOG & EPILOG ###
+Epilog=epilog-0.sh
+Epilog=epilog-1.sh
+Epilog=epilog-2.sh`,
+		},
+		{
+			name:          "both",
+			prologScripts: []string{"prolog-0.sh", "prolog-1.sh", "prolog-2.sh"},
+			epilogScripts: []string{"epilog-0.sh", "epilog-1.sh", "epilog-2.sh"},
+			want: `#
+### PROLOG & EPILOG ###
+Prolog=prolog-0.sh
+Prolog=prolog-1.sh
+Prolog=prolog-2.sh
+Epilog=epilog-0.sh
+Epilog=epilog-1.sh
+Epilog=epilog-2.sh`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prologScriptsSize := len(tt.prologScripts)
+			epilogScriptsSize := len(tt.epilogScripts)
+			for range 5 {
+				idx := rand.Perm(prologScriptsSize)
+				randomizedPrologScripts := make([]string, prologScriptsSize)
+				for i := range prologScriptsSize {
+					randomizedPrologScripts[i] = tt.prologScripts[idx[i]]
+				}
+				jdx := rand.Perm(epilogScriptsSize)
+				randomizedEpilogScripts := make([]string, epilogScriptsSize)
+				for j := range epilogScriptsSize {
+					randomizedEpilogScripts[j] = tt.epilogScripts[jdx[j]]
+				}
+				got := buildPrologEpilogConf(tt.prologScripts, tt.epilogScripts)
+				if got != tt.want {
+					t.Errorf("buildPrologEpilogConf() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}

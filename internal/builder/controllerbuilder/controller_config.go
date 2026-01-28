@@ -245,6 +245,30 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("EpilogSlurmctld", scriptPath))
 	}
 
+	if snippet := buildPrologEpilogConf(prologScripts, epilogScripts); snippet != "" {
+		conf.AddProperty(config.NewPropertyRaw(snippet))
+	}
+
+	if snippet := buildNodeSetConf(nodesetList); snippet != "" {
+		conf.AddProperty(config.NewPropertyRaw(snippet))
+	}
+
+	extraConf := controller.Spec.ExtraConf
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
+	conf.AddProperty(config.NewPropertyRaw(extraConf))
+
+	return conf.Build()
+}
+
+// buildPrologEpilogConf() returns a slurm.conf snippet containing Prolog and Epilog config.
+//
+// https://slurm.schedmd.com/slurm.conf.html#OPT_Prolog
+// https://slurm.schedmd.com/slurm.conf.html#OPT_Epilog
+// https://slurm.schedmd.com/slurm.conf.html#SECTION_PROLOG-AND-EPILOG-SCRIPTS
+func buildPrologEpilogConf(prologScripts, epilogScripts []string) string {
+	conf := config.NewBuilder()
+
 	sort.Strings(prologScripts)
 	sort.Strings(epilogScripts)
 	if len(prologScripts) > 0 || len(epilogScripts) > 0 {
@@ -258,16 +282,7 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("Epilog", filename))
 	}
 
-	if snippet := buildNodeSetConf(nodesetList); snippet != "" {
-		conf.AddProperty(config.NewPropertyRaw(snippet))
-	}
-
-	extraConf := controller.Spec.ExtraConf
-	conf.AddProperty(config.NewPropertyRaw("#"))
-	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
-	conf.AddProperty(config.NewPropertyRaw(extraConf))
-
-	return conf.Build()
+	return conf.WithFinalNewline(false).Build()
 }
 
 // buildNodeSetConf() returns a slurm.conf snippet containing NodeSets and their Partitions.
