@@ -72,6 +72,10 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	nodeList := &slurmtypes.V0044NodeList{}
 	opts := &slurmclient.ListOptions{RefreshCache: true}
 	if err := slurmClient.List(ctx, nodeList, opts); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no nodes yet
+		if tolerateError(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -90,6 +94,10 @@ func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1be
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no nodes yet
+		if tolerateError(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
