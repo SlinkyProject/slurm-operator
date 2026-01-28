@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"fmt"
 	"path"
+	"slices"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -203,6 +204,7 @@ func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []c
 			},
 		},
 	}
+	slices.Sort(extra)
 	for _, name := range extra {
 		volumeProjection := corev1.VolumeProjection{
 			ConfigMap: &corev1.ConfigMapProjection{
