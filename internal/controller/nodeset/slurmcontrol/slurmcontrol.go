@@ -549,6 +549,10 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 
 	jobList := &slurmtypes.V0044JobInfoList{}
 	if err := slurmClient.List(ctx, jobList); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no jobs yet
+		if tolerateError(err) {
+			return ts, nil
+		}
 		return nil, err
 	}
 
