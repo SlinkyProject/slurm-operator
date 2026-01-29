@@ -1,0 +1,161 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        app.kubernetes.io/instance: test-release
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: slurm-operator
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-operator-1.2.3
+      name: test-release-slurm-operator
+      namespace: test-namespace
+  2: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: test-release-slurm-operator
+      namespace: test-namespace
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - configmaps
+          - events
+          - persistentvolumeclaims
+          - pods
+          - secrets
+          - services
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
+          - ""
+        resources:
+          - nodes
+        verbs:
+          - get
+          - list
+          - watch
+          - patch
+      - apiGroups:
+          - ""
+        resources:
+          - pods/status
+        verbs:
+          - get
+          - patch
+          - update
+      - apiGroups:
+          - apps
+        resources:
+          - controllerrevisions
+          - deployments
+          - statefulsets
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
+          - slinky.slurm.net
+        resources:
+          - accountings
+          - controllers
+          - loginsets
+          - nodesets
+          - restapis
+          - tokens
+        verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+      - apiGroups:
+          - slinky.slurm.net
+        resources:
+          - accountings/finalizers
+          - controllers/finalizers
+          - loginsets/finalizers
+          - nodesets/finalizers
+          - restapis/finalizers
+          - tokens/finalizers
+        verbs:
+          - update
+      - apiGroups:
+          - slinky.slurm.net
+        resources:
+          - accountings/status
+          - controllers/status
+          - loginsets/status
+          - nodesets/status
+          - restapis/status
+          - tokens/status
+        verbs:
+          - get
+          - patch
+          - update
+      - apiGroups:
+          - coordination.k8s.io
+        resources:
+          - leases
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+  3: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      labels:
+        app.kubernetes.io/instance: test-release
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: slurm-operator
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-operator-1.2.3
+      name: test-release-slurm-operator
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: test-release-slurm-operator
+    subjects:
+      - kind: ServiceAccount
+        name: test-release-slurm-operator
+        namespace: test-namespace

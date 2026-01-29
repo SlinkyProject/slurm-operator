@@ -23,3 +23,4 @@
 .vscode/
 # Development files
 skaffold.yaml
+tests/
