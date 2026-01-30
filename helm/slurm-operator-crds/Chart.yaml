@@ -13,7 +13,7 @@ home: https://slinky.schedmd.com/
 icon: https://github.com/SlinkyProject/docs/blob/main/docs/_static/images/slinky.svg
 
 sources:
-  - https://github.com/SlinkyProject/slurm-operator
+  - https://github.com/togethercomputer/slurm-operator
 
 maintainers:
   - name: SchedMD LLC.

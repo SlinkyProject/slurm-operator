@@ -8,10 +8,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/config"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	"github.com/togethercomputer/slurm-operator/internal/utils/config"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 func (b *Builder) BuildAccountingConfig(accounting *slinkyv1beta1.Accounting) (*corev1.Secret, error) {

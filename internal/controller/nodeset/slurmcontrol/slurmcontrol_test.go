@@ -27,11 +27,11 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/object"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podinfo"
+	slurmconditions "github.com/togethercomputer/slurm-operator/pkg/conditions"
 )
 
 func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.NodeSet {

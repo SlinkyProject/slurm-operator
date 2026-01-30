@@ -556,6 +556,8 @@ loginsets:
         # - key: key1
         #   operator: Exists
         #   effect: NoSchedule
+      # -- (string) Set the size of the shared memory for the nodeset.
+      shmSize: 16Gi
       # -- List of volumes to use.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
       volumes: []
@@ -576,6 +578,14 @@ loginsets:
         type: LoadBalancer
       # port: 22
       # nodePort: 32222
+    # -- Persistence configuration for the nodeset.
+    persistence:
+      # -- (list) Existing PersistentVolumeClaims to mount (Together addition)
+      existingDataClaims: []
+        # - name: data-cpu-pv
+        #   mountPath: /data
+        # - name: scratch-gpu-pv
+        #   mountPath: /scratch
 
 # Slurm NodeSet (slurmd) configurations.
 nodesets:
@@ -685,6 +695,8 @@ nodesets:
       tolerations: []
         # - key: nvidia.com/gpu
         #   effect: NoSchedule
+      # -- (string) Set the size of the shared memory for the nodeset.
+      shmSize: 16Gi
       # -- List of volumes to use.
       # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
       volumes: []
@@ -694,6 +706,14 @@ nodesets:
         #     path: /exports/home
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute
     taintKubeNodes: false
+    # -- Persistence configuration for the nodeset.
+    persistence:
+      # -- (list) Existing PersistentVolumeClaims to mount (Together addition)
+      existingDataClaims: []
+        # - name: data-cpu-pv
+        #   mountPath: /data
+        # - name: scratch-gpu-pv
+        #   mountPath: /scratch
 
 # Slurm partition configurations.
 partitions:
@@ -729,3 +749,93 @@ vendor:
       jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
       # -- Script execution priority (lower numbers run first)
       scriptPriority: "90"
+
+login:
+  #
+  # -- (bool)
+  # Enables login nodes.
+  enabled: true
+  #
+  # -- (integer)
+  # Set the number of replicas to deploy.
+  replicas: 1
+  #
+  # -- (string)
+  # Set the image pull policy.
+  imagePullPolicy: IfNotPresent
+  #
+  # Set the image to use.
+  image:
+    #
+    # -- (string)
+    # Set the image repository to use.
+    repository: ghcr.io/slinkyproject/login
+    #
+    # -- (string)
+    # Set the image tag to use.
+    tag: 25.05-ubuntu24.04
+  #
+  # -- (object)
+  # The security context given to the container.
+  # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+  securityContext:
+    privileged: false
+    # capabilities:
+    #   add:
+    #     - SYS_CHROOT
+  #
+  # --(list)
+  # List of volume mounts.
+  # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+  extraVolumeMounts: []
+    # - name: nfs-home
+    #   mountPath: /home
+    # - name: nfs-data
+    #   mountPath: /mnt/data
+  #
+  # --(list)
+  # Define list of pod volumes.
+  # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+  extraVolumes: []
+    # - name: nfs-home
+    #   nfs:
+    #     server: nfs-server.example.com
+    #     path: /exports/home/
+    # - name: nfs-data
+    #   persistentVolumeClaim:
+    #     claimName: nfs-data
+  #
+  # -- (string)
+  # Set the priority class to use.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
+  priorityClassName: ""
+  #
+  # -- (map)
+  # Selector which must match a node's labels for the pod to be scheduled on that node.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector:
+    kubernetes.io/os: linux
+  #
+  # -- (object)
+  # Set affinity for Kubernetes Pod scheduling.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+  affinity: {}
+  #
+  # -- (list)
+  # Configure pod tolerations.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+  tolerations: []
+  #
+  # -- (object)
+  # Set container resource requests and limits for Kubernetes Pod scheduling.
+  # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+  resources: {}
+    # requests:
+    #   cpu: 1
+    #   memory: 1Gi
+    # limits:
+    #   cpu: 2
+    #   memory: 4Gi
+
+#
+# Slurm compute (slurmd) configurations.

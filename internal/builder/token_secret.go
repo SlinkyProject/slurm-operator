@@ -9,8 +9,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/controller/token/slurmjwt"
 )
 
 func (b *Builder) BuildTokenSecret(token *slinkyv1beta1.Token) (*corev1.Secret, error) {

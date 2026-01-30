@@ -15,9 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/indexes"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
 )
 
 func Test_NodeEventHandler_Create(t *testing.T) {

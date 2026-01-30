@@ -16,17 +16,21 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	"github.com/togethercomputer/slurm-operator/internal/builder/metadata"
+	"github.com/togethercomputer/slurm-operator/internal/utils/crypto"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 const (
 	SlurmdbdPort = 6819
 
 	slurmdbdConfFile = "slurmdbd.conf"
+
+	// Volume names for accounting initContainer fix
+	slurmSecretsTmpVolume = "slurm-secrets-tmp"
+	slurmSecretsTmpDir    = "/tmp/slurm-secrets"
 )
 
 func (b *Builder) BuildAccounting(accounting *slinkyv1beta1.Accounting) (*appsv1.StatefulSet, error) {
@@ -95,14 +99,17 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1beta1.Accounting) (c
 		},
 		base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
+			// InitContainer copies secrets from temp location to /etc/slurm with correct permissions.
+			// This is necessary because Kubernetes projected volumes with FSGroup add group read
+			// permission, but slurmdbd.conf requires exactly 0600 (owner read/write only).
+			InitContainers: []corev1.Container{
+				accountingInitContainer(),
+			},
 			Containers: []corev1.Container{
 				b.slurmdbdContainer(spec.Slurmdbd.Container),
 			},
 			SecurityContext: &corev1.PodSecurityContext{
-				RunAsNonRoot: ptr.To(true),
-				RunAsUser:    ptr.To(slurmUserUid),
-				RunAsGroup:   ptr.To(slurmUserGid),
-				FSGroup:      ptr.To(slurmUserGid),
+				RunAsNonRoot: ptr.To(false), // initContainer needs to run as root
 			},
 			Volumes: accountingVolumes(accounting),
 		},
@@ -114,11 +121,19 @@ func (b *Builder) accountingPodTemplate(accounting *slinkyv1beta1.Accounting) (c
 
 func accountingVolumes(accounting *slinkyv1beta1.Accounting) []corev1.Volume {
 	out := []corev1.Volume{
+		// EmptyDir for /etc/slurm - initContainer copies secrets here with correct permissions
 		{
 			Name: slurmEtcVolume,
 			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		// Projected volume with secrets - mounted to temp location, copied by initContainer
+		{
+			Name: slurmSecretsTmpVolume,
+			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: ptr.To[int32](0o600),
+					DefaultMode: ptr.To[int32](0o644), // readable by initContainer
 					Sources: []corev1.VolumeProjection{
 						{
 							Secret: &corev1.SecretProjection{
@@ -159,6 +174,35 @@ func accountingVolumes(accounting *slinkyv1beta1.Accounting) []corev1.Volume {
 	return out
 }
 
+// accountingInitContainer creates an init container that copies secrets from the
+// projected volume to an emptyDir with correct ownership (slurm:slurm) and
+// permissions (0600 for slurmdbd.conf, 0400 for keys).
+// This is necessary because Kubernetes projected volumes with FSGroup add group
+// read permission, but slurmdbd.conf requires exactly 0600 (owner read/write only).
+func accountingInitContainer() corev1.Container {
+	return corev1.Container{
+		Name:  "init-slurm-config",
+		Image: "busybox:1.36",
+		Command: []string{
+			"sh", "-c",
+			`cp /tmp/slurm-secrets/* /etc/slurm/ && \
+			chown -R 401:401 /etc/slurm && \
+			chmod 600 /etc/slurm/slurmdbd.conf && \
+			chmod 400 /etc/slurm/slurm.key && \
+			chmod 400 /etc/slurm/jwt_hs256.key && \
+			ls -la /etc/slurm/`,
+		},
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser:  ptr.To[int64](0), // Run as root to chown
+			RunAsGroup: ptr.To[int64](0),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: slurmSecretsTmpVolume, MountPath: slurmSecretsTmpDir, ReadOnly: true},
+			{Name: slurmEtcVolume, MountPath: slurmEtcDir},
+		},
+	}
+}
+
 func (b *Builder) slurmdbdContainer(merge corev1.Container) corev1.Container {
 	opts := ContainerOpts{
 		base: corev1.Container{
@@ -183,7 +227,7 @@ func (b *Builder) slurmdbdContainer(merge corev1.Container) corev1.Container {
 				RunAsGroup:   ptr.To(slurmUserGid),
 			},
 			VolumeMounts: []corev1.VolumeMount{
-				{Name: slurmEtcVolume, MountPath: slurmEtcDir, ReadOnly: true},
+				{Name: slurmEtcVolume, MountPath: slurmEtcDir}, // emptyDir populated by initContainer
 				{Name: slurmPidFileVolume, MountPath: slurmPidFileDir},
 			},
 		},

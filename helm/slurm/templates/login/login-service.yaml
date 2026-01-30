@@ -1,0 +1,23 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.login.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "slurm.login.name" . }}
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.login.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "slurm.login.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+      protocol: TCP
+{{- end }}

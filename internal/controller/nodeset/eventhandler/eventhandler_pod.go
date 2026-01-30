@@ -30,11 +30,11 @@ import (
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/objectutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podinfo"
 )
 
 func NewPodEventHandler(reader client.Reader, expectations *kubecontroller.UIDTrackingControllerExpectations) *PodEventHandler {

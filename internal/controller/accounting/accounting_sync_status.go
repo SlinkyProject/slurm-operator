@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
 )
 
 // syncStatus handles determining and updating the status.

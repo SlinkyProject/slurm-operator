@@ -21,12 +21,12 @@ import (
 
 	slurminterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/slurmcontrol"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
+	slurmconditions "github.com/togethercomputer/slurm-operator/pkg/conditions"
 )
 
 func TestNodeSetReconciler_syncStatus(t *testing.T) {

@@ -6,8 +6,8 @@ package builder
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/reflectutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 type ContainerOpts struct {

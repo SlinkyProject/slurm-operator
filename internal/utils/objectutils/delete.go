@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
 )
 
 func DeleteObject(c client.Client, ctx context.Context, newObj client.Object) error {

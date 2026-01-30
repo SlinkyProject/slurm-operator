@@ -26,17 +26,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/annotations"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/historycontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/mathutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/objectutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podcontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
+	slurmtaints "github.com/togethercomputer/slurm-operator/pkg/taints"
 )
 
 const (
@@ -671,13 +672,22 @@ func (r *NodeSetReconciler) doPodScaleIn(
 				return err
 			}
 		}
-		if isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod); !isDrained || err != nil {
+		isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
+		if err != nil {
+			r.expectations.DeletionObserved(logger, key, podKey)
+			return err
+		}
+
+		// Update K8s node annotation to reflect drain state
+		if err := r.updateNodeCordonAnnotation(ctx, nodeset, pod, isDrained); err != nil {
+			logger.Error(err, "Failed to update node cordon annotation", "pod", klog.KObj(pod))
+			// Don't fail the reconciliation, just log the error
+		}
+
+		if !isDrained {
 			// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
 			// We must wait until fully drained to terminate the pod.
 			r.expectations.DeletionObserved(logger, key, podKey)
-			if err != nil {
-				return err
-			}
 		}
 		return nil
 	})
@@ -719,6 +729,12 @@ func (r *NodeSetReconciler) processCondemned(
 	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
 	if err != nil {
 		return err
+	}
+
+	// Update K8s node annotation to reflect drain state
+	if err := r.updateNodeCordonAnnotation(ctx, nodeset, pod, isDrained); err != nil {
+		logger.Error(err, "Failed to update node cordon annotation", "pod", klog.KObj(pod))
+		// Don't fail the reconciliation, just log the error
 	}
 
 	if podutils.IsRunning(pod) && !isDrained {
@@ -885,12 +901,20 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 	pod *corev1.Pod,
 	reason string,
 ) error {
+	logger := log.FromContext(ctx)
+
 	if err := r.makePodUncordon(ctx, pod); err != nil {
 		return err
 	}
 
 	if err := r.syncSlurmNodeUndrain(ctx, nodeset, pod, reason); err != nil {
 		return err
+	}
+
+	// Update K8s node annotation to reflect undrained state
+	if err := r.updateNodeCordonAnnotation(ctx, nodeset, pod, false); err != nil {
+		logger.Error(err, "Failed to update node cordon annotation", "pod", klog.KObj(pod))
+		// Don't fail the reconciliation, just log the error
 	}
 
 	return nil
@@ -1115,6 +1139,61 @@ func (r *NodeSetReconciler) syncClusterWorkerPDB(
 	// Sync the PodDisruptionBudget for each cluster
 	if err := objectutils.SyncObject(r.Client, ctx, podDisruptionBudget, true); err != nil {
 		return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(podDisruptionBudget), err)
+	}
+
+	return nil
+}
+
+// updateNodeCordonAnnotation updates the K8s node annotation to reflect cordon state based on Slurm drain status
+func (r *NodeSetReconciler) updateNodeCordonAnnotation(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pod *corev1.Pod,
+	isDrained bool,
+) error {
+	logger := klog.FromContext(ctx)
+
+	// Get the K8s node that the pod is running on
+	if pod.Spec.NodeName == "" {
+		// Pod not scheduled yet, nothing to do
+		return nil
+	}
+
+	node := &corev1.Node{}
+	nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
+	if err := r.Get(ctx, nodeKey, node); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Node doesn't exist, nothing to do
+			return nil
+		}
+		return err
+	}
+
+	// Initialize annotations if nil
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+
+	// Check current annotation value
+	currentValue := node.Annotations[annotations.NodeCordon]
+	expectedValue := fmt.Sprintf("%t", isDrained)
+
+	// Only update if the value has changed
+	if currentValue != expectedValue {
+		node.Annotations[annotations.NodeCordon] = expectedValue
+
+		if isDrained {
+			logger.Info("Node is drained, marking as cordoned",
+				"node", node.Name, "pod", klog.KObj(pod))
+		} else {
+			logger.Info("Node is not drained, marking as uncordoned",
+				"node", node.Name, "pod", klog.KObj(pod))
+		}
+
+		// Update the node
+		if err := r.Update(ctx, node); err != nil {
+			return fmt.Errorf("failed to update node %s cordon annotation: %w", node.Name, err)
+		}
 	}
 
 	return nil

@@ -38,17 +38,17 @@ import (
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/podcontrol"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/slurmcontrol"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/historycontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
+	slurmtaints "github.com/togethercomputer/slurm-operator/pkg/taints"
 )
 
 func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) *NodeSetReconciler {

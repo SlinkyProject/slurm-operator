@@ -15,10 +15,10 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/controller/token/slurmjwt"
+	"github.com/togethercomputer/slurm-operator/internal/utils/objectutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 // syncStatus handles determining and updating the status.

@@ -45,6 +45,7 @@ rules:
   - list
   - watch
   - patch
+  - update
 - apiGroups:
   - ""
   resources:

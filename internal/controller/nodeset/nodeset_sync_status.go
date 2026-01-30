@@ -22,16 +22,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/slurmcontrol"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/historycontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/mathutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
+	slurmconditions "github.com/togethercomputer/slurm-operator/pkg/conditions"
 )
 
 // syncStatus handles synchronizing Slurm Nodes and NodeSet Status.

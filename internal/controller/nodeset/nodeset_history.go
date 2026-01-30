@@ -14,8 +14,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/utils/historycontrol"
 )
 
 // truncateHistory truncates any non-live ControllerRevisions in revisions from nodeset's history. The UpdateRevision and

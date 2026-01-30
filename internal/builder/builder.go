@@ -4,7 +4,7 @@
 package builder
 
 import (
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
+	"github.com/togethercomputer/slurm-operator/internal/utils/refresolver"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

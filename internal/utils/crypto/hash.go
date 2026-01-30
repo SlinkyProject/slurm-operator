@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 func CheckSum(b []byte) string {

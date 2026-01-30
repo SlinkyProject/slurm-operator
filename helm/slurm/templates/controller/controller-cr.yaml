@@ -97,14 +97,14 @@ spec:
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   persistence:
     {{- with .Values.controller.persistence.existingClaim }}
-    {{- toYaml . | nindent 4 }}
+    existingClaim: {{ toYaml . | nindent 6 | trim }}
     {{- end }}{{- /* with .Values.controller.persistence.existingClaim */}}
     {{- with .Values.controller.persistence.storageClassName }}
-    {{- toYaml . | nindent 4 }}
+    storageClassName: {{ . }}
     {{- end }}{{- /* with .Values.controller.persistence.storageClassName */}}
-    {{- with omit .Values.controller.persistence "existingClaim" "storageClassName"}}
+    {{- with omit .Values.controller.persistence "existingClaim" "storageClassName" "enabled"}}
     {{- toYaml . | nindent 4 }}
-    {{- end }}{{- /* with omit .Values.controller.persistence "existingClaim" "storageClassName" */}}
+    {{- end }}{{- /* with omit .Values.controller.persistence "existingClaim" "storageClassName" "enabled" */}}
   {{- if or (.Values.controller.service.spec) (.Values.controller.service.metadata) (omit .Values.controller.service  "metadata" "spec") }}
   {{- include "format-service" .Values.controller.service | nindent 2 }}
   {{ else }}

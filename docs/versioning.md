@@ -58,4 +58,4 @@ any kind (e.g., component flag changes).
 [semver]: https://semver.org/
 [slurm-bridge]: https://github.com/SlinkyProject/slurm-bridge
 [slurm-client]: https://github.com/SlinkyProject/slurm-client
-[slurm-operator]: https://github.com/SlinkyProject/slurm-operator
+[slurm-operator]: https://github.com/togethercomputer/slurm-operator

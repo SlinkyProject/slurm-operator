@@ -16,7 +16,7 @@ Slurm Cluster
 
 * <https://github.com/SchedMD/slurm>
 * <https://github.com/SlinkyProject/containers>
-* <https://github.com/SlinkyProject/slurm-operator>
+* <https://github.com/togethercomputer/slurm-operator>
 
 ## Requirements
 

@@ -12,10 +12,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/utils/mathutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/structutils"
 )
 
 // ActivePods type allows custom sorting of pods so a controller can pick the best ones to delete.

@@ -345,12 +345,12 @@ limitations under the License.
 
 .. |License| image:: https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge
    :target: ./LICENSES/Apache-2.0.txt
-.. |Tag| image:: https://img.shields.io/github/v/tag/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/tags/
-.. |Go-Version| image:: https://img.shields.io/github/go-mod/go-version/SlinkyProject/slurm-operator?style=for-the-badge
+.. |Tag| image:: https://img.shields.io/github/v/tag/togethercomputer/slurm-operator?style=for-the-badge
+   :target: https://github.com/togethercomputer/slurm-operator/tags/
+.. |Go-Version| image:: https://img.shields.io/github/go-mod/go-version/togethercomputer/slurm-operator?style=for-the-badge
    :target: ./go.mod
-.. |Last-Commit| image:: https://img.shields.io/github/last-commit/SlinkyProject/slurm-operator?style=for-the-badge
-   :target: https://github.com/SlinkyProject/slurm-operator/commits/
+.. |Last-Commit| image:: https://img.shields.io/github/last-commit/togethercomputer/slurm-operator?style=for-the-badge
+   :target: https://github.com/togethercomputer/slurm-operator/commits/
 
 .. toctree::
     :maxdepth: 2

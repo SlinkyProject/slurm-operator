@@ -9,7 +9,7 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: slurm-operator
-repo: github.com/SlinkyProject/slurm-operator
+repo: github.com/togethercomputer/slurm-operator
 resources:
 - api:
     crdVersion: v1beta1
@@ -18,7 +18,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: Controller
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -30,7 +30,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: RestApi
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -42,7 +42,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: Accounting
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -54,7 +54,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: NodeSet
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -66,7 +66,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: LoginSet
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -78,7 +78,7 @@ resources:
   domain: slurm.net
   group: slinky
   kind: Token
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
   webhooks:
     validation: true
@@ -90,6 +90,6 @@ resources:
   domain: slurm.net
   group: slinky
   kind: Controller
-  path: github.com/SlinkyProject/slurm-operator/api/v1beta1
+  path: github.com/togethercomputer/slurm-operator/api/v1beta1
   version: v1beta1
 version: "3"

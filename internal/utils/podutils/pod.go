@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
 )
 
 // IsPodCordon returns true if and only if the delete annotation is nodeset to true.

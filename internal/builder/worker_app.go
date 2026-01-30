@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
-	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder/labels"
+	"github.com/togethercomputer/slurm-operator/internal/builder/metadata"
+	slurmtaints "github.com/togethercomputer/slurm-operator/pkg/taints"
 )
 
 const (
@@ -121,19 +121,17 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
-				FailureThreshold: 6,
+				FailureThreshold: 30,
 				PeriodSeconds:    10,
 			},
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
 				FailureThreshold: 6,
@@ -141,9 +139,8 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 			},
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/readyz",
-						Port: intstr.FromString(labels.WorkerApp),
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(SlurmdPort),
 					},
 				},
 			},

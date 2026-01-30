@@ -8,7 +8,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
+	"github.com/togethercomputer/slurm-operator/internal/utils/domainname"
 )
 
 func (o *RestApi) Key() types.NamespacedName {

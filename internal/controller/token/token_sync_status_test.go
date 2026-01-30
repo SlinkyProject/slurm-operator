@@ -9,7 +9,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
 )
 
 func TestTokenReconciler_syncStatus(t *testing.T) {

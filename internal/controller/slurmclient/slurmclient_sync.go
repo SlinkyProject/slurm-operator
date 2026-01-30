@@ -21,10 +21,10 @@ import (
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/eventhandler"
+	"github.com/togethercomputer/slurm-operator/internal/controller/token/slurmjwt"
 )
 
 // Sync implements control logic for synchronizing a Restapi.

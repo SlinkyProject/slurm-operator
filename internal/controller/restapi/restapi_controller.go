@@ -21,11 +21,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi/eventhandler"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder"
+	"github.com/togethercomputer/slurm-operator/internal/controller/restapi/eventhandler"
+	"github.com/togethercomputer/slurm-operator/internal/utils/durationstore"
+	"github.com/togethercomputer/slurm-operator/internal/utils/refresolver"
 )
 
 const (

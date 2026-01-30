@@ -6,7 +6,7 @@ package labels
 import (
 	"maps"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
 )
 
 // Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels

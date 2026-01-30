@@ -13,6 +13,30 @@ SPDX-License-Identifier: Apache-2.0
 {{- $priorityClassName := $podSpec.priorityClassName | default $.Values.priorityClassName -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
+{{- /* Add shared memory volume and mount if shmSize is specified (Together addition) */}}
+{{- if $podSpec.shmSize }}
+  {{- $volumes := $podSpec.volumes | default list -}}
+  {{- $shmVolume := dict "name" "dshm" "emptyDir" (dict "medium" "Memory" "sizeLimit" $podSpec.shmSize) -}}
+  {{- $volumes = append $volumes $shmVolume -}}
+  {{- $_ := set $podSpec "volumes" $volumes -}}
+  {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+  {{- $shmVolumeMount := dict "name" "dshm" "mountPath" "/dev/shm" -}}
+  {{- $volumeMounts = append $volumeMounts $shmVolumeMount -}}
+  {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
+{{- end }}
+{{- /* Add existing data claim volumes and mounts (Together addition) */}}
+{{- if and $nodeset.persistence $nodeset.persistence.existingDataClaims }}
+  {{- $volumes := $podSpec.volumes | default list -}}
+  {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+  {{- range $nodeset.persistence.existingDataClaims }}
+    {{- $pvcVolume := dict "name" .name "persistentVolumeClaim" (dict "claimName" .name) -}}
+    {{- $volumes = append $volumes $pvcVolume -}}
+    {{- $pvcVolumeMount := dict "name" .name "mountPath" .mountPath -}}
+    {{- $volumeMounts = append $volumeMounts $pvcVolumeMount -}}
+  {{- end }}
+  {{- $_ := set $podSpec "volumes" $volumes -}}
+  {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
+{{- end }}
 {{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
 {{- if $nodeset.useResourceLimits }}
   {{- $envLimts := list (dict "name" "POD_CPUS" "value" (include "slurm.worker.podCpus" $nodeset.slurmd | toString)) (dict "name" "POD_MEMORY" "value" (include "slurm.worker.podMemory" $nodeset.slurmd | toString)) -}}

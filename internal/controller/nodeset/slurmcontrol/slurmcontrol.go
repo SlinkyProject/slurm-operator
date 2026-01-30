@@ -23,12 +23,12 @@ import (
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/timestore"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	nodesetutils "github.com/togethercomputer/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/podinfo"
+	"github.com/togethercomputer/slurm-operator/internal/utils/timestore"
+	slurmconditions "github.com/togethercomputer/slurm-operator/pkg/conditions"
 )
 
 type SlurmControlInterface interface {
@@ -72,6 +72,10 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	nodeList := &slurmtypes.V0044NodeList{}
 	opts := &slurmclient.ListOptions{RefreshCache: true}
 	if err := slurmClient.List(ctx, nodeList, opts); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no nodes yet
+		if tolerateError(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -90,6 +94,10 @@ func (r *realSlurmControl) GetNodeNames(ctx context.Context, nodeset *slinkyv1be
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no nodes yet
+		if tolerateError(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -541,6 +549,10 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 
 	jobList := &slurmtypes.V0044JobInfoList{}
 	if err := slurmClient.List(ctx, jobList); err != nil {
+		// Tolerate "Not Found" and "No Content" errors when there are no jobs yet
+		if tolerateError(err) {
+			return ts, nil
+		}
 		return nil, err
 	}
 

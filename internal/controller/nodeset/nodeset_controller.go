@@ -23,16 +23,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/eventhandler"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/builder"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/eventhandler"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/indexes"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/podcontrol"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset/slurmcontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/durationstore"
+	"github.com/togethercomputer/slurm-operator/internal/utils/historycontrol"
+	"github.com/togethercomputer/slurm-operator/internal/utils/refresolver"
 )
 
 const (

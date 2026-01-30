@@ -23,15 +23,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/accounting"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/controller"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/loginset"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient"
-	"github.com/SlinkyProject/slurm-operator/internal/controller/token"
+	slinkyv1beta1 "github.com/togethercomputer/slurm-operator/api/v1beta1"
+	"github.com/togethercomputer/slurm-operator/internal/clientmap"
+	"github.com/togethercomputer/slurm-operator/internal/controller/accounting"
+	"github.com/togethercomputer/slurm-operator/internal/controller/controller"
+	"github.com/togethercomputer/slurm-operator/internal/controller/loginset"
+	"github.com/togethercomputer/slurm-operator/internal/controller/nodeset"
+	"github.com/togethercomputer/slurm-operator/internal/controller/restapi"
+	"github.com/togethercomputer/slurm-operator/internal/controller/slurmclient"
+	"github.com/togethercomputer/slurm-operator/internal/controller/token"
 	// +kubebuilder:scaffold:imports
 )
 

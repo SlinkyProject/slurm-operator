@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	"github.com/togethercomputer/slurm-operator/internal/utils/testutils"
 )
 
 func Test_ControllerEventHandler_Create(t *testing.T) {

@@ -1,0 +1,138 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.login.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "slurm.login.name" . }}
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.login.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.login.replicas }}
+  selector:
+    matchLabels:
+      {{- include "slurm.login.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "slurm.login.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.login.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.login.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.login.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.login.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: login
+        image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
+        imagePullPolicy: {{ .Values.login.imagePullPolicy | default .Values.imagePullPolicy }}
+        {{- with .Values.login.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.login.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        env:
+        - name: SLURM_CLUSTER_NAME
+          value: {{ include "slurm.fullname" . }}
+        - name: SLURM_CONF_SERVER
+          value: {{ include "slurm.fullname" . }}.{{ include "slurm.namespace" . }}.svc.cluster.local
+        volumeMounts:
+        - name: slurm-config
+          mountPath: /etc/slurm
+        {{- if .Values.login.sharedMemorySize }}
+        - name: dshm
+          mountPath: /dev/shm
+        {{- end }}
+        {{- range .Values.login.extraVolumeMounts }}
+        - name: {{ .name }}
+          mountPath: {{ .mountPath }}
+          {{- if .subPath }}
+          subPath: {{ .subPath }}
+          {{- end }}
+          {{- if .readOnly }}
+          readOnly: {{ .readOnly }}
+          {{- end }}
+        {{- end }}
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          set -e
+          echo "Starting login node..."
+          # Wait for slurm.conf to be available
+          while [ ! -f /etc/slurm/slurm.conf ]; do
+            echo "Waiting for slurm.conf..."
+            sleep 5
+          done
+          # Start munge
+          service munge start
+          # Start SSH service if needed
+          if command -v sshd &> /dev/null; then
+            service ssh start || service sshd start || true
+          fi
+          # Keep container running
+          tail -f /dev/null
+      volumes:
+      - name: slurm-config
+        configMap:
+          name: {{ include "slurm.fullname" . }}-config
+      {{- if .Values.login.sharedMemorySize }}
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.login.sharedMemorySize }}
+      {{- end }}
+      {{- range .Values.login.extraVolumes }}
+      - name: {{ .name }}
+        {{- if .configMap }}
+        configMap:
+          name: {{ .configMap.name }}
+          {{- with .configMap.items }}
+          items:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- else if .secret }}
+        secret:
+          secretName: {{ .secret.secretName }}
+          {{- with .secret.items }}
+          items:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- else if .persistentVolumeClaim }}
+        persistentVolumeClaim:
+          claimName: {{ .persistentVolumeClaim.claimName }}
+        {{- else if .nfs }}
+        nfs:
+          server: {{ .nfs.server }}
+          path: {{ .nfs.path }}
+        {{- else if .emptyDir }}
+        emptyDir: {}
+        {{- else if .hostPath }}
+        hostPath:
+          path: {{ .hostPath.path }}
+          {{- if .hostPath.type }}
+          type: {{ .hostPath.type }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+{{- end }}

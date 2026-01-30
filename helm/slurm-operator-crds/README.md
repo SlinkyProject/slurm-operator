@@ -14,5 +14,5 @@ Slurm Operator CRDs
 
 ## Source Code
 
-* <https://github.com/SlinkyProject/slurm-operator>
+* <https://github.com/togethercomputer/slurm-operator>
 
