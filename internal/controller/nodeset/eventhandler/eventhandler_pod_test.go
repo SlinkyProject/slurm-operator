@@ -76,62 +76,6 @@ func Test_PodEventHandler_Create(t *testing.T) {
 	}
 }
 
-func Benchmark_PodEventHandler_Create(b *testing.B) {
-	type fields struct {
-		Reader       client.Reader
-		expectations *kubecontroller.UIDTrackingControllerExpectations
-	}
-	type args struct {
-		ctx context.Context
-		evt event.CreateEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Empty",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.CreateEvent{},
-				q:   newQueue(),
-			},
-		},
-		{
-			name: "Pod",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.CreateEvent{
-					Object: &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: corev1.NamespaceDefault,
-							Name:      "foo",
-						},
-					},
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewPodEventHandler(bb.fields.Reader, bb.fields.expectations)
-
-			for b.Loop() {
-				h.Create(bb.args.ctx, bb.args.evt, bb.args.q)
-			}
-		})
-	}
-}
-
 func Test_PodEventHandler_Delete(t *testing.T) {
 	type fields struct {
 		Reader       client.Reader
@@ -191,62 +135,6 @@ func Test_PodEventHandler_Delete(t *testing.T) {
 	}
 }
 
-func Benchmark_PodEventHandler_Delete(b *testing.B) {
-	type fields struct {
-		Reader       client.Reader
-		expectations *kubecontroller.UIDTrackingControllerExpectations
-	}
-	type args struct {
-		ctx context.Context
-		evt event.DeleteEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Empty",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.DeleteEvent{},
-				q:   newQueue(),
-			},
-		},
-		{
-			name: "Pod",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.DeleteEvent{
-					Object: &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: corev1.NamespaceDefault,
-							Name:      "foo",
-						},
-					},
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewPodEventHandler(bb.fields.Reader, bb.fields.expectations)
-
-			for b.Loop() {
-				h.Delete(bb.args.ctx, bb.args.evt, bb.args.q)
-			}
-		})
-	}
-}
-
 func Test_PodEventHandler_Generic(t *testing.T) {
 	type fields struct {
 		Reader       client.Reader
@@ -301,61 +189,6 @@ func Test_PodEventHandler_Generic(t *testing.T) {
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Generic() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_PodEventHandler_Generic(b *testing.B) {
-	type fields struct {
-		Reader       client.Reader
-		expectations *kubecontroller.UIDTrackingControllerExpectations
-	}
-	type args struct {
-		ctx context.Context
-		evt event.GenericEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Empty",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.GenericEvent{},
-				q:   newQueue(),
-			},
-		},
-		{
-			name: "Pod",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.GenericEvent{
-					Object: &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: corev1.NamespaceDefault,
-							Name:      "foo",
-						},
-					},
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewPodEventHandler(bb.fields.Reader, bb.fields.expectations)
-			for b.Loop() {
-				h.Generic(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}
@@ -421,68 +254,6 @@ func Test_PodEventHandler_Update(t *testing.T) {
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got > tt.want {
 				t.Errorf("Update() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_PodEventHandler_Update(b *testing.B) {
-	type fields struct {
-		Reader       client.Reader
-		expectations *kubecontroller.UIDTrackingControllerExpectations
-	}
-	type args struct {
-		ctx context.Context
-		evt event.UpdateEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Empty",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.UpdateEvent{},
-				q:   newQueue(),
-			},
-		},
-		{
-			name: "Pod",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.UpdateEvent{
-					ObjectOld: &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: corev1.NamespaceDefault,
-							Name:      "foo",
-						},
-					},
-					ObjectNew: &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: corev1.NamespaceDefault,
-							Name:      "foo",
-						},
-					},
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewPodEventHandler(bb.fields.Reader, bb.fields.expectations)
-
-			for b.Loop() {
-				h.Update(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}

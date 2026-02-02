@@ -59,47 +59,6 @@ func TestKeys(t *testing.T) {
 	}
 }
 
-func BenchmarkKeys(b *testing.B) {
-	type args struct {
-		items map[string]int32
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Empty Map",
-			args: args{
-				items: map[string]int32{},
-			},
-		},
-		{
-			name: "One Item Map",
-			args: args{
-				items: map[string]int32{
-					"foo": 0,
-				},
-			},
-		},
-		{
-			name: "Two Item Map",
-			args: args{
-				items: map[string]int32{
-					"foo": 0,
-					"bar": 1,
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				Keys(bb.args.items)
-			}
-		})
-	}
-}
-
 func TestValues(t *testing.T) {
 	type args struct {
 		items map[string]int32
@@ -148,47 +107,6 @@ func TestValues(t *testing.T) {
 	}
 }
 
-func BenchmarkValues(b *testing.B) {
-	type args struct {
-		items map[string]int32
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Empty Map",
-			args: args{
-				items: map[string]int32{},
-			},
-		},
-		{
-			name: "One Item Map",
-			args: args{
-				items: map[string]int32{
-					"foo": 0,
-				},
-			},
-		},
-		{
-			name: "Two Item Map",
-			args: args{
-				items: map[string]int32{
-					"foo": 0,
-					"bar": 1,
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				Values(bb.args.items)
-			}
-		})
-	}
-}
-
 func TestMergeMaps(t *testing.T) {
 	type args struct {
 		mapList []map[string]string
@@ -230,45 +148,6 @@ func TestMergeMaps(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := MergeMaps(tt.args.mapList...); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("MergeMaps() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkMergeMaps(b *testing.B) {
-	type args struct {
-		mapList []map[string]string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "none",
-			args: args{
-				mapList: []map[string]string{},
-			},
-		},
-		{
-			name: "overlap",
-			args: args{
-				mapList: []map[string]string{
-					{
-						"overlap": "foo",
-						"fizz":    "buzz",
-					},
-					{
-						"overlap": "bar",
-						"numbers": "1,2,3",
-					},
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				MergeMaps(bb.args.mapList...)
 			}
 		})
 	}
@@ -349,72 +228,6 @@ func Test_validFirstDigit(t *testing.T) {
 	}
 }
 
-func Benchmark_validFirstDigit(b *testing.B) {
-	type args struct {
-		str string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Zero length string",
-			args: args{
-				str: "",
-			},
-		},
-		{
-			name: "Starts with '-'",
-			args: args{
-				str: "-foo",
-			},
-		},
-		{
-			name: "Starts with '0'",
-			args: args{
-				str: "0foo",
-			},
-		},
-		{
-			name: "Is '0'",
-			args: args{
-				str: "0",
-			},
-		},
-		{
-			name: "Starts with '1'",
-			args: args{
-				str: "1foo",
-			},
-		},
-		{
-			name: "Starts with '9'",
-			args: args{
-				str: "9foo",
-			},
-		},
-		{
-			name: "Starts with '5'",
-			args: args{
-				str: "5foo",
-			},
-		},
-		{
-			name: "Starts with 'a'",
-			args: args{
-				str: "afoo",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				validFirstDigit(bb.args.str)
-			}
-		})
-	}
-}
-
 func TestGetNumberFromAnnotations(t *testing.T) {
 	type args struct {
 		annotations map[string]string
@@ -463,46 +276,6 @@ func TestGetNumberFromAnnotations(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("GetNumberFromAnnotations() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkGetNumberFromAnnotations(b *testing.B) {
-	type args struct {
-		annotations map[string]string
-		key         string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Get number from map key: 1",
-			args: args{
-				annotations: map[string]string{"foo": "1"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: missing key",
-			args: args{
-				annotations: map[string]string{"bar": "1"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: parse error",
-			args: args{
-				annotations: map[string]string{"foo": "1_2"},
-				key:         "foo",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				GetNumberFromAnnotations(bb.args.annotations, bb.args.key) //nolint:errcheck
 			}
 		})
 	}
@@ -588,67 +361,6 @@ func TestGetBoolFromAnnotations(t *testing.T) {
 	}
 }
 
-func BenchmarkGetBoolFromAnnotations(b *testing.B) {
-	type args struct {
-		annotations map[string]string
-		key         string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Get number from map key: True",
-			args: args{
-				annotations: map[string]string{"foo": "True"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: False",
-			args: args{
-				annotations: map[string]string{"foo": "False"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: 1",
-			args: args{
-				annotations: map[string]string{"foo": "1"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: 0",
-			args: args{
-				annotations: map[string]string{"foo": "0"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: missing key",
-			args: args{
-				annotations: map[string]string{"bar": "true"},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: parse error",
-			args: args{
-				annotations: map[string]string{"foo": " "},
-				key:         "foo",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				GetBoolFromAnnotations(bb.args.annotations, bb.args.key) //nolint:errcheck
-			}
-		})
-	}
-}
-
 func TestGetTimeFromAnnotations(t *testing.T) {
 	now := time.Now()
 	unitTime := time.Time{}
@@ -691,40 +403,6 @@ func TestGetTimeFromAnnotations(t *testing.T) {
 			// Compare Unix to avoid nanosecond precision loss due to (un)marshaling
 			if tt.want.Unix() != got.Unix() {
 				t.Errorf("GetTimeFromAnnotations() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkGetTimeFromAnnotations(b *testing.B) {
-	now := time.Now()
-	type args struct {
-		annotations map[string]string
-		key         string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "Get number from map key: Now",
-			args: args{
-				annotations: map[string]string{"foo": now.Format(time.RFC3339)},
-				key:         "foo",
-			},
-		},
-		{
-			name: "Get number from map key: parse error",
-			args: args{
-				annotations: map[string]string{"foo": " "},
-				key:         "foo",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				GetTimeFromAnnotations(bb.args.annotations, bb.args.key) //nolint:errcheck
 			}
 		})
 	}

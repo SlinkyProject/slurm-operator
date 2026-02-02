@@ -42,38 +42,3 @@ func Test_configBuilder_Build(t *testing.T) {
 		})
 	}
 }
-
-func Benchmark_configBuilder_Build(b *testing.B) {
-	type fields struct {
-		builder *configBuilder
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-	}{
-		{
-			name: "empty",
-			fields: fields{
-				builder: NewBuilder(),
-			},
-		},
-		{
-			name: "with options",
-			fields: fields{
-				builder: NewBuilder().
-					WithSeperator("=").
-					WithFinalNewline(false).
-					AddProperty(NewProperty("foo", "bar")).
-					AddProperty(NewPropertyRaw("fizz ~ buzz")),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			builder := bb.fields.builder
-			for b.Loop() {
-				builder.Build()
-			}
-		})
-	}
-}

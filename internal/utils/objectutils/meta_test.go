@@ -50,41 +50,6 @@ func TestKeyFunc(t *testing.T) {
 	}
 }
 
-func BenchmarkKeyFunc(b *testing.B) {
-	type args struct {
-		obj metav1.Object
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "No namespace",
-			args: args{
-				obj: &appsv1.Deployment{},
-			},
-		},
-		{
-			name: "Slurm namespace",
-			args: args{
-				obj: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "bar",
-					},
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				KeyFunc(bb.args.obj)
-			}
-		})
-	}
-}
-
 func TestNamespacedName(t *testing.T) {
 	type args struct {
 		obj metav1.Object
@@ -121,41 +86,6 @@ func TestNamespacedName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NamespacedName(tt.args.obj); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("NamespacedName() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkNamespacedName(b *testing.B) {
-	type args struct {
-		obj metav1.Object
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "No namespace",
-			args: args{
-				obj: &appsv1.Deployment{},
-			},
-		},
-		{
-			name: "Slurm namespace",
-			args: args{
-				obj: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "bar",
-					},
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				NamespacedName(bb.args.obj)
 			}
 		})
 	}

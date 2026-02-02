@@ -35,23 +35,6 @@ func TestNewClientMap(t *testing.T) {
 	}
 }
 
-func BenchmarkNewClientMap(b *testing.B) {
-	benchmarks := []struct {
-		name string
-	}{
-		{
-			name: "Test new clusters",
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				NewClientMap()
-			}
-		})
-	}
-}
-
 func TestClientMap_Get(t *testing.T) {
 	testClient := fake.NewFakeClient()
 	c := make(map[string]client.Client)
@@ -103,59 +86,6 @@ func TestClientMap_Get(t *testing.T) {
 			}
 			if got := c.Get(tt.args.name); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ClientMap.Get() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkClientMap_Get(b *testing.B) {
-	testClient := fake.NewFakeClient()
-	c := make(map[string]client.Client)
-	c["default/foo"] = testClient
-	type fields struct {
-		clients map[string]client.Client
-	}
-	type args struct {
-		name types.NamespacedName
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "existing namespaced name",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Namespace: "default",
-					Name:      "foo",
-				},
-			},
-		},
-		{
-			name: "incorrect namespaced name",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Namespace: "default",
-					Name:      "bar",
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			c := &ClientMap{
-				lock:    sync.RWMutex{},
-				clients: bb.fields.clients,
-			}
-			for b.Loop() {
-				c.Get(bb.args.name)
 			}
 		})
 	}
@@ -220,62 +150,6 @@ func TestClientMap_add(t *testing.T) {
 	}
 }
 
-func BenchmarkClientMap_add(b *testing.B) {
-	testClient := fake.NewFakeClient()
-	c := make(map[string]client.Client)
-	c["default/foo"] = testClient
-	type fields struct {
-		clients map[string]client.Client
-	}
-	type args struct {
-		name   types.NamespacedName
-		client client.Client
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Already has NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				client: testClient,
-			},
-		},
-		{
-			name: "Add a new NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "bar",
-					Namespace: "default",
-				},
-				client: testClient,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			c := &ClientMap{
-				lock:    sync.RWMutex{},
-				clients: bb.fields.clients,
-			}
-			for b.Loop() {
-				c.add(bb.args.name, bb.args.client)
-			}
-		})
-	}
-}
-
 func TestClientMap_Add(t *testing.T) {
 	testClient := fake.NewFakeClient()
 	c := make(map[string]client.Client)
@@ -330,62 +204,6 @@ func TestClientMap_Add(t *testing.T) {
 			}
 			if got := c.Add(tt.args.name, tt.args.client); got != tt.want {
 				t.Errorf("ClientMap.Add() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkClientMap_Add(b *testing.B) {
-	testClient := fake.NewFakeClient()
-	c := make(map[string]client.Client)
-	c["default/foo"] = testClient
-	type fields struct {
-		clients map[string]client.Client
-	}
-	type args struct {
-		name   types.NamespacedName
-		client client.Client
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Already has NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "foo",
-					Namespace: "default",
-				},
-				client: testClient,
-			},
-		},
-		{
-			name: "Add a new NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "bar",
-					Namespace: "default",
-				},
-				client: testClient,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			c := &ClientMap{
-				lock:    sync.RWMutex{},
-				clients: bb.fields.clients,
-			}
-			for b.Loop() {
-				c.Add(bb.args.name, bb.args.client)
 			}
 		})
 	}
@@ -450,62 +268,6 @@ func TestClientMap_Has(t *testing.T) {
 	}
 }
 
-func BenchmarkClientMap_Has(b *testing.B) {
-	testClient := fake.NewFakeClient()
-	c := make(map[string]client.Client)
-	foo := types.NamespacedName{
-		Namespace: "default",
-		Name:      "foo",
-	}
-	bar := types.NamespacedName{
-		Namespace: "default",
-		Name:      "bar",
-	}
-	c["default/foo"] = testClient
-
-	type fields struct {
-		clients map[string]client.Client
-	}
-	type args struct {
-		names []types.NamespacedName
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Does not have NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				names: append([]types.NamespacedName{}, bar),
-			},
-		},
-		{
-			name: "Has NamespacedName",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				names: append([]types.NamespacedName{}, bar, foo),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			c := &ClientMap{
-				lock:    sync.RWMutex{},
-				clients: bb.fields.clients,
-			}
-			for b.Loop() {
-				c.Has(bb.args.names...)
-			}
-		})
-	}
-}
-
 func TestClientMap_Remove(t *testing.T) {
 	testClient := fake.NewFakeClient()
 	c := make(map[string]client.Client)
@@ -557,60 +319,6 @@ func TestClientMap_Remove(t *testing.T) {
 			}
 			if got := c.Remove(tt.args.name); got != tt.want {
 				t.Errorf("ClientMap.Remove() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkClientMap_Remove(b *testing.B) {
-	testClient := fake.NewFakeClient()
-	c := make(map[string]client.Client)
-	c["default/foo"] = testClient
-	type fields struct {
-		clients map[string]client.Client
-	}
-	type args struct {
-		name types.NamespacedName
-	}
-	benchmark := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Remove client that exists",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "foo",
-					Namespace: "default",
-				},
-			},
-		},
-		{
-			name: "Remove client that does not exists",
-			fields: fields{
-				clients: c,
-			},
-			args: args{
-				name: types.NamespacedName{
-					Name:      "bar",
-					Namespace: "default",
-				},
-			},
-		},
-	}
-	for _, bb := range benchmark {
-		b.Run(bb.name, func(b *testing.B) {
-			c := &ClientMap{
-				lock:    sync.RWMutex{},
-				clients: bb.fields.clients,
-			}
-
-			for b.Loop() {
-				c.Remove(bb.args.name)
 			}
 		})
 	}

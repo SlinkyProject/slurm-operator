@@ -51,38 +51,6 @@ func TestEnqueueRequestAfter(t *testing.T) {
 	}
 }
 
-func BenchmarkEnqueueRequestAfter(b *testing.B) {
-	type args struct {
-		q        workqueue.TypedRateLimitingInterface[reconcile.Request]
-		obj      client.Object
-		duration time.Duration
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "immediate",
-			args: args{
-				q: newQueue(),
-				obj: &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "foo",
-					},
-				},
-				duration: 0,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				EnqueueRequestAfter(bb.args.q, bb.args.obj, bb.args.duration)
-			}
-		})
-	}
-}
-
 func TestEnqueueRequest(t *testing.T) {
 	type args struct {
 		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
@@ -109,36 +77,6 @@ func TestEnqueueRequest(t *testing.T) {
 			EnqueueRequest(tt.args.q, tt.args.obj)
 			if tt.args.q.Len() == 0 {
 				t.Errorf("Len() = %d", tt.args.q.Len())
-			}
-		})
-	}
-}
-
-func BenchmarkEnqueueRequest(b *testing.B) {
-	type args struct {
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-		obj client.Object
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "immediate",
-			args: args{
-				q: newQueue(),
-				obj: &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "foo",
-					},
-				},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				EnqueueRequest(bb.args.q, bb.args.obj)
 			}
 		})
 	}

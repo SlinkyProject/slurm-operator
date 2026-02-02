@@ -52,28 +52,3 @@ func TestBuilder_BuildServiceMonitor(t *testing.T) {
 		})
 	}
 }
-
-func BenchmarkBuilder_BuildServiceMonitor(b *testing.B) {
-	benchmarks := []struct {
-		name  string
-		c     client.Client
-		opts  ServiceMonitorOpts
-		owner metav1.Object
-	}{
-		{
-			name:  "empty",
-			c:     fake.NewFakeClient(),
-			opts:  ServiceMonitorOpts{},
-			owner: &corev1.Pod{},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			build := New(bb.c)
-
-			for b.Loop() {
-				build.BuildServiceMonitor(bb.opts, bb.owner) //nolint:errcheck
-			}
-		})
-	}
-}

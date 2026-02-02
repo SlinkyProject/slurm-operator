@@ -68,53 +68,6 @@ func Test_NodeSetEventHandler_Create(t *testing.T) {
 	}
 }
 
-func Benchmark_NodeSetEventHandler_Create(b *testing.B) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
-	slurmKeyRef := testutils.NewSlurmKeyRef("foo")
-	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef("foo")
-	controller := testutils.NewController("slurm1", slurmKeyRef, jwtHs256KeyRef, nil)
-	nodeset := testutils.NewNodeset("slurmA", controller, 2)
-	type fields struct {
-		Reader client.Reader
-	}
-	type args struct {
-		ctx context.Context
-		evt event.CreateEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "smoke",
-			fields: fields{
-				Reader: fake.NewFakeClient(
-					controller,
-					nodeset,
-				),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.CreateEvent{
-					Object: nodeset,
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewNodeSetEventHandler(bb.fields.Reader)
-
-			for b.Loop() {
-				h.Create(bb.args.ctx, bb.args.evt, bb.args.q)
-			}
-		})
-	}
-}
-
 func Test_NodeSetEventHandler_Delete(t *testing.T) {
 	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	slurmKeyRef := testutils.NewSlurmKeyRef("foo")
@@ -164,53 +117,6 @@ func Test_NodeSetEventHandler_Delete(t *testing.T) {
 	}
 }
 
-func Benchmark_NodeSetEventHandler_Delete(b *testing.B) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
-	slurmKeyRef := testutils.NewSlurmKeyRef("foo")
-	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef("foo")
-	controller := testutils.NewController("slurm1", slurmKeyRef, jwtHs256KeyRef, nil)
-	nodeset := testutils.NewNodeset("slurmA", controller, 2)
-	type fields struct {
-		Reader client.Reader
-	}
-	type args struct {
-		ctx context.Context
-		evt event.DeleteEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmark := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "smoke",
-			fields: fields{
-				Reader: fake.NewFakeClient(
-					controller,
-					nodeset,
-				),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.DeleteEvent{
-					Object: nodeset,
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmark {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewNodeSetEventHandler(bb.fields.Reader)
-
-			for b.Loop() {
-				h.Delete(bb.args.ctx, bb.args.evt, bb.args.q)
-			}
-		})
-	}
-}
-
 func Test_NodeSetEventHandler_Generic(t *testing.T) {
 	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
 	type fields struct {
@@ -246,44 +152,6 @@ func Test_NodeSetEventHandler_Generic(t *testing.T) {
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("NodeSetEventHandler.Generic() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_NodeSetEventHandler_Generic(b *testing.B) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
-	type fields struct {
-		Reader client.Reader
-	}
-	type args struct {
-		ctx context.Context
-		evt event.GenericEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "Empty",
-			fields: fields{
-				Reader: fake.NewFakeClient(),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.GenericEvent{},
-				q:   newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewNodeSetEventHandler(bb.fields.Reader)
-
-			for b.Loop() {
-				h.Generic(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}
@@ -334,54 +202,6 @@ func Test_NodeSetEventHandler_Update(t *testing.T) {
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			if got := tt.args.q.Len(); got != tt.want {
 				t.Errorf("NodeSetEventHandler.Update() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_NodeSetEventHandler_Update(b *testing.B) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
-	slurmKeyRef := testutils.NewSlurmKeyRef("foo")
-	jwtHs256KeyRef := testutils.NewJwtHs256KeyRef("foo")
-	controller := testutils.NewController("slurm1", slurmKeyRef, jwtHs256KeyRef, nil)
-	nodeset := testutils.NewNodeset("slurmA", controller, 2)
-	type fields struct {
-		Reader client.Reader
-	}
-	type args struct {
-		ctx context.Context
-		evt event.UpdateEvent
-		q   workqueue.TypedRateLimitingInterface[reconcile.Request]
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "smoke",
-			fields: fields{
-				Reader: fake.NewFakeClient(
-					controller,
-					nodeset,
-				),
-			},
-			args: args{
-				ctx: context.TODO(),
-				evt: event.UpdateEvent{
-					ObjectNew: nodeset,
-					ObjectOld: nodeset,
-				},
-				q: newQueue(),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			h := NewNodeSetEventHandler(bb.fields.Reader)
-
-			for b.Loop() {
-				h.Update(bb.args.ctx, bb.args.evt, bb.args.q)
 			}
 		})
 	}

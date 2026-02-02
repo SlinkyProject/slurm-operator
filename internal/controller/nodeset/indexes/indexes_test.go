@@ -47,37 +47,6 @@ func Test_getPodNodeName(t *testing.T) {
 	}
 }
 
-func Benchmark_getPodNodeName(b *testing.B) {
-	benchmarks := []struct {
-		name string
-		o    client.Object
-	}{
-		{
-			name: "Pod",
-			o:    &corev1.Pod{},
-		},
-		{
-			name: "Pod, with nodeName",
-			o: &corev1.Pod{
-				Spec: corev1.PodSpec{
-					NodeName: "foo",
-				},
-			},
-		},
-		{
-			name: "invalid",
-			o:    &corev1.Node{},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				getPodNodeName(bb.o)
-			}
-		})
-	}
-}
-
 func TestNewFakeClientBuilderWithIndexes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -91,23 +60,6 @@ func TestNewFakeClientBuilderWithIndexes(t *testing.T) {
 			got := NewFakeClientBuilderWithIndexes()
 			if got == nil {
 				t.Errorf("NewFakeClientBuilderWithIndexes() = %v", got)
-			}
-		})
-	}
-}
-
-func BenchmarkNewFakeClientBuilderWithIndexes(b *testing.B) {
-	benchmarks := []struct {
-		name string
-	}{
-		{
-			name: "smoke",
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				NewFakeClientBuilderWithIndexes()
 			}
 		})
 	}

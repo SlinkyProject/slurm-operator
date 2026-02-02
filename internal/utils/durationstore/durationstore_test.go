@@ -57,54 +57,6 @@ func TestDurationStore_Push(t *testing.T) {
 	}
 }
 
-func BenchmarkDurationStore_Push(b *testing.B) {
-	type args struct {
-		key    string
-		newDur time.Duration
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Push time.Second",
-			args: args{
-				key:    "foo",
-				newDur: time.Second,
-			},
-		},
-		{
-			name: "[foo] Push (-1 * time.Minute)",
-			args: args{
-				key:    "foo",
-				newDur: -1 * time.Minute,
-			},
-		},
-		{
-			name: "[bar] Push (-1 * time.Hour)",
-			args: args{
-				key:    "bar",
-				newDur: -1 * time.Hour,
-			},
-		},
-		{
-			name: "[bar] Push time.Minute",
-			args: args{
-				key:    "bar",
-				newDur: time.Minute,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			ds := NewDurationStore(Greater)
-			for b.Loop() {
-				ds.Push(bb.args.key, bb.args.newDur)
-			}
-		})
-	}
-}
-
 func TestDurationStore_Peek(t *testing.T) {
 	ds := NewDurationStore(Greater)
 	type args struct {
@@ -170,41 +122,6 @@ func TestDurationStore_Peek(t *testing.T) {
 			ds.Push(tt.args.key, tt.args.newDur)
 			if got := ds.Peek(tt.args.key); got != tt.want {
 				t.Errorf("ds.Peek() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkDurationStore_Peek(b *testing.B) {
-	ds := NewDurationStore(Greater)
-	type args struct {
-		key    string
-		newDur time.Duration
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Peek time.Second",
-			args: args{
-				key:    "foo",
-				newDur: time.Second,
-			},
-		},
-		{
-			name: "[bar] Peek (-1 * time.Hour)",
-			args: args{
-				key:    "bar",
-				newDur: -1 * time.Hour,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			ds.Push(bb.args.key, bb.args.newDur)
-			for b.Loop() {
-				ds.Peek(bb.args.key)
 			}
 		})
 	}
@@ -282,39 +199,6 @@ func TestDurationStore_Pop(t *testing.T) {
 	}
 }
 
-func BenchmarkDurationStore_Pop(b *testing.B) {
-	ds := NewDurationStore(Greater)
-	ds.Push("foo", time.Second)
-	ds.Push("bar", -1*time.Hour)
-	type args struct {
-		key string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Pop",
-			args: args{
-				key: "foo",
-			},
-		},
-		{
-			name: "[bar] Pop",
-			args: args{
-				key: "bar",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				ds.Pop(bb.args.key)
-			}
-		})
-	}
-}
-
 func Test_duration_Update(t *testing.T) {
 	type fields struct {
 		dur time.Duration
@@ -382,52 +266,6 @@ func Test_duration_Update(t *testing.T) {
 			d.Update(tt.args.newDur, tt.args.eval)
 			if got := d.dur; got != tt.want {
 				t.Errorf("DurationStore.Pop() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_duration_Update(b *testing.B) {
-	type fields struct {
-		dur time.Duration
-	}
-	type args struct {
-		newDur time.Duration
-		eval   func(dur1, dur2 time.Duration) bool
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "[Greater] Update to time.Second",
-			fields: fields{
-				dur: 0,
-			},
-			args: args{
-				newDur: time.Second,
-				eval:   Greater,
-			},
-		},
-		{
-			name: "[Less] Update to 0",
-			fields: fields{
-				dur: time.Second,
-			},
-			args: args{
-				newDur: 0,
-				eval:   Less,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			d := &duration{
-				dur: bb.fields.dur,
-			}
-			for b.Loop() {
-				d.Update(bb.args.newDur, bb.args.eval)
 			}
 		})
 	}
