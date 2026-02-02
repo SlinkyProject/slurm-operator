@@ -1,0 +1,68 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: test-release
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: slurm-operator
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-operator-1.2.3
+      name: slurm-operator
+      namespace: test-namespace
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 0
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release
+          app.kubernetes.io/name: slurm-operator
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/instance: test-release
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/name: slurm-operator
+            app.kubernetes.io/version: 1.2.3
+            helm.sh/chart: slurm-operator-1.2.3
+        spec:
+          containers:
+            - args:
+                - --accounting-workers
+                - "4"
+                - --controller-workers
+                - "4"
+                - --loginset-workers
+                - "4"
+                - --nodeset-workers
+                - "4"
+                - --restapi-workers
+                - "4"
+                - --token-workers
+                - "4"
+                - --slurmclient-workers
+                - "2"
+                - --zap-log-level
+                - info
+                - --health-addr
+                - :8081
+                - --metrics-addr
+                - :8080
+                - --leader-elect
+                - --leader-elect-namespace
+                - test-namespace
+              image: ghcr.io/slinkyproject/slurm-operator:1.2.3
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                httpGet:
+                  path: /healthz
+                  port: 8081
+              name: slurm-operator
+              readinessProbe:
+                httpGet:
+                  path: /readyz
+                  port: 8081
+          hostname: slurm-operator
+          priorityClassName: null
+          serviceAccountName: test-release-slurm-operator

@@ -1,0 +1,167 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test restapi
+templates:
+- restapi/restapi-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+- it: manifest should match snapshot
+  set:
+    restapi:
+      slurmrestd:
+        image:
+          tag: v1.2.3
+  asserts:
+  - matchSnapshot: {}
+
+- it: should set imagePullSecrets
+  set:
+    imagePullSecrets:
+    - name: "docker-secret-1"
+    - name: "docker-secret-2"
+
+  asserts:
+  - equal:
+      path: spec.template.spec.imagePullSecrets[0].name
+      value: docker-secret-1
+  - equal:
+      path: spec.template.spec.imagePullSecrets[1].name
+      value: docker-secret-2
+
+
+
+- it: should set resourceSettings
+  set:
+    restapi:
+      podSpec:
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4"
+          requests:
+            cpu: "1"
+            memory: "2"
+  asserts:
+  - equal:
+      path: spec.template.spec.resources
+      value:
+        limits:
+          cpu: "2"
+          memory: "4"
+        requests:
+          cpu: "1"
+          memory: "2"
+
+- it: should add nodeSelector
+  set:
+    restapi:
+      podSpec:
+        nodeSelector:
+          beta.kubernetes.io/os: linux
+  asserts:
+  - equal:
+      path: spec.template.spec.nodeSelector["beta.kubernetes.io/os"]
+      value: linux
+
+
+- it: should set affinity
+  set:
+    restapi:
+      podSpec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                  - key: arch
+                    operator: In
+                    values:
+                    - x86_64
+  asserts:
+  - equal:
+      path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
+      value: x86_64
+
+
+- it: should add tolerations
+  set:
+    restapi:
+      podSpec:
+        tolerations:
+        - key: "test"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 6000
+  asserts:
+  - equal:
+      path: spec.template.spec.tolerations[0].key
+      value: test
+
+
+- it: should add topologySpreadConstraints
+  set:
+    restapi:
+      podSpec:
+        topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              foo: bar
+  asserts:
+  - equal:
+      path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
+      value: bar
+
+
+- it: should set replica count
+  set:
+    restapi:
+      replicas: 42
+  asserts:
+  - equal:
+      path: spec.replicas
+      value: 42
+
+
+- it: should set env
+  set:
+    restapi:
+      slurmrestd:
+        env:
+        - name: foo
+          value: bar
+  asserts:
+  - contains:
+      path: spec.slurmrestd.env
+      content:
+        name: foo
+        value: bar
+
+- it: should set metadata
+  set:
+    restapi:
+      metadata:
+        labels:
+          foo: bar
+        annotations:
+          baz: qux
+  asserts:
+  - equal:
+      path: metadata.labels.foo
+      value: bar
+  - equal:
+      path: metadata.annotations.baz
+      value: qux
+  - equal:
+      path: .spec.template.metadata.labels.foo
+      value: bar
+  - equal:
+      path: .spec.template.metadata.annotations.baz
+      value: qux
