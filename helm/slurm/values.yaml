@@ -36,18 +36,28 @@ priorityClass:
   preemptionPolicy: PreemptLowerPriority
 
 # -- (secretKeyRef) Slurm shared authentication key.
-# If empty, one will be generated and used.
 # Ref: https://slurm.schedmd.com/authentication.html#slurm
-slurmKeyRef: {}
-  # name: slurm-auth-slurm
-  # key: slurm.key
+slurmKeyRef:
+  # -- The secret will be created when true.
+  create: true
+  # -- The name of the secret.
+  name: slurm-auth-slurm
+  # -- The key within the secret.
+  key: slurm.key
+  # -- Additional annotations to add to the secret.
+  annotations: {}
 
 # -- (secretKeyRef) Slurm cluster JWT HS256 authentication key.
-# If empty, one will be generated and used.
 # Ref: https://slurm.schedmd.com/authentication.html#jwt
-jwtHs256KeyRef: {}
-  # name: slurm-auth-jwths256
-  # key: jwt_hs256.key
+jwtHs256KeyRef:
+  # -- The secret will be created when true.
+  create: true
+  # -- The name of the secret.
+  name: slurm-auth-jwths256
+  # -- The key within the secret.
+  key: jwt_hs256.key
+  # -- Additional annotations to add to the secret.
+  annotations: {}
 
 # -- The cluster name, which uniquely identifies the Slurm cluster.
 # If empty, one will be derived from the Controller CR object.
