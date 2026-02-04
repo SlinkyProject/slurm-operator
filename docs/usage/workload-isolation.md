@@ -90,7 +90,6 @@ the `affinity` section:
 ```yaml
 nodesets:
   slinky:
-    ...
     # -- Affinity for pod assignment.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
     affinity:

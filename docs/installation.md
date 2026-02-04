@@ -333,7 +333,6 @@ default, otherwise set the value in `controller.extraConf` or
 
 ```yaml
 controller:
-  ...
   extraConfMap:
     GresTypes: "gpu"
 ```
@@ -349,9 +348,7 @@ running on the Kubernetes cluster.
 ```yaml
 nodesets:
   gpu-h100:
-    ...
     slurmd:
-      ...
       resources:
         limits:
           nvidia.com/gpu: 8
