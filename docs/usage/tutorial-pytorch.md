@@ -122,7 +122,7 @@ created on the worker node on which it ran. Any errors would be in
 `slurm-worker` node with the following command, where `<N>` is replaced by the
 ordinal of the pod on which the job ran, and `<JOB>` is replaced by the jobid:
 
-```
+```sh
 kubectl -n slurm cp slurm-worker-slinky-<N>:/root/pytorch-output_<JOB>.out .
 ```
 
