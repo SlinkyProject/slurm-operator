@@ -66,7 +66,7 @@ loginsets:
 
 Submit a job to a Slurm node.
 
-```bash
+```console
 $ srun --partition=pyxis grep PRETTY /etc/os-release
 PRETTY_NAME="Ubuntu 24.04.2 LTS"
 ```
@@ -74,7 +74,7 @@ PRETTY_NAME="Ubuntu 24.04.2 LTS"
 Submit a job to a Slurm node with pyxis and it will launch in its requested
 container.
 
-```bash
+```console
 $ srun --partition=pyxis --container-image=alpine:latest grep PRETTY /etc/os-release
 pyxis: importing docker image: alpine:latest
 pyxis: imported docker image: alpine:latest

@@ -118,7 +118,7 @@ the operator will update the Slurm node's topology to match that of
 `topology.slinky.slurm.net/line`. Hence Slurm will report the following after
 the Slurm node's topology was updated.
 
-```sh
+```console
 $ scontrol show nodes slinky-0 | grep -Eo "NodeName=[^ ]+|[ ]*Comment=[^ ]+|[ ]*Topology=[^ ]+"
 NodeName=slinky-0
    Comment={"namespace":"slurm","podName":"slurm-worker-slinky-0","node":"node3"}

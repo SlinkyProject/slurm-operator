@@ -110,8 +110,8 @@ At this point, the Helm chart may be installed. The NodeSet that was modified
 should show the NodeSet Spec as containing the Volumes and VolumeMounts that
 were specified above:
 
-```yaml
-kubectl describe NodeSet -n slurm
+```console
+$ kubectl describe NodeSet -n slurm
 Name:         slurm-compute-slinky
 Namespace:    slurm
 ...
@@ -139,8 +139,8 @@ Within the `slurmd` container of the `slurm-compute-` pod, the file at the
 specified Mount Path should be replaced with the contents of the ConfigMap
 above:
 
-```bash
-kubectl exec -it -n slurm slurm-compute-slinky-0 -- cat /etc/enroot/enroot.conf
+```console
+$ kubectl exec -it -n slurm slurm-compute-slinky-0 -- cat /etc/enroot/enroot.conf
 ENROOT_RUNTIME_PATH         /run/enroot/${UID}/run
 ENROOT_CONFIG_PATH          /run/enroot/${UID}/config
 ENROOT_CACHE_PATH           /run/enroot/${UID}/cache
@@ -150,8 +150,8 @@ ENROOT_TEMP_PATH            /run/${UID}/tmp
 
 The rest of the files in the `/etc/enroot` directory should remain as-is:
 
-```bash
-kubectl exec -it -n slurm slurm-compute-slinky-0 -- ls /etc/enroot
+```console
+$ kubectl exec -it -n slurm slurm-compute-slinky-0 -- ls /etc/enroot
 enroot.conf  enroot.conf.d  environ.d  hooks.d	mounts.d
 ```
 
