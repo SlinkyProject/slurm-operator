@@ -61,49 +61,27 @@ kubectl apply -f enroot-config.yaml
 
 After creating the ConfigMap, a [Volume] must be used to override the default
 contents of `/etc/enroot/enroot.conf`. This is to be done on a per-NodeSet
-basis, using the volumes and volume mount variables in `helm/slurm/values.yaml`:
-
-```yaml
-nodesets:
-  slinky:
-    ...
-    # -- List of volumes to use.
-    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-    volumes: []
-      # - name: nfs-home
-      #   nfs:
-      #     server: nfs-server.example.com
-    #     path: /exports/home
-    # -- List of volume mounts to use.
-    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-    volumeMounts: []
-      # - name: nfs-home
-      #   mountPath: /home
-```
+basis, using the volumes and volume mount variables in `helm/slurm/values.yaml`.
 
 Modify this section of the NodeSet spec to refer to the ConfigMap that was
-created above:
+created above.
 
 ```yaml
 nodesets:
   slinky:
-    ...
-    # -- List of volumes to use.
-    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-    volumes:
-    - name: enroot-config
-      configMap:
-        name: enroot-config
-        items:
-          - key: enroot
-            path: "enroot.conf"
-
-    # -- List of volume mounts to use.
-    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-    volumeMounts:
-    - name: enroot-config
-      mountPath: "/etc/enroot/enroot.conf"
-      subPath: "enroot.conf"
+    slurmd:
+      volumes:
+      - name: enroot-config
+        configMap:
+          name: enroot-config
+          items:
+            - key: enroot
+              path: "enroot.conf"
+    podSpec:
+      volumeMounts:
+      - name: enroot-config
+        mountPath: "/etc/enroot/enroot.conf"
+        subPath: "enroot.conf"
 ```
 
 At this point, the Helm chart may be installed. The NodeSet that was modified
@@ -111,36 +89,30 @@ should show the NodeSet Spec as containing the Volumes and VolumeMounts that
 were specified above:
 
 ```console
-$ kubectl describe NodeSet -n slurm
-Name:         slurm-compute-slinky
+$ kubectl -n slurm describe nodesets.slinky.slurm.net slurm-worker-slinky
+Name:         slurm-worker-slinky
 Namespace:    slurm
-...
 Spec:
-  ...
-  Template:
-    Container:
-      ...
-      Volume Mounts:
-        Mount Path:  /etc/enroot/enroot.conf
-        Name:        enroot-config
-        Sub Path:    enroot.conf
-    ...
-    Volumes:
-      Config Map:
-        Items:
-          Key:   enroot
-          Path:  enroot.conf
-        Name:    enroot-config
-      Name:      enroot-config
-
+  Slurmd:
+    Volume Mounts:
+      Mount Path:  /etc/enroot/enroot.conf
+      Name:        enroot-config
+      Sub Path:    enroot.conf
+  Volumes:
+    Config Map:
+      Items:
+        Key:   enroot
+        Path:  enroot.conf
+      Name:    enroot-config
+    Name:      enroot-config
 ```
 
-Within the `slurmd` container of the `slurm-compute-` pod, the file at the
+Within the `slurmd` container of the `slurm-worker-` pod, the file at the
 specified Mount Path should be replaced with the contents of the ConfigMap
 above:
 
 ```console
-$ kubectl exec -it -n slurm slurm-compute-slinky-0 -- cat /etc/enroot/enroot.conf
+$ kubectl exec -it -n slurm slurm-worker-slinky-0 -- cat /etc/enroot/enroot.conf
 ENROOT_RUNTIME_PATH         /run/enroot/${UID}/run
 ENROOT_CONFIG_PATH          /run/enroot/${UID}/config
 ENROOT_CACHE_PATH           /run/enroot/${UID}/cache
@@ -151,7 +123,7 @@ ENROOT_TEMP_PATH            /run/${UID}/tmp
 The rest of the files in the `/etc/enroot` directory should remain as-is:
 
 ```console
-$ kubectl exec -it -n slurm slurm-compute-slinky-0 -- ls /etc/enroot
+$ kubectl exec -it -n slurm slurm-worker-slinky-0 -- ls /etc/enroot
 enroot.conf  enroot.conf.d  environ.d  hooks.d	mounts.d
 ```
 
