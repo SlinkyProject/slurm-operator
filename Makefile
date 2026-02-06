@@ -224,6 +224,14 @@ helm-docs: helm-docs-bin ## Run helm-docs.
 helm-lint: ## Lint Helm charts.
 	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm lint --strict
 
+.PHONY: helm-unittest
+helm-unittest: ## Run helm-unittest.
+	@if ! helm plugin list | grep -q "unittest"; then \
+		helm plugin install https://github.com/helm-unittest/helm-unittest ;\
+	fi
+	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm unittest --strict
+
+
 .PHONY: helm-dependency-update
 helm-dependency-update: ## Update Helm chart dependencies.
 	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm dependency update

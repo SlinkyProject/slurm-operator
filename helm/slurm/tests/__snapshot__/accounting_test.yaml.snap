@@ -1,0 +1,51 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: slinky.slurm.net/v1beta1
+    kind: Accounting
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm
+      namespace: test-namespace
+    spec:
+      jwtHs256KeyRef:
+        key: jwt_hs256.key
+        name: test-release-slurm-auth-jwths256
+      service:
+        metadata: {}
+        spec: {}
+      slurmKeyRef:
+        key: slurm.key
+        name: test-release-slurm-auth-slurm
+      slurmdbd:
+        args: []
+        image: ghcr.io/slinkyproject/slurmdbd:v1.2.3
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      storageConfig:
+        database: slurm_acct_db
+        host: mariadb
+        passwordKeyRef:
+          key: password
+          name: mariadb-password
+        port: 3306
+        username: slurm
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/part-of: slurm
+            app.kubernetes.io/version: 1.2.3
+            helm.sh/chart: slurm-1.2.3
+        spec:
+          affinity: {}
+          imagePullSecrets: null
+          initContainers: []
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: slurm-system-critical
+          resources: {}
+          tolerations: []
