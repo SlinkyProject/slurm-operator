@@ -92,7 +92,8 @@ Kubernetes: `>= 1.29.0-0`
 | fullnameOverride | string | `nil` | Overrides the full name of the release. |
 | imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy |
 | imagePullSecrets | list | `[]` | Set the secrets for image pull. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ |
-| jwtHs256KeyRef | secretKeyRef | `{}` | Slurm cluster JWT HS256 authentication key. If empty, one will be generated and used. Ref: https://slurm.schedmd.com/authentication.html#jwt |
+| jwtHs256Key | object | `{"secretRef":{}}` | Slurm cluster JWT HS256 authentication key. Ref: https://slurm.schedmd.com/authentication.html#jwt |
+| jwtHs256Key.secretRef | secretKeyRef | `{}` | Reference to the secret. |
 | loginsets.slinky.enabled | bool | `false` | Enable use of this LoginSet. |
 | loginsets.slinky.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html |
 | loginsets.slinky.initconf.image | string|object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -174,7 +175,8 @@ Kubernetes: `>= 1.29.0-0`
 | restapi.slurmrestd.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES |
 | restapi.slurmrestd.image | string|object | `{"repository":"ghcr.io/slinkyproject/slurmrestd","tag":"25.11-ubuntu24.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | restapi.slurmrestd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
-| slurmKeyRef | secretKeyRef | `{}` | Slurm shared authentication key. If empty, one will be generated and used. Ref: https://slurm.schedmd.com/authentication.html#slurm |
+| slurmKey | object | `{"secretRef":{}}` | Slurm shared authentication key. Ref: https://slurm.schedmd.com/authentication.html#slurm |
+| slurmKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
 | sssd.conf | string | `"[sssd]\nconfig_file_version = 2\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nauth_provider = ldap\nid_provider = ldap\nldap_uri = ldap://ldap.example.com\nldap_search_base = dc=example,dc=com\nldap_user_search_base = ou=Users,dc=example,dc=com\nldap_group_search_base = ou=Groups,dc=example,dc=com\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
 | sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes presence over `conf` if not empty. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |
