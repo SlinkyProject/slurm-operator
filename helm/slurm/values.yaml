@@ -38,6 +38,10 @@ priorityClass:
 # -- Slurm shared authentication key.
 # Ref: https://slurm.schedmd.com/authentication.html#slurm
 slurmKey:
+  # -- The secret will be created when true.
+  create: true
+  # -- Additional annotations to add to the secret.
+  annotations: {}
   # -- (secretKeyRef) Reference to the secret.
   secretRef: {}
     # name: slurm-auth-slurm
@@ -46,6 +50,10 @@ slurmKey:
 # -- Slurm cluster JWT HS256 authentication key.
 # Ref: https://slurm.schedmd.com/authentication.html#jwt
 jwtHs256Key:
+  # -- The secret will be created when true.
+  create: true
+  # -- Additional annotations to add to the secret.
+  annotations: {}
   # -- (secretKeyRef) Reference to the secret.
   secretRef: {}
     # name: slurm-auth-jwths256
