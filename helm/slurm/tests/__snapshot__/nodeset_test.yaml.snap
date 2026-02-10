@@ -18,7 +18,6 @@ manifest should match snapshot:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent
         resources: {}
-      ordinalPadding: 0
       partition:
         enabled: true
       replicas: 1
@@ -33,7 +32,6 @@ manifest should match snapshot:
         imagePullPolicy: IfNotPresent
         resources: {}
         volumeMounts: []
-      taintKubeNodes: false
       template:
         metadata:
           labels:

@@ -13,13 +13,15 @@ manifest should match snapshot:
     spec:
       jwtHs256KeyRef:
         key: jwt_hs256.key
-        name: test-release-slurm-auth-jwths256
+        name: slurm-auth-jwths256
       service:
         metadata: {}
         spec: {}
       slurmKeyRef:
+        annotations: {}
+        create: true
         key: slurm.key
-        name: test-release-slurm-auth-slurm
+        name: slurm-auth-slurm
       slurmdbd:
         args: []
         image: ghcr.io/slinkyproject/slurmdbd:v1.2.3

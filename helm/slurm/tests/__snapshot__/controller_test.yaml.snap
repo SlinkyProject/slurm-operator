@@ -18,7 +18,7 @@ manifest should match snapshot:
         PartitionName=all Nodes=ALL Default=YES MaxTime=UNLIMITED State=UP
       jwtHs256KeyRef:
         key: jwt_hs256.key
-        name: test-release-slurm-auth-jwths256
+        name: slurm-auth-jwths256
       logfile:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent
@@ -56,7 +56,7 @@ manifest should match snapshot:
         spec: {}
       slurmKeyRef:
         key: slurm.key
-        name: test-release-slurm-auth-slurm
+        name: slurm-auth-slurm
       slurmctld:
         args: []
         image: ghcr.io/slinkyproject/slurmctld:v1.2.3
