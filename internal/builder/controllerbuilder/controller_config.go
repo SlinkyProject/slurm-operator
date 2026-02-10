@@ -195,7 +195,13 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewProperty("AuthType", common.AuthType))
 	conf.AddProperty(config.NewProperty("CredType", common.CredType))
 	conf.AddProperty(config.NewProperty("AuthAltTypes", common.AuthAltTypes))
-	conf.AddProperty(config.NewProperty("AuthAltParameters", common.AuthAltParameters))
+
+	jwksEnabled := controller.Spec.JwksKeyRef != nil
+	if jwksEnabled {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters+","+common.JwksAuthAltParameters))
+	} else {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters))
+	}
 	conf.AddProperty(config.NewProperty("AuthInfo", common.AuthInfo))
 	conf.AddProperty(config.NewProperty("CommunicationParameters", "block_null_hash"))
 	conf.AddProperty(config.NewProperty("SelectTypeParameters", "CR_Core_Memory"))

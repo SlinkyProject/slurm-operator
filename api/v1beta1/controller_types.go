@@ -34,6 +34,10 @@ type ControllerSpec struct {
 	// +required
 	JwtHs256KeyRef corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
+	// Slurm `auth/jwt` JWKS key authentication.
+	// +optional
+	JwksKeyRef *corev1.ConfigMapKeySelector `json:"jwksKeyRef,omitempty"`
+
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
 	AccountingRef ObjectReference `json:"accountingRef"`

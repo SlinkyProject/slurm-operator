@@ -93,6 +93,23 @@ func (o *Accounting) AuthJwtHs256Ref() *corev1.SecretKeySelector {
 	}
 }
 
+func (o *Accounting) AuthJwksKey() types.NamespacedName {
+	return types.NamespacedName{
+		Name:      o.Spec.JwksKeyRef.Name,
+		Namespace: o.Namespace,
+	}
+}
+
+func (o *Accounting) AuthJwksRef() *corev1.ConfigMapKeySelector {
+	ref := o.Spec.JwksKeyRef
+	return &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: ref.Name,
+		},
+		Key: ref.Key,
+	}
+}
+
 func (o *Accounting) ConfigKey() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      fmt.Sprintf("%s-accounting", o.Name),

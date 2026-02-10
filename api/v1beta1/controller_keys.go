@@ -92,6 +92,23 @@ func (o *Controller) AuthJwtHs256Ref() *corev1.SecretKeySelector {
 	}
 }
 
+func (o *Controller) AuthJwksKey() types.NamespacedName {
+	return types.NamespacedName{
+		Name:      o.Spec.JwksKeyRef.Name,
+		Namespace: o.Namespace,
+	}
+}
+
+func (o *Controller) AuthJwksRef() *corev1.ConfigMapKeySelector {
+	ref := o.Spec.JwksKeyRef
+	return &corev1.ConfigMapKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: ref.Name,
+		},
+		Key: ref.Key,
+	}
+}
+
 func (o *Controller) ConfigKey() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      fmt.Sprintf("%s-config", o.Name),

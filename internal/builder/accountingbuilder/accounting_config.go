@@ -55,7 +55,13 @@ func buildSlurmdbdConf(accounting *slinkyv1beta1.Accounting, storagePass string)
 	conf.AddProperty(config.NewPropertyRaw("### PLUGINS & PARAMETERS ###"))
 	conf.AddProperty(config.NewProperty("AuthType", common.AuthType))
 	conf.AddProperty(config.NewProperty("AuthAltTypes", common.AuthAltTypes))
-	conf.AddProperty(config.NewProperty("AuthAltParameters", common.AuthAltParameters))
+
+	jwksEnabled := accounting.Spec.JwksKeyRef != nil
+	if jwksEnabled {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters+","+common.JwksAuthAltParameters))
+	} else {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters))
+	}
 	conf.AddProperty(config.NewProperty("AuthInfo", common.AuthInfo))
 
 	conf.AddProperty(config.NewPropertyRaw("#"))

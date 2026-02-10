@@ -59,6 +59,16 @@ jwtKey:
     # name: slurm-auth-jwths256
     # key: jwt_hs256.key
 
+# -- Slurm cluster JWKS authentication keys.
+# Ref: https://slurm.schedmd.com/jwt.html#external_auth
+jwksKeys:
+  # -- Enable use of JWKS file.
+  enabled: false
+  # -- (configMapKeySelector) Reference to the configMap.
+  configMapRef: {}
+    # name: slurm-auth-jwkskeys
+    # key: jwks.json
+
 # -- The cluster name, which uniquely identifies the Slurm cluster.
 # If empty, one will be derived from the Controller CR object.
 # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName

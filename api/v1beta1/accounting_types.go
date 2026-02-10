@@ -30,6 +30,10 @@ type AccountingSpec struct {
 	// +optional
 	JwtHs256KeyRef corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
+	// Slurm `auth/jwt` JWKS key authentication.
+	// +optional
+	JwksKeyRef *corev1.ConfigMapKeySelector `json:"jwksKeyRef,omitempty"`
+
 	// external indicates if this component is external to Kubernetes or not.
 	// If true, then externalConfig is used and other fields are ignored.
 	// +optional

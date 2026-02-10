@@ -155,6 +155,15 @@ func accountingVolumes(accounting *slinkyv1beta1.Accounting) []corev1.Volume {
 		},
 		common.PidfileVolume(),
 	}
+
+	jwksEnabled := accounting.Spec.JwksKeyRef != nil
+	if jwksEnabled {
+		volumeProjection := corev1.VolumeProjection{
+			ConfigMap: ptr.To(common.JwksConfigProjection(accounting.AuthJwksRef(), common.JwksKeyFile)),
+		}
+		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
+	}
+
 	return out
 }
 
