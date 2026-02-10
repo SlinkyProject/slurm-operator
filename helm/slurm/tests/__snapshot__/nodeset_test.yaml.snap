@@ -1,0 +1,59 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: slinky.slurm.net/v1beta1
+    kind: NodeSet
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-worker-slinky
+      namespace: test-namespace
+    spec:
+      controllerRef:
+        name: test-release-slurm
+        namespace: test-namespace
+      logfile:
+        image: docker.io/library/alpine:latest
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      ordinalPadding: 0
+      partition:
+        enabled: true
+      replicas: 1
+      slurmd:
+        args: []
+        env:
+          - name: POD_CPUS
+            value: "0"
+          - name: POD_MEMORY
+            value: "0"
+        image: ghcr.io/slinkyproject/slurmd:v1.2.3
+        imagePullPolicy: IfNotPresent
+        resources: {}
+        volumeMounts: []
+      taintKubeNodes: false
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/part-of: slurm
+            app.kubernetes.io/version: 1.2.3
+            helm.sh/chart: slurm-1.2.3
+        spec:
+          affinity: {}
+          hostname: slinky-
+          imagePullSecrets: null
+          initContainers: []
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: slurm-system-critical
+          resources: {}
+          tolerations: []
+          volumes: []
+      updateStrategy:
+        rollingUpdate:
+          maxUnavailable: 25%
+        type: RollingUpdate
+      workloadDisruptionProtection: true

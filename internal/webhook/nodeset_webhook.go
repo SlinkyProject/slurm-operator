@@ -71,6 +71,8 @@ func validateNodeSet(obj *slinkyv1beta1.NodeSet) (admission.Warnings, []error) {
 	var errs []error
 
 	switch obj.Spec.UpdateStrategy.Type {
+	case "":
+		// valid but will default
 	case slinkyv1beta1.RollingUpdateNodeSetStrategyType:
 		// valid
 	case slinkyv1beta1.OnDeleteNodeSetStrategyType:

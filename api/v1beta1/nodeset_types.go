@@ -97,6 +97,11 @@ type NodeSetSpec struct {
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
+	// OrdinalPadding indicates how many places to pad with zeroes when constructing the ordinal.
+	// +optional
+	// +default:=0
+	OrdinalPadding uint `json:"ordinalPadding,omitempty"`
+
 	// TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
 	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
 	// +optional

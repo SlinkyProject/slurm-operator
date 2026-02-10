@@ -158,9 +158,10 @@ func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := klog.FromContext(ctx)
 	ordinal := nodesetutils.GetOrdinal(pod)
+	paddedOrdinal := nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
-		claimName := nodesetutils.GetPersistentVolumeClaimName(nodeset, &templates[i], ordinal)
+		claimName := nodesetutils.GetPersistentVolumeClaimName(nodeset, &templates[i], paddedOrdinal)
 		claim := &corev1.PersistentVolumeClaim{}
 		claimId := types.NamespacedName{
 			Namespace: nodeset.Namespace,
@@ -185,9 +186,10 @@ func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodese
 func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := klog.FromContext(ctx)
 	ordinal := nodesetutils.GetOrdinal(pod)
+	paddedOrdinal := nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
-		claimName := nodesetutils.GetPersistentVolumeClaimName(nodeset, &templates[i], ordinal)
+		claimName := nodesetutils.GetPersistentVolumeClaimName(nodeset, &templates[i], paddedOrdinal)
 		claimId := types.NamespacedName{
 			Namespace: nodeset.Namespace,
 			Name:      claimName,

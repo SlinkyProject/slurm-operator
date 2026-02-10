@@ -3,10 +3,10 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- range $key, $loginset := $.Values.loginsets -}}
+{{- range $key, $loginset := $.Values.loginsets }}
 {{- if $loginset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
-{{- $metadata := merge dict $loginset.metadata (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
+{{- $metadata := merge dict ($loginset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
 {{- $podSpec := $loginset.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) ($.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
@@ -37,7 +37,9 @@ spec:
   rootSshAuthorizedKeys: |
     {{- . | nindent 4 }}
   {{- end }}{{- /* with $loginset.rootSshAuthorizedKeys */}}
+  {{ if $loginset.replicas }}
   replicas: {{ $loginset.replicas }}
+  {{- end }}{{- /* if $loginset.replicas */}}
   login:
     {{- $_ := set $loginset.login "imagePullPolicy" (get $loginset.login "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
     {{- include "format-container" $loginset.login | nindent 4 }}

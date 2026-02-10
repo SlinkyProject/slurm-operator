@@ -1,0 +1,42 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: slinky.slurm.net/v1beta1
+    kind: RestApi
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm
+      namespace: test-namespace
+    spec:
+      controllerRef:
+        name: test-release-slurm
+        namespace: test-namespace
+      replicas: 1
+      service:
+        metadata: {}
+        spec: {}
+      slurmrestd:
+        args: []
+        env: []
+        image: ghcr.io/slinkyproject/slurmrestd:v1.2.3
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/part-of: slurm
+            app.kubernetes.io/version: 1.2.3
+            helm.sh/chart: slurm-1.2.3
+        spec:
+          affinity: {}
+          imagePullSecrets: null
+          initContainers: []
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: slurm-system-critical
+          resources: {}
+          tolerations: []

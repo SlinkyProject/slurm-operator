@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test operator deployment
+templates:
+- operator/deployment.yaml
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+release:
+  name: test-release
+  namespace: test-namespace
+
+tests:
+- it: manifest should match snapshot
+  asserts:
+  - matchSnapshot: {}
+
+
+- it: should add affinity
+  set:
+    operator:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: arch
+                operator: In
+                values:
+                - x86_64
+  asserts:
+  - equal:
+      path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
+      value: x86_64
+
+
+- it: should add tolerations
+  set:
+    operator:
+      tolerations:
+      - key: test
+        operator: Exists
+        effect: NoExecute
+        tolerationSeconds: 6000
+  asserts:
+  - equal:
+      path: spec.template.spec.tolerations[0].key
+      value: test
+
+
+- it: should set imagePullSecrets
+  set:
+    imagePullSecrets:
+    - name: test-docker-secret
+  asserts:
+  - equal:
+      path: spec.template.spec.imagePullSecrets[0].name
+      value: test-docker-secret
+
+- it: should set priorityClassName
+  set:
+    priorityClassName: test-priority-class
+  asserts:
+  - equal:
+      path: spec.template.spec.priorityClassName
+      value: test-priority-class
+
+
+- it: should set replica count
+  set:
+    operator:
+      replicas: 42
+  asserts:
+  - equal:
+      path: spec.replicas
+      value: 42
+
+- it: should set namespace
+  set:
+    namespaceOverride: custom-namespace
+  asserts:
+  - equal:
+      path: metadata.namespace
+      value: custom-namespace
+
+- it: should set name
+  set:
+    nameOverride: custom-name
+  asserts:
+  - equal:
+      path: metadata.name
+      value: custom-name
+
+
+- it: should set serviceAccount
+  set:
+    operator:
+      serviceAccount:
+        name: custom-service-account
+  asserts:
+  - equal:
+      path: spec.template.spec.serviceAccountName
+      value: custom-service-account

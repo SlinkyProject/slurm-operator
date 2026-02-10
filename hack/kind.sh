@@ -124,7 +124,7 @@ function slurm-operator::install() {
 	slurm-operator::prerequisites
 	(
 		cd "$ROOT_DIR"/helm/slurm-operator
-		skaffold run -p dev
+		skaffold run
 	)
 }
 

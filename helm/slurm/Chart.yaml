@@ -12,7 +12,7 @@ annotations:
   license: Apache-2.0
 
 home: https://slurm.schedmd.com/
-icon: https://github.com/SlinkyProject/docs/blob/main/docs/_static/images/slurm-square-500.png
+icon: https://raw.githubusercontent.com/SlinkyProject/docs/refs/heads/main/docs/_static/images/slurm-square-500.png
 
 sources:
   - https://github.com/SchedMD/slurm

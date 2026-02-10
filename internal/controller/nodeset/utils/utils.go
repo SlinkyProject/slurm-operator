@@ -57,7 +57,9 @@ func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	UpdateIdentity(nodeset, pod)
 	// Set these immutable fields only on initial Pod creation, not updates.
 	if pod.Spec.Hostname != "" {
-		pod.Spec.Hostname = fmt.Sprintf("%s%d", pod.Spec.Hostname, GetOrdinal(pod))
+		ordinal := GetOrdinal(pod)
+		paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
+		pod.Spec.Hostname = fmt.Sprintf("%s%s", pod.Spec.Hostname, paddedOrdinal)
 	} else {
 		pod.Spec.Hostname = pod.Name
 	}
@@ -68,13 +70,14 @@ func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 // and headless service.
 func UpdateIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	ordinal := GetOrdinal(pod)
+	paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
 	pod.Name = GetPodName(nodeset, ordinal)
 	pod.Namespace = nodeset.Namespace
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
 	pod.Labels[slinkyv1beta1.LabelNodeSetPodName] = pod.Name
-	pod.Labels[slinkyv1beta1.LabelNodeSetPodIndex] = strconv.Itoa(ordinal)
+	pod.Labels[slinkyv1beta1.LabelNodeSetPodIndex] = paddedOrdinal
 	pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetNodeName(pod)
 }
 
@@ -193,9 +196,16 @@ func GetParentNameAndOrdinal(pod *corev1.Pod) (string, int) {
 	return parent, ordinal
 }
 
+// GetPaddedOrdinal gets the name of nodeset's child Pod with an ordinal index of ordinal
+func GetPaddedOrdinal(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
+	format := fmt.Sprintf("%%0%vd", nodeset.Spec.OrdinalPadding)
+	return fmt.Sprintf(format, ordinal)
+}
+
 // GetPodName gets the name of nodeset's child Pod with an ordinal index of ordinal
 func GetPodName(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
-	return fmt.Sprintf("%s-%d", nodeset.Name, ordinal)
+	paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
+	return fmt.Sprintf("%s-%s", nodeset.Name, paddedOrdinal)
 }
 
 // GetNodeName returns the Slurm node name
@@ -222,6 +232,7 @@ func IsIdentityMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 // IsStorageMatch returns true if pod's Volumes cover the nodeset of PersistentVolumeClaims
 func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	ordinal := GetOrdinal(pod)
+	paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
 	if ordinal < 0 {
 		return false
 	}
@@ -234,7 +245,7 @@ func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 		if !found ||
 			volume.PersistentVolumeClaim == nil ||
 			volume.PersistentVolumeClaim.ClaimName !=
-				GetPersistentVolumeClaimName(nodeset, &claim, ordinal) {
+				GetPersistentVolumeClaimName(nodeset, &claim, paddedOrdinal) {
 			return false
 		}
 	}
@@ -246,12 +257,13 @@ func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 // by GetPersistentVolumeClaimName.
 func GetPersistentVolumeClaims(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) map[string]corev1.PersistentVolumeClaim {
 	ordinal := GetOrdinal(pod)
+	paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
 	templates := nodeset.Spec.VolumeClaimTemplates
 	selectorLabels := labels.NewBuilder().WithWorkerSelectorLabels(nodeset).Build()
 	claims := make(map[string]corev1.PersistentVolumeClaim, len(templates))
 	for i := range templates {
 		claim := templates[i].DeepCopy()
-		claim.Name = GetPersistentVolumeClaimName(nodeset, claim, ordinal)
+		claim.Name = GetPersistentVolumeClaimName(nodeset, claim, paddedOrdinal)
 		claim.Namespace = nodeset.Namespace
 		if claim.Labels != nil {
 			maps.Copy(claim.Labels, selectorLabels)
@@ -265,9 +277,9 @@ func GetPersistentVolumeClaims(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) 
 
 // GetPersistentVolumeClaimName gets the name of PersistentVolumeClaim for a Pod with an ordinal index of ordinal. claim
 // must be a PersistentVolumeClaim from nodeset's VolumeClaims template.
-func GetPersistentVolumeClaimName(nodeset *slinkyv1beta1.NodeSet, claim *corev1.PersistentVolumeClaim, ordinal int) string {
+func GetPersistentVolumeClaimName(nodeset *slinkyv1beta1.NodeSet, claim *corev1.PersistentVolumeClaim, paddedOrdinal string) string {
 	// NOTE: This name format is used by the heuristics for zone spreading in ChooseZoneForVolume
-	return fmt.Sprintf("%s-%s-%d", claim.Name, nodeset.Name, ordinal)
+	return fmt.Sprintf("%s-%s-%s", claim.Name, nodeset.Name, paddedOrdinal)
 }
 
 // SetOwnerReferences modifies the object with all NodeSets as non-controller owners.

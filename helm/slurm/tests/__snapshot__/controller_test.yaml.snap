@@ -1,0 +1,80 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: slinky.slurm.net/v1beta1
+    kind: Controller
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm
+      namespace: test-namespace
+    spec:
+      epilogScriptRefs:
+        - name: test-release-slurm-epilog-dcgm
+      epilogSlurmctldScriptRefs: null
+      extraConf: |
+        PartitionName=all Nodes=ALL Default=YES MaxTime=UNLIMITED State=UP
+      jwtHs256KeyRef:
+        key: jwt_hs256.key
+        name: test-release-slurm-auth-jwths256
+      logfile:
+        image: docker.io/library/alpine:latest
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      metrics:
+        enabled: false
+        serviceMonitor:
+          annotations: {}
+          enabled: false
+          endpoints:
+            - path: /metrics/jobs
+            - path: /metrics/nodes
+            - path: /metrics/partitions
+            - path: /metrics/scheduler
+          interval: 30s
+          labels: {}
+          scrapeTimeout: 25s
+      persistence:
+        accessModes:
+          - ReadWriteOnce
+        enabled: true
+        existingClaim: ""
+        resources:
+          requests:
+            storage: 4Gi
+      prologScriptRefs:
+        - name: test-release-slurm-prolog-dcgm
+      prologSlurmctldScriptRefs: null
+      reconfigure:
+        image: ghcr.io/slinkyproject/slurmctld:v1.2.3
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      service:
+        metadata: {}
+        spec: {}
+      slurmKeyRef:
+        key: slurm.key
+        name: test-release-slurm-auth-slurm
+      slurmctld:
+        args: []
+        image: ghcr.io/slinkyproject/slurmctld:v1.2.3
+        imagePullPolicy: IfNotPresent
+        resources: {}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/managed-by: Helm
+            app.kubernetes.io/part-of: slurm
+            app.kubernetes.io/version: 1.2.3
+            helm.sh/chart: slurm-1.2.3
+        spec:
+          affinity: {}
+          imagePullSecrets: null
+          initContainers: []
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: slurm-system-critical
+          resources: {}
+          tolerations: []

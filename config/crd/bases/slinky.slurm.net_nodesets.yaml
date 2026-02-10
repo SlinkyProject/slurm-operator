@@ -112,6 +112,11 @@ spec:
                   Defaults to 0 (pod will be considered available as soon as it is ready).
                 format: int32
                 type: integer
+              ordinalPadding:
+                default: 0
+                description: OrdinalPadding indicates how many places to pad with
+                  zeroes when constructing the ordinal.
+                type: integer
               partition:
                 description: Partition defines the Slurm partition configuration for
                   this NodeSet.

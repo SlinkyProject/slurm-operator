@@ -3,10 +3,10 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- range $key, $nodeset := $.Values.nodesets -}}
+{{- range $key, $nodeset := $.Values.nodesets }}
 {{- if $nodeset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
-{{- $metadata := merge dict $nodeset.metadata (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
+{{- $metadata := merge dict ($nodeset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
 {{- $podSpec := $nodeset.podSpec | default dict -}}
 {{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) ($.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
@@ -47,19 +47,21 @@ spec:
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}
   {{- with $nodeset.partition }}
   partition:
-    enabled: {{ $nodeset.partition.enabled | default false }}
+    enabled: {{ $nodeset.partition.enabled }}
     {{- if (include "slurm.worker.partitionConfig" $nodeset.partition) }}
     config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
+  {{- with $nodeset.ssh }}
   {{- if $nodeset.ssh.enabled }}
   {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
-  {{- with $nodeset.ssh }}
   ssh:
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* with $nodeset.ssh */}}
   {{- end }}{{- /* if $nodeset.ssh.enabled */}}
+  {{- end }}{{- /* with $nodeset.ssh */}}
+  {{- if $nodeset.replicas }}
   replicas: {{ $nodeset.replicas }}
+  {{- end }}{{- /* if $nodeset.replicas */}}
   slurmd:
     {{- $_ := set $nodeset.slurmd "imagePullPolicy" (get $nodeset.slurmd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
     {{- include "format-container" $nodeset.slurmd | nindent 4 }}
@@ -71,7 +73,14 @@ spec:
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
+  {{- if $nodeset.ordinalPadding }}
+  ordinalPadding: {{ $nodeset.ordinalPadding }}
+  {{- end }}{{- /* if $nodeset.ordinalPadding */}}
+  {{- if $nodeset.taintKubeNodes }}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
-  workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection | default true }}
+  {{- end }}{{- /* if $nodeset.taintKubeNodes */}}
+  {{- if $nodeset.workloadDisruptionProtection }}
+  workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
+  {{- end }}{{- /* if $nodeset.workloadDisruptionProtection */}}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}

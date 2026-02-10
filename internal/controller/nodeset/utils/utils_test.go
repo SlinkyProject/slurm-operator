@@ -638,9 +638,9 @@ func BenchmarkGetPersistentVolumeClaims(b *testing.B) {
 
 func TestGetPersistentVolumeClaimName(t *testing.T) {
 	type args struct {
-		nodeset *slinkyv1beta1.NodeSet
-		claim   *corev1.PersistentVolumeClaim
-		ordinal int
+		nodeset       *slinkyv1beta1.NodeSet
+		claim         *corev1.PersistentVolumeClaim
+		paddedOrdinal string
 	}
 	tests := []struct {
 		name string
@@ -657,7 +657,7 @@ func TestGetPersistentVolumeClaimName(t *testing.T) {
 						Name:      "test",
 					},
 				},
-				ordinal: 0,
+				paddedOrdinal: "0",
 			},
 			want: "test-foo-0",
 		},
@@ -671,14 +671,14 @@ func TestGetPersistentVolumeClaimName(t *testing.T) {
 						Name:      "test",
 					},
 				},
-				ordinal: 1,
+				paddedOrdinal: "1",
 			},
 			want: "test-foo-1",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPersistentVolumeClaimName(tt.args.nodeset, tt.args.claim, tt.args.ordinal); got != tt.want {
+			if got := GetPersistentVolumeClaimName(tt.args.nodeset, tt.args.claim, tt.args.paddedOrdinal); got != tt.want {
 				t.Errorf("GetPersistentVolumeClaimName() = %v, want %v", got, tt.want)
 			}
 		})
@@ -696,13 +696,13 @@ func BenchmarkGetPersistentVolumeClaimName(b *testing.B) {
 
 	b.Run("Ordinal Zero", func(b *testing.B) {
 		for b.Loop() {
-			GetPersistentVolumeClaimName(nodeset, claim, 0)
+			GetPersistentVolumeClaimName(nodeset, claim, "0")
 		}
 	})
 
 	b.Run("Non-Zero Ordinal", func(b *testing.B) {
 		for b.Loop() {
-			GetPersistentVolumeClaimName(nodeset, claim, 1)
+			GetPersistentVolumeClaimName(nodeset, claim, "1")
 		}
 	})
 }
