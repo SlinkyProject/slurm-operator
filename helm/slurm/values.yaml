@@ -49,7 +49,7 @@ slurmKey:
 
 # -- Slurm cluster JWT HS256 authentication key.
 # Ref: https://slurm.schedmd.com/authentication.html#jwt
-jwtHs256Key:
+jwtKey:
   # -- The secret will be created when true.
   create: true
   # -- Additional annotations to add to the secret.

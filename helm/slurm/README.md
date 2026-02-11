@@ -92,10 +92,10 @@ Kubernetes: `>= 1.29.0-0`
 | fullnameOverride | string | `nil` | Overrides the full name of the release. |
 | imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy |
 | imagePullSecrets | list | `[]` | Set the secrets for image pull. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ |
-| jwtHs256Key | object | `{"annotations":{},"create":true,"secretRef":{}}` | Slurm cluster JWT HS256 authentication key. Ref: https://slurm.schedmd.com/authentication.html#jwt |
-| jwtHs256Key.annotations | object | `{}` | Additional annotations to add to the secret. |
-| jwtHs256Key.create | bool | `true` | The secret will be created when true. |
-| jwtHs256Key.secretRef | secretKeyRef | `{}` | Reference to the secret. |
+| jwtKey | object | `{"annotations":{},"create":true,"secretRef":{}}` | Slurm cluster JWT HS256 authentication key. Ref: https://slurm.schedmd.com/authentication.html#jwt |
+| jwtKey.annotations | object | `{}` | Additional annotations to add to the secret. |
+| jwtKey.create | bool | `true` | The secret will be created when true. |
+| jwtKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
 | loginsets.slinky.enabled | bool | `false` | Enable use of this LoginSet. |
 | loginsets.slinky.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html |
 | loginsets.slinky.initconf.image | string|object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |

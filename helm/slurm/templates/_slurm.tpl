@@ -29,8 +29,8 @@ Define auth/slurm secret ref key
 Define auth/jwt HS256 secret ref name
 */}}
 {{- define "slurm.authJwtHs256Ref.name" -}}
-{{- if .Values.jwtHs256Key.secretRef.name }}
-{{- .Values.jwtHs256Key.secretRef.name }}
+{{- if .Values.jwtKey.secretRef.name }}
+{{- .Values.jwtKey.secretRef.name }}
 {{- else }}
 {{- printf "%s-auth-jwths256" (include "slurm.fullname" .) -}}
 {{- end }}
@@ -40,8 +40,8 @@ Define auth/jwt HS256 secret ref name
 Define auth/jwt HS256 secret ref key
 */}}
 {{- define "slurm.authJwtHs256Ref.key" -}}
-{{- if .Values.jwtHs256Key.secretRef.key }}
-{{- .Values.jwtHs256Key.secretRef.key }}
+{{- if .Values.jwtKey.secretRef.key }}
+{{- .Values.jwtKey.secretRef.key }}
 {{- else }}
 {{- print "jwt_hs256.key" -}}
 {{- end }}
