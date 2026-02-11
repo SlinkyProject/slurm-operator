@@ -76,7 +76,7 @@ repos:
         args:
           - --severity=warning
   - repo: https://github.com/tekwizely/pre-commit-golang
-    rev: v1.0.0-rc.2
+    rev: v1.0.0-rc.4
     hooks:
       - id: go-fmt
       - id: go-mod-tidy
