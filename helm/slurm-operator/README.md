@@ -1,6 +1,6 @@
 # slurm-operator
 
-![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
+![Version: 1.0.2](https://img.shields.io/badge/Version-1.0.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
 
 Slurm Operator
 
@@ -22,7 +22,7 @@ Kubernetes: `>= 1.29.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../slurm-operator-crds | slurm-operator-crds | 1.0.1 |
+| file://../slurm-operator-crds | slurm-operator-crds | 1.0.2 |
 
 ## Values
 
