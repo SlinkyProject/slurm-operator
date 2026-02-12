@@ -53,6 +53,10 @@ spec:
             httpGet:
               path: /readyz
               port: {{ .Values.webhook.healthPort | default 8081 }}
+          {{- with .Values.webhook.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: certificates
               mountPath: /tmp/k8s-webhook-server/serving-certs/
