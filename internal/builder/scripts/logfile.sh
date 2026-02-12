@@ -4,7 +4,7 @@
 
 set -eu
 
-SOCKET="/tmp/logfile.log"
+SOCKET="${SOCKET:-"/tmp/logfile.log"}"
 
 mkdir -v -p "$(dirname "$SOCKET")"
 rm -f "$SOCKET"
