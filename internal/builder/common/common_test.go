@@ -10,6 +10,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_mergeEnvVar(t *testing.T) {
@@ -142,6 +144,113 @@ func Test_mergeEnvVar(t *testing.T) {
 			})
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("mergeEnvVar() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCommonBuilder_GetContainerResourceLimits(t *testing.T) {
+	client := fake.NewFakeClient()
+
+	cpu1, err := resource.ParseQuantity("1")
+	if err != nil {
+		t.Fatalf("Failed to call resource.ParseQuantity")
+	}
+
+	mem1g, err := resource.ParseQuantity("1Gi")
+	if err != nil {
+		t.Fatalf("Failed to call resource.ParseQuantity")
+	}
+
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		container corev1.Container
+		want      int64
+		want2     int64
+	}{
+		{
+			name:      "default",
+			container: corev1.Container{},
+			want:      0,
+			want2:     0,
+		},
+		{
+			name: "limits set",
+			container: corev1.Container{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu":    cpu1,
+						"memory": mem1g,
+					},
+				},
+			},
+			want:  1,
+			want2: 1073741824,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := New(client)
+			got, got2 := b.GetContainerResourceLimits(tt.container)
+			if got != tt.want {
+				t.Errorf("GetContainerResourceLimits() = %v, want %v", got, tt.want)
+			}
+			if got2 != tt.want2 {
+				t.Errorf("GetContainerResourceLimits() = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}
+
+func TestCommonBuilder_GetPodResourceLimits(t *testing.T) {
+	client := fake.NewFakeClient()
+
+	cpu1, err := resource.ParseQuantity("1")
+	if err != nil {
+		t.Fatalf("Failed to call resource.ParseQuantity")
+	}
+
+	mem1g, err := resource.ParseQuantity("1Gi")
+	if err != nil {
+		t.Fatalf("Failed to call resource.ParseQuantity")
+	}
+
+	tests := []struct {
+		name  string // description of this test case
+		pod   corev1.PodSpec
+		want  int64
+		want2 int64
+	}{
+		{
+			name:  "default",
+			pod:   corev1.PodSpec{},
+			want:  0,
+			want2: 0,
+		},
+		{
+			name: "limits set",
+			pod: corev1.PodSpec{
+				Resources: &corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu":    cpu1,
+						"memory": mem1g,
+					},
+				},
+			},
+			want:  1,
+			want2: 1073741824,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := New(client)
+			got, got2 := b.GetPodResourceLimits(tt.pod)
+			if got != tt.want {
+				t.Errorf("GetPodResourceLimits() = %v, want %v", got, tt.want)
+			}
+			if got2 != tt.want2 {
+				t.Errorf("GetPodResourceLimits() = %v, want %v", got2, tt.want2)
 			}
 		})
 	}

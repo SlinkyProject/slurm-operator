@@ -648,8 +648,6 @@ nodesets:
     # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
     # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
     workloadDisruptionProtection: true
-    # -- Enable propagation of container `resources.limits` into slurmd.
-    useResourceLimits: true
     # -- How many places to pad with zeroes when constructing the pod ordinal.
     ordinalPadding: 0
     # slurmd container configurations.

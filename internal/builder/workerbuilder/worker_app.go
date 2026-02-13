@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -192,6 +193,8 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 		})
 	}
 
+	cpus, memory := b.getResourceLimits(&nodeset.Spec)
+
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.WorkerApp,
@@ -204,6 +207,14 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 							FieldPath: fmt.Sprintf("metadata.annotations['%s']", slinkyv1beta1.AnnotationNodeTopologyLine),
 						},
 					},
+				},
+				{
+					Name:  "POD_CPUS",
+					Value: strconv.FormatInt(cpus, 10),
+				},
+				{
+					Name:  "POD_MEMORY",
+					Value: strconv.FormatInt(memory, 10),
 				},
 			},
 			Ports: ports,
@@ -345,4 +356,25 @@ func (b *WorkerBuilder) getWorkerHashes(ctx context.Context, nodeset *slinkyv1be
 	}
 
 	return hashMap, nil
+}
+
+func (b *WorkerBuilder) getResourceLimits(nodeset *slinkyv1beta1.NodeSetSpec) (int64, int64) {
+	// Check NodeSet pod-level resource limits. Returns zero if not set.
+	cpus, memory := b.CommonBuilder.GetPodResourceLimits(nodeset.Template.PodSpecWrapper.PodSpec)
+
+	// Check slurmd container resource limits. Returns zero if mpt set/
+	containerCpus, containerMemory := b.CommonBuilder.GetContainerResourceLimits(nodeset.Slurmd.Container)
+
+	// Only override pod limits with container limits if the latter is non-zero.
+	if containerCpus != 0 {
+		cpus = containerCpus
+	}
+	if containerMemory != 0 {
+		memory = containerMemory
+	}
+
+	// Convert memory resource limits to MiB
+	memory = int64(memory / 1024 / 1024)
+
+	return cpus, memory
 }
