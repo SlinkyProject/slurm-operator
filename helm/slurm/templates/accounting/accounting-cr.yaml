@@ -36,7 +36,7 @@ spec:
     {{- end }}{{- /* if .Values.slurmKeyRef */}}
   jwtHs256KeyRef:
     {{- if .Values.jwtHs256KeyRef }}
-    {{- toYaml .Values.jwtHs256KeyRef | nindent 4 }}
+    {{- toYaml (omit .Values.jwtHs256KeyRef "create" "annotations") | nindent 4 }}
     {{- else }}
     name: {{ include "slurm.authJwtHs256Ref.name" . }}
     key: {{ include "slurm.authJwtHs256Ref.key" . }}

@@ -7,26 +7,26 @@ SPDX-License-Identifier: Apache-2.0
 Define auth/slurm secret ref name
 */}}
 {{- define "slurm.authSlurmRef.name" -}}
-{{- printf "%s-auth-slurm" (include "slurm.fullname" .) -}}
+{{- .Values.slurmKeyRef.name -}}
 {{- end }}
 
 {{/*
 Define auth/slurm secret ref key
 */}}
 {{- define "slurm.authSlurmRef.key" -}}
-{{- print "slurm.key" -}}
+{{- .Values.slurmKeyRef.key -}}
 {{- end }}
 
 {{/*
 Define auth/jwt HS256 secret ref name
 */}}
 {{- define "slurm.authJwtHs256Ref.name" -}}
-{{- printf "%s-auth-jwths256" (include "slurm.fullname" .) -}}
+{{- .Values.jwtHs256KeyRef.name -}}
 {{- end }}
 
 {{/*
 Define auth/jwt HS256 secret ref key
 */}}
 {{- define "slurm.authJwtHs256Ref.key" -}}
-{{- print "jwt_hs256.key" -}}
+{{- .Values.jwtHs256KeyRef.key -}}
 {{- end }}
