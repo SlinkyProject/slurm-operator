@@ -70,8 +70,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		}
 	}
 
-	metricsEnabled := controller.Spec.Metrics.Enabled
-
 	prologScripts := []string{}
 	for _, ref := range controller.Spec.PrologScriptRefs {
 		cm := &corev1.ConfigMap{}
@@ -143,7 +141,7 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 				controller, accounting, nodesetList,
 				prologScripts, epilogScripts,
 				prologSlurmctldScripts, epilogSlurmctldScripts,
-				cgroupEnabled, metricsEnabled),
+				cgroupEnabled),
 		},
 	}
 	if !hasCgroupConfFile {
@@ -163,7 +161,7 @@ func buildSlurmConf(
 	nodesetList *slinkyv1beta1.NodeSetList,
 	prologScripts, epilogScripts []string,
 	prologSlurmctldScripts, epilogSlurmctldScripts []string,
-	cgroupEnabled, metricsEnabled bool,
+	cgroupEnabled bool,
 ) string {
 	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
 
@@ -215,6 +213,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/linuxproc"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
 	}
+
+	metricsEnabled := controller.Spec.Metrics.Enabled
 	if metricsEnabled {
 		conf.AddProperty(config.NewProperty("MetricsType", "metrics/openmetrics"))
 	}
