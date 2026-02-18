@@ -101,64 +101,6 @@ func TestPodInfo_Equal(t *testing.T) {
 	}
 }
 
-func BenchmarkPodInfo_Equal(b *testing.B) {
-	type fields struct {
-		Namespace string
-		PodName   string
-		Node      string
-	}
-	type args struct {
-		cmp PodInfo
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name:   "Empty",
-			fields: fields{},
-			args: args{
-				cmp: PodInfo{},
-			},
-		},
-		{
-			name: "Populated",
-			fields: fields{
-				Namespace: corev1.NamespaceDefault,
-				PodName:   "foo",
-			},
-			args: args{
-				cmp: PodInfo{
-					Namespace: corev1.NamespaceDefault,
-					PodName:   "foo",
-				},
-			},
-		},
-		{
-			name: "Mismatch",
-			fields: fields{
-				Namespace: corev1.NamespaceDefault,
-				PodName:   "foo",
-			},
-			args: args{
-				cmp: PodInfo{},
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			podInfo := &PodInfo{
-				Namespace: bb.fields.Namespace,
-				PodName:   bb.fields.PodName,
-			}
-			for b.Loop() {
-				podInfo.Equal(bb.args.cmp)
-			}
-		})
-	}
-}
-
 func TestPodInfo_ToString(t *testing.T) {
 	type fields struct {
 		Namespace string
@@ -194,43 +136,6 @@ func TestPodInfo_ToString(t *testing.T) {
 			}
 			if got := podInfo.ToString(); got != tt.want {
 				t.Errorf("PodInfo.ToString() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkPodInfo_ToString(b *testing.B) {
-	type fields struct {
-		Namespace string
-		PodName   string
-		Node      string
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-	}{
-		{
-			name:   "Empty",
-			fields: fields{},
-		},
-		{
-			name: "Populated",
-			fields: fields{
-				Namespace: corev1.NamespaceDefault,
-				PodName:   "foo",
-				Node:      "bar",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			podInfo := &PodInfo{
-				Namespace: bb.fields.Namespace,
-				PodName:   bb.fields.PodName,
-				Node:      bb.fields.Node,
-			}
-			for b.Loop() {
-				podInfo.ToString()
 			}
 		})
 	}
@@ -290,54 +195,6 @@ func TestParseIntoPodInfo(t *testing.T) {
 			}
 			if got := tt.args.out; !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("ParseIntoPodInfo() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkParseIntoPodInfo(b *testing.B) {
-	type args struct {
-		str *string
-		out *PodInfo
-	}
-	benchmarks := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "Empty string",
-			args: args{
-				str: ptr.To(""),
-				out: &PodInfo{},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Empty values",
-			args: args{
-				str: ptr.To(`{"namespace":"","podName":"","node":""}`),
-				out: &PodInfo{},
-			},
-			wantErr: false,
-		},
-		{
-			name: "Overwrite PodInfo",
-			args: args{
-				str: ptr.To(`{"namespace":"default","podName":"foo","node":"foo"}`),
-				out: &PodInfo{
-					Namespace: "baz",
-					PodName:   "bar",
-					Node:      "bar",
-				},
-			},
-			wantErr: false,
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				ParseIntoPodInfo(bb.args.str, bb.args.out) //nolint:errcheck
 			}
 		})
 	}

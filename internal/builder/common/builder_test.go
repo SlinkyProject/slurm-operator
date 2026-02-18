@@ -58,33 +58,3 @@ func TestNew(t *testing.T) {
 		})
 	}
 }
-func BenchmarkNew(b *testing.B) {
-	c := fake.NewFakeClient()
-	type args struct {
-		c client.Client
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "nil",
-			args: args{
-				c: nil,
-			},
-		},
-		{
-			name: "non-nil",
-			args: args{
-				c: c,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				New(bb.args.c)
-			}
-		})
-	}
-}

@@ -58,55 +58,6 @@ func TestTimeStore_Push(t *testing.T) {
 	}
 }
 
-func BenchmarkTimeStore_Push(b *testing.B) {
-	now := time.Now()
-	type args struct {
-		key     string
-		newTime time.Time
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Push time.Now",
-			args: args{
-				key:     "foo",
-				newTime: time.Now(),
-			},
-		},
-		{
-			name: "[foo] Push (-1 *time.Minute)",
-			args: args{
-				key:     "foo",
-				newTime: now.Add(-1 * time.Minute),
-			},
-		},
-		{
-			name: "[bar] Push (-1 * time.Hour)",
-			args: args{
-				key:     "bar",
-				newTime: now.Add(-1 * time.Hour),
-			},
-		},
-		{
-			name: "[bar] Push (time.Minute)",
-			args: args{
-				key:     "bar",
-				newTime: now.Add(time.Minute),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			ts := NewTimeStore(Greater)
-			for b.Loop() {
-				ts.Push(bb.args.key, bb.args.newTime)
-			}
-		})
-	}
-}
-
 func TestTimeStore_Peek(t *testing.T) {
 	now := time.Now()
 	ts := NewTimeStore(Greater)
@@ -173,70 +124,6 @@ func TestTimeStore_Peek(t *testing.T) {
 			ts.Push(tt.args.key, tt.args.newTime)
 			if got := ts.Peek(tt.args.key); got != tt.want {
 				t.Errorf("ts.Peek() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkTimeStore_Peek(b *testing.B) {
-	now := time.Now()
-	ts := NewTimeStore(Greater)
-	type args struct {
-		key     string
-		newTime time.Time
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Push time.Second",
-			args: args{
-				key:     "foo",
-				newTime: now.Add(time.Second),
-			},
-		},
-		{
-			name: "[foo] Push (-1 *time.Minute)",
-			args: args{
-				key:     "foo",
-				newTime: now.Add(-1 * time.Minute),
-			},
-		},
-		{
-			name: "[foo] Push time.Minute",
-			args: args{
-				key:     "foo",
-				newTime: now.Add(time.Minute),
-			},
-		},
-		{
-			name: "[bar] Push (-1 * time.Hour)",
-			args: args{
-				key:     "bar",
-				newTime: now.Add(-1 * time.Hour),
-			},
-		},
-		{
-			name: "[bar] Push (-1 * time.Minute)",
-			args: args{
-				key:     "bar",
-				newTime: now.Add(-1 * time.Minute),
-			},
-		},
-		{
-			name: "[bar] Push (-1 * time.Second)",
-			args: args{
-				key:     "bar",
-				newTime: now.Add(-1 * time.Second),
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			ts.Push(bb.args.key, bb.args.newTime)
-			for b.Loop() {
-				ts.Peek(bb.args.key)
 			}
 		})
 	}
@@ -315,47 +202,6 @@ func TestTimeStore_Pop(t *testing.T) {
 	}
 }
 
-func BenchmarkTimeStore_Pop(b *testing.B) {
-	now := time.Now()
-	timeStore := NewTimeStore(Greater)
-	timeStore.Push("bar", now.Add(time.Minute))
-	timeStore.Push("baz", now.Add(-1*time.Hour))
-
-	type args struct {
-		key string
-	}
-	benchmarks := []struct {
-		name string
-		args args
-	}{
-		{
-			name: "[foo] Pop empty",
-			args: args{
-				key: "foo",
-			},
-		},
-		{
-			name: "[bar] Pop time.Minute",
-			args: args{
-				key: "bar",
-			},
-		},
-		{
-			name: "[baz] Pop (-1 * time.Hour)",
-			args: args{
-				key: "baz",
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			for b.Loop() {
-				timeStore.Pop(bb.args.key)
-			}
-		})
-	}
-}
-
 func Test_duration_Update(t *testing.T) {
 	now := time.Now()
 	type fielts struct {
@@ -424,53 +270,6 @@ func Test_duration_Update(t *testing.T) {
 			d.Update(tt.args.newTime, tt.args.eval)
 			if got := d.t; got != tt.want {
 				t.Errorf("TimeStore.Pop() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Benchmark_duration_Update(b *testing.B) {
-	now := time.Now()
-	type fields struct {
-		t time.Time
-	}
-	type args struct {
-		newTime time.Time
-		eval    func(dur1, dur2 time.Time) bool
-	}
-	benchmarks := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{
-			name: "[Greater] max(0, time.Minute)",
-			fields: fields{
-				t: time.Time{},
-			},
-			args: args{
-				newTime: now.Add(time.Second),
-				eval:    Greater,
-			},
-		},
-		{
-			name: "[Less] min(0, time.Second)",
-			fields: fields{
-				t: time.Time{},
-			},
-			args: args{
-				newTime: now.Add(time.Second),
-				eval:    Less,
-			},
-		},
-	}
-	for _, bb := range benchmarks {
-		b.Run(bb.name, func(b *testing.B) {
-			d := &timestore{
-				t: bb.fields.t,
-			}
-			for b.Loop() {
-				d.Update(bb.args.newTime, bb.args.eval)
 			}
 		})
 	}
