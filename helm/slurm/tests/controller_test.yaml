@@ -121,3 +121,16 @@ tests:
   - equal:
       path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
       value: bar
+
+
+- it: should default the name of a JWKS secret if JWKS is enabled but not provided
+  set:
+    jwksKeys:
+      enabled: true
+  asserts:
+  - equal:
+      path: spec.jwksKeyRef.name
+      value: test-release-slurm-auth-jwkskeys
+  - equal:
+      path: spec.jwksKeyRef.key
+      value: jwks.json

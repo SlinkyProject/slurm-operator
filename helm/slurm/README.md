@@ -92,6 +92,9 @@ Kubernetes: `>= 1.29.0-0`
 | fullnameOverride | string | `nil` | Overrides the full name of the release. |
 | imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy |
 | imagePullSecrets | list | `[]` | Set the secrets for image pull. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ |
+| jwksKeys | object | `{"configMapRef":{},"enabled":false}` | Slurm cluster JWKS authentication keys. Ref: https://slurm.schedmd.com/jwt.html#external_auth |
+| jwksKeys.configMapRef | configMapKeySelector | `{}` | Reference to the configMap. |
+| jwksKeys.enabled | bool | `false` | Enable use of JWKS file. |
 | jwtKey | object | `{"annotations":{},"create":true,"secretRef":{}}` | Slurm cluster JWT HS256 authentication key. Ref: https://slurm.schedmd.com/authentication.html#jwt |
 | jwtKey.annotations | object | `{}` | Additional annotations to add to the secret. |
 | jwtKey.create | bool | `true` | The secret will be created when true. |

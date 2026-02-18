@@ -28,10 +28,15 @@ const (
 	CredType     = "cred/slurm" // #nosec G101
 	AuthInfo     = "use_client_ids"
 
-	AuthAltTypes      = "auth/jwt"
-	JwtHs256KeyFile   = "jwt_hs256.key"
-	JwtHs256KeyPath   = SlurmEtcDir + "/" + JwtHs256KeyFile
-	AuthAltParameters = "jwt_key=" + JwtHs256KeyPath
+	AuthAltTypes = "auth/jwt"
+
+	JwtHs256KeyFile      = "jwt_hs256.key"
+	JwtHs256KeyPath      = SlurmEtcDir + "/" + JwtHs256KeyFile
+	JwtAuthAltParameters = "jwt_key=" + JwtHs256KeyPath
+
+	JwksKeyFile           = "jwks.json"
+	JwksKeyPath           = SlurmEtcDir + "/" + JwksKeyFile
+	JwksAuthAltParameters = "jwks=" + JwksKeyPath
 
 	LogTimeFormat = "iso8601,format_stderr"
 

@@ -70,8 +70,6 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 		}
 	}
 
-	metricsEnabled := controller.Spec.Metrics.Enabled
-
 	prologScripts := []string{}
 	for _, ref := range controller.Spec.PrologScriptRefs {
 		cm := &corev1.ConfigMap{}
@@ -143,7 +141,7 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 				controller, accounting, nodesetList,
 				prologScripts, epilogScripts,
 				prologSlurmctldScripts, epilogSlurmctldScripts,
-				cgroupEnabled, metricsEnabled),
+				cgroupEnabled),
 		},
 	}
 	if !hasCgroupConfFile {
@@ -163,7 +161,7 @@ func buildSlurmConf(
 	nodesetList *slinkyv1beta1.NodeSetList,
 	prologScripts, epilogScripts []string,
 	prologSlurmctldScripts, epilogSlurmctldScripts []string,
-	cgroupEnabled, metricsEnabled bool,
+	cgroupEnabled bool,
 ) string {
 	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
 
@@ -195,7 +193,13 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewProperty("AuthType", common.AuthType))
 	conf.AddProperty(config.NewProperty("CredType", common.CredType))
 	conf.AddProperty(config.NewProperty("AuthAltTypes", common.AuthAltTypes))
-	conf.AddProperty(config.NewProperty("AuthAltParameters", common.AuthAltParameters))
+
+	jwksEnabled := controller.Spec.JwksKeyRef != nil
+	if jwksEnabled {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters+","+common.JwksAuthAltParameters))
+	} else {
+		conf.AddProperty(config.NewProperty("AuthAltParameters", common.JwtAuthAltParameters))
+	}
 	conf.AddProperty(config.NewProperty("AuthInfo", common.AuthInfo))
 	conf.AddProperty(config.NewProperty("CommunicationParameters", "block_null_hash"))
 	conf.AddProperty(config.NewProperty("SelectTypeParameters", "CR_Core_Memory"))
@@ -209,6 +213,8 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewProperty("ProctrackType", "proctrack/linuxproc"))
 		conf.AddProperty(config.NewProperty("TaskPlugin", "task/affinity"))
 	}
+
+	metricsEnabled := controller.Spec.Metrics.Enabled
 	if metricsEnabled {
 		conf.AddProperty(config.NewProperty("MetricsType", "metrics/openmetrics"))
 	}

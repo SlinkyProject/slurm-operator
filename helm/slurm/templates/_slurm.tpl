@@ -46,3 +46,25 @@ Define auth/jwt HS256 secret ref key
 {{- print "jwt_hs256.key" -}}
 {{- end }}
 {{- end }}
+
+{{/*
+Define JWKS configMap ref name
+*/}}
+{{- define "slurm.authJwksRef.name" -}}
+{{- if .Values.jwksKeys.configMapRef.name }}
+{{- .Values.jwksKeys.configMapRef.name }}
+{{- else }}
+{{- printf "%s-auth-jwkskeys" (include "slurm.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Define JWKS configMap ref key
+*/}}
+{{- define "slurm.authJwksRef.key" -}}
+{{- if .Values.jwksKeys.configMapRef.key }}
+{{- .Values.jwksKeys.configMapRef.key }}
+{{- else }}
+{{- print "jwks.json" -}}
+{{- end }}
+{{- end }}

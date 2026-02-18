@@ -8,8 +8,8 @@
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -78,6 +78,11 @@ func (in *AccountingSpec) DeepCopyInto(out *AccountingSpec) {
 	*out = *in
 	in.SlurmKeyRef.DeepCopyInto(&out.SlurmKeyRef)
 	in.JwtHs256KeyRef.DeepCopyInto(&out.JwtHs256KeyRef)
+	if in.JwksKeyRef != nil {
+		in, out := &in.JwksKeyRef, &out.JwksKeyRef
+		*out = new(v1.ConfigMapKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	out.ExternalConfig = in.ExternalConfig
 	in.Slurmdbd.DeepCopyInto(&out.Slurmdbd)
 	in.Template.DeepCopyInto(&out.Template)
@@ -100,7 +105,7 @@ func (in *AccountingStatus) DeepCopyInto(out *AccountingStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -203,6 +208,11 @@ func (in *ControllerSpec) DeepCopyInto(out *ControllerSpec) {
 	*out = *in
 	in.SlurmKeyRef.DeepCopyInto(&out.SlurmKeyRef)
 	in.JwtHs256KeyRef.DeepCopyInto(&out.JwtHs256KeyRef)
+	if in.JwksKeyRef != nil {
+		in, out := &in.JwksKeyRef, &out.JwksKeyRef
+		*out = new(v1.ConfigMapKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	out.AccountingRef = in.AccountingRef
 	out.ExternalConfig = in.ExternalConfig
 	in.Slurmctld.DeepCopyInto(&out.Slurmctld)
@@ -254,7 +264,7 @@ func (in *ControllerStatus) DeepCopyInto(out *ControllerStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -392,7 +402,7 @@ func (in *LoginSetStatus) DeepCopyInto(out *LoginSetStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -574,7 +584,7 @@ func (in *NodeSetSpec) DeepCopyInto(out *NodeSetSpec) {
 	out.Partition = in.Partition
 	if in.VolumeClaimTemplates != nil {
 		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
-		*out = make([]corev1.PersistentVolumeClaim, len(*in))
+		*out = make([]v1.PersistentVolumeClaim, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -628,7 +638,7 @@ func (in *NodeSetStatus) DeepCopyInto(out *NodeSetStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -791,7 +801,7 @@ func (in *RestApiStatus) DeepCopyInto(out *RestApiStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -953,12 +963,12 @@ func (in *TokenSpec) DeepCopyInto(out *TokenSpec) {
 	in.JwtHs256KeyRef.DeepCopyInto(&out.JwtHs256KeyRef)
 	if in.Lifetime != nil {
 		in, out := &in.Lifetime, &out.Lifetime
-		*out = new(v1.Duration)
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.SecretRef != nil {
 		in, out := &in.SecretRef, &out.SecretRef
-		*out = new(corev1.SecretKeySelector)
+		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
 }
@@ -982,7 +992,7 @@ func (in *TokenStatus) DeepCopyInto(out *TokenStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

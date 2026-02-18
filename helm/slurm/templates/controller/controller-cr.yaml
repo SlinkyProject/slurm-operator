@@ -30,6 +30,11 @@ spec:
   jwtHs256KeyRef:
     name: {{ include "slurm.authJwtHs256Ref.name" . }}
     key: {{ include "slurm.authJwtHs256Ref.key" . }}
+  {{- if .Values.jwksKeys.enabled }}
+  jwksKeyRef:
+    name: {{ include "slurm.authJwksRef.name" . }}
+    key: {{ include "slurm.authJwksRef.key" . }}
+  {{- end }}{{- /* if .Values.jwksKeys.enabled */}}
 {{- if .Values.controller.external }}
   external: {{ .Values.controller.external }}
   {{- with .Values.controller.externalConfig }}

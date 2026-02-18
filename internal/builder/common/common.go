@@ -195,3 +195,14 @@ func (b *CommonBuilder) InitconfContainer(container slinkyv1beta1.ContainerWrapp
 
 	return b.BuildContainer(opts)
 }
+
+func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) corev1.ConfigMapProjection {
+	return corev1.ConfigMapProjection{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: configMap.Name,
+		},
+		Items: []corev1.KeyToPath{
+			{Key: configMap.Key, Path: path},
+		},
+	}
+}

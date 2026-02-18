@@ -71,6 +71,29 @@ spec:
                   ExtraConf is appended onto the end of the `slurmdbd.conf` file.
                   Ref: https://slurm.schedmd.com/slurmdbd.conf.html
                 type: string
+              jwksKeyRef:
+                description: Slurm `auth/jwt` JWKS key authentication.
+                properties:
+                  key:
+                    description: The key to select.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the ConfigMap or its key must be
+                      defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               jwtHs256KeyRef:
                 description: Slurm `auth/jwt` JWT HS256 key authentication.
                 properties:
