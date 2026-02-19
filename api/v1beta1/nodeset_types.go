@@ -27,7 +27,7 @@ type NodeSetSpec struct {
 	// replicas is the desired number of replicas of the given Template.
 	// These are replicas in the sense that they are instantiations of the
 	// same Template, but individual replicas also have a consistent identity.
-	// If unspecified, defaults to 1.
+        // If unspecified, defaults to 0 (for KEDA/autoscaler compatibility).
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 

@@ -5,6 +5,27 @@ metadata:
   name: mutating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-slinky-slurm-net-v1beta1-nodeset
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: nodeset-mutate-v1beta1.kb.io
+  rules:
+  - apiGroups:
+    - slinky.slurm.net
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - nodesets
+  sideEffects: None
+- admissionReviewVersions:
   - v1
   clientConfig:
     service:

@@ -59,7 +59,9 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* if $nodeset.ssh.enabled */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
-  {{- if $nodeset.replicas }}
+  {{- if kindIs "float64" $nodeset.replicas }}
+  replicas: {{ int $nodeset.replicas }}
+  {{- else if kindIs "int" $nodeset.replicas }}
   replicas: {{ $nodeset.replicas }}
   {{- end }}{{- /* if $nodeset.replicas */}}
   slurmd:

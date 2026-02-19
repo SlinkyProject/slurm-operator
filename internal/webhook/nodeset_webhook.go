@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -28,14 +29,36 @@ var nodesetlog = logf.Log.WithName("nodeset-resource")
 func (r *NodeSetWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&slinkyv1beta1.NodeSet{}).
+		WithDefaulter(r).
 		WithValidator(r).
 		Complete()
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-slinky-slurm-net-v1beta1-nodeset,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1beta1,name=nodeset-v1beta1.kb.io,admissionReviewVersions=v1beta1
+// +kubebuilder:webhook:path=/mutate-slinky-slurm-net-v1beta1-nodeset,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1beta1,name=nodeset-mutate-v1beta1.kb.io,admissionReviewVersions=v1beta1
 
-var _ webhook.CustomValidator = &NodeSetWebhook{}
+// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
+// +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1beta1-nodeset,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups=slinky.slurm.net,resources=nodesets,verbs=create;update,versions=v1beta1,name=nodeset-v1beta1.kb.io,admissionReviewVersions=v1beta1
+
+
+var _ webhook.CustomDefaulter = &NodeSetWebhook{}
+
+// Default implements webhook.CustomDefaulter so a webhook will be registered for the type.
+// This ensures spec.replicas is always set, which is required for KEDA and other
+// external scalers that use the /scale subresource.
+func (r *NodeSetWebhook) Default(ctx context.Context, obj runtime.Object) error {
+	nodeset := obj.(*slinkyv1beta1.NodeSet)
+	nodesetlog.Info("default", "nodeset", klog.KObj(nodeset))
+
+	// Default replicas to 0 if not specified.
+	// This is required for KEDA compatibility - the scale subresource requires
+	// spec.replicas to be present (not nil) for scaling to work.
+	if nodeset.Spec.Replicas == nil {
+		nodeset.Spec.Replicas = ptr.To[int32](0)
+		nodesetlog.Info("defaulted replicas to 0", "nodeset", klog.KObj(nodeset))
+	}
+
+	return nil
+}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *NodeSetWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
