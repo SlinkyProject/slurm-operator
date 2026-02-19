@@ -31,7 +31,6 @@ Configure `plugstack.conf` to include the pyxis configuration.
 configFiles:
   plugstack.conf: |
     include /usr/share/pyxis/*
-  ...
 ```
 
 Configure one or more NodeSets and the login pods to use a pyxis OCI image.
@@ -41,12 +40,10 @@ loginsets:
   - name: pyxis
     image:
       repository: ghcr.io/slinkyproject/login-pyxis
-    ...
 nodesets:
   - name: pyxis
     image:
       repository: ghcr.io/slinkyproject/slurmd-pyxis
-    ...
 ```
 
 To make enroot activity in the login container permissible, it requires
@@ -59,14 +56,13 @@ loginsets:
       repository: ghcr.io/slinkyproject/login-pyxis
     securityContext:
       privileged: true
-    ...
 ```
 
 ## Test
 
 Submit a job to a Slurm node.
 
-```bash
+```console
 $ srun --partition=pyxis grep PRETTY /etc/os-release
 PRETTY_NAME="Ubuntu 24.04.2 LTS"
 ```
@@ -74,7 +70,7 @@ PRETTY_NAME="Ubuntu 24.04.2 LTS"
 Submit a job to a Slurm node with pyxis and it will launch in its requested
 container.
 
-```bash
+```console
 $ srun --partition=pyxis --container-image=alpine:latest grep PRETTY /etc/os-release
 pyxis: importing docker image: alpine:latest
 pyxis: imported docker image: alpine:latest

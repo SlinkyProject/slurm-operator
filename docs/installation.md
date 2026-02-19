@@ -48,13 +48,8 @@ helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
 
 Check if the slurm-operator deployed successfully:
 
-```sh
-kubectl --namespace=slinky get pods --selector='app.kubernetes.io/instance=slurm-operator'
-```
-
-The output should be similar to:
-
-```sh
+```console
+$ kubectl --namespace=slinky get pods --selector='app.kubernetes.io/instance=slurm-operator'
 NAME                                      READY   STATUS    RESTARTS   AGE
 slurm-operator-5d86d75979-6wflf           1/1     Running   0          1m
 slurm-operator-webhook-567c84547b-kr7zq   1/1     Running   0          1m
@@ -94,13 +89,8 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 
 Check if the Slurm cluster deployed successfully:
 
-```sh
-kubectl --namespace=slurm get pods
-```
-
-The output should be similar to:
-
-```sh
+```console
+$ kubectl --namespace=slurm get pods
 NAME                                  READY   STATUS    RESTARTS   AGE
 slurm-accounting-0                    1/1     Running   0          2m
 slurm-controller-0                    3/3     Running   0          2m
@@ -343,7 +333,6 @@ default, otherwise set the value in `controller.extraConf` or
 
 ```yaml
 controller:
-  ...
   extraConfMap:
     GresTypes: "gpu"
 ```
@@ -359,9 +348,7 @@ running on the Kubernetes cluster.
 ```yaml
 nodesets:
   gpu-h100:
-    ...
     slurmd:
-      ...
       resources:
         limits:
           nvidia.com/gpu: 8

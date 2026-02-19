@@ -63,7 +63,7 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 
 #### Verify KEDA Metrics API Server is running
 
-```sh
+```console
 $ kubectl get apiservice -l app.kubernetes.io/instance=keda
 NAME                              SERVICE                                AVAILABLE   AGE
 v1beta1.external.metrics.k8s.io   keda/keda-operator-metrics-apiserver   True        22h
@@ -97,7 +97,7 @@ of the NodeSet.
 To manually scale a NodeSet, use the `kubectl scale` command. In this example,
 the NodeSet (nss) `slurm-worker-radar` is scaled to 1.
 
-```sh
+```console
 $ kubectl scale -n slurm nss/slurm-worker-radar --replicas=1
 nodeset.slinky.slurm.net/slurm-worker-radar scaled
 
@@ -108,7 +108,7 @@ slurm-worker-radar-0   1/1     Running   0          2m48s   10.244.4.17   kind-w
 
 This corresponds to the Slurm partition `radar`.
 
-```sh
+```console
 $ kubectl exec -n slurm statefulset/slurm-controller -- sinfo
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
 radar        up   infinite      1   idle kind-worker
@@ -117,7 +117,7 @@ radar        up   infinite      1   idle kind-worker
 NodeSets may be scaled to zero. In this case, there are no replicas of `slurmd`
 running and all jobs scheduled to that partition will remain in a pending state.
 
-```sh
+```console
 $ kubectl scale nss/slurm-worker-radar -n slurm --replicas=0
 nodeset.slinky.slurm.net/slurm-worker-radar scaled
 ```
@@ -184,14 +184,14 @@ more examples.
 To verify a KEDA ScaledObject, apply it to the cluster in the appropriate
 namespace on a NodeSet that has no replicas.
 
-```sh
+```console
 $ kubectl scale nss/slurm-worker-radar -n slurm --replicas=0
 nodeset.slinky.slurm.net/slurm-worker-radar scaled
 ```
 
 Wait for Slurm to report that the partition has no nodes.
 
-```sh
+```console
 $ slurm@slurm-controller-0:/tmp$ sinfo -p radar
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
 radar        up   infinite      0    n/a
@@ -200,7 +200,7 @@ radar        up   infinite      0    n/a
 Apply the ScaledObject using `kubectl` to the correct namespace and verify the
 KEDA and HPA resources are created.
 
-```sh
+```console
 $ kubectl apply -f scaledobject.yaml -n slurm
 scaledobject.keda.sh/scale-radar created
 
@@ -217,7 +217,7 @@ Once the [ScaledObject] and HPA are created, initiate some jobs to test that the
 `NodeSet` scale subresource is scaled in response.
 
 ```sh
-$ sbatch --wrap "sleep 30" --partition radar --exclusive
+sbatch --wrap "sleep 30" --partition radar --exclusive
 ```
 
 The NodeSet will scale to `minReplicaCount` in response to activity on the

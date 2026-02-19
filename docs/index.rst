@@ -101,6 +101,14 @@ Controller
 The Slurm control-plane is responsible for scheduling Slurm workload
 onto its worker nodes and managing their states.
 
+Slurm `High Availability
+(HA) <https://slurm.schedmd.com/quickstart_admin.html#HA>`__ is
+effectively achieved though Kubernetes regenerating the Slurm controller
+pod if it crashes. This is generally faster than the time it takes for a
+backup controller to assume control if the primary crashes. Because
+Slurm’s version of HA is not being used, a shared filesystem is not
+required for this.
+
 Changes to the Slurm configuration files are automatically detected and
 the Slurm cluster is reconfigured seamlessly with zero downtime of the
 Slurm control-plane.

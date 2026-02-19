@@ -48,10 +48,10 @@ For more information on configuring SR-IOV on Intel and Mellanox hardware, see:
 
 Before attempting either deployment method below, enable SR-IOV on your
 clusters' nodes, and create VFs. When done successfully, Virtual Functions will
-be visible in the output of `lspci`:
+be visible in the output of `lspci`.
 
-```bash
-lspci | grep "Virtual Function"
+```console
+$ lspci | grep "Virtual Function"
 01:00.2 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx Virtual Function]
 01:00.3 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx Virtual Function]
 01:00.4 Ethernet controller: Mellanox Technologies MT27710 Family [ConnectX-4 Lx Virtual Function]
