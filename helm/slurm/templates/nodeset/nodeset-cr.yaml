@@ -14,11 +14,8 @@ SPDX-License-Identifier: Apache-2.0
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
-{{- if $nodeset.useResourceLimits }}
-  {{- $envLimts := list (dict "name" "POD_CPUS" "value" (include "slurm.worker.podCpus" $nodeset.slurmd | toString)) (dict "name" "POD_MEMORY" "value" (include "slurm.worker.podMemory" $nodeset.slurmd | toString)) -}}
-  {{- $slurmdEnv := concat list ($nodeset.slurmd.env | default list) $envLimts -}}
-  {{- $_ := set $nodeset.slurmd "env" $slurmdEnv -}}
-{{- end }}{{- /* if $nodeset.useResourceLimits */}}
+{{- $slurmdEnv := $nodeset.slurmd.env | default list -}}
+{{- $_ := set $nodeset.slurmd "env" $slurmdEnv -}}
 {{- if and (include "vendor.dcgm.enabled" $) (include "vendor.dcgm.nodesetHasGPU" $nodeset.slurmd) }}
   {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
   {{- $dcgmVolumeMount := dict "name" "dcgm-job-mapping" "mountPath" (include "vendor.dcgm.jobMappingDir" $) }}

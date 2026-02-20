@@ -196,6 +196,28 @@ func (b *CommonBuilder) InitconfContainer(container slinkyv1beta1.ContainerWrapp
 	return b.BuildContainer(opts)
 }
 
+func (b *CommonBuilder) GetPodResourceLimits(pod corev1.PodSpec) (int64, int64) {
+	var cpu, memory int64 = 0, 0
+
+	if pod.Resources != nil {
+		cpu = pod.Resources.Limits.Cpu().Value()
+		memory = pod.Resources.Limits.Memory().Value()
+	}
+
+	return cpu, memory
+}
+
+func (b *CommonBuilder) GetContainerResourceLimits(container corev1.Container) (int64, int64) {
+	var cpu, memory int64 = 0, 0
+
+	if container.Resources.Limits != nil {
+		cpu = container.Resources.Limits.Cpu().Value()
+		memory = container.Resources.Limits.Memory().Value()
+	}
+
+	return cpu, memory
+}
+
 func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) corev1.ConfigMapProjection {
 	return corev1.ConfigMapProjection{
 		LocalObjectReference: corev1.LocalObjectReference{

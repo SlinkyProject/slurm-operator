@@ -23,11 +23,7 @@ manifest should match snapshot:
       replicas: 1
       slurmd:
         args: []
-        env:
-          - name: POD_CPUS
-            value: "0"
-          - name: POD_MEMORY
-            value: "0"
+        env: []
         image: ghcr.io/slinkyproject/slurmd:v1.2.3
         imagePullPolicy: IfNotPresent
         resources: {}

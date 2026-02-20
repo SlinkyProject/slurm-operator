@@ -42,25 +42,3 @@ Determine worker partition config
 {{- end }}
 {{- join " " $config -}}
 {{- end }}
-
-{{/*
-Returns the parsed resource limits for POD_CPUS.
-*/}}
-{{- define "slurm.worker.podCpus" -}}
-{{- $out := 0 -}}
-{{- with .resources }}{{- with .limits }}{{- with .cpu }}
-  {{- $out = include "resource-quantity" . | float64 | ceil | int -}}
-{{- end }}{{- end }}{{- end }}
-{{- print $out -}}
-{{- end -}}
-
-{{/*
-Returns the parsed resource limits for POD_MEMORY, in Mebibytes (MiB).*/}}
-{{- define "slurm.worker.podMemory" -}}
-{{- $out := 0 -}}
-{{- with .resources }}{{- with .limits }}{{- with .memory }}
-  {{- $mebibytes := (include "resource-quantity" "1Mi") | float64 -}}
-  {{- $out = divf (include "resource-quantity" . | float64) $mebibytes | ceil | int -}}
-{{- end }}{{- end }}{{- end }}
-{{- print $out -}}
-{{- end -}}
