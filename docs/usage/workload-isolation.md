@@ -118,10 +118,10 @@ minimize the status object size at scale.
 
 On each reconciliation cycle:
 
-- **Running pods** on their locked node have their `assignedAt` timestamp
-  refreshed to the current time.
+- **Running pods** on their locked node have their `at` timestamp refreshed
+  to the current time.
 - **Expired assignments** (when `lockNodeLifetime > 0` and the elapsed time
-  since `assignedAt` exceeds the lifetime) are pruned.
+  since `at` exceeds the lifetime) are pruned.
 - **Scaled-down ordinals** have their assignments removed automatically.
 
 ## Taints and Tolerations
