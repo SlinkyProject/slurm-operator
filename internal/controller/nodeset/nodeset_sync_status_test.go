@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
@@ -728,6 +729,252 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 				if diff := cmp.Diff(tt.args.newStatus, &got.Status); diff != "" {
 					t.Errorf("unexpected status (-want,+got):\n%s", diff)
 				}
+			}
+		})
+	}
+}
+
+func Test_calculateNodeAssignments(t *testing.T) {
+	now := metav1.Now()
+	recentTime := metav1.NewTime(now.Add(-30 * time.Second))
+	expiredTime := metav1.NewTime(now.Add(-600 * time.Second))
+
+	makeNodeSet := func(name string, replicas int32, lockNodes bool, lifetime int32, existing map[string]slinkyv1beta1.NodeAssignment) *slinkyv1beta1.NodeSet {
+		ns := newNodeSet(name, "slurm", replicas)
+		ns.Spec.LockNodes = lockNodes
+		ns.Spec.LockNodeLifetime = lifetime
+		ns.Status.NodeAssignments = existing
+		return ns
+	}
+
+	// Scheduled pod without a phase -- counts for new assignment recording but
+	// does NOT trigger a timestamp refresh (pod is not Running yet).
+	makePod := func(name, nodeName string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec:       corev1.PodSpec{NodeName: nodeName},
+		}
+	}
+
+	// Running pod -- triggers timestamp refresh on existing assignments.
+	makeRunningPod := func(name, nodeName string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec:       corev1.PodSpec{NodeName: nodeName},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+		}
+	}
+
+	type args struct {
+		nodeset *slinkyv1beta1.NodeSet
+		pods    []*corev1.Pod
+		now     metav1.Time
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string]slinkyv1beta1.NodeAssignment
+	}{
+		{
+			name: "lockNodes disabled returns nil",
+			args: args{
+				nodeset: makeNodeSet("foo", 2, false, 0, nil),
+				pods:    []*corev1.Pod{makePod("foo-0", "node-1")},
+				now:     now,
+			},
+			want: nil,
+		},
+		{
+			name: "lockNodes enabled, new pods get recorded",
+			args: args{
+				nodeset: makeNodeSet("foo", 2, true, 0, nil),
+				pods: []*corev1.Pod{
+					makePod("foo-0", "node-1"),
+					makePod("foo-1", "node-2"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: now},
+				"foo-1": {NodeName: "node-2", AssignedAt: now},
+			},
+		},
+		{
+			name: "lockNodes enabled, preserves existing assignment when pod not running",
+			args: args{
+				nodeset: makeNodeSet("foo", 2, true, 0, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makePod("foo-1", "node-2"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				"foo-1": {NodeName: "node-2", AssignedAt: now},
+			},
+		},
+		{
+			name: "lockNodes enabled, existing assignment not overwritten by pod on different node",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 0, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makeRunningPod("foo-0", "node-999"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+			},
+		},
+		{
+			name: "lockNodes enabled, scale-down prunes stale assignments",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 0, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+					"foo-1": {NodeName: "node-2", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makePod("foo-0", "node-1"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+			},
+		},
+		{
+			name: "lockNodes enabled, pod without NodeName skipped",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 0, nil),
+				pods: []*corev1.Pod{
+					makePod("foo-0", ""),
+				},
+				now: now,
+			},
+			want: nil,
+		},
+		{
+			name: "lifetime=0 means permanent, old assignment preserved",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 0, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: expiredTime},
+				}),
+				pods: []*corev1.Pod{},
+				now:  now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: expiredTime},
+			},
+		},
+		{
+			name: "lifetime>0, recent assignment preserved",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{},
+				now:  now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+			},
+		},
+		{
+			name: "lifetime>0, expired assignment pruned",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: expiredTime},
+				}),
+				pods: []*corev1.Pod{},
+				now:  now,
+			},
+			want: nil,
+		},
+		{
+			name: "lifetime>0, expired assignment pruned then pod re-recorded",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: expiredTime},
+				}),
+				pods: []*corev1.Pod{
+					makePod("foo-0", "node-2"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-2", AssignedAt: now},
+			},
+		},
+		{
+			name: "running pod on locked node refreshes timestamp",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makeRunningPod("foo-0", "node-1"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: now},
+			},
+		},
+		{
+			name: "non-running pod on locked node does NOT refresh timestamp",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makePod("foo-0", "node-1"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+			},
+		},
+		{
+			name: "running pod on different node does NOT refresh timestamp",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+				}),
+				pods: []*corev1.Pod{
+					makeRunningPod("foo-0", "node-999"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: recentTime},
+			},
+		},
+		{
+			name: "running pod prevents near-expiry assignment from being pruned",
+			args: args{
+				nodeset: makeNodeSet("foo", 1, true, 300, map[string]slinkyv1beta1.NodeAssignment{
+					"foo-0": {NodeName: "node-1", AssignedAt: metav1.NewTime(now.Add(-299 * time.Second))},
+				}),
+				pods: []*corev1.Pod{
+					makeRunningPod("foo-0", "node-1"),
+				},
+				now: now,
+			},
+			want: map[string]slinkyv1beta1.NodeAssignment{
+				"foo-0": {NodeName: "node-1", AssignedAt: now},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateNodeAssignments(tt.args.nodeset, tt.args.pods, tt.args.now)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("calculateNodeAssignments() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

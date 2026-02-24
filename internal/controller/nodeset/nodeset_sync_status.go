@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -116,6 +117,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		ObservedGeneration:  nodeset.Generation,
 		NodeSetHash:         hash,
 		CollisionCount:      &collisionCount,
+		NodeAssignments:     calculateNodeAssignments(nodeset, pods, metav1.Now()),
 		Selector:            selector.String(),
 		Conditions:          []metav1.Condition{},
 	}
@@ -189,6 +191,72 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 	status.Unavailable = mathutils.Clamp(status.Replicas-status.Available, 0, status.Replicas)
 
 	return status
+}
+
+// calculateNodeAssignments builds the pod-name-to-node-assignment mapping for lockNodes.
+// It preserves existing assignments from the previous status and adds new ones
+// from pods that have been scheduled. Assignments whose lifetime has expired
+// are pruned so the pod can be rescheduled freely. Running pods refresh their
+// assignment timestamp so the lifetime only counts down while the pod is absent.
+// When lockNodes is disabled, returns nil.
+func calculateNodeAssignments(nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, now metav1.Time) map[string]slinkyv1beta1.NodeAssignment {
+	if !nodeset.Spec.LockNodes {
+		return nil
+	}
+
+	replicaCount := int(ptr.Deref(nodeset.Spec.Replicas, 0))
+	lifetime := time.Duration(nodeset.Spec.LockNodeLifetime) * time.Second
+
+	validPodNames := make(map[string]struct{}, replicaCount)
+	for i := range replicaCount {
+		validPodNames[nodesetutils.GetPodName(nodeset, i)] = struct{}{}
+	}
+
+	// Index running pods by name for quick lookup.
+	runningPods := make(map[string]*corev1.Pod, len(pods))
+	for _, pod := range pods {
+		if pod.Spec.NodeName != "" && pod.Status.Phase == corev1.PodRunning {
+			runningPods[pod.Name] = pod
+		}
+	}
+
+	assignments := make(map[string]slinkyv1beta1.NodeAssignment, replicaCount)
+
+	for podName, assignment := range nodeset.Status.NodeAssignments {
+		if _, ok := validPodNames[podName]; !ok {
+			continue
+		}
+		if lifetime > 0 && now.Sub(assignment.AssignedAt.Time) >= lifetime {
+			continue
+		}
+		// Refresh the timestamp if the pod is still running on its locked node.
+		if rp, running := runningPods[podName]; running && rp.Spec.NodeName == assignment.NodeName {
+			assignment.AssignedAt = now
+		}
+		assignments[podName] = assignment
+	}
+
+	// Record new assignments from scheduled pods that aren't already tracked.
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" {
+			continue
+		}
+		if _, ok := validPodNames[pod.Name]; !ok {
+			continue
+		}
+		if _, alreadyAssigned := assignments[pod.Name]; !alreadyAssigned {
+			assignments[pod.Name] = slinkyv1beta1.NodeAssignment{
+				NodeName:   pod.Spec.NodeName,
+				AssignedAt: now,
+			}
+		}
+	}
+
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	return assignments
 }
 
 // Sync NodeSet Pod Conditions to reflect Slurm base and flag states

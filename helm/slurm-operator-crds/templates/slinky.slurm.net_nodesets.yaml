@@ -100,6 +100,24 @@ spec:
                   ExtraConf is added to the slurmd args as `--conf <extraConf>`.
                   Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
                 type: string
+              lockNodeLifetime:
+                default: 0
+                description: |-
+                  LockNodeLifetime is the duration in seconds after which a node lock expires.
+                  When 0 (default), the lock is permanent and the pod is always pinned to
+                  the same node. When positive, the lock expires after the specified number
+                  of seconds and the pod can be rescheduled freely to any eligible node.
+                  Only used when lockNodes is true.
+                format: int32
+                type: integer
+              lockNodes:
+                default: false
+                description: |-
+                  LockNodes controls whether worker pods are pinned to their assigned Kubernetes nodes.
+                  When enabled, the controller records each pod's node assignment and injects a required
+                  NodeAffinity on pod recreation so each worker always returns to the same physical node.
+                  If the node is unavailable, the pod stays Pending.
+                type: boolean
               logfile:
                 description: The logfile sidecar configuration.
                 type: object
@@ -387,6 +405,30 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              nodeAssignments:
+                additionalProperties:
+                  description: |-
+                    NodeAssignment records a pod's assigned Kubernetes node and when the
+                    assignment was first established.
+                  properties:
+                    assignedAt:
+                      description: AssignedAt is the time when the pod was first assigned
+                        to the node.
+                      format: date-time
+                      type: string
+                    nodeName:
+                      description: NodeName is the Kubernetes node the pod was assigned
+                        to.
+                      type: string
+                  required:
+                  - assignedAt
+                  - nodeName
+                  type: object
+                description: |-
+                  NodeAssignments tracks the mapping of pod names to their node assignments.
+                  When lockNodes is enabled, this mapping is used to pin recreated pods
+                  to their previously assigned nodes with optional expiration via lockNodeLifetime.
+                type: object
               nodeSetHash:
                 description: |-
                   NodeSetHash is the "controller-revision-hash", which represents the

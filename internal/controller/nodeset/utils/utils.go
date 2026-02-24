@@ -46,6 +46,13 @@ func NewNodeSetPod(
 	// scheduled on the same Node as another NodeSet pod.
 	pod.Spec.Affinity = updateNodeSetPodAntiAffinity(pod.Spec.Affinity)
 
+	if nodeset.Spec.LockNodes {
+		podName := GetPodName(nodeset, ordinal)
+		if assignment, ok := nodeset.Status.NodeAssignments[podName]; ok && assignment.NodeName != "" {
+			pod.Spec.Affinity = lockNodeAffinity(pod.Spec.Affinity, assignment.NodeName)
+		}
+	}
+
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
 	// be avoided and priorityClass will not be honored.
 	pod.Spec.NodeName = ""
@@ -151,6 +158,53 @@ func updateNodeSetPodAntiAffinity(affinity *corev1.Affinity) *corev1.Affinity {
 	}
 
 	podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, podAffinityTerms...)
+
+	return affinity
+}
+
+// lockNodeAffinity injects a required NodeAffinity that pins the pod to a
+// specific Kubernetes node by hostname.
+func lockNodeAffinity(affinity *corev1.Affinity, nodeName string) *corev1.Affinity {
+	nodeSelectorTerm := corev1.NodeSelectorTerm{
+		MatchExpressions: []corev1.NodeSelectorRequirement{
+			{
+				Key:      corev1.LabelHostname,
+				Operator: corev1.NodeSelectorOpIn,
+				Values:   []string{nodeName},
+			},
+		},
+	}
+
+	if affinity == nil {
+		return &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{nodeSelectorTerm},
+				},
+			},
+		}
+	}
+
+	if affinity.NodeAffinity == nil {
+		affinity.NodeAffinity = &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{nodeSelectorTerm},
+			},
+		}
+		return affinity
+	}
+
+	if affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{
+			NodeSelectorTerms: []corev1.NodeSelectorTerm{nodeSelectorTerm},
+		}
+		return affinity
+	}
+
+	affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(
+		affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+		nodeSelectorTerm,
+	)
 
 	return affinity
 }

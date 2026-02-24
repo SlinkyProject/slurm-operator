@@ -102,6 +102,23 @@ type NodeSetSpec struct {
 	// +default:=0
 	OrdinalPadding uint `json:"ordinalPadding,omitempty"`
 
+	// LockNodes controls whether worker pods are pinned to their assigned Kubernetes nodes.
+	// When enabled, the controller records each pod's node assignment and injects a required
+	// NodeAffinity on pod recreation so each worker always returns to the same physical node.
+	// If the node is unavailable, the pod stays Pending.
+	// +optional
+	// +default:=false
+	LockNodes bool `json:"lockNodes,omitempty"`
+
+	// LockNodeLifetime is the duration in seconds after which a node lock expires.
+	// When 0 (default), the lock is permanent and the pod is always pinned to
+	// the same node. When positive, the lock expires after the specified number
+	// of seconds and the pod can be rescheduled freely to any eligible node.
+	// Only used when lockNodes is true.
+	// +optional
+	// +default:=0
+	LockNodeLifetime int32 `json:"lockNodeLifetime,omitempty"`
+
 	// TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
 	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
 	// +optional
@@ -292,8 +309,24 @@ type NodeSetStatus struct {
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
+	// NodeAssignments tracks the mapping of pod names to their node assignments.
+	// When lockNodes is enabled, this mapping is used to pin recreated pods
+	// to their previously assigned nodes with optional expiration via lockNodeLifetime.
+	// +optional
+	NodeAssignments map[string]NodeAssignment `json:"nodeAssignments,omitempty"`
+
 	// Add Selector to status for HPA support in the scale subresource.
 	Selector string `json:"selector"`
+}
+
+// NodeAssignment records a pod's assigned Kubernetes node and when the
+// assignment was first established.
+type NodeAssignment struct {
+	// NodeName is the Kubernetes node the pod was assigned to.
+	NodeName string `json:"nodeName"`
+
+	// AssignedAt is the time when the pod was first assigned to the node.
+	AssignedAt metav1.Time `json:"assignedAt"`
 }
 
 // +kubebuilder:object:root=true
