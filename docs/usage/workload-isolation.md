@@ -54,9 +54,8 @@ kubectl taint nodes kind-worker5 slinky.slurm.net/slurm:NoExecute
 
 Confirm that the taint was applied:
 
-```bash
-kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}:{' '}{range .spec.taints[*]}{.key}={.value}:{.effect},{' '}{end}{'\n'}{end}"
-
+```console
+$ kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}:{' '}{range .spec.taints[*]}{.key}={.value}:{.effect},{' '}{end}{'\n'}{end}"
 kind-control-plane: node-role.kubernetes.io/control-plane=:NoSchedule,
 kind-worker:
 kind-worker2: slinky.slurm.net/slurm=:NoExecute
@@ -91,7 +90,6 @@ the `affinity` section:
 ```yaml
 nodesets:
   slinky:
-    ...
     # -- Affinity for pod assignment.
     # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
     affinity:

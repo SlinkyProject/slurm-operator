@@ -84,8 +84,8 @@ docker bake $BAKE_IMPORTS slurmd
 After the image build has completed, a tag should be applied to distinguish the
 image from the images published by SchedMD:
 
-```bash
-docker image ls | head -n 2
+```console
+$ docker image ls | head -n 2
 REPOSITORY                                                                       TAG                                                                IMAGE ID       CREATED          SIZE
 ghcr.io/slinkyproject/slurmd                                                     25.11-rockylinux9                                                  9434c2d4fae4   43 seconds ago   712MB
 
