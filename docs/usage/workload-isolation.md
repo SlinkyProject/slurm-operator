@@ -104,13 +104,17 @@ The lock state is stored in the NodeSet status:
 ```yaml
 status:
   nodeAssignments:
-    gpu-workers-0:
-      nodeName: node-gpu-1
-      assignedAt: "2026-02-24T08:00:00Z"
-    gpu-workers-1:
-      nodeName: node-gpu-2
-      assignedAt: "2026-02-24T08:00:00Z"
+    "0":
+      node: node-gpu-1
+      at: 1740384000
+    "1":
+      node: node-gpu-2
+      at: 1740384000
 ```
+
+Keys are pod ordinal indices (not full pod names), `node` is the Kubernetes
+node name, and `at` is a Unix epoch timestamp (seconds) -- all shortened to
+minimize the status object size at scale.
 
 On each reconciliation cycle:
 

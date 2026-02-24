@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -193,12 +194,13 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 	return status
 }
 
-// calculateNodeAssignments builds the pod-name-to-node-assignment mapping for lockNodes.
-// It preserves existing assignments from the previous status and adds new ones
-// from pods that have been scheduled. Assignments whose lifetime has expired
-// are pruned so the pod can be rescheduled freely. Running pods refresh their
-// assignment timestamp so the lifetime only counts down while the pod is absent.
-// When lockNodes is disabled, returns nil.
+// calculateNodeAssignments builds the ordinal-to-node-assignment mapping for lockNodes.
+// Map keys are the string representation of the pod ordinal (e.g. "0", "1") to
+// minimize status object size at scale. It preserves existing assignments from
+// the previous status and adds new ones from pods that have been scheduled.
+// Assignments whose lifetime has expired are pruned so the pod can be rescheduled
+// freely. Running pods refresh their assignment timestamp so the lifetime only
+// counts down while the pod is absent. When lockNodes is disabled, returns nil.
 func calculateNodeAssignments(nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, now metav1.Time) map[string]slinkyv1beta1.NodeAssignment {
 	if !nodeset.Spec.LockNodes {
 		return nil
@@ -207,33 +209,35 @@ func calculateNodeAssignments(nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod
 	replicaCount := int(ptr.Deref(nodeset.Spec.Replicas, 0))
 	lifetime := time.Duration(nodeset.Spec.LockNodeLifetime) * time.Second
 
-	validPodNames := make(map[string]struct{}, replicaCount)
+	validOrdinals := make(map[string]struct{}, replicaCount)
 	for i := range replicaCount {
-		validPodNames[nodesetutils.GetPodName(nodeset, i)] = struct{}{}
+		validOrdinals[strconv.Itoa(i)] = struct{}{}
 	}
 
-	// Index running pods by name for quick lookup.
+	// Index running pods by ordinal key for quick lookup.
 	runningPods := make(map[string]*corev1.Pod, len(pods))
 	for _, pod := range pods {
 		if pod.Spec.NodeName != "" && pod.Status.Phase == corev1.PodRunning {
-			runningPods[pod.Name] = pod
+			ordinal := nodesetutils.GetOrdinal(pod)
+			if ordinal >= 0 {
+				runningPods[strconv.Itoa(ordinal)] = pod
+			}
 		}
 	}
 
 	assignments := make(map[string]slinkyv1beta1.NodeAssignment, replicaCount)
 
-	for podName, assignment := range nodeset.Status.NodeAssignments {
-		if _, ok := validPodNames[podName]; !ok {
+	for key, assignment := range nodeset.Status.NodeAssignments {
+		if _, ok := validOrdinals[key]; !ok {
 			continue
 		}
-		if lifetime > 0 && now.Sub(assignment.AssignedAt.Time) >= lifetime {
+		if lifetime > 0 && now.Sub(time.Unix(assignment.At, 0)) >= lifetime {
 			continue
 		}
-		// Refresh the timestamp if the pod is still running on its locked node.
-		if rp, running := runningPods[podName]; running && rp.Spec.NodeName == assignment.NodeName {
-			assignment.AssignedAt = now
+		if rp, running := runningPods[key]; running && rp.Spec.NodeName == assignment.Node {
+			assignment.At = now.Unix()
 		}
-		assignments[podName] = assignment
+		assignments[key] = assignment
 	}
 
 	// Record new assignments from scheduled pods that aren't already tracked.
@@ -241,13 +245,18 @@ func calculateNodeAssignments(nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod
 		if pod.Spec.NodeName == "" {
 			continue
 		}
-		if _, ok := validPodNames[pod.Name]; !ok {
+		ordinal := nodesetutils.GetOrdinal(pod)
+		if ordinal < 0 {
 			continue
 		}
-		if _, alreadyAssigned := assignments[pod.Name]; !alreadyAssigned {
-			assignments[pod.Name] = slinkyv1beta1.NodeAssignment{
-				NodeName:   pod.Spec.NodeName,
-				AssignedAt: now,
+		key := strconv.Itoa(ordinal)
+		if _, ok := validOrdinals[key]; !ok {
+			continue
+		}
+		if _, alreadyAssigned := assignments[key]; !alreadyAssigned {
+			assignments[key] = slinkyv1beta1.NodeAssignment{
+				Node: pod.Spec.NodeName,
+				At:   now.Unix(),
 			}
 		}
 	}

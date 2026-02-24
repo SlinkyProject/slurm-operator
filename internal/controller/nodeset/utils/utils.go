@@ -47,9 +47,9 @@ func NewNodeSetPod(
 	pod.Spec.Affinity = updateNodeSetPodAntiAffinity(pod.Spec.Affinity)
 
 	if nodeset.Spec.LockNodes {
-		podName := GetPodName(nodeset, ordinal)
-		if assignment, ok := nodeset.Status.NodeAssignments[podName]; ok && assignment.NodeName != "" {
-			pod.Spec.Affinity = lockNodeAffinity(pod.Spec.Affinity, assignment.NodeName)
+		key := strconv.Itoa(ordinal)
+		if assignment, ok := nodeset.Status.NodeAssignments[key]; ok && assignment.Node != "" {
+			pod.Spec.Affinity = lockNodeAffinity(pod.Spec.Affinity, assignment.Node)
 		}
 	}
 

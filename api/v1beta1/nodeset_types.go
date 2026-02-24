@@ -309,9 +309,11 @@ type NodeSetStatus struct {
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 
-	// NodeAssignments tracks the mapping of pod names to their node assignments.
-	// When lockNodes is enabled, this mapping is used to pin recreated pods
-	// to their previously assigned nodes with optional expiration via lockNodeLifetime.
+	// NodeAssignments tracks the mapping of pod ordinal indices to their node
+	// assignments. Keys are the string representation of the ordinal (e.g. "0",
+	// "1") to minimize status object size at scale. When lockNodes is enabled,
+	// this mapping is used to pin recreated pods to their previously assigned
+	// nodes with optional expiration via lockNodeLifetime.
 	// +optional
 	NodeAssignments map[string]NodeAssignment `json:"nodeAssignments,omitempty"`
 
@@ -322,11 +324,12 @@ type NodeSetStatus struct {
 // NodeAssignment records a pod's assigned Kubernetes node and when the
 // assignment was first established.
 type NodeAssignment struct {
-	// NodeName is the Kubernetes node the pod was assigned to.
-	NodeName string `json:"nodeName"`
+	// Node is the Kubernetes node the pod was assigned to.
+	Node string `json:"node"`
 
-	// AssignedAt is the time when the pod was first assigned to the node.
-	AssignedAt metav1.Time `json:"assignedAt"`
+	// At is the Unix epoch timestamp (seconds) when the pod was first assigned
+	// to the node. Stored as an integer to minimize status object size at scale.
+	At int64 `json:"at"`
 }
 
 // +kubebuilder:object:root=true
