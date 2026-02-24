@@ -732,14 +732,6 @@ func (r *NodeSetReconciler) doPodScaleIn(
 				return err
 			}
 		}
-		if isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod); !isDrained || err != nil {
-			// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
-			// We must wait until fully drained to terminate the pod.
-			r.expectations.DeletionObserved(logger, key, podKey)
-			if err != nil {
-				return err
-			}
-		}
 		return nil
 	})
 
@@ -785,11 +777,16 @@ func (r *NodeSetReconciler) processCondemned(
 	if !isDrained {
 		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in",
 			"pod", klog.KObj(pod))
+		reason := fmt.Sprintf("Pod (%s) was cordoned pending termination", klog.KObj(pod))
+		err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason)
+		if err != nil {
+			return err
+		}
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
 		// We must wait until fully drained to terminate the pod.
 		durationStore.Push(key, 30*time.Second)
-		reason := fmt.Sprintf("Pod (%s) was cordoned pending termination", klog.KObj(pod))
-		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason)
+		r.expectations.DeletionObserved(logger, objectutils.KeyFunc(nodeset), kubecontroller.PodKey(pod))
+		return nil
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in",
