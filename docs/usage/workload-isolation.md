@@ -8,6 +8,7 @@
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Pre-requisites](#pre-requisites)
+  - [Node Locking](#node-locking)
   - [Taints and Tolerations](#taints-and-tolerations)
   - [Pod Anti-Affinity](#pod-anti-affinity)
 
@@ -35,6 +36,89 @@ pods automatically when `taintKubeNodes` is set.
 This guide assumes that the user has access to a functional Kubernetes cluster
 running `slurm-operator`. See the [quickstart guide] for details on setting up
 `slurm-operator` on a Kubernetes cluster.
+
+## Node Locking
+
+Node locking pins each worker pod to the specific Kubernetes node it was first
+scheduled on. Once a pod is assigned to a node, subsequent recreations of that
+pod (e.g. after eviction, deletion, or node maintenance) will always land on the
+same physical node. If the node is unavailable, the pod remains in `Pending`
+state until the node comes back.
+
+This is useful in environments where worker pods have a strong affinity to local
+resources (e.g. GPUs, NVMe storage, NUMA topology) and should not migrate to a
+different node.
+
+### Enabling Node Locking
+
+Set `lockNodes: true` on a NodeSet in the Helm chart:
+
+```yaml
+nodesets:
+  slinky:
+    lockNodes: true
+```
+
+Or directly in the NodeSet CR:
+
+```yaml
+apiVersion: slinky.slurm.net/v1beta1
+kind: NodeSet
+metadata:
+  name: gpu-workers
+spec:
+  lockNodes: true
+  replicas: 4
+```
+
+When enabled, the controller:
+
+1. Allows the first pod to schedule freely via the default Kubernetes scheduler.
+2. Records the pod-to-node mapping in `status.nodeAssignments`.
+3. On subsequent pod recreations, injects a
+   `requiredDuringSchedulingIgnoredDuringExecution` [NodeAffinity] targeting the
+   recorded `kubernetes.io/hostname`.
+
+### Lock Lifetime
+
+By default, the lock is permanent (`lockNodeLifetime: 0`). To allow pods to
+reschedule after a period of inactivity, set `lockNodeLifetime` to a positive
+number of seconds:
+
+```yaml
+nodesets:
+  slinky:
+    lockNodes: true
+    lockNodeLifetime: 3600  # lock expires 1 hour after pod stops running
+```
+
+The lifetime timer is continuously refreshed while the pod is in `Running`
+state on its locked node. The countdown only begins once the pod stops running
+(e.g. after eviction or deletion). When the timer expires, the assignment is
+cleared and the next pod recreation schedules freely, establishing a new lock.
+
+### How It Works
+
+The lock state is stored in the NodeSet status:
+
+```yaml
+status:
+  nodeAssignments:
+    gpu-workers-0:
+      nodeName: node-gpu-1
+      assignedAt: "2026-02-24T08:00:00Z"
+    gpu-workers-1:
+      nodeName: node-gpu-2
+      assignedAt: "2026-02-24T08:00:00Z"
+```
+
+On each reconciliation cycle:
+
+- **Running pods** on their locked node have their `assignedAt` timestamp
+  refreshed to the current time.
+- **Expired assignments** (when `lockNodeLifetime > 0` and the elapsed time
+  since `assignedAt` exceeds the lifetime) are pruned.
+- **Scaled-down ordinals** have their assignments removed automatically.
 
 ## Taints and Tolerations
 
@@ -118,5 +202,6 @@ kubectl describe NodeSet --namespace slurm
 <!-- links -->
 
 [anti-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+[NodeAffinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
 [quickstart guide]: ../installation.md
 [taints and tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
