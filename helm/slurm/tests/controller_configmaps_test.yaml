@@ -1,0 +1,186 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test controller configmaps
+templates:
+- controller/config-configmap.yaml
+- controller/prolog-configmap.yaml
+- controller/epilog-configmap.yaml
+- controller/prolog-slurmctld-configmap.yaml
+- controller/epilog-slurmctld-configmap.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+# config-configmap
+- it: should not render config configmap when configFiles is empty
+  template: controller/config-configmap.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render config configmap with correct metadata and data
+  template: controller/config-configmap.yaml
+  set:
+    configFiles:
+      cgroup.conf: |
+        CgroupPlugin=cgroup/v2
+        ConstrainCores=yes
+      gres.conf: |
+        AutoDetect=nvidia
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-config-extra
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - equal:
+      path: metadata.labels["app.kubernetes.io/part-of"]
+      value: slurm
+  - exists:
+      path: data["cgroup.conf"]
+  - exists:
+      path: data["gres.conf"]
+
+- it: should override config configmap namespace
+  template: controller/config-configmap.yaml
+  set:
+    namespaceOverride: custom-namespace
+    configFiles:
+      cgroup.conf: |
+        CgroupPlugin=cgroup/v2
+  asserts:
+  - equal:
+      path: metadata.namespace
+      value: custom-namespace
+
+# prolog-configmap
+- it: should not render prolog configmap when prologScripts is empty
+  template: controller/prolog-configmap.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render prolog configmap with correct metadata and prefixed keys
+  template: controller/prolog-configmap.yaml
+  set:
+    prologScripts:
+      00-setup.sh: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        exit 0
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-prolog-scripts
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - exists:
+      path: data["prolog-00-setup.sh"]
+
+# epilog-configmap
+- it: should not render epilog configmap when epilogScripts is empty
+  template: controller/epilog-configmap.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render epilog configmap with correct metadata and prefixed keys
+  template: controller/epilog-configmap.yaml
+  set:
+    epilogScripts:
+      00-cleanup.sh: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        exit 0
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-epilog-scripts
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - exists:
+      path: data["epilog-00-cleanup.sh"]
+
+# prolog-slurmctld-configmap
+- it: should not render prolog-slurmctld configmap when prologSlurmctldScripts is empty
+  template: controller/prolog-slurmctld-configmap.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render prolog-slurmctld configmap with correct metadata and prefixed keys
+  template: controller/prolog-slurmctld-configmap.yaml
+  set:
+    prologSlurmctldScripts:
+      00-pre-alloc.sh: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        exit 0
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-prolog-slurmctld-scripts
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - exists:
+      path: data["prolog-slurmctld-00-pre-alloc.sh"]
+
+# epilog-slurmctld-configmap
+- it: should not render epilog-slurmctld configmap when epilogSlurmctldScripts is empty
+  template: controller/epilog-slurmctld-configmap.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render epilog-slurmctld configmap with correct metadata and prefixed keys
+  template: controller/epilog-slurmctld-configmap.yaml
+  set:
+    epilogSlurmctldScripts:
+      00-post-complete.sh: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        exit 0
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-epilog-slurmctld-scripts
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - equal:
+      path: metadata.labels["app.kubernetes.io/part-of"]
+      value: slurm
+  - exists:
+      path: data["epilog-slurmctld-00-post-complete.sh"]

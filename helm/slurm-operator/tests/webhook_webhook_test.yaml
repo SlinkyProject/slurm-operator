@@ -1,0 +1,159 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test webhook configuration
+templates:
+- webhook/webhook.yaml
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+- it: should not render when webhook is disabled
+  set:
+    webhook:
+      enabled: false
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render ValidatingWebhookConfiguration with correct webhooks
+  documentSelector:
+    path: kind
+    value: ValidatingWebhookConfiguration
+  set:
+    webhook:
+      enabled: true
+      timeoutSeconds: 10
+    certManager:
+      enabled: false
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: metadata.name
+      value: slurm-operator-webhook
+  - equal:
+      path: webhooks[0].name
+      value: accounting-v1beta1.kb.io
+  - equal:
+      path: webhooks[0].failurePolicy
+      value: Fail
+  - equal:
+      path: webhooks[0].timeoutSeconds
+      value: 10
+  - equal:
+      path: webhooks[0].sideEffects
+      value: None
+  - equal:
+      path: webhooks[1].name
+      value: controller-v1beta1.kb.io
+  - equal:
+      path: webhooks[2].name
+      value: loginset-v1beta1.kb.io
+  - equal:
+      path: webhooks[3].name
+      value: nodeset-v1beta1.kb.io
+  - equal:
+      path: webhooks[4].name
+      value: restapi-v1beta1.kb.io
+  - equal:
+      path: webhooks[5].name
+      value: token-v1beta1.kb.io
+
+- it: should render MutatingWebhookConfiguration for pods/binding
+  documentSelector:
+    path: kind
+    value: MutatingWebhookConfiguration
+  set:
+    webhook:
+      enabled: true
+      timeoutSeconds: 10
+    certManager:
+      enabled: false
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: metadata.name
+      value: slurm-operator-webhook
+  - equal:
+      path: webhooks[0].name
+      value: podsbinding-v1.kb.io
+  - equal:
+      path: webhooks[0].failurePolicy
+      value: Fail
+  - equal:
+      path: webhooks[0].timeoutSeconds
+      value: 10
+  - equal:
+      path: webhooks[0].rules[0].resources[0]
+      value: pods/binding
+
+- it: should include cert-manager annotations when certManager is enabled
+  documentSelector:
+    path: kind
+    value: ValidatingWebhookConfiguration
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - exists:
+      path: metadata.annotations["cert-manager.io/inject-ca-from"]
+
+- it: should include caBundle when certManager is disabled
+  documentSelector:
+    path: kind
+    value: ValidatingWebhookConfiguration
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: false
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - exists:
+      path: webhooks[0].clientConfig.caBundle
+
+- it: should render TLS secret when certManager is disabled
+  documentIndex: 0
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: false
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: kind
+      value: Secret
+  - equal:
+      path: type
+      value: kubernetes.io/tls
+  - equal:
+      path: metadata.name
+      value: slurm-operator-webhook-ca
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - exists:
+      path: data["tls.crt"]
+  - exists:
+      path: data["tls.key"]
+  - exists:
+      path: data["ca.crt"]
+
+- it: should not render TLS secret when certManager is enabled
+  documentIndex: 0
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: kind
+      value: ValidatingWebhookConfiguration

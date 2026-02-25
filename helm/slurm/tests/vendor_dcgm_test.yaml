@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test vendor nvidia dcgm configmaps
+templates:
+- vendor/nvidia/dcgm/prolog-configmap.yaml
+- vendor/nvidia/dcgm/epilog-configmap.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+- it: should render dcgm prolog configmap with correct metadata when enabled
+  template: vendor/nvidia/dcgm/prolog-configmap.yaml
+  set:
+    vendor:
+      nvidia:
+        dcgm:
+          enabled: true
+          jobMappingDir: /var/lib/dcgm-exporter/job-mapping
+          scriptPriority: "90"
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-prolog-dcgm
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - equal:
+      path: metadata.labels["app.kubernetes.io/part-of"]
+      value: slurm
+
+- it: should render dcgm epilog configmap with correct metadata when enabled
+  template: vendor/nvidia/dcgm/epilog-configmap.yaml
+  set:
+    vendor:
+      nvidia:
+        dcgm:
+          enabled: true
+          jobMappingDir: /var/lib/dcgm-exporter/job-mapping
+          scriptPriority: "90"
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: ConfigMap
+  - equal:
+      path: metadata.name
+      value: test-release-slurm-epilog-dcgm
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - equal:
+      path: metadata.labels["app.kubernetes.io/part-of"]
+      value: slurm
+
+- it: should override dcgm namespace when namespaceOverride is set
+  template: vendor/nvidia/dcgm/epilog-configmap.yaml
+  set:
+    namespaceOverride: custom-namespace
+    vendor:
+      nvidia:
+        dcgm:
+          enabled: true
+          jobMappingDir: /var/lib/dcgm-exporter/job-mapping
+          scriptPriority: "90"
+  asserts:
+  - equal:
+      path: metadata.namespace
+      value: custom-namespace

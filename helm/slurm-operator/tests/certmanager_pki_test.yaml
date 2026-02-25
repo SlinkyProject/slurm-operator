@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test cert-manager pki
+templates:
+- cert-manager/pki.yaml
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+- it: should not render when webhook is disabled
+  set:
+    webhook:
+      enabled: false
+    certManager:
+      enabled: true
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should not render when certManager is disabled
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: false
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render 4 documents when both webhook and certManager are enabled
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+      duration: 43800h0m0s
+      renewBefore: 8760h0m0s
+  asserts:
+  - hasDocuments:
+      count: 4
+
+- it: should render self-signed Issuer as first document
+  documentIndex: 0
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: apiVersion
+      value: cert-manager.io/v1
+  - equal:
+      path: kind
+      value: Issuer
+  - equal:
+      path: metadata.namespace
+      value: test-namespace
+  - exists:
+      path: spec.selfSigned
+
+- it: should render root CA Certificate with correct spec
+  documentIndex: 1
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+      duration: 43800h0m0s
+      renewBefore: 8760h0m0s
+  asserts:
+  - equal:
+      path: kind
+      value: Certificate
+  - equal:
+      path: spec.isCA
+      value: true
+  - equal:
+      path: spec.duration
+      value: "43800h0m0s"
+  - equal:
+      path: spec.renewBefore
+      value: "8760h0m0s"
+
+- it: should render serving Certificate with dnsNames and custom duration
+  documentIndex: 3
+  set:
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+      duration: 87600h0m0s
+      renewBefore: 17520h0m0s
+  asserts:
+  - equal:
+      path: kind
+      value: Certificate
+  - equal:
+      path: spec.secretName
+      value: slurm-operator-webhook-ca
+  - equal:
+      path: spec.duration
+      value: "87600h0m0s"
+  - equal:
+      path: spec.renewBefore
+      value: "17520h0m0s"
+  - exists:
+      path: spec.dnsNames
+
+- it: should override namespace when namespaceOverride is set
+  documentIndex: 0
+  set:
+    namespaceOverride: custom-namespace
+    webhook:
+      enabled: true
+    certManager:
+      enabled: true
+      secretName: slurm-operator-webhook-ca
+  asserts:
+  - equal:
+      path: metadata.namespace
+      value: custom-namespace
