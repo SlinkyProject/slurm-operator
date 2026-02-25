@@ -132,6 +132,7 @@ func (r *ControllerWebhook) validateController(ctx context.Context, obj *slinkyv
 		"job_submit.lua",
 		"knl.conf", // deprecated
 		"mpi.conf",
+		"namespace.yaml",
 		"oci.conf",
 		"plugstack.conf",
 		"topology.conf",
