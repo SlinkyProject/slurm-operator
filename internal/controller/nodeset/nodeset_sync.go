@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
@@ -1117,7 +1118,11 @@ func (r *NodeSetReconciler) splitUpdatePods(
 		}
 
 		total := int(ptr.Deref(nodeset.Spec.Replicas, 0))
-		maxUnavailable := mathutils.GetScaledValueFromIntOrPercent(nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, total, true, 1)
+		var maxUnavailableValue *intstr.IntOrString
+		if nodeset.Spec.UpdateStrategy.RollingUpdate != nil {
+			maxUnavailableValue = nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable
+		}
+		maxUnavailable := mathutils.GetScaledValueFromIntOrPercent(maxUnavailableValue, total, true, 1)
 		remainingUnavailable := mathutils.Clamp((maxUnavailable - numUnavailable), 0, maxUnavailable)
 		podsToDelete, remainingOldPods := nodesetutils.SplitActivePods(oldPods, remainingUnavailable)
 
