@@ -47,6 +47,7 @@ Common operator labels
 */}}
 {{- define "slurm-operator.operator.labels" -}}
 helm.sh/chart: {{ include "slurm-operator.chart" . }}
+app.kubernetes.io/part-of: slurm-operator
 {{ include "slurm-operator.operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

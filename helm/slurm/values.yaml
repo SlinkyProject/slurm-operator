@@ -88,13 +88,14 @@ configFiles: {}
   # Ref: https://slurm.schedmd.com/gres.conf.html
   # gres.conf: |
   #   AutoDetect=nvidia
-  # Ref: https://slurm.schedmd.com/job_container.conf.html
-  # job_container.conf: |
-  #   AutoBasePath=true
-  #   EntireStepInNS=true
   # Ref: https://slurm.schedmd.com/mpi.conf.html
   # mpi.conf: |
   #   PMIxDebug=0
+  # Ref: https://slurm.schedmd.com/namespace.yaml.html
+  # namespace.yaml: |
+  #  ---
+  #  defaults:
+  #    auto_base_path: true
   # Ref: https://slurm.schedmd.com/oci.conf.html
   # oci.conf: |
   #   FileDebug=debug2

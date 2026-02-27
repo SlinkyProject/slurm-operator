@@ -8,6 +8,7 @@ manifest should match snapshot:
         app.kubernetes.io/instance: test-release
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: slurm-operator-webhook
+        app.kubernetes.io/part-of: slurm-operator
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-operator-1.2.3
       name: slurm-operator-webhook
@@ -20,6 +21,7 @@ manifest should match snapshot:
         app.kubernetes.io/instance: test-release
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: slurm-operator-webhook
+        app.kubernetes.io/part-of: slurm-operator
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-operator-1.2.3
       name: slurm-operator-webhook
@@ -94,6 +96,7 @@ manifest should match snapshot:
         app.kubernetes.io/instance: test-release
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: slurm-operator-webhook
+        app.kubernetes.io/part-of: slurm-operator
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-operator-1.2.3
       name: slurm-operator-webhook
