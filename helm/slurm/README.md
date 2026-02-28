@@ -126,6 +126,8 @@ Kubernetes: `>= 1.29.0-0`
 | nodesets.slinky.enabled | bool | `true` | Enable use of this NodeSet. |
 | nodesets.slinky.extraConf | string | `nil` | Raw extra configuration added to the `--conf` argument. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesets.slinky.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra configuration added to the `--conf` option. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
+| nodesets.slinky.lockNodeLifetime | int | `0` | Duration in seconds after which a node lock expires and the pod can be rescheduled freely. 0 means the lock is permanent. Only used when lockNodes is true. |
+| nodesets.slinky.lockNodes | bool | `false` | Pin worker pods to their assigned Kubernetes nodes. Once a pod is scheduled on a node, it will always be rescheduled to that same node. If the node is unavailable, the pod stays Pending. |
 | nodesets.slinky.logfile.image | string|object | `{"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | nodesets.slinky.logfile.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesets.slinky.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |

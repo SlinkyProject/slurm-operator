@@ -644,6 +644,12 @@ nodesets:
     enabled: true
     # -- Number of replicas to deploy.
     replicas: 1
+    # -- Pin worker pods to their assigned Kubernetes nodes. Once a pod is scheduled on a node,
+    # it will always be rescheduled to that same node. If the node is unavailable, the pod stays Pending.
+    lockNodes: false
+    # -- Duration in seconds after which a node lock expires and the pod can be rescheduled freely.
+    # 0 means the lock is permanent. Only used when lockNodes is true.
+    lockNodeLifetime: 0
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
     taintKubeNodes: false
     # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
