@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+---
+suite: test priorityclass
+templates:
+- priorityclass/priorityclass.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+- it: should render with correct values when priorityClass.create is true
+  set:
+    priorityClass:
+      create: true
+      name: slurm-system-critical
+      description: "Critical Slurm system pods"
+      value: 100
+      preemptionPolicy: PreemptLowerPriority
+  asserts:
+  - hasDocuments:
+      count: 1
+  - equal:
+      path: kind
+      value: PriorityClass
+  - equal:
+      path: metadata.name
+      value: slurm-system-critical
+  - equal:
+      path: value
+      value: 100
+  - equal:
+      path: preemptionPolicy
+      value: PreemptLowerPriority
+  - equal:
+      path: globalDefault
+      value: false
+  - equal:
+      path: description
+      value: "Critical Slurm system pods"
+
+- it: should not render when priorityClass.create is false
+  set:
+    priorityClass:
+      create: false
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should not render when priorityClass is not defined
+  set:
+    priorityClass: null
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should support custom name, value, and preemption policy overrides
+  set:
+    priorityClass:
+      create: true
+      name: custom-priority-class
+      value: 999
+      preemptionPolicy: Never
+  asserts:
+  - equal:
+      path: metadata.name
+      value: custom-priority-class
+  - equal:
+      path: value
+      value: 999
+  - equal:
+      path: preemptionPolicy
+      value: Never
+
+- it: should use fallback name when name is empty
+  set:
+    priorityClass:
+      create: true
+      name: null
+      value: 100
+      preemptionPolicy: PreemptLowerPriority
+  asserts:
+  - equal:
+      path: metadata.name
+      value: slurm-priority-critical
