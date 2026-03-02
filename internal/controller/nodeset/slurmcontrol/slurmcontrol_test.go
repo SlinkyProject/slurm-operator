@@ -1242,6 +1242,132 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 	}
 }
 
+func Test_realSlurmControl_GetNodeReason(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		clientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pod     *corev1.Pod
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "no reason",
+			fields: func() fields {
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+						}),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: "",
+		},
+		{
+			name: "external reason",
+			fields: func() fields {
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+						}),
+						Reason: ptr.To("maintenance window"),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: "maintenance window",
+		},
+		{
+			name: "operator reason",
+			fields: func() fields {
+				node := &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: ptr.To(nodesetutils.GetNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+						}),
+						Reason: ptr.To(nodeReasonPrefix + " Pod (default/foo-0) was cordoned"),
+					},
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: newSlurmClientMap(controller.Name, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: nodeReasonPrefix + " Pod (default/foo-0) was cordoned",
+		},
+		{
+			name: "no client",
+			fields: fields{
+				clientMap: clientmap.NewClientMap(),
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &realSlurmControl{
+				clientMap: tt.fields.clientMap,
+			}
+			got, err := r.GetNodeReason(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("realSlurmControl.GetNodeReason() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("realSlurmControl.GetNodeReason() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{

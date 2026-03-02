@@ -16,6 +16,11 @@ func IsPodCordon(pod *corev1.Pod) bool {
 	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordon] == "true"
 }
 
+// GetPodCordonSource returns the source that initiated the pod cordon, or empty string if not set.
+func GetPodCordonSource(pod *corev1.Pod) string {
+	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource]
+}
+
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.
 func IsRunningAndReady(pod *corev1.Pod) bool {
 	return IsRunning(pod) && podutil.IsPodReady(pod)

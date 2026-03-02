@@ -2,6 +2,12 @@
 
 ### Added
 
+- Bidirectional drain synchronization between Kubernetes and Slurm. When a Slurm
+  node is drained externally (e.g. via `scontrol`), the corresponding NodeSet
+  pod is now automatically cordoned with the `pod-cordon`, `pod-cordon-source`,
+  and `pod-cordon-reason` annotations. When the Slurm node is undrained
+  externally, the annotations are removed. This complements the existing K8s to
+  Slurm direction where cordoning a Kubernetes node drains the Slurm node.
 - JobAcctGatherType will default to `jobacct_gather/linux` when accounting is
   enabled but cgroups is disabled.
 

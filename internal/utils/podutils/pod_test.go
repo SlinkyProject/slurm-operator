@@ -9,7 +9,102 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
+
+func TestIsPodCordon(t *testing.T) {
+	tests := []struct {
+		name string
+		pod  *corev1.Pod
+		want bool
+	}{
+		{
+			name: "cordon annotation set to true",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						slinkyv1beta1.AnnotationPodCordon: "true",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "cordon annotation set to false",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						slinkyv1beta1.AnnotationPodCordon: "false",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "no annotations",
+			pod:  &corev1.Pod{},
+			want: false,
+		},
+		{
+			name: "empty annotations",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsPodCordon(tt.pod); got != tt.want {
+				t.Errorf("IsPodCordon() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetPodCordonSource(t *testing.T) {
+	tests := []struct {
+		name string
+		pod  *corev1.Pod
+		want string
+	}{
+		{
+			name: "source is slurm",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceSlurm,
+					},
+				},
+			},
+			want: slinkyv1beta1.PodCordonSourceSlurm,
+		},
+		{
+			name: "source not set",
+			pod: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			want: "",
+		},
+		{
+			name: "no annotations",
+			pod:  &corev1.Pod{},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetPodCordonSource(tt.pod); got != tt.want {
+				t.Errorf("GetPodCordonSource() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestIsRunningAndReady(t *testing.T) {
 	var podA, podB corev1.Pod

@@ -51,6 +51,8 @@ type SlurmControlInterface interface {
 	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeReasonOurs reports if the node reason was set by the operator.
 	IsNodeReasonOurs(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
+	// GetNodeReason returns the Slurm node's reason string.
+	GetNodeReason(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (string, error)
 	// CalculateNodeStatus returns the current state of the registered slurm nodes.
 	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
@@ -393,6 +395,29 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 	}
 
 	return true, nil
+}
+
+// GetNodeReason implements SlurmControlInterface.
+func (r *realSlurmControl) GetNodeReason(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (string, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do GetNodeReason()",
+			"pod", klog.KObj(pod))
+		return "", nil
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	return ptr.Deref(slurmNode.Reason, ""), nil
 }
 
 type SlurmNodeStatus struct {

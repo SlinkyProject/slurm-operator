@@ -2412,6 +2412,282 @@ func Test_syncPodUncordon(t *testing.T) {
 	}
 }
 
+func Test_syncCordon_externalSlurmDrain(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+
+	type fields struct {
+		Client    client.Client
+		ClientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx     context.Context
+		nodeset *slinkyv1beta1.NodeSet
+		pods    []*corev1.Pod
+	}
+	tests := []struct {
+		name           string
+		fields         fields
+		args           args
+		wantErr        bool
+		wantCordon     bool
+		wantSource     string
+		wantReason     string
+		checkPodName   string
+	}{
+		{
+			name: "external drain sets pod cordon annotation with reason",
+			fields: func() fields {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				return fields{
+					Client: fake.NewFakeClient(
+						nodeset.DeepCopy(),
+						pod.DeepCopy(),
+						&corev1.Node{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "test-node",
+							},
+						},
+					),
+					ClientMap: func() *clientmap.ClientMap {
+						nodeList := &slurmtypes.V0044NodeList{
+							Items: []slurmtypes.V0044Node{
+								{
+									V0044Node: slurmapi.V0044Node{
+										Name: ptr.To(nodesetutils.GetNodeName(pod)),
+										State: ptr.To([]slurmapi.V0044NodeState{
+											slurmapi.V0044NodeStateIDLE,
+											slurmapi.V0044NodeStateDRAIN,
+										}),
+										Reason: ptr.To("maintenance window"),
+									},
+								},
+							},
+						}
+						sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+						return newClientMap(controller.Name, sclient)
+					}(),
+				}
+			}(),
+			args: func() args {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				return args{
+					ctx:     context.TODO(),
+					nodeset: nodeset.DeepCopy(),
+					pods:    []*corev1.Pod{pod},
+				}
+			}(),
+			wantErr:      false,
+			wantCordon:   true,
+			wantSource:   slinkyv1beta1.PodCordonSourceSlurm,
+			wantReason:   "maintenance window",
+			checkPodName: nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "").Name,
+		},
+		{
+			name: "external undrain removes pod cordon annotation",
+			fields: func() fields {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return fields{
+					Client: fake.NewFakeClient(
+						nodeset.DeepCopy(),
+						pod.DeepCopy(),
+						&corev1.Node{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "test-node",
+							},
+						},
+					),
+					ClientMap: func() *clientmap.ClientMap {
+						nodeList := &slurmtypes.V0044NodeList{
+							Items: []slurmtypes.V0044Node{
+								{
+									V0044Node: slurmapi.V0044Node{
+										Name: ptr.To(nodesetutils.GetNodeName(pod)),
+										State: ptr.To([]slurmapi.V0044NodeState{
+											slurmapi.V0044NodeStateIDLE,
+										}),
+										Reason: ptr.To("maintenance window"),
+									},
+								},
+							},
+						}
+						sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+						return newClientMap(controller.Name, sclient)
+					}(),
+				}
+			}(),
+			args: func() args {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return args{
+					ctx:     context.TODO(),
+					nodeset: nodeset.DeepCopy(),
+					pods:    []*corev1.Pod{pod},
+				}
+			}(),
+			wantErr:      false,
+			wantCordon:   false,
+			wantSource:   "",
+			wantReason:   "",
+			checkPodName: nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "").Name,
+		},
+		{
+			name: "external drain already cordoned is no-op",
+			fields: func() fields {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return fields{
+					Client: fake.NewFakeClient(
+						nodeset.DeepCopy(),
+						pod.DeepCopy(),
+						&corev1.Node{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "test-node",
+							},
+						},
+					),
+					ClientMap: func() *clientmap.ClientMap {
+						nodeList := &slurmtypes.V0044NodeList{
+							Items: []slurmtypes.V0044Node{
+								{
+									V0044Node: slurmapi.V0044Node{
+										Name: ptr.To(nodesetutils.GetNodeName(pod)),
+										State: ptr.To([]slurmapi.V0044NodeState{
+											slurmapi.V0044NodeStateIDLE,
+											slurmapi.V0044NodeStateDRAIN,
+										}),
+										Reason: ptr.To("maintenance window"),
+									},
+								},
+							},
+						}
+						sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+						return newClientMap(controller.Name, sclient)
+					}(),
+				}
+			}(),
+			args: func() args {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return args{
+					ctx:     context.TODO(),
+					nodeset: nodeset.DeepCopy(),
+					pods:    []*corev1.Pod{pod},
+				}
+			}(),
+			wantErr:      false,
+			wantCordon:   true,
+			wantSource:   slinkyv1beta1.PodCordonSourceSlurm,
+			wantReason:   "maintenance window",
+			checkPodName: nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "").Name,
+		},
+		{
+			name: "slurm-source cordon removed when slurm reason cleared and node undrained",
+			fields: func() fields {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return fields{
+					Client: fake.NewFakeClient(
+						nodeset.DeepCopy(),
+						pod.DeepCopy(),
+						&corev1.Node{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "test-node",
+							},
+						},
+					),
+					ClientMap: func() *clientmap.ClientMap {
+						nodeList := &slurmtypes.V0044NodeList{
+							Items: []slurmtypes.V0044Node{
+								{
+									V0044Node: slurmapi.V0044Node{
+										Name: ptr.To(nodesetutils.GetNodeName(pod)),
+										State: ptr.To([]slurmapi.V0044NodeState{
+											slurmapi.V0044NodeStateIDLE,
+										}),
+									},
+								},
+							},
+						}
+						sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+						return newClientMap(controller.Name, sclient)
+					}(),
+				}
+			}(),
+			args: func() args {
+				pod := nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				pod.Spec.NodeName = "test-node"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceSlurm
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonReason] = "maintenance window"
+				return args{
+					ctx:     context.TODO(),
+					nodeset: nodeset.DeepCopy(),
+					pods:    []*corev1.Pod{pod},
+				}
+			}(),
+			wantErr:      false,
+			wantCordon:   false,
+			wantSource:   "",
+			wantReason:   "",
+			checkPodName: nodesetutils.NewNodeSetPod(fake.NewFakeClient(), nodeset, controller, 0, "").Name,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
+			if err := r.syncCordon(tt.args.ctx, tt.args.nodeset, tt.args.pods); (err != nil) != tt.wantErr {
+				t.Errorf("syncCordon() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			checkPod := &corev1.Pod{}
+			key := types.NamespacedName{
+				Namespace: corev1.NamespaceDefault,
+				Name:      tt.checkPodName,
+			}
+			if err := tt.fields.Client.Get(tt.args.ctx, key, checkPod); err != nil {
+				t.Fatalf("failed to get pod: %v", err)
+			}
+
+			gotCordon := podutils.IsPodCordon(checkPod)
+			if gotCordon != tt.wantCordon {
+				t.Errorf("pod cordon = %v, want %v", gotCordon, tt.wantCordon)
+			}
+			gotSource := podutils.GetPodCordonSource(checkPod)
+			if gotSource != tt.wantSource {
+				t.Errorf("pod cordon source = %v, want %v", gotSource, tt.wantSource)
+			}
+			gotReason := checkPod.Annotations[slinkyv1beta1.AnnotationPodCordonReason]
+			if gotReason != tt.wantReason {
+				t.Errorf("pod cordon reason = %v, want %v", gotReason, tt.wantReason)
+			}
+		})
+	}
+}
+
 func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{

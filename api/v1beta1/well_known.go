@@ -30,6 +30,22 @@ const (
 	AnnotationPodDeadline = NodeSetPrefix + "pod-deadline"
 )
 
+// Well Known Annotations for drain source tracking
+const (
+	// AnnotationPodCordonSource indicates the origin of the pod cordon.
+	// When set to "slurm", the cordon was initiated from an external Slurm drain
+	// and should not cause the operator to re-drain the Slurm node.
+	AnnotationPodCordonSource = NodeSetPrefix + "pod-cordon-source"
+
+	// AnnotationPodCordonReason stores the Slurm drain reason when the pod was
+	// cordoned due to an external Slurm drain (source = "slurm").
+	AnnotationPodCordonReason = NodeSetPrefix + "pod-cordon-reason"
+
+	// PodCordonSourceSlurm is the value of AnnotationPodCordonSource when the
+	// cordon originates from an external Slurm drain (not managed by the operator).
+	PodCordonSourceSlurm = "slurm"
+)
+
 // Well Known Annotations for Objects of type corev1.Node
 const (
 	// AnnotationNodeCordonReason indicates a custom reason for the Slurm DRAIN action taken when the Kube node on which
