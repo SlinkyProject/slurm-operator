@@ -2015,6 +2015,62 @@ func TestNodeSetReconciler_splitUpdatePods(t *testing.T) {
 			wantPodsToDelete: []string{},
 			wantPodsToKeep:   []string{"pod-0", "pod-1"},
 		},
+		{
+			name: "RollingUpdate with nil RollingUpdate field",
+			fields: fields{
+				Client: fake.NewFakeClient(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				nodeset: func() *slinkyv1beta1.NodeSet {
+					nodeset := newNodeSet("foo", controller.Name, 2)
+					nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+					// RollingUpdate is intentionally left nil
+					return nodeset
+				}(),
+				pods: []*corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod-0",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: hash,
+							},
+						},
+						Status: corev1.PodStatus{
+							Phase: corev1.PodRunning,
+							Conditions: []corev1.PodCondition{
+								{
+									Type:               corev1.PodReady,
+									Status:             corev1.ConditionTrue,
+									LastTransitionTime: now,
+								},
+							},
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod-1",
+							Labels: map[string]string{
+								history.ControllerRevisionHashLabel: "",
+							},
+						},
+						Status: corev1.PodStatus{
+							Phase: corev1.PodRunning,
+							Conditions: []corev1.PodCondition{
+								{
+									Type:               corev1.PodReady,
+									Status:             corev1.ConditionTrue,
+									LastTransitionTime: now,
+								},
+							},
+						},
+					},
+				},
+				hash: hash,
+			},
+			wantPodsToDelete: []string{"pod-1"},
+			wantPodsToKeep:   []string{"pod-0"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
