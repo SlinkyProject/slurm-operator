@@ -161,3 +161,14 @@ Ref: https://github.com/helm/helm/issues/11376#issuecomment-1256831105
 {{- end -}}
 {{- mulf (float64 $value) $unit -}}
 {{- end -}}
+
+{{/*
+Default pod dnsConfig snippet.
+
+We keep this as a helper so templates can include it consistently.
+*/}}
+{{- define "slurm.dnsConfig" -}}
+options:
+  - name: ndots
+    value: "1"
+{{- end -}}

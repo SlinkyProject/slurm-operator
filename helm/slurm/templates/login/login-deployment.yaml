@@ -32,26 +32,6 @@ spec:
       enableServiceLinks: false
       dnsConfig:
         {{- include "slurm.dnsConfig" . | nindent 8 }}
-      initContainers:
-        - name: init
-          image: {{ include "slurm.authcred.imageRef" . }}
-          imagePullPolicy: {{ .Values.authcred.imagePullPolicy | default (include "slurm.imagePullPolicy" .) }}
-          {{- with .Values.authcred.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}{{- /* with .Values.authcred.resources */}}
-          env:
-            - name: SLURM_USER
-              value: {{ include "slurm.user" . }}
-          command:
-            - bash
-            - -c
-            - |
-              {{- range .Files.Lines "scripts/init.sh" }}
-              {{ . }}
-              {{- end }}{{- /* range .Files.Lines "scripts/init.sh" */}}
-          volumeMounts:
-            {{- include "slurm.init.volumeMounts" . | nindent 12 }}
       {{- with .Values.login.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
