@@ -54,7 +54,7 @@ Define JWKS configMap ref name
 {{- if .Values.jwksKeys.configMapRef.name }}
 {{- .Values.jwksKeys.configMapRef.name }}
 {{- else }}
-{{- printf "%s-auth-jwkskeys" (include "slurm.fullname" .) -}}
+{{- printf "%s-auth-jwks" (include "slurm.fullname" .) -}}
 {{- end }}
 {{- end }}
 

@@ -1,3 +1,22 @@
+## v1.0.2
+
+### Fixed
+
+- Fixed case where non-alpine images for initconf container would fail to
+  execute script.
+- Fixed reliance on adduser and addgroup for initconf script, hence any image
+  with basic OS utils should work (e.g. Alpine, Ubuntu, Rocky Linux, Alma
+  Linux).
+- Fixed idempotency of slurmctld pod volume projection generation.
+- Fixed unstable generation of NodeSet and Partition lines in slurm.conf,
+  causing unwanted reconfigures.
+- Fixed missing resources block rendering in operator and webhook deployment
+  templates.
+
+### Changed
+
+- Update slurm-client version to v1.0.2.
+
 ## v1.0.1
 
 ### Added

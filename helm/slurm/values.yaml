@@ -24,11 +24,13 @@ imagePullPolicy: IfNotPresent
 # Configure the priority class used by all Slurm components.
 # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 priorityClass:
+  # -- Enables use of the named priorityClass to be applied to all Slurm pods.
+  enabled: false
   # -- The priority class will be created when true.
-  create: true
+  create: false
   # -- The name of the priority class to (create and) use.
   name: slurm-system-critical
-  # -- Description for the PriorityClass.
+  # -- The description upon creation.
   description: null
   # -- The priority value upon creation.
   value: 1000000000
@@ -40,8 +42,9 @@ priorityClass:
 slurmKey:
   # -- The secret will be created when true.
   create: true
-  # -- Additional annotations to add to the secret.
+  # -- Annotations to add to the secret upon creation.
   annotations: {}
+    # helm.sh/resource-policy: keep
   # -- (secretKeyRef) Reference to the secret.
   secretRef: {}
     # name: slurm-auth-slurm
@@ -52,8 +55,9 @@ slurmKey:
 jwtKey:
   # -- The secret will be created when true.
   create: true
-  # -- Additional annotations to add to the secret.
+  # -- Annotations to add to the secret upon creation.
   annotations: {}
+    # helm.sh/resource-policy: keep
   # -- (secretKeyRef) Reference to the secret.
   secretRef: {}
     # name: slurm-auth-jwths256
@@ -66,7 +70,7 @@ jwksKeys:
   enabled: false
   # -- (configMapKeySelector) Reference to the configMap.
   configMapRef: {}
-    # name: slurm-auth-jwkskeys
+    # name: slurm-auth-jwks
     # key: jwks.json
 
 # -- The cluster name, which uniquely identifies the Slurm cluster.
@@ -88,13 +92,14 @@ configFiles: {}
   # Ref: https://slurm.schedmd.com/gres.conf.html
   # gres.conf: |
   #   AutoDetect=nvidia
-  # Ref: https://slurm.schedmd.com/job_container.conf.html
-  # job_container.conf: |
-  #   AutoBasePath=true
-  #   EntireStepInNS=true
   # Ref: https://slurm.schedmd.com/mpi.conf.html
   # mpi.conf: |
   #   PMIxDebug=0
+  # Ref: https://slurm.schedmd.com/namespace.yaml.html
+  # namespace.yaml: |
+  #  ---
+  #  defaults:
+  #    auto_base_path: true
   # Ref: https://slurm.schedmd.com/oci.conf.html
   # oci.conf: |
   #   FileDebug=debug2
@@ -166,7 +171,7 @@ controller:
     port: null
   # slurmctld container configurations.
   slurmctld:
-    # -- (string|object) The image to use.
+    # -- (string \| object) The image to use.
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmctld
@@ -183,7 +188,7 @@ controller:
       #   memory: 1Gi
   # Reconfigure container configurations.
   reconfigure:
-    # -- (string|object) The image to use.
+    # -- (string \| object) The image to use.
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmctld
@@ -196,7 +201,7 @@ controller:
       #   memory: 128Mi
   # LogFile sidecar configurations.
   logfile:
-    # -- (string|object) The image to use.
+    # -- (string \| object) The image to use.
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: docker.io/library/alpine
@@ -321,7 +326,7 @@ restapi:
   replicas: 1
   # slurmrestd container configurations.
   slurmrestd:
-    # -- (string|object) The image to use.
+    # -- (string \| object) The image to use.
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmrestd
@@ -403,7 +408,7 @@ accounting:
     port: null
   # slurmdbd container configurations.
   slurmdbd:
-    # -- (string|object) The image to use.
+    # -- (string \| object) The image to use.
     # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
     image:
       repository: ghcr.io/slinkyproject/slurmdbd
@@ -528,7 +533,7 @@ sssd:
     ldap_user_search_base = ou=Users,dc=example,dc=com
     ldap_group_search_base = ou=Groups,dc=example,dc=com
 
-# (map[string]object) Slurm LoginSet (sackd, sshd, sssd) configurations.
+# -- (map[string]object) Slurm LoginSet (sackd, sshd, sssd) configurations.
 loginsets:
   # Sample LoginSet.
   slinky:
@@ -538,7 +543,7 @@ loginsets:
     replicas: 1
     # login container configurations.
     login:
-      # -- (string|object) The image to use.
+      # -- (string \| object) The image to use.
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: ghcr.io/slinkyproject/login
@@ -567,7 +572,7 @@ loginsets:
         #   mountPath: /home
     # InitConf container configurations.
     initconf:
-      # -- (string|object) The image to use.
+      # -- (string \| object) The image to use.
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: docker.io/library/alpine
@@ -635,7 +640,7 @@ loginsets:
       # port: 22
       # nodePort: 32222
 
-# (map[string]object) Slurm NodeSet (slurmd) configurations.
+# -- (map[string]object) Slurm NodeSet (slurmd) configurations.
 nodesets:
   # Sample NodeSet.
   slinky:
@@ -658,7 +663,7 @@ nodesets:
     ordinalPadding: 0
     # slurmd container configurations.
     slurmd:
-      # -- (string|object) The image to use.
+      # -- (string \| object) The image to use.
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: ghcr.io/slinkyproject/slurmd
@@ -684,7 +689,7 @@ nodesets:
         #   mountPath: /home
     # LogFile sidecar configurations.
     logfile:
-      # -- (string|object) The image to use.
+      # -- (string \| object) The image to use.
       # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
       image:
         repository: docker.io/library/alpine

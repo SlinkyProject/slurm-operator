@@ -37,6 +37,6 @@ manifest should match snapshot:
           initContainers: []
           nodeSelector:
             kubernetes.io/os: linux
-          priorityClassName: slurm-system-critical
+          priorityClassName: ""
           resources: {}
           tolerations: []

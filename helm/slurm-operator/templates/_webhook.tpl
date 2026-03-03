@@ -15,6 +15,7 @@ Common webhook labels
 */}}
 {{- define "slurm-operator.webhook.labels" -}}
 helm.sh/chart: {{ include "slurm-operator.chart" . }}
+app.kubernetes.io/part-of: slurm-operator
 {{ include "slurm-operator.webhook.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

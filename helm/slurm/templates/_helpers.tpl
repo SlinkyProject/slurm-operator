@@ -163,5 +163,9 @@ Ref: https://github.com/helm/helm/issues/2600
 Allow the PriorityClassName to be overridden.
 */}}
 {{- define "slurm.priorityClassName" -}}
+{{- if .Values.priorityClass.enabled }}
 {{- default "slurm-priority-critical" .Values.priorityClass.name }}
+{{- else }}
+{{- print "" }}
+{{- end }}
 {{- end }}

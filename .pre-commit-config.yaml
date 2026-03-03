@@ -29,7 +29,7 @@ repos:
       - id: check-yaml
         args:
           - --allow-multiple-documents
-        exclude: (config|helm)/.*\.(yaml|yml)
+        exclude: ^config/|^helm/.*/templates/
       - id: check-symlinks
       - id: check-added-large-files
       - id: trailing-whitespace
@@ -60,7 +60,9 @@ repos:
           - --mapping=2
           - --sequence=4
           - --offset=2
-        exclude: (config|helm)/.*\.(yaml|yml)
+          - --preserve-quotes
+          - --preserve_null
+        exclude: ^config/|^helm/.*/templates/
   - repo: https://github.com/pecigonzalo/pre-commit-shfmt
     rev: v2.2.0
     hooks:

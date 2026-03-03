@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test secrets
+templates:
+  - priorityclass/priorityclass.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+  - it: should not create priority class
+    template: priorityclass/priorityclass.yaml
+    set:
+      priorityClass:
+        enabled: false
+        create: true
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should not create priority class
+    template: priorityclass/priorityclass.yaml
+    set:
+      priorityClass:
+        enabled: true
+        create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should create priority class
+    template: priorityclass/priorityclass.yaml
+    set:
+      priorityClass:
+        enabled: true
+        create: true
+    asserts:
+      - hasDocuments:
+          count: 1
