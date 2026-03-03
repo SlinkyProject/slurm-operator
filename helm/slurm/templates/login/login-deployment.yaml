@@ -61,6 +61,8 @@ spec:
           value: {{ include "slurm.fullname" . }}
         - name: SLURM_CONF_SERVER
           value: {{ include "slurm.fullname" . }}.{{ include "slurm.namespace" . }}.svc.cluster.local
+        - name: SACKD_OPTIONS
+          value: "--conf-server {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}:6817"
         volumeMounts:
         - name: slurm-config
           mountPath: /etc/slurm
