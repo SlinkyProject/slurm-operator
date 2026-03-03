@@ -9,6 +9,9 @@
   - [Overview](#overview)
   - [Pre-requisites](#pre-requisites)
   - [Node Locking](#node-locking)
+    - [Enabling Node Locking](#enabling-node-locking)
+    - [Lock Lifetime](#lock-lifetime)
+    - [How It Works](#how-it-works)
   - [Taints and Tolerations](#taints-and-tolerations)
   - [Pod Anti-Affinity](#pod-anti-affinity)
 
@@ -74,8 +77,8 @@ spec:
 When enabled, the controller:
 
 1. Allows the first pod to schedule freely via the default Kubernetes scheduler.
-2. Records the pod-to-node mapping in `status.nodeAssignments`.
-3. On subsequent pod recreations, injects a
+1. Records the pod-to-node mapping in `status.nodeAssignments`.
+1. On subsequent pod recreations, injects a
    `requiredDuringSchedulingIgnoredDuringExecution` [NodeAffinity] targeting the
    recorded `kubernetes.io/hostname`.
 
@@ -92,10 +95,10 @@ nodesets:
     lockNodeLifetime: 3600  # lock expires 1 hour after pod stops running
 ```
 
-The lifetime timer is continuously refreshed while the pod is in `Running`
-state on its locked node. The countdown only begins once the pod stops running
-(e.g. after eviction or deletion). When the timer expires, the assignment is
-cleared and the next pod recreation schedules freely, establishing a new lock.
+The lifetime timer is continuously refreshed while the pod is in `Running` state
+on its locked node. The countdown only begins once the pod stops running (e.g.
+after eviction or deletion). When the timer expires, the assignment is cleared
+and the next pod recreation schedules freely, establishing a new lock.
 
 ### How It Works
 
@@ -112,14 +115,14 @@ status:
       at: 1740384000
 ```
 
-Keys are pod ordinal indices (not full pod names), `node` is the Kubernetes
-node name, and `at` is a Unix epoch timestamp (seconds) -- all shortened to
-minimize the status object size at scale.
+Keys are pod ordinal indices (not full pod names), `node` is the Kubernetes node
+name, and `at` is a Unix epoch timestamp (seconds) -- all shortened to minimize
+the status object size at scale.
 
 On each reconciliation cycle:
 
-- **Running pods** on their locked node have their `at` timestamp refreshed
-  to the current time.
+- **Running pods** on their locked node have their `at` timestamp refreshed to
+  the current time.
 - **Expired assignments** (when `lockNodeLifetime > 0` and the elapsed time
   since `at` exceeds the lifetime) are pruned.
 - **Scaled-down ordinals** have their assignments removed automatically.
@@ -206,6 +209,6 @@ kubectl describe NodeSet --namespace slurm
 <!-- links -->
 
 [anti-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-[NodeAffinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
+[nodeaffinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
 [quickstart guide]: ../installation.md
 [taints and tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
