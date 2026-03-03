@@ -541,3 +541,132 @@ func TestGetPersistentVolumeClaimName(t *testing.T) {
 		})
 	}
 }
+
+func TestLockNodeAffinity(t *testing.T) {
+	type args struct {
+		affinity *corev1.Affinity
+		nodeName string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *corev1.Affinity
+	}{
+		{
+			name: "Nil affinity, pins to node",
+			args: args{
+				affinity: nil,
+				nodeName: "node-gpu-1",
+			},
+			want: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      corev1.LabelHostname,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{"node-gpu-1"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Existing PodAntiAffinity preserved",
+			args: args{
+				affinity: &corev1.Affinity{
+					PodAntiAffinity: &corev1.PodAntiAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+							{TopologyKey: corev1.LabelHostname},
+						},
+					},
+				},
+				nodeName: "node-gpu-2",
+			},
+			want: &corev1.Affinity{
+				PodAntiAffinity: &corev1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+						{TopologyKey: corev1.LabelHostname},
+					},
+				},
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      corev1.LabelHostname,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{"node-gpu-2"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Existing NodeAffinity terms appended",
+			args: args{
+				affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+							NodeSelectorTerms: []corev1.NodeSelectorTerm{
+								{
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "existing-key",
+											Operator: corev1.NodeSelectorOpIn,
+											Values:   []string{"existing-val"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				nodeName: "node-gpu-3",
+			},
+			want: &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      "existing-key",
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{"existing-val"},
+									},
+								},
+							},
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      corev1.LabelHostname,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{"node-gpu-3"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := lockNodeAffinity(tt.args.affinity, tt.args.nodeName)
+			if !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("lockNodeAffinity() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

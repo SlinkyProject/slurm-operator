@@ -73,6 +73,12 @@ spec:
   {{- if $nodeset.ordinalPadding }}
   ordinalPadding: {{ $nodeset.ordinalPadding }}
   {{- end }}{{- /* if $nodeset.ordinalPadding */}}
+  {{- if $nodeset.lockNodes }}
+  lockNodes: {{ $nodeset.lockNodes }}
+  {{- if $nodeset.lockNodeLifetime }}
+  lockNodeLifetime: {{ $nodeset.lockNodeLifetime }}
+  {{- end }}{{- /* if $nodeset.lockNodeLifetime */}}
+  {{- end }}{{- /* if $nodeset.lockNodes */}}
   {{- if $nodeset.taintKubeNodes }}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
   {{- end }}{{- /* if $nodeset.taintKubeNodes */}}

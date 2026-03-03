@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -116,6 +118,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		ObservedGeneration:  nodeset.Generation,
 		NodeSetHash:         hash,
 		CollisionCount:      &collisionCount,
+		NodeAssignments:     calculateNodeAssignments(nodeset, pods, metav1.Now()),
 		Selector:            selector.String(),
 		Conditions:          []metav1.Condition{},
 	}
@@ -189,6 +192,80 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 	status.Unavailable = mathutils.Clamp(status.Replicas-status.Available, 0, status.Replicas)
 
 	return status
+}
+
+// calculateNodeAssignments builds the ordinal-to-node-assignment mapping for lockNodes.
+// Map keys are the string representation of the pod ordinal (e.g. "0", "1") to
+// minimize status object size at scale. It preserves existing assignments from
+// the previous status and adds new ones from pods that have been scheduled.
+// Assignments whose lifetime has expired are pruned so the pod can be rescheduled
+// freely. Running pods refresh their assignment timestamp so the lifetime only
+// counts down while the pod is absent. When lockNodes is disabled, returns nil.
+func calculateNodeAssignments(nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, now metav1.Time) map[string]slinkyv1beta1.NodeAssignment {
+	if !nodeset.Spec.LockNodes {
+		return nil
+	}
+
+	replicaCount := int(ptr.Deref(nodeset.Spec.Replicas, 0))
+	lifetime := time.Duration(nodeset.Spec.LockNodeLifetime) * time.Second
+
+	validOrdinals := make(map[string]struct{}, replicaCount)
+	for i := range replicaCount {
+		validOrdinals[strconv.Itoa(i)] = struct{}{}
+	}
+
+	// Index running pods by ordinal key for quick lookup.
+	runningPods := make(map[string]*corev1.Pod, len(pods))
+	for _, pod := range pods {
+		if pod.Spec.NodeName != "" && pod.Status.Phase == corev1.PodRunning {
+			ordinal := nodesetutils.GetOrdinal(pod)
+			if ordinal >= 0 {
+				runningPods[strconv.Itoa(ordinal)] = pod
+			}
+		}
+	}
+
+	assignments := make(map[string]slinkyv1beta1.NodeAssignment, replicaCount)
+
+	for key, assignment := range nodeset.Status.NodeAssignments {
+		if _, ok := validOrdinals[key]; !ok {
+			continue
+		}
+		if lifetime > 0 && now.Sub(time.Unix(assignment.At, 0)) >= lifetime {
+			continue
+		}
+		if rp, running := runningPods[key]; running && rp.Spec.NodeName == assignment.Node {
+			assignment.At = now.Unix()
+		}
+		assignments[key] = assignment
+	}
+
+	// Record new assignments from scheduled pods that aren't already tracked.
+	for _, pod := range pods {
+		if pod.Spec.NodeName == "" {
+			continue
+		}
+		ordinal := nodesetutils.GetOrdinal(pod)
+		if ordinal < 0 {
+			continue
+		}
+		key := strconv.Itoa(ordinal)
+		if _, ok := validOrdinals[key]; !ok {
+			continue
+		}
+		if _, alreadyAssigned := assignments[key]; !alreadyAssigned {
+			assignments[key] = slinkyv1beta1.NodeAssignment{
+				Node: pod.Spec.NodeName,
+				At:   now.Unix(),
+			}
+		}
+	}
+
+	if len(assignments) == 0 {
+		return nil
+	}
+
+	return assignments
 }
 
 // Sync NodeSet Pod Conditions to reflect Slurm base and flag states
