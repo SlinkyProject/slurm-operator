@@ -384,6 +384,7 @@ func (in *LoginSetSpec) DeepCopyInto(out *LoginSetSpec) {
 	in.InitConf.DeepCopyInto(&out.InitConf)
 	in.Template.DeepCopyInto(&out.Template)
 	in.SssdConfRef.DeepCopyInto(&out.SssdConfRef)
+	in.Strategy.DeepCopyInto(&out.Strategy)
 	in.Service.DeepCopyInto(&out.Service)
 }
 
