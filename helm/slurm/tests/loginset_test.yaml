@@ -159,3 +159,23 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should deploy multiple loginsets
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+        slinky2:
+          enabled: true
+          initconf:
+            image:
+              repository: docker.io/library/alpine
+              tag: v1.2.3
+          login:
+            image:
+              repository: ghcr.io/slinkyproject/login
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: LoginSet
