@@ -59,7 +59,7 @@ spec:
         env:
         - name: SLURM_CLUSTER_NAME
           value: {{ include "slurm.fullname" . }}
-        - name: SLURM_CONF_SERVER
+        - name: SLURM_CONF_SERVER  # TCL-4403: must use -controller service name
           value: {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}.svc.cluster.local
         - name: SACKD_OPTIONS
           value: "--conf-server {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}:6817"
@@ -81,7 +81,7 @@ spec:
           {{- end }}
         {{- end }}
       volumes:
-      - name: slurm-config
+      - name: slurm-config  # TCL-4402: projected volume with auth secrets at mode 0600
         projected:
           defaultMode: 0600
           sources:

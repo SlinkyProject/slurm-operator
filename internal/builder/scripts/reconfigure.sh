@@ -27,6 +27,7 @@ function main() {
 
 	# Initialize lastHash to avoid a spurious reconfigure on startup.
 	# slurmctld may still be initializing and an early SIGHUP can deadlock it.
+	# TCL-4401
 	lastHash="$(getHash)"
 
 	echo "[$(date)] Start '$SLURM_DIR' polling (initial hash captured)"
