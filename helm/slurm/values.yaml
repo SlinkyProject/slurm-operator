@@ -541,6 +541,13 @@ loginsets:
     enabled: false
     # -- Number of replicas to deploy.
     replicas: 1
+    # -- Deployment strategy configuration.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+    strategy: {}
+      # type: RollingUpdate
+      # rollingUpdate:
+      #   maxUnavailable: 0
+      #   maxSurge: 1
     # login container configurations.
     login:
       # -- (string \| object) The image to use.

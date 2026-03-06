@@ -90,6 +90,7 @@ func (b *LoginBuilder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Dep
 		Spec: appsv1.DeploymentSpec{
 			Replicas:             loginset.Spec.Replicas,
 			RevisionHistoryLimit: ptr.To[int32](0),
+			Strategy:             loginset.Spec.Strategy,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},
