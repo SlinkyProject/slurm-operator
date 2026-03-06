@@ -239,9 +239,14 @@ spec:
                         x-kubernetes-int-or-string: true
                     type: object
                   type:
+                    default: RollingUpdate
                     description: |-
                       Type indicates the type of the NodeSetUpdateStrategy.
+                      One of: RollingUpdate; OnDelete.
                       Default is RollingUpdate.
+                    enum:
+                    - RollingUpdate
+                    - OnDelete
                     type: string
                 type: object
               volumeClaimTemplates:
