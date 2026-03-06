@@ -25,7 +25,11 @@ function main() {
 	local lastHash=""
 	local newHash=""
 
-	echo "[$(date)] Start '$SLURM_DIR' polling"
+	# Initialize lastHash to avoid a spurious reconfigure on startup.
+	# slurmctld may still be initializing and an early SIGHUP can deadlock it.
+	lastHash="$(getHash)"
+
+	echo "[$(date)] Start '$SLURM_DIR' polling (initial hash captured)"
 	while true; do
 		newHash="$(getHash)"
 		if [ "$newHash" != "$lastHash" ]; then

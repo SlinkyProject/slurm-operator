@@ -60,7 +60,7 @@ spec:
         - name: SLURM_CLUSTER_NAME
           value: {{ include "slurm.fullname" . }}
         - name: SLURM_CONF_SERVER
-          value: {{ include "slurm.fullname" . }}.{{ include "slurm.namespace" . }}.svc.cluster.local
+          value: {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}.svc.cluster.local
         - name: SACKD_OPTIONS
           value: "--conf-server {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}:6817"
         volumeMounts:
@@ -82,8 +82,15 @@ spec:
         {{- end }}
       volumes:
       - name: slurm-config
-        configMap:
-          name: {{ include "slurm.fullname" . }}-config
+        projected:
+          defaultMode: 0600
+          sources:
+          - configMap:
+              name: {{ include "slurm.fullname" . }}-config
+          - secret:
+              name: {{ include "slurm.fullname" . }}-auth-slurm
+          - secret:
+              name: {{ include "slurm.fullname" . }}-auth-jwths256
       {{- if .Values.login.sharedMemorySize }}
       - name: dshm
         emptyDir:
