@@ -127,7 +127,7 @@ type NodeSetUpdateStrategy struct {
 	// RollingUpdate is used to communicate parameters when Type is
 	// RollingUpdateNodeSetStrategyType.
 	// +optional
-	RollingUpdate *RollingUpdateNodeSetStrategy `json:"rollingUpdate,omitempty"`
+	RollingUpdate RollingUpdateNodeSetStrategy `json:"rollingUpdate,omitempty"`
 }
 
 // PersistentVolumeClaimRetentionPolicyType is a string enumeration of the policies that will determine
