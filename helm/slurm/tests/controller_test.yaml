@@ -149,3 +149,31 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should set slurmctld livenessProbe exec
+    set:
+      controller:
+        slurmctld:
+          livenessProbe:
+            exec:
+              command:
+                - /usr/bin/scontrol
+                - ping
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+    asserts:
+      - equal:
+          path: spec.slurmctld.livenessProbe.exec.command[0]
+          value: /usr/bin/scontrol
+      - equal:
+          path: spec.slurmctld.livenessProbe.exec.command[1]
+          value: ping
+      - equal:
+          path: spec.slurmctld.livenessProbe.initialDelaySeconds
+          value: 60
+      - equal:
+          path: spec.slurmctld.livenessProbe.periodSeconds
+          value: 20
+      - equal:
+          path: spec.slurmctld.livenessProbe.failureThreshold
+          value: 3
