@@ -20,23 +20,23 @@ import (
 
 type SyncStep struct {
 	Name string
-	Sync func(ctx context.Context, cluster *slinkyv1beta1.Accounting) error
+	Sync func(ctx context.Context, accounting *slinkyv1beta1.Accounting) error
 }
 
 // Sync implements control logic for synchronizing a Accounting.
 func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
 
-	cluster := &slinkyv1beta1.Accounting{}
-	if err := r.Get(ctx, req.NamespacedName, cluster); err != nil {
+	accounting := &slinkyv1beta1.Accounting{}
+	if err := r.Get(ctx, req.NamespacedName, accounting); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("Accounting has been deleted", "request", req)
 			return nil
 		}
 		return err
 	}
-	cluster = cluster.DeepCopy()
-	defaults.SetAccountingDefaults(cluster)
+	accounting = accounting.DeepCopy()
+	defaults.SetAccountingDefaults(accounting)
 
 	syncSteps := []SyncStep{
 		{
@@ -90,10 +90,10 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	}
 
 	for _, s := range syncSteps {
-		if err := s.Sync(ctx, cluster); err != nil {
+		if err := s.Sync(ctx, accounting); err != nil {
 			e := fmt.Errorf("[%s]: %w", s.Name, err)
 			errors := []error{e}
-			if err := r.syncStatus(ctx, cluster); err != nil {
+			if err := r.syncStatus(ctx, accounting); err != nil {
 				e := fmt.Errorf("[%s]: %w", s.Name, err)
 				errors = append(errors, e)
 			}
@@ -101,5 +101,5 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		}
 	}
 
-	return r.syncStatus(ctx, cluster)
+	return r.syncStatus(ctx, accounting)
 }
