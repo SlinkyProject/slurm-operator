@@ -48,6 +48,20 @@ const (
 	FailedPlacementReason = "FailedPlacement"
 	// FailedNodeSetPodReason is added to an event when the status of a Pod of a NodeSet is 'Failed'.
 	FailedNodeSetPodReason = "FailedNodeSetPod"
+	// ScalingUpReason is added to an event when pods are being created to reach the desired replica count.
+	ScalingUpReason = "ScalingUp"
+	// ScalingDownReason is added to an event when pods are being deleted to reach the desired replica count.
+	ScalingDownReason = "ScalingDown"
+	// SyncFailedReason is added to an event when a sync sub-step fails.
+	SyncFailedReason = "SyncFailed"
+	// NodeCordonReason is added to an event when a pod is cordoned due to its Kubernetes node being cordoned.
+	NodeCordonReason = "NodeCordon"
+	// SlurmNodeNotRegisteredReason is added to an event when a pod is deleted because its Slurm node is not registered.
+	SlurmNodeNotRegisteredReason = "SlurmNodeNotRegistered"
+	// RollingUpdateReason is added to an event when pods are being replaced during a rolling update.
+	RollingUpdateReason = "RollingUpdate"
+	// ControllerRefFailedReason is added to an event when the referenced Controller CR cannot be fetched.
+	ControllerRefFailedReason = "ControllerRefFailed"
 )
 
 func init() {
@@ -76,7 +90,7 @@ type NodeSetReconciler struct {
 	podControl     podcontrol.PodControlInterface
 	slurmControl   slurmcontrol.SlurmControlInterface
 	historyControl historycontrol.HistoryControlInterface
-	eventRecorder  record.EventRecorderLogger
+	eventRecorder  record.EventRecorder
 	expectations   *kubecontroller.UIDTrackingControllerExpectations
 }
 
@@ -131,7 +145,7 @@ func (r *NodeSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.eventRecorder = record.NewBroadcaster().NewRecorder(r.Scheme, corev1.EventSource{Component: ControllerName})
+	r.eventRecorder = mgr.GetEventRecorderFor(ControllerName)
 	r.builder = builder.New(r.Client)
 	r.refResolver = refresolver.New(r.Client)
 	r.historyControl = historycontrol.NewHistoryControl(r.Client)

@@ -74,7 +74,6 @@ func (r realPodControl) createPods(ctx context.Context, pod *corev1.Pod, object 
 		return nil
 	}
 	logger.V(4).Info("Controller created pod", "controller", accessor.GetName(), "pod", klog.KObj(pod))
-	r.recorder.Eventf(object, corev1.EventTypeNormal, kubecontroller.SuccessfulCreatePodReason, "Created pod: %v", pod.GetName())
 
 	return nil
 }
@@ -109,7 +108,6 @@ func (r *realPodControl) DeletePod(ctx context.Context, namespace string, podNam
 		r.recorder.Eventf(object, corev1.EventTypeWarning, kubecontroller.FailedDeletePodReason, "Error deleting: %v", err)
 		return fmt.Errorf("unable to delete pods: %w", err)
 	}
-	r.recorder.Eventf(object, corev1.EventTypeNormal, kubecontroller.SuccessfulDeletePodReason, "Deleted pod: %v", podName)
 
 	return nil
 }

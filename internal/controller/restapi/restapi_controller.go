@@ -35,6 +35,12 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
+// Reasons for RestAPI events
+const (
+	SyncSucceededReason = "SyncSucceeded"
+	SyncFailedReason    = "SyncFailed"
+)
+
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "restapi-workers", maxConcurrentReconciles, "Max concurrent workers for Restapi controller.")
 }
@@ -56,7 +62,7 @@ type RestapiReconciler struct {
 
 	builder       *builder.RestapiBuilder
 	refResolver   *refresolver.RefResolver
-	eventRecorder record.EventRecorderLogger
+	eventRecorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=restapis,verbs=get;list;watch;create;update;patch;delete
@@ -102,6 +108,7 @@ func (r *RestapiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RestapiReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.eventRecorder = mgr.GetEventRecorderFor(ControllerName)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.RestApi{}).

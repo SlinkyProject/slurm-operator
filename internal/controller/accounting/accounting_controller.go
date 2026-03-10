@@ -35,6 +35,12 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
+// Reasons for Accounting events
+const (
+	SyncSucceededReason = "SyncSucceeded"
+	SyncFailedReason    = "SyncFailed"
+)
+
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "accounting-workers", maxConcurrentReconciles, "Max concurrent workers for Accounting controller.")
 }
@@ -56,7 +62,7 @@ type AccountingReconciler struct {
 
 	builder       *builder.AccountingBuilder
 	refResolver   *refresolver.RefResolver
-	eventRecorder record.EventRecorderLogger
+	eventRecorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=accountings,verbs=get;list;watch;create;update;patch;delete
@@ -104,7 +110,7 @@ func (r *AccountingReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *AccountingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.builder = builder.New(r.Client)
 	r.refResolver = refresolver.New(r.Client)
-	r.eventRecorder = record.NewBroadcaster().NewRecorder(r.Scheme, corev1.EventSource{Component: ControllerName})
+	r.eventRecorder = mgr.GetEventRecorderFor(ControllerName)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.Accounting{}).

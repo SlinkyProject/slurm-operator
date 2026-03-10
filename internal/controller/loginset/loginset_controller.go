@@ -35,6 +35,13 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
+// Reasons for LoginSet events
+const (
+	SyncSucceededReason       = "SyncSucceeded"
+	SyncFailedReason          = "SyncFailed"
+	ControllerRefFailedReason = "ControllerRefFailed"
+)
+
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "loginset-workers", maxConcurrentReconciles, "Max concurrent workers for LoginSet controller.")
 }
@@ -56,7 +63,7 @@ type LoginSetReconciler struct {
 
 	builder       *builder.LoginBuilder
 	refResolver   *refresolver.RefResolver
-	eventRecorder record.EventRecorderLogger
+	eventRecorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=loginsets,verbs=get;list;watch;create;update;patch;delete
@@ -102,6 +109,7 @@ func (r *LoginSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *LoginSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.eventRecorder = mgr.GetEventRecorderFor(ControllerName)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.LoginSet{}).

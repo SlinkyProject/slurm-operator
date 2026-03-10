@@ -36,6 +36,12 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
+// Reasons for Controller events
+const (
+	SyncSucceededReason = "SyncSucceeded"
+	SyncFailedReason    = "SyncFailed"
+)
+
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "controller-workers", maxConcurrentReconciles, "Max concurrent workers for Controller controller.")
 }
@@ -59,7 +65,7 @@ type ControllerReconciler struct {
 
 	builder       *builder.ControllerBuilder
 	refResolver   *refresolver.RefResolver
-	eventRecorder record.EventRecorderLogger
+	eventRecorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch;create;update;patch;delete
@@ -107,6 +113,7 @@ func (r *ControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.eventRecorder = mgr.GetEventRecorderFor(ControllerName)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.Controller{}).

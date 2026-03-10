@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -42,6 +43,8 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	controller := &slinkyv1beta1.Controller{}
 	controllerKey := client.ObjectKey(loginset.Spec.ControllerRef.NamespacedName())
 	if err := r.Get(ctx, controllerKey, controller); err != nil {
+		msg := fmt.Sprintf("Failed to get Controller (%s): %v", controllerKey, err)
+		r.eventRecorder.Event(loginset, corev1.EventTypeWarning, ControllerRefFailedReason, msg)
 		return fmt.Errorf("failed to get controller (%s): %w", controllerKey, err)
 	}
 
@@ -102,6 +105,8 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 
 	for _, s := range syncSteps {
 		if err := s.Sync(ctx, loginset); err != nil {
+			msg := fmt.Sprintf("Failed to sync %s: %v", s.Name, err)
+			r.eventRecorder.Event(loginset, corev1.EventTypeWarning, SyncFailedReason, msg)
 			e := fmt.Errorf("[%s]: %w", s.Name, err)
 			errors := []error{e}
 			if err := r.syncStatus(ctx, loginset); err != nil {
@@ -112,5 +117,6 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		}
 	}
 
+	r.eventRecorder.Event(loginset, corev1.EventTypeNormal, SyncSucceededReason, "All sync steps completed successfully")
 	return r.syncStatus(ctx, loginset)
 }
