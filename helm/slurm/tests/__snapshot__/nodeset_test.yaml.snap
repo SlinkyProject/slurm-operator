@@ -30,7 +30,6 @@ manifest should match snapshot:
         imagePullPolicy: IfNotPresent
         resources: {}
         volumeMounts: []
-      taintKubeNodes: false
       template:
         metadata:
           labels:
@@ -53,4 +52,3 @@ manifest should match snapshot:
         rollingUpdate:
           maxUnavailable: 25%
         type: RollingUpdate
-      workloadDisruptionProtection: true

@@ -118,6 +118,54 @@ tests:
       - equal:
           path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
           value: bar
+  - it: should not set lockNodes by default
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+    asserts:
+      - notExists:
+          path: spec.lockNodes
+      - notExists:
+          path: spec.lockNodeLifetime
+  - it: should set lockNodes
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          lockNodes: true
+    asserts:
+      - equal:
+          path: spec.lockNodes
+          value: true
+      - notExists:
+          path: spec.lockNodeLifetime
+  - it: should set lockNodes with lockNodeLifetime
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          lockNodes: true
+          lockNodeLifetime: 3600
+    asserts:
+      - equal:
+          path: spec.lockNodes
+          value: true
+      - equal:
+          path: spec.lockNodeLifetime
+          value: 3600
+  - it: should not set lockNodeLifetime without lockNodes
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          lockNodes: false
+          lockNodeLifetime: 3600
+    asserts:
+      - notExists:
+          path: spec.lockNodes
+      - notExists:
+          path: spec.lockNodeLifetime
   - it: should not use priority class
     set:
       priorityClass:
