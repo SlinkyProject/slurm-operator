@@ -15,6 +15,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1helper "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
@@ -55,11 +56,36 @@ func NewNodeSetStatefulSetPod(
 	// scheduled on the same Node as another NodeSet pod.
 	pod.Spec.Affinity = updateNodeSetPodAntiAffinity(pod.Spec.Affinity)
 
+	// Ensure recreated pods are pinned to their node, but only if they still match their Node.
+	if nodeset.Spec.PinToNode {
+		pinPodToNode(client, nodeset.Status.OrdinalToNode, pod, ordinal)
+	}
+
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
 	// be avoided and priorityClass will not be honored.
 	pod.Spec.NodeName = ""
 
 	return pod
+}
+
+// pinPodToNode will modify the input Pod with its Node affinity if the pin is valid
+func pinPodToNode(kclient client.Client, ordinalToNode map[string]string, pod *corev1.Pod, ordinal int) {
+	nodeName, ok := ordinalToNode[strconv.Itoa(ordinal)]
+	if !ok {
+		return
+	}
+
+	ctx := context.TODO()
+	node := &corev1.Node{}
+	nodeKey := types.NamespacedName{Name: nodeName}
+	if err := kclient.Get(ctx, nodeKey, node); err != nil {
+		return
+	}
+	if shouldRun, _ := PodShouldRunOnNode(ctx, pod, node); !shouldRun {
+		return
+	}
+
+	pod.Spec.Affinity = daemonutils.ReplaceDaemonSetPodNodeNameNodeAffinity(pod.Spec.Affinity, nodeName)
 }
 
 func NewNodeSetDaemonSetPod(
