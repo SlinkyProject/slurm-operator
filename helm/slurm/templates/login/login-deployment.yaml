@@ -32,26 +32,6 @@ spec:
       enableServiceLinks: false
       dnsConfig:
         {{- include "slurm.dnsConfig" . | nindent 8 }}
-      initContainers:
-        - name: init
-          image: {{ include "slurm.authcred.imageRef" . }}
-          imagePullPolicy: {{ .Values.authcred.imagePullPolicy | default (include "slurm.imagePullPolicy" .) }}
-          {{- with .Values.authcred.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}{{- /* with .Values.authcred.resources */}}
-          env:
-            - name: SLURM_USER
-              value: {{ include "slurm.user" . }}
-          command:
-            - bash
-            - -c
-            - |
-              {{- range .Files.Lines "scripts/init.sh" }}
-              {{ . }}
-              {{- end }}{{- /* range .Files.Lines "scripts/init.sh" */}}
-          volumeMounts:
-            {{- include "slurm.init.volumeMounts" . | nindent 12 }}
       {{- with .Values.login.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -79,8 +59,10 @@ spec:
         env:
         - name: SLURM_CLUSTER_NAME
           value: {{ include "slurm.fullname" . }}
-        - name: SLURM_CONF_SERVER
-          value: {{ include "slurm.fullname" . }}.{{ include "slurm.namespace" . }}.svc.cluster.local
+        - name: SLURM_CONF_SERVER  # TCL-4403: must use -controller service name
+          value: {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}.svc.cluster.local
+        - name: SACKD_OPTIONS
+          value: "--conf-server {{ include "slurm.fullname" . }}-controller.{{ include "slurm.namespace" . }}:6817"
         volumeMounts:
         - name: slurm-config
           mountPath: /etc/slurm
@@ -99,9 +81,16 @@ spec:
           {{- end }}
         {{- end }}
       volumes:
-      - name: slurm-config
-        configMap:
-          name: {{ include "slurm.fullname" . }}-config
+      - name: slurm-config  # TCL-4402: projected volume with auth secrets at mode 0600
+        projected:
+          defaultMode: 0600
+          sources:
+          - configMap:
+              name: {{ include "slurm.fullname" . }}-config
+          - secret:
+              name: {{ include "slurm.fullname" . }}-auth-slurm
+          - secret:
+              name: {{ include "slurm.fullname" . }}-auth-jwths256
       {{- if .Values.login.sharedMemorySize }}
       - name: dshm
         emptyDir:
