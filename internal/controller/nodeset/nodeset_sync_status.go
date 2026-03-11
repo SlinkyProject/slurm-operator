@@ -29,6 +29,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
@@ -130,7 +131,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		return err
 	}
 
-	key := klog.KObj(nodeset).String()
+	key := objectutils.KeyFunc(nodeset)
 	if nodeset.Spec.MinReadySeconds >= 0 && (newStatus.ReadyReplicas != newStatus.AvailableReplicas) {
 		// Resync the NodeSet after MinReadySeconds as a last line of defense to guard against clock-skew.
 		durationStore.Push(key, (time.Duration(nodeset.Spec.MinReadySeconds)*time.Second)+time.Second)

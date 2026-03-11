@@ -990,12 +990,12 @@ func (r *NodeSetReconciler) syncUpdate(
 	hash string,
 ) error {
 	switch nodeset.Spec.UpdateStrategy.Type {
-	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
-		// r.syncNodeSet() will handled it on the next reconcile
-		return nil
+	default:
+		fallthrough
 	case slinkyv1beta1.RollingUpdateNodeSetStrategyType:
 		return r.syncRollingUpdate(ctx, nodeset, pods, hash)
-	default:
+	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
+		// r.syncNodeSet() will handled it on the next reconcile
 		return nil
 	}
 }
@@ -1042,8 +1042,8 @@ func (r *NodeSetReconciler) splitUpdatePods(
 	logger := log.FromContext(ctx)
 
 	switch nodeset.Spec.UpdateStrategy.Type {
-	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
-		return nil, nil
+	default:
+		fallthrough
 	case slinkyv1beta1.RollingUpdateNodeSetStrategyType:
 		newPods, oldPods := findUpdatedPods(pods, hash)
 
@@ -1069,7 +1069,7 @@ func (r *NodeSetReconciler) splitUpdatePods(
 			"updatePods", len(podsToDelete),
 			"remainingPods", len(remainingPods))
 		return podsToDelete, remainingPods
-	default:
+	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
 		return nil, nil
 	}
 }

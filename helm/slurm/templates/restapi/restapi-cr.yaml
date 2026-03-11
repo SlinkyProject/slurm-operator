@@ -21,9 +21,7 @@ spec:
   controllerRef:
     name: {{ include "slurm.fullname" . }}
     namespace: {{ include "slurm.namespace" . }}
-  {{- with .Values.restapi.replicas }}
-  replicas: {{ . }}
-  {{- end }}{{- /* with .Values.restapi.replicas */}}
+  replicas: {{ .Values.restapi.replicas }}
   slurmrestd:
     {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
