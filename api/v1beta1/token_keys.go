@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 )
 
 func (o *Token) Key() types.NamespacedName {
@@ -45,12 +46,11 @@ func (o *Token) JwtHs256Ref() *JwtSecretKeySelector {
 }
 
 func (o *Token) JwtKey() types.NamespacedName {
-	ref := o.Spec.JwtHs256KeyRef
-
+	refPtr := o.Spec.JwtHs256KeyRef
 	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
+		refPtr = o.Spec.JwtKeyRef
 	}
-
+	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
 	namespace := ref.Namespace
 	if namespace == "" {
 		namespace = o.Namespace
@@ -62,16 +62,15 @@ func (o *Token) JwtKey() types.NamespacedName {
 }
 
 func (o *Token) JwtRef() *JwtSecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-
+	refPtr := o.Spec.JwtHs256KeyRef
 	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
+		refPtr = o.Spec.JwtKeyRef
 	}
-
+	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
 	if ref.Namespace == "" {
 		ref.Namespace = o.Namespace
 	}
-	return ref
+	return &ref
 }
 
 func (o *Token) SecretKey() types.NamespacedName {
