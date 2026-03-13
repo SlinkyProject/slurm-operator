@@ -182,7 +182,8 @@ spec:
               jwtHs256KeyRef:
                 description: |-
                   Slurm `auth/jwt` JWT HS256 key authentication.
-                  This field is deprecated, please use JwtKeyRef instead.
+
+                  Deprecated: use JwtKeyRef instead.
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a

@@ -27,8 +27,9 @@ type AccountingSpec struct {
 	SlurmKeyRef corev1.SecretKeySelector `json:"slurmKeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT HS256 key authentication.
-	// This field is deprecated, please use JwtKeyRef instead.
 	// +optional
+	//
+	// Deprecated: use JwtKeyRef instead.
 	JwtHs256KeyRef *corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT key authentication.

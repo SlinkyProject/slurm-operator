@@ -21,8 +21,9 @@ var (
 // +kubebuilder:validation:XValidation:rule="has(self.jwtKeyRef) || has(self.jwtHs256KeyRef)", message="jwtKeyRef or jwtHs256KeyRef must be set"
 type TokenSpec struct {
 	// Slurm `auth/jwt` JWT HS256 key authentication.
-	// This field is deprecated, please use JwtKeyRef instead.
 	// +optional
+	//
+	// Deprecated: use JwtKeyRef instead.
 	JwtHs256KeyRef *JwtSecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT key authentication.

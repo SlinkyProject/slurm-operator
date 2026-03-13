@@ -75,21 +75,14 @@ func (o *Controller) AuthSlurmRef() *corev1.SecretKeySelector {
 	}
 }
 
+// Deprecated: use AuthJwtKey() instead.
 func (o *Controller) AuthJwtHs256Key() types.NamespacedName {
-	return types.NamespacedName{
-		Name:      o.Spec.JwtHs256KeyRef.Name,
-		Namespace: o.Namespace,
-	}
+	return o.AuthJwtKey()
 }
 
+// Deprecated: use AuthJwtRef() instead.
 func (o *Controller) AuthJwtHs256Ref() *corev1.SecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-	return &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: ref.Name,
-		},
-		Key: ref.Key,
-	}
+	return o.AuthJwtRef()
 }
 
 func (o *Controller) AuthJwtKey() types.NamespacedName {

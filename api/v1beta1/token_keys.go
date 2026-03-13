@@ -34,23 +34,14 @@ func (o *Token) Lifetime() time.Duration {
 	return lifetime
 }
 
+// Deprecated: use JwtKey() instead.
 func (o *Token) JwtHs256Key() types.NamespacedName {
-	namespace := o.Spec.JwtHs256KeyRef.Namespace
-	if namespace == "" {
-		namespace = o.Namespace
-	}
-	return types.NamespacedName{
-		Name:      o.Spec.JwtHs256KeyRef.Name,
-		Namespace: namespace,
-	}
+	return o.JwtKey()
 }
 
+// Deprecated: use JwtRef() instead.
 func (o *Token) JwtHs256Ref() *JwtSecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-	if ref.Namespace == "" {
-		ref.Namespace = o.Namespace
-	}
-	return ref
+	return o.JwtRef()
 }
 
 func (o *Token) JwtKey() types.NamespacedName {
