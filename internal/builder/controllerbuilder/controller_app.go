@@ -246,7 +246,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
+						Path: common.SlurmLivez,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
@@ -256,7 +256,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/readyz",
+						Path: common.SlurmReadyz,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
@@ -264,7 +264,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
+						Path: common.SlurmLivez,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},

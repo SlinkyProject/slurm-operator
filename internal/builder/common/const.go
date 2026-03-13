@@ -41,6 +41,9 @@ const (
 	LogTimeFormat = "iso8601,format_stderr"
 
 	DevNull = "/dev/null"
+
+	SlurmLivez  = "/livez"
+	SlurmReadyz = "/readyz"
 )
 
 // Worker

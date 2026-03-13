@@ -75,7 +75,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -115,7 +115,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -157,7 +157,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					StartupProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -167,7 +167,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					ReadinessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/readyz",
+								Path: SlurmReadyz,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -175,7 +175,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -198,7 +198,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				StartupProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/livez",
+							Path: SlurmLivez,
 							Port: intstr.FromString("slurmctld"),
 						},
 					},
@@ -208,7 +208,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				ReadinessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/readyz",
+							Path: SlurmReadyz,
 							Port: intstr.FromString("slurmctld"),
 						},
 					},
@@ -233,7 +233,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -275,7 +275,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/livez",
+								Path: SlurmLivez,
 								Port: intstr.FromString("slurmctld"),
 							},
 						},
@@ -290,7 +290,7 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/livez",
+							Path: SlurmLivez,
 							Port: intstr.FromString("slurmctld"),
 						},
 					},
