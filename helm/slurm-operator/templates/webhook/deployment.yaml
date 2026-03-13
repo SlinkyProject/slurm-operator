@@ -54,6 +54,10 @@ spec:
             {{- end }}{{- /* if .Values.webhook.leaderElection */}}
             - --leader-elect-namespace
             - {{ include "slurm-operator.namespace" . }}
+            {{- with .Values.webhook.namespaces }}
+            - --namespaces
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.webhook.namespaces */}}
           livenessProbe:
             httpGet:
               path: /healthz
