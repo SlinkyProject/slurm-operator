@@ -65,7 +65,7 @@ func (o *Token) JwtKey() types.NamespacedName {
 		namespace = o.Namespace
 	}
 	return types.NamespacedName{
-		Name:      o.Spec.JwtKeyRef.Name,
+		Name:      ref.Name,
 		Namespace: namespace,
 	}
 }
