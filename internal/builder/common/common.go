@@ -218,6 +218,17 @@ func (b *CommonBuilder) GetContainerResourceLimits(container corev1.Container) (
 	return cpu, memory
 }
 
+func JwtSecretProjection(secret *corev1.SecretKeySelector, path string) corev1.SecretProjection {
+	return corev1.SecretProjection{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: secret.Name,
+		},
+		Items: []corev1.KeyToPath{
+			{Key: secret.Key, Path: path},
+		},
+	}
+}
+
 func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) corev1.ConfigMapProjection {
 	return corev1.ConfigMapProjection{
 		LocalObjectReference: corev1.LocalObjectReference{

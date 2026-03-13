@@ -19,7 +19,7 @@ func (b *CommonBuilder) BuildTokenSecret(token *slinkyv1beta1.Token) (*corev1.Se
 	ctx := context.TODO()
 
 	jwtRef := token.JwtRef()
-	signingKey, err := b.refResolver.GetSecretKeyRef(ctx, &jwtRef.SecretKeySelector, jwtRef.Namespace)
+	signingKey, err := b.refResolver.GetSecretKeyRef(ctx, jwtRef.SecretKeySelector, jwtRef.Namespace)
 	if err != nil {
 		return nil, err
 	}

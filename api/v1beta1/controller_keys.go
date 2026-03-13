@@ -66,8 +66,8 @@ func (o *Controller) AuthSlurmKey() types.NamespacedName {
 	}
 }
 
-func (o *Controller) AuthSlurmRef() *corev1.SecretKeySelector {
-	return &o.Spec.SlurmKeyRef
+func (o *Controller) AuthSlurmRef() corev1.SecretKeySelector {
+	return o.Spec.SlurmKeyRef
 }
 
 // Deprecated: use AuthJwtKey() instead.
@@ -76,33 +76,32 @@ func (o *Controller) AuthJwtHs256Key() types.NamespacedName {
 }
 
 // Deprecated: use AuthJwtRef() instead.
-func (o *Controller) AuthJwtHs256Ref() *corev1.SecretKeySelector {
+func (o *Controller) AuthJwtHs256Ref() corev1.SecretKeySelector {
 	return o.AuthJwtRef()
 }
 
 func (o *Controller) AuthJwtKey() types.NamespacedName {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
-		refPtr = o.Spec.JwtKeyRef
-	}
-	ref := ptr.Deref(refPtr, corev1.SecretKeySelector{})
+	ref := o.AuthJwtRef()
 	return types.NamespacedName{
 		Name:      ref.Name,
 		Namespace: o.Namespace,
 	}
 }
 
-func (o *Controller) AuthJwtRef() *corev1.SecretKeySelector {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
+// NOTE: Return non-nil because this field is effectively required.
+func (o *Controller) AuthJwtRef() corev1.SecretKeySelector {
+	var refPtr *corev1.SecretKeySelector
+	switch {
+	case o.Spec.JwtKeyRef != nil:
 		refPtr = o.Spec.JwtKeyRef
+	case o.Spec.JwtHs256KeyRef != nil:
+		refPtr = o.Spec.JwtHs256KeyRef
 	}
-	ref := ptr.Deref(refPtr, corev1.SecretKeySelector{})
-	return &ref
+	return ptr.Deref(refPtr, corev1.SecretKeySelector{})
 }
 
 func (o *Controller) AuthJwksKey() types.NamespacedName {
-	ref := ptr.Deref(o.Spec.JwksKeyRef, corev1.ConfigMapKeySelector{})
+	ref := ptr.Deref(o.AuthJwksRef(), corev1.ConfigMapKeySelector{})
 	return types.NamespacedName{
 		Name:      ref.Name,
 		Namespace: o.Namespace,
@@ -110,8 +109,7 @@ func (o *Controller) AuthJwksKey() types.NamespacedName {
 }
 
 func (o *Controller) AuthJwksRef() *corev1.ConfigMapKeySelector {
-	ref := ptr.Deref(o.Spec.JwksKeyRef, corev1.ConfigMapKeySelector{})
-	return &ref
+	return o.Spec.JwksKeyRef
 }
 
 func (o *Controller) ConfigKey() types.NamespacedName {

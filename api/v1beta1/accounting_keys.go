@@ -50,9 +50,9 @@ func (o *Accounting) AuthStorageKey() types.NamespacedName {
 	}
 }
 
-func (o *Accounting) AuthStorageRef() *corev1.SecretKeySelector {
+func (o *Accounting) AuthStorageRef() corev1.SecretKeySelector {
 	authKey := o.AuthStorageKey()
-	return &corev1.SecretKeySelector{
+	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: authKey.Name,
 		},
@@ -67,8 +67,8 @@ func (o *Accounting) AuthSlurmKey() types.NamespacedName {
 	}
 }
 
-func (o *Accounting) AuthSlurmRef() *corev1.SecretKeySelector {
-	return &o.Spec.SlurmKeyRef
+func (o *Accounting) AuthSlurmRef() corev1.SecretKeySelector {
+	return o.Spec.SlurmKeyRef
 }
 
 // Deprecated: use AuthJwtKey() instead.
@@ -77,33 +77,32 @@ func (o *Accounting) AuthJwtHs256Key() types.NamespacedName {
 }
 
 // Deprecated: use AuthJwtRef() instead.
-func (o *Accounting) AuthJwtHs256Ref() *corev1.SecretKeySelector {
+func (o *Accounting) AuthJwtHs256Ref() corev1.SecretKeySelector {
 	return o.AuthJwtRef()
 }
 
 func (o *Accounting) AuthJwtKey() types.NamespacedName {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
-		refPtr = o.Spec.JwtKeyRef
-	}
-	ref := ptr.Deref(refPtr, corev1.SecretKeySelector{})
+	ref := o.AuthJwtRef()
 	return types.NamespacedName{
 		Name:      ref.Name,
 		Namespace: o.Namespace,
 	}
 }
 
-func (o *Accounting) AuthJwtRef() *corev1.SecretKeySelector {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
+// NOTE: Return non-nil because this field is effectively required.
+func (o *Accounting) AuthJwtRef() corev1.SecretKeySelector {
+	var refPtr *corev1.SecretKeySelector
+	switch {
+	case o.Spec.JwtKeyRef != nil:
 		refPtr = o.Spec.JwtKeyRef
+	case o.Spec.JwtHs256KeyRef != nil:
+		refPtr = o.Spec.JwtHs256KeyRef
 	}
-	ref := ptr.Deref(refPtr, corev1.SecretKeySelector{})
-	return &ref
+	return ptr.Deref(refPtr, corev1.SecretKeySelector{})
 }
 
 func (o *Accounting) AuthJwksKey() types.NamespacedName {
-	ref := ptr.Deref(o.Spec.JwksKeyRef, corev1.ConfigMapKeySelector{})
+	ref := ptr.Deref(o.AuthJwksRef(), corev1.ConfigMapKeySelector{})
 	return types.NamespacedName{
 		Name:      ref.Name,
 		Namespace: o.Namespace,
@@ -111,8 +110,7 @@ func (o *Accounting) AuthJwksKey() types.NamespacedName {
 }
 
 func (o *Accounting) AuthJwksRef() *corev1.ConfigMapKeySelector {
-	ref := ptr.Deref(o.Spec.JwksKeyRef, corev1.ConfigMapKeySelector{})
-	return &ref
+	return o.Spec.JwksKeyRef
 }
 
 func (o *Accounting) ConfigKey() types.NamespacedName {

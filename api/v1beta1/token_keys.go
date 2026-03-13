@@ -41,36 +41,32 @@ func (o *Token) JwtHs256Key() types.NamespacedName {
 }
 
 // Deprecated: use JwtRef() instead.
-func (o *Token) JwtHs256Ref() *JwtSecretKeySelector {
+func (o *Token) JwtHs256Ref() JwtSecretKeySelector {
 	return o.JwtRef()
 }
 
 func (o *Token) JwtKey() types.NamespacedName {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
-		refPtr = o.Spec.JwtKeyRef
-	}
-	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
-	namespace := ref.Namespace
-	if namespace == "" {
-		namespace = o.Namespace
-	}
+	ref := o.JwtRef()
 	return types.NamespacedName{
 		Name:      ref.Name,
-		Namespace: namespace,
+		Namespace: ref.Namespace,
 	}
 }
 
-func (o *Token) JwtRef() *JwtSecretKeySelector {
-	refPtr := o.Spec.JwtHs256KeyRef
-	if o.Spec.JwtKeyRef != nil {
+// NOTE: Return non-nil because this field is effectively required.
+func (o *Token) JwtRef() JwtSecretKeySelector {
+	var refPtr *JwtSecretKeySelector
+	switch {
+	case o.Spec.JwtKeyRef != nil:
 		refPtr = o.Spec.JwtKeyRef
+	case o.Spec.JwtHs256KeyRef != nil:
+		refPtr = o.Spec.JwtHs256KeyRef
 	}
 	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
 	if ref.Namespace == "" {
 		ref.Namespace = o.Namespace
 	}
-	return &ref
+	return ref
 }
 
 func (o *Token) SecretKey() types.NamespacedName {
@@ -84,13 +80,13 @@ func (o *Token) SecretKey() types.NamespacedName {
 	}
 }
 
-func (o *Token) SecretRef() *corev1.SecretKeySelector {
+func (o *Token) SecretRef() corev1.SecretKeySelector {
 	name := o.SecretKey().Name
 	key := "SLURM_JWT"
 	if o.Spec.SecretRef != nil {
 		key = o.Spec.SecretRef.Key
 	}
-	return &corev1.SecretKeySelector{
+	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: name,
 		},

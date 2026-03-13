@@ -218,10 +218,9 @@ func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []c
 		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
 	}
 
-	jwksEnabled := controller.Spec.JwksKeyRef != nil
-	if jwksEnabled {
+	if controller.AuthJwksRef() != nil {
 		volumeProjection := corev1.VolumeProjection{
-			ConfigMap: ptr.To(common.JwksConfigProjection(controller.AuthJwksRef(), common.JwksKeyFile)),
+			ConfigMap: new(common.JwksConfigProjection(controller.AuthJwksRef(), common.JwksKeyFile)),
 		}
 		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
 	}

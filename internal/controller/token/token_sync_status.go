@@ -33,7 +33,7 @@ func (r *TokenReconciler) syncStatus(
 		return err
 	}
 	jwtRef := token.JwtRef()
-	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, &jwtRef.SecretKeySelector, jwtRef.Namespace)
+	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, jwtRef.SecretKeySelector, jwtRef.Namespace)
 	if err != nil {
 		return err
 	}

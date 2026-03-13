@@ -132,7 +132,7 @@ func (r *TokenReconciler) getExpTime(ctx context.Context, token *slinkyv1beta1.T
 		return time.Time{}, err
 	}
 	jwtRef := token.JwtRef()
-	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, &jwtRef.SecretKeySelector, jwtRef.Namespace)
+	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, jwtRef.SecretKeySelector, jwtRef.Namespace)
 	if err != nil {
 		return time.Time{}, err
 	}

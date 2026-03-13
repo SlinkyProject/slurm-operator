@@ -48,7 +48,7 @@ type ControllerSpec struct {
 
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
-	AccountingRef ObjectReference `json:"accountingRef"`
+	AccountingRef *ObjectReference `json:"accountingRef,omitempty"`
 
 	// external indicates if this component is external to Kubernetes or not.
 	// If true, then externalConfig is used and other fields are ignored.
