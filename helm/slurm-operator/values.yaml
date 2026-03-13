@@ -90,6 +90,9 @@ operator:
   metricsPort: 8080
   # -- Enable leader election for slurm-operator
   leaderElection: true
+  # -- Comma-separated list of namespaces the operator will watch.
+  # If empty, all namespaces are watched.
+  namespaces: ""
 
 
 # Webhook configurations.
@@ -147,6 +150,9 @@ webhook:
   metricsPort: 0
   # -- Enable leader election for slurm-operator-webhook
   leaderElection: true
+  # -- Comma-separated list of namespaces the webhook will watch.
+  # If empty, all namespaces are watched.
+  namespaces: ""
 
 #
 # Cert-Manager certificate configurations.

@@ -8,6 +8,7 @@
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Slurm Operator And CRDs](#slurm-operator-and-crds)
+    - [Namespace-Scoped Watching](#namespace-scoped-watching)
     - [With CRDs As Subchart](#with-crds-as-subchart)
     - [Without cert-manager](#without-cert-manager)
   - [Slurm Cluster](#slurm-cluster)
@@ -54,6 +55,24 @@ NAME                                      READY   STATUS    RESTARTS   AGE
 slurm-operator-5d86d75979-6wflf           1/1     Running   0          1m
 slurm-operator-webhook-567c84547b-kr7zq   1/1     Running   0          1m
 ```
+
+### Namespace-Scoped Watching
+
+By default, the operator and webhook watch resources across all namespaces. To
+restrict them to specific namespaces, set the `namespaces` value to a
+comma-separated list:
+
+```sh
+helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
+  --set 'operator.namespaces=slurm-system,production' \
+  --set 'webhook.namespaces=slurm-system,production' \
+  --namespace=slinky --create-namespace
+```
+
+> [!NOTE]
+> When namespace scoping is enabled, the operator and webhook will only
+> reconcile resources in the listed namespaces. Cluster-scoped resources (e.g.
+> Nodes) are always watched regardless of this setting.
 
 ### With CRDs As Subchart
 
