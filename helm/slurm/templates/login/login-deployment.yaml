@@ -44,6 +44,16 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: fix-perms
+        image: "docker.io/library/alpine:3.19"
+        command: ["sh", "-c", "set -e && cp /mnt/slurm/* /etc/slurm/ && chmod 644 /etc/slurm/*.conf && chmod 600 /etc/slurm/*.key && chown -R root:root /etc/slurm/"]
+        volumeMounts:
+        - name: slurm-config-projected
+          mountPath: /mnt/slurm
+          readOnly: true
+        - name: slurm-config
+          mountPath: /etc/slurm
       containers:
       - name: login
         image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
@@ -81,7 +91,9 @@ spec:
           {{- end }}
         {{- end }}
       volumes:
-      - name: slurm-config  # TCL-4402: projected volume with auth secrets at mode 0600
+      - name: slurm-config
+        emptyDir: {}
+      - name: slurm-config-projected  # TCL-4402: projected volume, copied by initContainer with split permissions
         projected:
           defaultMode: 0600
           sources:
