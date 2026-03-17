@@ -148,6 +148,23 @@ webhook:
   # -- Enable leader election for slurm-operator-webhook
   leaderElection: true
 
+# -- Extra Kubernetes objects to deploy alongside the chart.
+# Each entry is rendered as a standalone Kubernetes object.
+# Supports Helm templating (e.g. {{ .Release.Namespace }}).
+extraObjects: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: extra-config
+  #   data:
+  #     key: value
+  # - apiVersion: v1
+  #   kind: Secret
+  #   metadata:
+  #     name: extra-secret
+  #   stringData:
+  #     password: "s3cr3t"
+
 #
 # Cert-Manager certificate configurations.
 certManager:
