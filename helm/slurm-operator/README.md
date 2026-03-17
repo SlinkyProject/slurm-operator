@@ -34,6 +34,7 @@ Kubernetes: `>= 1.29.0-0`
 | certManager.secretName | string | `"slurm-operator-webhook-ca"` | The secret to be (created and) mounted. |
 | crds | object | `{"enabled":false}` | Configure Custom Resource Definitions (CRDs). |
 | crds.enabled | bool | `false` | Whether this helm chart should manage the CRD and its upgrades. |
+| extraObjects | list | `[]` | Extra Kubernetes objects to deploy alongside the chart. Each entry is rendered as a standalone Kubernetes object. Supports Helm templating (e.g. {{ .Release.Namespace }}). |
 | fullnameOverride | string | `""` | Overrides the full name of the release. |
 | imagePullPolicy | string | `"IfNotPresent"` | Set the default image pull policy. |
 | imagePullSecrets | list | `[]` | Sets the image pull secrets. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ |

@@ -1,0 +1,116 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test extra manifests
+templates:
+  - extra.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+  - it: should not render anything when extraManifests is empty
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render a single extra manifest
+    set:
+      extraObjects:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: my-extra-config
+          data:
+            key: value
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: apiVersion
+          value: v1
+      - equal:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: my-extra-config
+      - equal:
+          path: data.key
+          value: value
+  - it: should render multiple extra manifests
+    set:
+      extraObjects:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: config-one
+          data:
+            foo: bar
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: secret-one
+          stringData:
+            password: s3cr3t
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: kind
+          value: ConfigMap
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: config-one
+        documentIndex: 0
+      - equal:
+          path: kind
+          value: Secret
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: secret-one
+        documentIndex: 1
+  - it: should support Helm templating in extra manifests
+    set:
+      extraObjects:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ .Release.Name }}-dynamic"
+            namespace: "{{ .Release.Namespace }}"
+          data:
+            release: "{{ .Release.Name }}"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: test-release-dynamic
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+      - equal:
+          path: data.release
+          value: test-release
+  - it: should render non-namespaced resources
+    set:
+      extraObjects:
+        - apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: extra-cluster-role
+          rules:
+            - apiGroups: [""]
+              resources: ["pods"]
+              verbs: ["get", "list"]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ClusterRole
+      - equal:
+          path: metadata.name
+          value: extra-cluster-role
+      - equal:
+          path: rules[0].resources[0]
+          value: pods

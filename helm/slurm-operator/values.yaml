@@ -159,3 +159,14 @@ certManager:
   duration: 43800h0m0s # 5 year
   # -- Certificate renewal time. Should be before the expiration.
   renewBefore: 8760h0m0s # 1 year
+
+# -- Extra Kubernetes objects to deploy alongside the chart.
+# Each entry is rendered as a standalone Kubernetes object.
+# Supports Helm templating (e.g. {{ .Release.Namespace }}).
+extraObjects: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: extra-config
+  #   data:
+  #     key: value

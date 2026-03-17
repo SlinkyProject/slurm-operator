@@ -819,3 +819,14 @@ vendor:
       jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
       # -- Script execution priority (lower numbers run first)
       scriptPriority: "90"
+
+# -- Extra Kubernetes objects to deploy alongside the chart.
+# Each entry is rendered as a standalone Kubernetes object.
+# Supports Helm templating (e.g. {{ .Release.Namespace }}).
+extraObjects: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: extra-config
+  #   data:
+  #     key: value
