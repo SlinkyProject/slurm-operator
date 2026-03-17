@@ -497,7 +497,7 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 				t.Fatal("NewNodeSetDaemonSetPod() returned nil")
 			}
 			if tt.checkIdentity {
-				wantHostname := getDaemonSetPodHostname(nodeset, tt.args.nodeName)
+				wantHostname := getDaemonSetPodHostname(tt.args.nodeName)
 				if pod.GenerateName != nodeset.Name+"-" {
 					t.Errorf("GenerateName = %q, want %q", pod.GenerateName, nodeset.Name+"-")
 				}
@@ -551,80 +551,48 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 func TestGetDaemonSetPodHostname(t *testing.T) {
 	tests := []struct {
 		name     string
-		nodeset  *slinkyv1beta1.NodeSet
 		nodeName string
 		want     string
 	}{
 		{
-			name:     "Nodeset name and node name combined",
-			nodeset:  newNodeSetDaemonset("foo", ""),
+			name:     "Simple node name",
 			nodeName: "node-1",
-			want:     "foo-node-1",
+			want:     "node-1",
 		},
 		{
-			name:     "Trailing dash on node name is trimmed",
-			nodeset:  newNodeSetDaemonset("foo", ""),
+			name:     "Trailing dash on node name is not trimmed",
 			nodeName: "node-1-",
-			want:     "foo-node-1",
+			want:     "node-1-",
 		},
 		{
 			name:     "Empty node name",
-			nodeset:  newNodeSetDaemonset("foo", ""),
 			nodeName: "",
-			want:     "foo-",
-		},
-		{
-			name:     "Different nodeset name",
-			nodeset:  newNodeSetDaemonset("my-nodeset", ""),
-			nodeName: "worker-0",
-			want:     "my-nodeset-worker-0",
-		},
-		{
-			name:     "Node name with multiple trailing dashes",
-			nodeset:  newNodeSetDaemonset("foo", ""),
-			nodeName: "node-1---",
-			want:     "foo-node-1--",
+			want:     "",
 		},
 		{
 			name:     "Single character node name",
-			nodeset:  newNodeSetDaemonset("ns", ""),
 			nodeName: "a",
-			want:     "ns-a",
+			want:     "a",
 		},
 		{
 			name:     "AWS-style FQDN node name uses first label only",
-			nodeset:  newNodeSetDaemonset("foo", ""),
 			nodeName: "node1.us-west-2.compute.internal",
-			want:     "foo-node1",
+			want:     "node1",
 		},
 		{
 			name:     "GCP-style internal DNS node name uses first label only",
-			nodeset:  newNodeSetDaemonset("worker", ""),
 			nodeName: "node-2.my-project.us-central1-a.c.gcp-project.internal",
-			want:     "worker-node-2",
+			want:     "node-2",
 		},
 		{
 			name:     "Azure-style node name uses first label only, trailing dash trimmed",
-			nodeset:  newNodeSetDaemonset("slurm", ""),
 			nodeName: "node-0.abc123.region.azure.internal-",
-			want:     "slurm-node-0",
-		},
-		{
-			name:     "Custom template hostname prefix is used without separator",
-			nodeset:  newNodeSetDaemonset("foo", "slurm-"),
-			nodeName: "node-1",
-			want:     "slurm-node-1",
-		},
-		{
-			name:     "Custom template hostname with FQDN node name uses first label",
-			nodeset:  newNodeSetDaemonset("foo", "worker-"),
-			nodeName: "node-2.my-project.us-central1-a.c.gcp-project.internal",
-			want:     "worker-node-2",
+			want:     "node-0",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getDaemonSetPodHostname(tt.nodeset, tt.nodeName); got != tt.want {
+			if got := getDaemonSetPodHostname(tt.nodeName); got != tt.want {
 				t.Errorf("getDaemonSetPodHostname() = %q, want %q", got, tt.want)
 			}
 		})
