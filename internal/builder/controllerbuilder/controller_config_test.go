@@ -136,7 +136,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.ControllerSpec{
-						AccountingRef: slinkyv1beta1.ObjectReference{
+						AccountingRef: &slinkyv1beta1.ObjectReference{
 							Name: "slurm",
 						},
 						ConfigFileRefs: []slinkyv1beta1.ObjectReference{
@@ -398,7 +398,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 					Name: "slurm",
 				},
 				Spec: slinkyv1beta1.ControllerSpec{
-					AccountingRef: slinkyv1beta1.ObjectReference{
+					AccountingRef: &slinkyv1beta1.ObjectReference{
 						Name: "slurm",
 					},
 					ConfigFileRefs: []slinkyv1beta1.ObjectReference{

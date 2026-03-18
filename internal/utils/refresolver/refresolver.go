@@ -107,7 +107,7 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 	return out, nil
 }
 
-func (r *RefResolver) GetSecretKeyRef(ctx context.Context, selector *corev1.SecretKeySelector, namespace string) ([]byte, error) {
+func (r *RefResolver) GetSecretKeyRef(ctx context.Context, selector corev1.SecretKeySelector, namespace string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{
 		Name:      selector.Name,

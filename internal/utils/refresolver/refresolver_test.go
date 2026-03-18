@@ -491,7 +491,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
+							AccountingRef: &slinkyv1beta1.ObjectReference{
 								Name:      "slurm",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -503,7 +503,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
+							AccountingRef: &slinkyv1beta1.ObjectReference{
 								Name:      "slurm1",
 								Namespace: metav1.NamespaceDefault,
 							},
@@ -544,7 +544,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 	}
 	type args struct {
 		ctx       context.Context
-		selector  *corev1.SecretKeySelector
+		selector  corev1.SecretKeySelector
 		namespace string
 	}
 	tests := []struct {
@@ -563,7 +563,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				selector: &corev1.SecretKeySelector{
+				selector: corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "secret",
 					},
@@ -591,7 +591,7 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				selector: &corev1.SecretKeySelector{
+				selector: corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "secret",
 					},

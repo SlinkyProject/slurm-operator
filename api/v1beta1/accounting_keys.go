@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	"github.com/SlinkyProject/slurm-operator/internal/utils/domainname"
 )
@@ -49,9 +50,9 @@ func (o *Accounting) AuthStorageKey() types.NamespacedName {
 	}
 }
 
-func (o *Accounting) AuthStorageRef() *corev1.SecretKeySelector {
+func (o *Accounting) AuthStorageRef() corev1.SecretKeySelector {
 	authKey := o.AuthStorageKey()
-	return &corev1.SecretKeySelector{
+	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: authKey.Name,
 		},
@@ -66,76 +67,50 @@ func (o *Accounting) AuthSlurmKey() types.NamespacedName {
 	}
 }
 
-func (o *Accounting) AuthSlurmRef() *corev1.SecretKeySelector {
-	ref := o.Spec.SlurmKeyRef
-	return &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: ref.Name,
-		},
-		Key: ref.Key,
-	}
+func (o *Accounting) AuthSlurmRef() corev1.SecretKeySelector {
+	return o.Spec.SlurmKeyRef
 }
 
+// Deprecated: use AuthJwtKey() instead.
 func (o *Accounting) AuthJwtHs256Key() types.NamespacedName {
-	return types.NamespacedName{
-		Name:      o.Spec.JwtHs256KeyRef.Name,
-		Namespace: o.Namespace,
-	}
+	return o.AuthJwtKey()
 }
 
-func (o *Accounting) AuthJwtHs256Ref() *corev1.SecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-	return &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: ref.Name,
-		},
-		Key: ref.Key,
-	}
+// Deprecated: use AuthJwtRef() instead.
+func (o *Accounting) AuthJwtHs256Ref() corev1.SecretKeySelector {
+	return o.AuthJwtRef()
 }
 
 func (o *Accounting) AuthJwtKey() types.NamespacedName {
-	ref := o.Spec.JwtHs256KeyRef
-
-	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
-	}
-
+	ref := o.AuthJwtRef()
 	return types.NamespacedName{
 		Name:      ref.Name,
 		Namespace: o.Namespace,
 	}
 }
 
-func (o *Accounting) AuthJwtRef() *corev1.SecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-
-	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
+// NOTE: Return non-nil because this field is effectively required.
+func (o *Accounting) AuthJwtRef() corev1.SecretKeySelector {
+	var refPtr *corev1.SecretKeySelector
+	switch {
+	case o.Spec.JwtKeyRef != nil:
+		refPtr = o.Spec.JwtKeyRef
+	case o.Spec.JwtHs256KeyRef != nil:
+		refPtr = o.Spec.JwtHs256KeyRef
 	}
-
-	return &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: ref.Name,
-		},
-		Key: ref.Key,
-	}
+	return ptr.Deref(refPtr, corev1.SecretKeySelector{})
 }
 
 func (o *Accounting) AuthJwksKey() types.NamespacedName {
+	ref := ptr.Deref(o.AuthJwksRef(), corev1.ConfigMapKeySelector{})
 	return types.NamespacedName{
-		Name:      o.Spec.JwksKeyRef.Name,
+		Name:      ref.Name,
 		Namespace: o.Namespace,
 	}
 }
 
 func (o *Accounting) AuthJwksRef() *corev1.ConfigMapKeySelector {
-	ref := o.Spec.JwksKeyRef
-	return &corev1.ConfigMapKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: ref.Name,
-		},
-		Key: ref.Key,
-	}
+	return o.Spec.JwksKeyRef
 }
 
 func (o *Accounting) ConfigKey() types.NamespacedName {

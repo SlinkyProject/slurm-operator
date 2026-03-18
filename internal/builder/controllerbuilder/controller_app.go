@@ -218,10 +218,9 @@ func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []c
 		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
 	}
 
-	jwksEnabled := controller.Spec.JwksKeyRef != nil
-	if jwksEnabled {
+	if controller.AuthJwksRef() != nil {
 		volumeProjection := corev1.VolumeProjection{
-			ConfigMap: ptr.To(common.JwksConfigProjection(controller.AuthJwksRef(), common.JwksKeyFile)),
+			ConfigMap: new(common.JwksConfigProjection(controller.AuthJwksRef(), common.JwksKeyFile)),
 		}
 		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
 	}
@@ -247,7 +246,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			StartupProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
+						Path: common.SlurmLivez,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
@@ -257,7 +256,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/readyz",
+						Path: common.SlurmReadyz,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
@@ -265,7 +264,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			LivenessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: "/livez",
+						Path: common.SlurmLivez,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},

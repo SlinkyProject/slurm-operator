@@ -182,7 +182,8 @@ spec:
               jwtHs256KeyRef:
                 description: |-
                   Slurm `auth/jwt` JWT HS256 key authentication.
-                  This field is deprecated, please use JwtKeyRef instead.
+
+                  Deprecated: use JwtKeyRef instead.
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -681,10 +682,10 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
-            required:
-            - slurmKeyRef
             type: object
             x-kubernetes-validations:
+            - message: slurmKeyRef must be set when external is false
+              rule: '!self.external ? has(self.slurmKeyRef) : true'
             - message: jwtKeyRef or jwtHs256KeyRef must be set when external is false
               rule: '!self.external ? has(self.jwtKeyRef) || has(self.jwtHs256KeyRef)
                 : true'

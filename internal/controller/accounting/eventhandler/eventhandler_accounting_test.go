@@ -52,7 +52,7 @@ func Test_AccountingEventHandler_Create(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
+							AccountingRef: &slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -120,7 +120,7 @@ func Test_AccountingEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
+							AccountingRef: &slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -193,7 +193,7 @@ func Test_AccountingEventHandler_Delete(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
+							AccountingRef: &slinkyv1beta1.ObjectReference{
 								Name: "slurm",
 							},
 						},

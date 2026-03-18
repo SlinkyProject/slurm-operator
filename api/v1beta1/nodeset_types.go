@@ -13,17 +13,6 @@ const (
 	NodeSetKind = "NodeSet"
 )
 
-// ScalingModeType is a string enumeration of how a NodeSet scales its pods.
-// +enum
-type ScalingModeType string
-
-const (
-	// ScalingModeStatefulset indicates replica-based scaling similar to a StatefulSet.
-	ScalingModeStatefulset ScalingModeType = "StatefulSet"
-	// ScalingModeDaemonset indicates one pod per matching node similar to a DaemonSet.
-	ScalingModeDaemonset ScalingModeType = "DaemonSet"
-)
-
 var (
 	NodeSetGVK        = GroupVersion.WithKind(NodeSetKind)
 	NodeSetAPIVersion = GroupVersion.String()
@@ -137,6 +126,18 @@ type NodeSetSpec struct {
 	// +default:=true
 	WorkloadDisruptionProtection *bool `json:"workloadDisruptionProtection,omitempty"`
 }
+
+// ScalingModeType is a string enumeration of how a NodeSet scales its pods.
+// +enum
+type ScalingModeType string
+
+const (
+	// ScalingModeStatefulset indicates replica-based scaling similar to a StatefulSet.
+	ScalingModeStatefulset ScalingModeType = "StatefulSet"
+
+	// ScalingModeDaemonset indicates one pod per matching node similar to a DaemonSet.
+	ScalingModeDaemonset ScalingModeType = "DaemonSet"
+)
 
 // NodeSetPartition defines the Slurm partition configuration for the NodeSet.
 type NodeSetPartition struct {

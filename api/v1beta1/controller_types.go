@@ -18,6 +18,7 @@ var (
 )
 
 // ControllerSpec defines the desired state of Controller
+// +kubebuilder:validation:XValidation:rule="!self.external ? has(self.slurmKeyRef) : true", message="slurmKeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="!self.external ? has(self.jwtKeyRef) || has(self.jwtHs256KeyRef) : true", message="jwtKeyRef or jwtHs256KeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
 type ControllerSpec struct {
@@ -28,12 +29,13 @@ type ControllerSpec struct {
 	ClusterName string `json:"clusterName,omitzero"`
 
 	// Slurm `auth/slurm` key authentication.
-	// +required
+	// +optional
 	SlurmKeyRef corev1.SecretKeySelector `json:"slurmKeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT HS256 key authentication.
-	// This field is deprecated, please use JwtKeyRef instead.
 	// +optional
+	//
+	// Deprecated: use JwtKeyRef instead.
 	JwtHs256KeyRef *corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
 	// Slurm `auth/jwt` JWT key authentication.
@@ -46,7 +48,7 @@ type ControllerSpec struct {
 
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
-	AccountingRef ObjectReference `json:"accountingRef"`
+	AccountingRef *ObjectReference `json:"accountingRef,omitempty"`
 
 	// external indicates if this component is external to Kubernetes or not.
 	// If true, then externalConfig is used and other fields are ignored.

@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 )
 
 func (o *Token) Key() types.NamespacedName {
@@ -34,49 +35,34 @@ func (o *Token) Lifetime() time.Duration {
 	return lifetime
 }
 
+// Deprecated: use JwtKey() instead.
 func (o *Token) JwtHs256Key() types.NamespacedName {
-	namespace := o.Spec.JwtHs256KeyRef.Namespace
-	if namespace == "" {
-		namespace = o.Namespace
-	}
-	return types.NamespacedName{
-		Name:      o.Spec.JwtHs256KeyRef.Name,
-		Namespace: namespace,
-	}
+	return o.JwtKey()
 }
 
-func (o *Token) JwtHs256Ref() *JwtSecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-	if ref.Namespace == "" {
-		ref.Namespace = o.Namespace
-	}
-	return ref
+// Deprecated: use JwtRef() instead.
+func (o *Token) JwtHs256Ref() JwtSecretKeySelector {
+	return o.JwtRef()
 }
 
 func (o *Token) JwtKey() types.NamespacedName {
-	ref := o.Spec.JwtHs256KeyRef
-
-	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
-	}
-
-	namespace := ref.Namespace
-	if namespace == "" {
-		namespace = o.Namespace
-	}
+	ref := o.JwtRef()
 	return types.NamespacedName{
-		Name:      o.Spec.JwtKeyRef.Name,
-		Namespace: namespace,
+		Name:      ref.Name,
+		Namespace: ref.Namespace,
 	}
 }
 
-func (o *Token) JwtRef() *JwtSecretKeySelector {
-	ref := o.Spec.JwtHs256KeyRef
-
-	if o.Spec.JwtKeyRef != nil {
-		ref = o.Spec.JwtKeyRef
+// NOTE: Return non-nil because this field is effectively required.
+func (o *Token) JwtRef() JwtSecretKeySelector {
+	var refPtr *JwtSecretKeySelector
+	switch {
+	case o.Spec.JwtKeyRef != nil:
+		refPtr = o.Spec.JwtKeyRef
+	case o.Spec.JwtHs256KeyRef != nil:
+		refPtr = o.Spec.JwtHs256KeyRef
 	}
-
+	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
 	if ref.Namespace == "" {
 		ref.Namespace = o.Namespace
 	}
@@ -94,13 +80,13 @@ func (o *Token) SecretKey() types.NamespacedName {
 	}
 }
 
-func (o *Token) SecretRef() *corev1.SecretKeySelector {
+func (o *Token) SecretRef() corev1.SecretKeySelector {
 	name := o.SecretKey().Name
 	key := "SLURM_JWT"
 	if o.Spec.SecretRef != nil {
 		key = o.Spec.SecretRef.Key
 	}
-	return &corev1.SecretKeySelector{
+	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: name,
 		},

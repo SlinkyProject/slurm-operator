@@ -31,10 +31,14 @@ const (
 func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Controller) (*corev1.ConfigMap, error) {
 	ctx := context.TODO()
 
-	accounting, err := b.refResolver.GetAccounting(ctx, controller.Spec.AccountingRef)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, err
+	var accounting *slinkyv1beta1.Accounting
+	if controller.Spec.AccountingRef != nil {
+		var err error
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, err
+			}
 		}
 	}
 
@@ -377,10 +381,14 @@ func buildGresConf() string {
 func (b *ControllerBuilder) BuildControllerConfigExternal(controller *slinkyv1beta1.Controller) (*corev1.ConfigMap, error) {
 	ctx := context.TODO()
 
-	accounting, err := b.refResolver.GetAccounting(ctx, controller.Spec.AccountingRef)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, err
+	var accounting *slinkyv1beta1.Accounting
+	if controller.Spec.AccountingRef != nil {
+		var err error
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, err
+			}
 		}
 	}
 
