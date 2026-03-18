@@ -338,7 +338,7 @@ func (b *LoginBuilder) getLoginHashes(ctx context.Context, loginset *slinkyv1bet
 	hashMap := map[string]string{
 		common.AnnotationSshHostKeysHash: crypto.CheckSumFromMap(SshHostKeys.Data),
 		common.AnnotationSshdConfHash:    crypto.CheckSum([]byte(SshConfig.Data[SshdConfigFile])),
-		common.AnnotationSssdConfHash:    crypto.CheckSum([]byte(SssdSecret.StringData[loginset.SssdSecretRef().Key])),
+		common.AnnotationSssdConfHash:    crypto.CheckSum(SssdSecret.Data[loginset.SssdSecretRef().Key]),
 	}
 
 	return hashMap, nil
