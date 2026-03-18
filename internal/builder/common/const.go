@@ -80,7 +80,7 @@ const (
 
 const (
 	AnnotationAuthSlurmKeyHash = slinkyv1beta1.SlinkyPrefix + "slurm-key-hash"
-	AnnotationAuthJwtKeyHash   = slinkyv1beta1.SlinkyPrefix + "jwt--key-hash"
+	AnnotationAuthJwtKeyHash   = slinkyv1beta1.SlinkyPrefix + "jwt-key-hash"
 )
 
 const (
