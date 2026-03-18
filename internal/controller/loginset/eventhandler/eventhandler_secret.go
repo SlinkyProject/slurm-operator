@@ -78,6 +78,8 @@ func (e *SecretEventHandler) enqueueRequest(
 	}
 	secretKey := client.ObjectKeyFromObject(secret)
 
+	enqueued := make(map[string]bool)
+
 	controllerList := &slinkyv1beta1.ControllerList{}
 	if err := e.List(ctx, controllerList); err != nil {
 		logger.Error(err, "failed to list controller CRs")
@@ -100,7 +102,23 @@ func (e *SecretEventHandler) enqueueRequest(
 			key := client.ObjectKeyFromObject(&controller)
 			if loginset.Spec.ControllerRef.IsMatch(key) {
 				objectutils.EnqueueRequest(q, &loginset)
+				enqueued[loginset.Key().String()] = true
 			}
 		}
+	}
+
+	loginsetList := &slinkyv1beta1.LoginSetList{}
+	if err := e.List(ctx, loginsetList); err != nil {
+		logger.Error(err, "failed to list LoginSet CRs")
+		return
+	}
+	for _, loginset := range loginsetList.Items {
+		if secretKey.String() != loginset.SssdSecretKey().String() {
+			continue
+		}
+		if enqueued[loginset.Key().String()] {
+			continue
+		}
+		objectutils.EnqueueRequest(q, &loginset)
 	}
 }

@@ -80,6 +80,26 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "SSSD conf secret",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtKeySecret,
+					sssdConfSecret,
+					controller,
+					loginset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.CreateEvent{
+					Object: sssdConfSecret,
+				},
+				q: newQueue(),
+			},
+			want: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -150,6 +170,26 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 				ctx: context.TODO(),
 				evt: event.DeleteEvent{
 					Object: jwtKeySecret,
+				},
+				q: newQueue(),
+			},
+			want: 1,
+		},
+		{
+			name: "SSSD conf secret",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtKeySecret,
+					sssdConfSecret,
+					controller,
+					loginset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.DeleteEvent{
+					Object: sssdConfSecret,
 				},
 				q: newQueue(),
 			},
@@ -266,6 +306,27 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 				evt: event.UpdateEvent{
 					ObjectOld: jwtKeySecret,
 					ObjectNew: jwtKeySecret,
+				},
+				q: newQueue(),
+			},
+			want: 1,
+		},
+		{
+			name: "SSSD conf secret",
+			fields: fields{
+				Reader: fake.NewFakeClient(
+					slurmKeySecret,
+					jwtKeySecret,
+					sssdConfSecret,
+					controller,
+					loginset,
+				),
+			},
+			args: args{
+				ctx: context.TODO(),
+				evt: event.UpdateEvent{
+					ObjectOld: sssdConfSecret,
+					ObjectNew: sssdConfSecret,
 				},
 				q: newQueue(),
 			},
