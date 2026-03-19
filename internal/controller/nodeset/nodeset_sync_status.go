@@ -244,30 +244,19 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 
 		podConditions := nodeStatus.NodeStates[nodesetutils.GetSlurmNodeName(toUpdate)]
 
-		// Filter previous SlurmNodeStates that are no longer present
+		// Strip all existing SlurmNodeState conditions; they are re-applied
+		// from the current Slurm state by the UpdatePodCondition loop below.
 		var filteredConditions []corev1.PodCondition
 		for _, condition := range toUpdate.Status.Conditions {
-			// Keep any conditions that is not a SlurmNodeState
 			if !strings.HasPrefix(string(condition.Type), slurmconditions.StatePrefix) {
 				filteredConditions = append(filteredConditions, condition)
-			} else {
-				// Keep SlurmNodeStates that are still present
-				for _, cond := range podConditions {
-					_, c := podutil.GetPodCondition(&pod.Status, cond.Type)
-					if c != nil {
-						filteredConditions = append(filteredConditions, *c)
-					}
-				}
 			}
 		}
 		toUpdate.Status.Conditions = filteredConditions
 
 		// Add current Slurm node base and flag states
-		var condChanged bool
 		for _, cond := range podConditions {
-			if podutil.UpdatePodCondition(&toUpdate.Status, &cond) && !condChanged {
-				condChanged = true
-			}
+			podutil.UpdatePodCondition(&toUpdate.Status, &cond)
 		}
 		err := r.Status().Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
 		if err != nil {
