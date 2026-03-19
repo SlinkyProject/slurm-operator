@@ -317,7 +317,7 @@ Stuff2=junk`,
 Foo=bar,overlap,thing`,
 		},
 		{
-			name: "merge multiple, with overlap, mixed case",
+			name: "overlap, mixed case",
 			confRaw: `Stuff0=junk
 foo=bar,overlap
 Stuff1=junk
@@ -328,8 +328,24 @@ Stuff2=junk`,
 				"Fizz":  {"Thing", "Overlap"},
 				"Other": {"Thing"},
 			},
-			want: `Fizz=buzz,overlap,thing
-Foo=bar,overlap,thing`,
+			want: `Fizz=Overlap,Thing,buzz
+Foo=Overlap,Thing,bar`,
+		},
+		{
+			name:    "kv parameters",
+			confRaw: `Foo=bar,opt=1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"this", "that=2"},
+			},
+			want: `Foo=bar,opt=1,that=2,this`,
+		},
+		{
+			name:    "kv parameters overlap",
+			confRaw: `Foo=overlap=1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"overlap=0"},
+			},
+			want: `Foo=overlap=0`,
 		},
 	}
 	for _, tt := range tests {
@@ -337,6 +353,48 @@ Foo=bar,overlap,thing`,
 			got := BuildMergedConfig(tt.confRaw, tt.mergeParameters)
 			if got != tt.want {
 				t.Errorf("buildMergedParameters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isOptionOverlap(t *testing.T) {
+	tests := []struct {
+		name  string
+		item1 string
+		item2 string
+		want  bool
+	}{
+		{
+			name:  "empty",
+			item1: "",
+			item2: "",
+			want:  true,
+		},
+		{
+			name:  "identical",
+			item1: "foo=bar",
+			item2: "foo=bar",
+			want:  true,
+		},
+		{
+			name:  "different",
+			item1: "foo=bar",
+			item2: "fizz=buzz",
+			want:  false,
+		},
+		{
+			name:  "overlap",
+			item1: "foo=bar",
+			item2: "foo=baz",
+			want:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isOptionOverlap(tt.item1, tt.item2)
+			if got != tt.want {
+				t.Errorf("isOptionOverlap() = %v, want %v", got, tt.want)
 			}
 		})
 	}

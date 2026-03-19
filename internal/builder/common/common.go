@@ -253,23 +253,34 @@ func BuildMergedConfig(confRaw string, mergeConfig map[string][]string) string {
 	for _, pKey := range paramKeys {
 		r := regexp.MustCompile(fmt.Sprintf(`(?im)^%s=[^\n ]+$`, pKey))
 		found := r.FindStringSubmatch(confRaw)
-		mergeVals := mergeConfig[pKey]
+		mergeVals := set.New(mergeConfig[pKey]...)
 		if len(found) > 0 {
-			items := strings.Split(found[0], "=")
+			items := strings.SplitN(found[0], "=", 2)
 			_, val := items[0], items[1]
-			valList := strings.Split(val, ",")
-			mergeVals = append(mergeVals, valList...)
-			vals := []string{}
-			for _, v := range mergeVals {
+			for v := range strings.SplitSeq(val, ",") {
 				if v == "" {
 					continue
 				}
-				vals = append(vals, strings.ToLower(v))
+				doAppend := true
+				for _, mv := range mergeVals.UnsortedList() {
+					if isOptionOverlap(mv, v) {
+						doAppend = false
+						break
+					}
+				}
+				if doAppend {
+					mergeVals.Insert(strings.ToLower(v))
+				}
 			}
-			mergeVals = set.New(vals...).SortedList()
-			conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals, ",")))
+			conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals.SortedList(), ",")))
 		}
 	}
 
 	return conf.Build()
+}
+
+func isOptionOverlap(item1, item2 string) bool {
+	kv1 := strings.SplitN(item1, "=", 2)
+	kv2 := strings.SplitN(item2, "=", 2)
+	return strings.EqualFold(kv1[0], kv2[0])
 }
