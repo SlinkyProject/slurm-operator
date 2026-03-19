@@ -261,6 +261,9 @@ func BuildMergedConfig(confRaw string, mergeConfig map[string][]string) string {
 			mergeVals = append(mergeVals, valList...)
 			vals := []string{}
 			for _, v := range mergeVals {
+				if v == "" {
+					continue
+				}
 				vals = append(vals, strings.ToLower(v))
 			}
 			mergeVals = set.New(vals...).SortedList()

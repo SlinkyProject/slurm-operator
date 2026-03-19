@@ -286,6 +286,14 @@ func Test_BuildMergedConfig(t *testing.T) {
 			want: `Foo=bar,baz,buzz,fizz`,
 		},
 		{
+			name:    "trailing comma",
+			confRaw: `Foo=fizz,buzz,`,
+			mergeParameters: map[string][]string{
+				"Foo": {"bar", "baz"},
+			},
+			want: `Foo=bar,baz,buzz,fizz`,
+		},
+		{
 			name:    "merge, with overlap",
 			confRaw: `Foo=fizz,overlap,buzz`,
 			mergeParameters: map[string][]string{
