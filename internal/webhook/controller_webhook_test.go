@@ -24,7 +24,7 @@ var _ = Describe("Controller Webhook", func() {
 
 		It("Should deny if ClusterName does not match regex", func(ctx SpecContext) {
 			controller := testutils.NewController("test", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			controller.Spec.ClusterName = "invalid-cluster" // hyphen is not allowed by [0-9a-zA-Z$_]+
+			controller.Spec.ClusterName = "invalid cluster!" // spaces and special chars are not allowed
 
 			_, err := controllerWebhook.ValidateCreate(ctx, controller)
 			Expect(err).To(HaveOccurred())
@@ -43,6 +43,14 @@ var _ = Describe("Controller Webhook", func() {
 			_, err := controllerWebhook.ValidateCreate(ctx, controller)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("Should admit if ClusterName contains hyphens", func(ctx SpecContext) {
+			controller := testutils.NewController("slinky-dev", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+
+			_, err := controllerWebhook.ValidateCreate(ctx, controller)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 	})
 
 	Context("When Updating a Controller with Validating Webhook", func() {
