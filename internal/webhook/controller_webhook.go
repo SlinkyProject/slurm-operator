@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 
 	corev1 "k8s.io/api/core/v1"
@@ -47,9 +46,6 @@ func (r *ControllerWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.CustomValidator = &ControllerWebhook{}
 
-const validTableNameRegex = `[0-9a-zA-Z$_]+`
-const warnTableNameRegex = `[A-Z]+`
-
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *ControllerWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	controller := obj.(*slinkyv1beta1.Controller)
@@ -62,16 +58,6 @@ func (r *ControllerWebhook) ValidateCreate(ctx context.Context, obj runtime.Obje
 	if len(controllerName) > 40 {
 		errs = append(errs, fmt.Errorf("ClusterName exceeds 40 characters (%d): %s",
 			len(controllerName), controllerName))
-	}
-	validTableName := regexp.MustCompile(validTableNameRegex)
-	if !validTableName.MatchString(controllerName) {
-		errs = append(errs, fmt.Errorf("ClusterName must match regex `%s`: %s",
-			validTableNameRegex, controllerName))
-	}
-	warnTableName := regexp.MustCompile(warnTableNameRegex)
-	if warnTableName.MatchString(controllerName) {
-		warns = append(warns, fmt.Sprintf("ClusterName contains capital letters: %s",
-			controllerName))
 	}
 
 	return warns, utilerrors.NewAggregate(errs)
