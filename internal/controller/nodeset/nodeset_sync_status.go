@@ -263,11 +263,8 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 		toUpdate.Status.Conditions = filteredConditions
 
 		// Add current Slurm node base and flag states
-		var condChanged bool
 		for _, cond := range podConditions {
-			if podutil.UpdatePodCondition(&toUpdate.Status, &cond) && !condChanged {
-				condChanged = true
-			}
+			podutil.UpdatePodCondition(&toUpdate.Status, &cond)
 		}
 		err := r.Status().Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
 		if err != nil {
