@@ -347,6 +347,26 @@ Foo=Overlap,Thing,bar`,
 			},
 			want: `Foo=overlap=0`,
 		},
+		{
+			name: "comments",
+			confRaw: `#
+## HEADER
+Foo=bar # comment
+# Foo=bar1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"opt"},
+			},
+			want: `Foo=bar,opt`,
+		},
+		{
+			name: "duplicate kv",
+			confRaw: `Foo=bar0
+Foo=bar1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"opt"},
+			},
+			want: `Foo=bar1,opt`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -358,43 +378,107 @@ Foo=Overlap,Thing,bar`,
 	}
 }
 
-func Test_isOptionOverlap(t *testing.T) {
+func Test_parseSlurmConfKV(t *testing.T) {
 	tests := []struct {
-		name  string
-		item1 string
-		item2 string
-		want  bool
+		name    string
+		confRaw string
+		want    map[string]string
 	}{
 		{
-			name:  "empty",
-			item1: "",
-			item2: "",
-			want:  true,
+			name:    "empty",
+			confRaw: "",
+			want:    map[string]string{},
 		},
 		{
-			name:  "identical",
-			item1: "foo=bar",
-			item2: "foo=bar",
-			want:  true,
+			name: "lines",
+			confRaw: `Foo=Bar
+fizz=buzz`,
+			want: map[string]string{
+				"foo":  "Bar",
+				"fizz": "buzz",
+			},
 		},
 		{
-			name:  "different",
-			item1: "foo=bar",
-			item2: "fizz=buzz",
-			want:  false,
+			name: "comments",
+			confRaw: `Foo=Bar
+# test
+fizz=buzz # comment`,
+			want: map[string]string{
+				"foo":  "Bar",
+				"fizz": "buzz",
+			},
 		},
 		{
-			name:  "overlap",
-			item1: "foo=bar",
-			item2: "foo=baz",
-			want:  true,
+			name: "last duplicate key wins",
+			confRaw: `Foo=first
+# ignored
+Foo=second`,
+			want: map[string]string{
+				"foo": "second",
+			},
+		},
+		{
+			name:    "has a comment",
+			confRaw: `Foo=bar #notpartofvalue`,
+			want: map[string]string{
+				"foo": "bar",
+			},
+		},
+		{
+			name: "backslash continuation",
+			confRaw: `Foo=opt0,\
+opt1`,
+			want: map[string]string{
+				"foo": "opt0,opt1",
+			},
+		},
+		{
+			name: "backslash continuation chained",
+			confRaw: `Foo=a,\
+b,\
+c`,
+			want: map[string]string{
+				"foo": "a,b,c",
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isOptionOverlap(tt.item1, tt.item2)
+			got := parseSlurmConfKV(tt.confRaw)
+			if !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("parseSlurmConfKV() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseKVKey(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want string
+	}{
+		{
+			name: "empty",
+			s:    "",
+			want: "",
+		},
+		{
+			name: "kv",
+			s:    "foo=bar",
+			want: "foo",
+		},
+		{
+			name: "titlecase",
+			s:    "FooOpt=bar",
+			want: "fooopt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseKVKey(tt.s)
 			if got != tt.want {
-				t.Errorf("isOptionOverlap() = %v, want %v", got, tt.want)
+				t.Errorf("parseKVKey() = %v, want %v", got, tt.want)
 			}
 		})
 	}

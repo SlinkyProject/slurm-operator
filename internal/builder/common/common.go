@@ -6,7 +6,6 @@ package common
 import (
 	_ "embed"
 	"fmt"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -248,39 +247,88 @@ func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) c
 func BuildMergedConfig(confRaw string, mergeConfig map[string][]string) string {
 	conf := config.NewBuilder().WithFinalNewline(false)
 
+	lineVals := parseSlurmConfKV(confRaw)
+
 	paramKeys := structutils.Keys(mergeConfig)
 	slices.Sort(paramKeys)
 	for _, pKey := range paramKeys {
-		r := regexp.MustCompile(fmt.Sprintf(`(?im)^%s=[^\n ]+$`, pKey))
-		found := r.FindStringSubmatch(confRaw)
-		mergeVals := set.New(mergeConfig[pKey]...)
-		if len(found) > 0 {
-			items := strings.SplitN(found[0], "=", 2)
-			_, val := items[0], items[1]
-			for v := range strings.SplitSeq(val, ",") {
-				if v == "" {
-					continue
-				}
-				doAppend := true
-				for _, mv := range mergeVals.UnsortedList() {
-					if isOptionOverlap(mv, v) {
-						doAppend = false
-						break
-					}
-				}
-				if doAppend {
-					mergeVals.Insert(strings.ToLower(v))
-				}
-			}
-			conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals.SortedList(), ",")))
+		val, ok := lineVals[strings.ToLower(pKey)]
+		if !ok {
+			continue
 		}
+		mergeVals := set.New(mergeConfig[pKey]...)
+		seenOptKeys := set.New[string]()
+		for _, mv := range mergeVals.UnsortedList() {
+			seenOptKeys.Insert(parseKVKey(mv))
+		}
+		for v := range strings.SplitSeq(val, ",") {
+			if v == "" {
+				continue
+			}
+			olk := parseKVKey(v)
+			if seenOptKeys.Has(olk) {
+				continue
+			}
+			mergeVals.Insert(strings.ToLower(v))
+			seenOptKeys.Insert(olk)
+		}
+		conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals.SortedList(), ",")))
 	}
 
 	return conf.Build()
 }
 
-func isOptionOverlap(item1, item2 string) bool {
-	kv1 := strings.SplitN(item1, "=", 2)
-	kv2 := strings.SplitN(item2, "=", 2)
-	return strings.EqualFold(kv1[0], kv2[0])
+func parseSlurmConfKV(confRaw string) map[string]string {
+	out := make(map[string]string)
+	for _, line := range parseSlurmConfLogicalLines(confRaw) {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		if key == "" || val == "" {
+			continue
+		}
+		if strings.ContainsAny(val, " \n") {
+			continue
+		}
+		out[strings.ToLower(key)] = val
+	}
+	return out
+}
+
+func parseSlurmConfLogicalLines(confRaw string) []string {
+	out := make([]string, 0, strings.Count(confRaw, "\n")+1)
+	var b strings.Builder
+	for line := range strings.SplitSeq(confRaw, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i]
+		}
+		line = strings.TrimRight(line, " \t")
+		if line == "" {
+			continue
+		}
+		if before, ok := strings.CutSuffix(line, `\`); ok {
+			b.WriteString(before)
+			continue
+		}
+		b.WriteString(line)
+		out = append(out, b.String())
+		b.Reset()
+	}
+	if b.Len() > 0 {
+		out = append(out, b.String())
+	}
+	return out
+}
+
+func parseKVKey(s string) string {
+	k, _, _ := strings.Cut(s, "=")
+	return strings.ToLower(k)
 }
