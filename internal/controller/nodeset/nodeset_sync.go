@@ -578,6 +578,9 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 			toUpdate.Annotations[slinkyv1beta1.AnnotationPodDeadline] = deadline.Format(time.RFC3339)
 		}
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
 			return err
 		}
 
@@ -620,6 +623,9 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		toUpdate := pod.DeepCopy()
 		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologyLine
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
 			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
 			return err
 		}
