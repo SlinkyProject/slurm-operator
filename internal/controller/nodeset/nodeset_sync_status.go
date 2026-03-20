@@ -334,7 +334,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 			logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(toUpdate))
 			return err
 		}
-		return r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
+		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncPodPDBLabelsFn); err != nil {
 		return err
