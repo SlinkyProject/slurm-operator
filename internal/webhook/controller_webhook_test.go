@@ -22,21 +22,6 @@ var _ = Describe("Controller Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should deny if ClusterName does not match regex", func(ctx SpecContext) {
-			controller := testutils.NewController("test", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			controller.Spec.ClusterName = "invalid-cluster" // hyphen is not allowed by [0-9a-zA-Z$_]+
-
-			_, err := controllerWebhook.ValidateCreate(ctx, controller)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("Should warn if ClusterName contains capital letters", func(ctx SpecContext) {
-			controller := testutils.NewController("CLUSTER", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-
-			warn, _ := controllerWebhook.ValidateCreate(ctx, controller)
-			Expect(warn).NotTo(BeNil())
-		})
-
 		It("Should admit if all required fields are provided and ClusterName is compliant", func(ctx SpecContext) {
 			controller := testutils.NewController("clustername", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
 

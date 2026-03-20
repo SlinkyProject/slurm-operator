@@ -32,9 +32,9 @@ Installation instructions for the Slurm Operator on Kubernetes.
 Install the [cert-manager] with its CRDs, if not already installed:
 
 ```sh
-helm install "$chartName" oci://quay.io/jetstack/charts/cert-manager \
+helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
   --namespace cert-manager --create-namespace \
-  --set 'crds.enabled=true'
+  --set crds.enabled=true
 ```
 
 Install the slurm-operator and its CRDs:
