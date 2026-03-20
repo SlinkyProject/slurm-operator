@@ -46,7 +46,7 @@ spec:
       {{- end }}
       initContainers:
       - name: fix-perms
-        image: "docker.io/library/alpine:3.19"
+        image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
         command: ["sh", "-c", "set -e && cp /mnt/slurm/* /etc/slurm/ && chmod 644 /etc/slurm/*.conf && chmod 600 /etc/slurm/*.key && chown -R root:root /etc/slurm/"]
         volumeMounts:
         - name: slurm-config-projected
