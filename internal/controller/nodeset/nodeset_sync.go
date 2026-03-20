@@ -466,6 +466,9 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 			toUpdate.Annotations[slinkyv1beta1.AnnotationPodDeadline] = deadline.Format(time.RFC3339)
 		}
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
 			return err
 		}
 
