@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DefaultSeperator = "="
+	DefaultSeparator = "="
 	DefaultNewline   = true
 )
 
@@ -24,7 +24,7 @@ func (b *configBuilder) AddProperty(prop configProperty) *configBuilder {
 	return b
 }
 
-func (b *configBuilder) WithSeperator(sep string) *configBuilder {
+func (b *configBuilder) WithSeparator(sep string) *configBuilder {
 	b.sep = sep
 	return b
 }
@@ -51,7 +51,7 @@ func (b *configBuilder) Build() string {
 
 func NewBuilder() *configBuilder {
 	return &configBuilder{
-		sep:     DefaultSeperator,
+		sep:     DefaultSeparator,
 		newline: DefaultNewline,
 		props:   make([]configProperty, 0),
 	}

@@ -31,7 +31,7 @@ func (b *WorkerBuilder) BuildWorkerSshConfig(nodeset *slinkyv1beta1.NodeSet) (*c
 
 // Ref: https://slurm.schedmd.com/pam_slurm_adopt.html#ssh_config
 func buildWorkerSshdConfig(extraConf string) string {
-	conf := config.NewBuilder().WithSeperator(" ")
+	conf := config.NewBuilder().WithSeparator(" ")
 
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
