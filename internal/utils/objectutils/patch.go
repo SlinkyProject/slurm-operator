@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,6 +87,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Data = o.Data
 		obj.BinaryData = o.BinaryData
 	case *corev1.Secret:
@@ -97,6 +101,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Data = o.Data
 		obj.StringData = o.StringData
 	case *corev1.Service:
@@ -104,12 +111,18 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec = o.Spec
 	case *appsv1.Deployment:
 		obj := oldObj.(*appsv1.Deployment)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
 		obj.Spec.Replicas = o.Spec.Replicas
 		obj.Spec.Strategy = o.Spec.Strategy
@@ -119,6 +132,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
 		obj.Spec.Ordinals = o.Spec.Ordinals
 		obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
@@ -130,24 +146,36 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec = o.Spec
 	case *slinkyv1beta1.RestApi:
 		obj := oldObj.(*slinkyv1beta1.RestApi)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec = o.Spec
 	case *slinkyv1beta1.Accounting:
 		obj := oldObj.(*slinkyv1beta1.Accounting)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec = o.Spec
 	case *slinkyv1beta1.NodeSet:
 		obj := oldObj.(*slinkyv1beta1.NodeSet)
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
 		obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
 		obj.Spec.Replicas = o.Spec.Replicas
@@ -158,6 +186,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.Replicas = o.Spec.Replicas
 		obj.Spec.Template = o.Spec.Template
 	case *policyv1.PodDisruptionBudget:
@@ -165,6 +196,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
 		obj.Spec.MinAvailable = o.Spec.MinAvailable
 		obj.Spec.Selector = o.Spec.Selector
@@ -173,6 +207,9 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+			obj.OwnerReferences = o.OwnerReferences
+		}
 		obj.Spec.JobLabel = o.Spec.JobLabel
 		obj.Spec.TargetLabels = o.Spec.TargetLabels
 		obj.Spec.PodTargetLabels = o.Spec.PodTargetLabels

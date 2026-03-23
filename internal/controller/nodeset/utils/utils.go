@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"sort"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -229,6 +230,9 @@ func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Obje
 	if err := r.List(ctx, nodesetList); err != nil {
 		return err
 	}
+	sort.Slice(nodesetList.Items, func(i, j int) bool {
+		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
+	})
 
 	opts := []controllerutil.OwnerReferenceOption{
 		controllerutil.WithBlockOwnerDeletion(true),
