@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// KeyFunc gets the namespacedName strgin for the meta object. Can be used as the key in a map.
+// KeyFunc gets the namespacedName string for the meta object. Can be used as the key in a map.
 func KeyFunc(obj metav1.Object) string {
 	return NamespacedName(obj).String()
 }

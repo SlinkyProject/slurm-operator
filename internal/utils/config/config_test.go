@@ -25,7 +25,7 @@ func Test_configBuilder_Build(t *testing.T) {
 			name: "with options",
 			fields: fields{
 				builder: NewBuilder().
-					WithSeperator("=").
+					WithSeparator("=").
 					WithFinalNewline(false).
 					AddProperty(NewProperty("foo", "bar")).
 					AddProperty(NewPropertyRaw("fizz ~ buzz")),
