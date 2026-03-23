@@ -68,15 +68,22 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 			return fmt.Errorf("error getting %s: %w", key, err)
 		}
 		if err := c.Create(ctx, newObj); err != nil {
-			if eventRecorder != nil {
-				eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
+			if apierrors.IsAlreadyExists(err) {
+				if err := c.Get(ctx, key, oldObj); err != nil {
+					return fmt.Errorf("error getting %s: %w", key, err)
+				}
+			} else {
+				if eventRecorder != nil {
+					eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
+				}
+				return fmt.Errorf("error creating %s: %w", key, err)
 			}
-			return fmt.Errorf("error creating %s: %w", key, err)
+		} else {
+			if eventRecorder != nil {
+				eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
+			}
+			return nil
 		}
-		if eventRecorder != nil {
-			eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
-		}
-		return nil
 	}
 
 	// If the object is being deleted, do not update it
