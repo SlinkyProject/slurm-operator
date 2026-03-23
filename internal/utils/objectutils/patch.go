@@ -61,9 +61,16 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 			return fmt.Errorf("error getting %s: %w", key, err)
 		}
 		if err := c.Create(ctx, newObj); err != nil {
-			return fmt.Errorf("error creating %s: %w", key, err)
+			if apierrors.IsAlreadyExists(err) {
+				if err := c.Get(ctx, key, oldObj); err != nil {
+					return fmt.Errorf("error getting %s: %w", key, err)
+				}
+			} else {
+				return fmt.Errorf("error creating %s: %w", key, err)
+			}
+		} else {
+			return nil
 		}
-		return nil
 	}
 
 	// If the object is being deleted, do not update it
