@@ -5,6 +5,7 @@ package objectutils
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -12,12 +13,14 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func init() {
@@ -500,5 +503,125 @@ func TestSyncObject(t *testing.T) {
 				t.Errorf("SyncObject() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestSyncObject_Service_appliesOwnerReferencesOnPatch(t *testing.T) {
+	ctx := context.Background()
+	key := client.ObjectKey{Namespace: "slurm", Name: "slurm-workers-slurm"}
+
+	existing := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       key.Namespace,
+			Name:            key.Name,
+			ResourceVersion: "1",
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP:                corev1.ClusterIPNone,
+			PublishNotReadyAddresses: true,
+			Selector: map[string]string{
+				"app.kubernetes.io/name": "slurm-worker",
+			},
+			Ports: []corev1.ServicePort{
+				{Name: "slurmd", Port: 6818, Protocol: corev1.ProtocolTCP},
+			},
+		},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(existing.DeepCopy()).Build()
+
+	desired := existing.DeepCopy()
+	desired.OwnerReferences = []metav1.OwnerReference{
+		{
+			APIVersion: "slinky.slurm.net/v1beta1",
+			Kind:       "NodeSet",
+			Name:       "workers-a",
+			UID:        "uid-a",
+			Controller: ptr.To(false),
+		},
+	}
+
+	if err := SyncObject(c, ctx, nil, nil, desired, true); err != nil {
+		t.Fatalf("SyncObject: %v", err)
+	}
+
+	got := &corev1.Service{}
+	if err := c.Get(ctx, key, got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.OwnerReferences) != 1 || got.OwnerReferences[0].Name != "workers-a" {
+		t.Fatalf("OwnerReferences = %+v", got.OwnerReferences)
+	}
+}
+
+func TestSyncObject_CreateAlreadyExists_loadsAndPatches(t *testing.T) {
+	ctx := context.Background()
+	key := client.ObjectKey{Namespace: "slurm", Name: "slurm-workers-slurm"}
+
+	existing := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       key.Namespace,
+			Name:            key.Name,
+			ResourceVersion: "42",
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP:                corev1.ClusterIPNone,
+			PublishNotReadyAddresses: true,
+			Selector: map[string]string{
+				"app.kubernetes.io/name": "slurm-worker",
+			},
+			Ports: []corev1.ServicePort{
+				{Name: "slurmd", Port: 6818, Protocol: corev1.ProtocolTCP},
+			},
+		},
+	}
+
+	delegate := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(existing.DeepCopy()).Build()
+
+	var getCalls int32
+	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, cl client.WithWatch, objKey client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			if atomic.AddInt32(&getCalls, 1) == 1 {
+				return apierrors.NewNotFound(corev1.Resource("services"), objKey.Name)
+			}
+			return delegate.Get(ctx, objKey, obj, opts...)
+		},
+		Create: func(ctx context.Context, cl client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+			return apierrors.NewAlreadyExists(corev1.Resource("services"), obj.GetName())
+		},
+		Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+			return delegate.Patch(ctx, obj, patch, opts...)
+		},
+	}).Build()
+
+	desired := existing.DeepCopy()
+	desired.ResourceVersion = ""
+	desired.OwnerReferences = []metav1.OwnerReference{
+		{
+			APIVersion: "slinky.slurm.net/v1beta1",
+			Kind:       "NodeSet",
+			Name:       "workers-b",
+			UID:        "uid-b",
+			Controller: ptr.To(false),
+		},
+	}
+	desired.Spec.Selector["cluster"] = "slurm"
+
+	if err := SyncObject(c, ctx, nil, nil, desired, true); err != nil {
+		t.Fatalf("SyncObject: %v", err)
+	}
+	if getCalls != 2 {
+		t.Fatalf("expected 2 Get calls (stale NotFound + load after AlreadyExists), got %d", getCalls)
+	}
+
+	got := &corev1.Service{}
+	if err := delegate.Get(ctx, key, got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.OwnerReferences) != 1 || got.OwnerReferences[0].Name != "workers-b" {
+		t.Fatalf("OwnerReferences = %+v", got.OwnerReferences)
+	}
+	if got.Spec.Selector["cluster"] != "slurm" {
+		t.Fatalf("Spec.Selector[cluster] = %q", got.Spec.Selector["cluster"])
 	}
 }

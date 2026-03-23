@@ -67,15 +67,24 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 			return fmt.Errorf("error getting %s: %w", key, err)
 		}
 		if err := c.Create(ctx, newObj); err != nil {
-			if eventRecorder != nil {
-				eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
+			if apierrors.IsAlreadyExists(err) {
+				// Another reconciler created the object between our Get and Create (e.g. two
+				// NodeSets sharing cluster worker Service/PDB). Load the live object and patch.
+				if err := c.Get(ctx, key, oldObj); err != nil {
+					return fmt.Errorf("error getting %s: %w", key, err)
+				}
+			} else {
+				if eventRecorder != nil {
+					eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
+				}
+				return fmt.Errorf("error creating %s: %w", key, err)
 			}
-			return fmt.Errorf("error creating %s: %w", key, err)
+		} else {
+			if eventRecorder != nil {
+				eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
+			}
+			return nil
 		}
-		if eventRecorder != nil {
-			eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
-		}
-		return nil
 	}
 
 	// If the object is being deleted, do not update it
@@ -117,6 +126,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		obj.OwnerReferences = o.OwnerReferences
 		obj.Spec = o.Spec
 	case *appsv1.Deployment:
 		obj := oldObj.(*appsv1.Deployment)
@@ -178,6 +188,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 		patch = client.MergeFrom(obj.DeepCopy())
 		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
 		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+		obj.OwnerReferences = o.OwnerReferences
 		obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
 		obj.Spec.MinAvailable = o.Spec.MinAvailable
 		obj.Spec.Selector = o.Spec.Selector
