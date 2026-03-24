@@ -2490,9 +2490,9 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 				if err := tt.client.Get(ctx, checkNodeKey, checkNode); err != nil {
 					t.Errorf("Get() failed: %v", err)
 				}
-				topologyLine := checkNode.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
-				if !apiequality.Semantic.DeepEqual(checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], topologyLine) {
-					t.Errorf("pod and node topology are incongruent: node = '%v' ; pod = '%v'", topologyLine, checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec])
+				topologySpec := checkNode.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
+				if !apiequality.Semantic.DeepEqual(checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], topologySpec) {
+					t.Errorf("pod and node topology are incongruent: node = '%v' ; pod = '%v'", topologySpec, checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec])
 				}
 				sclient := tt.clientMap.Get(tt.nodeset.Spec.ControllerRef.NamespacedName())
 				if sclient == nil {
@@ -2503,8 +2503,8 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 				if err := sclient.Get(ctx, slurmNodeKey, slurmNode); err != nil {
 					t.Errorf("Get() failed: %v", err)
 				}
-				if !apiequality.Semantic.DeepEqual(topologyLine, ptr.Deref(slurmNode.Topology, "")) {
-					t.Errorf("Kube node and Slurm node topology are incongruent: Kube node = '%v' ; slurm node = '%v'", topologyLine, ptr.Deref(slurmNode.Topology, ""))
+				if !apiequality.Semantic.DeepEqual(topologySpec, ptr.Deref(slurmNode.Topology, "")) {
+					t.Errorf("Kube node and Slurm node topology are incongruent: Kube node = '%v' ; slurm node = '%v'", topologySpec, ptr.Deref(slurmNode.Topology, ""))
 				}
 			}
 		})

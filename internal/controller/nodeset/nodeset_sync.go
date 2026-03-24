@@ -309,7 +309,7 @@ func (r *NodeSetReconciler) sync(
 		if err := s.Sync(ctx, nodeset, pods, hash); err != nil {
 			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
 			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			return err
+			return fmt.Errorf("failed %q step: %w", s.Name, err)
 		}
 	}
 
@@ -618,10 +618,10 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 			return err
 		}
 
-		topologyLine := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
+		topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 
 		toUpdate := pod.DeepCopy()
-		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologyLine
+		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -630,7 +630,7 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 			return err
 		}
 
-		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologyLine); err != nil {
+		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil {
 			// Best effort, no guarantee the topology is valid from the admin.
 			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
 		}

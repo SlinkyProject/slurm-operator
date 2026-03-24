@@ -46,18 +46,18 @@ func (r *AccountingReconciler) syncStatus(
 
 func (r *AccountingReconciler) updateStatus(
 	ctx context.Context,
-	cluster *slinkyv1beta1.Accounting,
+	accounting *slinkyv1beta1.Accounting,
 	newStatus *slinkyv1beta1.AccountingStatus,
 ) error {
 	logger := log.FromContext(ctx)
 
 	namespacedName := types.NamespacedName{
-		Namespace: cluster.GetNamespace(),
-		Name:      cluster.GetName(),
+		Namespace: accounting.GetNamespace(),
+		Name:      accounting.GetName(),
 	}
 
 	logger.V(1).Info("Pending Accounting Status update",
-		"cluster", klog.KObj(cluster), "newStatus", newStatus)
+		"accounting", klog.KObj(accounting), "newStatus", newStatus)
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		toUpdate := &slinkyv1beta1.Accounting{}
 		if err := r.Get(ctx, namespacedName, toUpdate); err != nil {

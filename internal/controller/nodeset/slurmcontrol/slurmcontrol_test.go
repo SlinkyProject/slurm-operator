@@ -333,7 +333,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 		ctx          context.Context
 		nodeset      *slinkyv1beta1.NodeSet
 		pod          *corev1.Pod
-		topologyLine string
+		topologySpec string
 	}
 	tests := []struct {
 		name    string
@@ -357,7 +357,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 				ctx:          ctx,
 				nodeset:      nodeset,
 				pod:          pod,
-				topologyLine: "",
+				topologySpec: "",
 			},
 		},
 		{
@@ -376,7 +376,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 				ctx:          ctx,
 				nodeset:      nodeset,
 				pod:          pod,
-				topologyLine: "foo:bar",
+				topologySpec: "foo:bar",
 			},
 		},
 	}
@@ -385,7 +385,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologyLine); (err != nil) != tt.wantErr {
+			if err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologySpec); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateNodeTopology() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			checkNode := &types.V0044Node{}
@@ -395,8 +395,8 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 				}
 			}
 			got := ptr.Deref(checkNode.Topology, "")
-			if !apiequality.Semantic.DeepEqual(got, tt.args.topologyLine) {
-				t.Fatalf("UpdateNodeTopology() topologyLine = %v", got)
+			if !apiequality.Semantic.DeepEqual(got, tt.args.topologySpec) {
+				t.Fatalf("UpdateNodeTopology() topologySpec = %v", got)
 			}
 		})
 	}
