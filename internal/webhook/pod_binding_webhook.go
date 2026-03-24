@@ -65,10 +65,10 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 		return err
 	}
 
-	topologyLine := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
+	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 
 	toUpdate := pod.DeepCopy()
-	toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologyLine
+	toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
 		bindinglog.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
 		return err
