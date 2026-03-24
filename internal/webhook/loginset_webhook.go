@@ -5,7 +5,10 @@ package webhook
 
 import (
 	"context"
+	"errors"
 
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -13,8 +16,6 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
-
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 type LoginSetWebhook struct{}
 
@@ -39,14 +40,22 @@ var _ admission.Validator[*slinkyv1beta1.LoginSet] = &LoginSetWebhook{}
 func (r *LoginSetWebhook) ValidateCreate(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (admission.Warnings, error) {
 	loginsetlog.Info("validate create", "loginset", klog.KObj(loginset))
 
-	return nil, nil
+	warns, errs := r.validateLoginSet(loginset)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *LoginSetWebhook) ValidateUpdate(ctx context.Context, oldLoginset, newLoginset *slinkyv1beta1.LoginSet) (admission.Warnings, error) {
 	loginsetlog.Info("validate update", "newLoginset", klog.KObj(newLoginset))
 
-	return nil, nil
+	warns, errs := r.validateLoginSet(newLoginset)
+
+	if !apiequality.Semantic.DeepEqual(newLoginset.Spec.ControllerRef, oldLoginset.Spec.ControllerRef) {
+		errs = append(errs, errors.New("cannot change controllerRef after deployment"))
+	}
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -54,4 +63,19 @@ func (r *LoginSetWebhook) ValidateDelete(ctx context.Context, loginset *slinkyv1
 	loginsetlog.Info("validate delete", "loginset", klog.KObj(loginset))
 
 	return nil, nil
+}
+
+func (r *LoginSetWebhook) validateLoginSet(loginset *slinkyv1beta1.LoginSet) (admission.Warnings, []error) {
+	var warns admission.Warnings
+	var errs []error
+
+	if loginset.Spec.ControllerRef.Name == "" {
+		errs = append(errs, errors.New("controllerRef.name must not be empty"))
+	}
+
+	if loginset.Spec.SssdConfRef.Name == "" {
+		errs = append(errs, errors.New("sssdConfRef.name must not be empty"))
+	}
+
+	return warns, errs
 }
