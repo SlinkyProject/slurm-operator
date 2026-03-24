@@ -309,7 +309,7 @@ func (r *NodeSetReconciler) sync(
 		if err := s.Sync(ctx, nodeset, pods, hash); err != nil {
 			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
 			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			return err
+			return fmt.Errorf("failed %q step: %w", s.Name, err)
 		}
 	}
 
