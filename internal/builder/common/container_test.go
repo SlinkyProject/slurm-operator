@@ -299,6 +299,53 @@ func TestBuilder_BuildContainer(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			name:   "merge probe when base has no probe",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmctld",
+				},
+				Merge: corev1.Container{
+					ReadinessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"test", "-f", "/var/run/slurmctld.pid"},
+							},
+						},
+						PeriodSeconds:    5,
+						FailureThreshold: 3,
+					},
+					LivenessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"true"},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "slurmctld",
+				ReadinessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"test", "-f", "/var/run/slurmctld.pid"},
+						},
+					},
+					PeriodSeconds:    5,
+					FailureThreshold: 3,
+				},
+				LivenessProbe: &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"true"},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
