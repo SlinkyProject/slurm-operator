@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -68,18 +67,6 @@ var _ = Describe("NodeSet Webhook", func() {
 
 			newController := testutils.NewController("new-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
 			newNodeSet := testutils.NewNodeset("test-nodeset", newController, 1)
-
-			_, err := nodeSetWebhook.ValidateUpdate(ctx, oldNodeSet, newNodeSet)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("Should reject changes to scalingMode", func(ctx SpecContext) {
-			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			oldNodeSet := testutils.NewNodeset("test-nodeset", controller, 1)
-			oldNodeSet.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
-
-			newNodeSet := testutils.NewNodeset("test-nodeset", controller, 1)
-			newNodeSet.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
 
 			_, err := nodeSetWebhook.ValidateUpdate(ctx, oldNodeSet, newNodeSet)
 			Expect(err).To(HaveOccurred())

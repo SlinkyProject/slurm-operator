@@ -53,9 +53,6 @@ func (r *NodeSetWebhook) ValidateUpdate(ctx context.Context, oldNodeSet, newNode
 	if !apiequality.Semantic.DeepEqual(newNodeSet.Spec.ControllerRef, oldNodeSet.Spec.ControllerRef) {
 		errs = append(errs, errors.New("cannot change controllerRef after deployment"))
 	}
-	if newNodeSet.Spec.ScalingMode != oldNodeSet.Spec.ScalingMode {
-		errs = append(errs, errors.New("cannot change scalingMode after deployment"))
-	}
 	if !apiequality.Semantic.DeepEqual(newNodeSet.Spec.VolumeClaimTemplates, oldNodeSet.Spec.VolumeClaimTemplates) {
 		errs = append(errs, errors.New("cannot change volumeClaimTemplates after deployment"))
 	}
