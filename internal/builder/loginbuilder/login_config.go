@@ -41,7 +41,7 @@ func buildAuthorizedKeys(authorizedKeys string) string {
 }
 
 func buildSshdConfig(extraConf string) string {
-	conf := config.NewBuilder().WithSeperator(" ")
+	conf := config.NewBuilder().WithSeparator(" ")
 
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
