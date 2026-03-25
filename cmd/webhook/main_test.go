@@ -16,7 +16,7 @@ func Test_parseFlags(t *testing.T) {
 	os.Args = []string{"test", "--health-addr", "8080", "--leader-elect", "true"}
 	parseFlags(&flags)
 	if flags.probeAddr != "8080" {
-		t.Errorf("Test_parseFlags() metricsAddr = %v, want %v", flags.probeAddr, "8080")
+		t.Errorf("Test_parseFlags() probeAddr = %v, want %v", flags.probeAddr, "8080")
 	}
 	if !flags.enableLeaderElection {
 		t.Errorf("Test_parseFlags() server = %v, want %v", flags.enableLeaderElection, true)
