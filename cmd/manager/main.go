@@ -32,6 +32,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmqos"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token"
 	// +kubebuilder:scaffold:imports
 )
@@ -176,6 +177,10 @@ func main() {
 	}
 	if err := slurmclient.NewReconciler(mgr.GetClient(), clientMap).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SlurmClient")
+		os.Exit(1)
+	}
+	if err := slurmqos.NewReconciler(mgr.GetClient(), clientMap).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SlurmQos")
 		os.Exit(1)
 	}
 	if err := token.NewReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
