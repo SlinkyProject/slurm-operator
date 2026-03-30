@@ -16,6 +16,7 @@
 *.swp
 *.swo
 bin/*
+build-docs/*
 
 # Test binary, built with `go test -c`
 *.test

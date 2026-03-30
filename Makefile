@@ -370,6 +370,27 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 	$(GOLANGCI_LINT) fmt
 
+## Location to locally build documentation
+LOCALBUILD ?= $(shell pwd)/build-docs
+$(LOCALBUILD):
+	mkdir -p $(LOCALBUILD)
+
+.PHONY: sphinx-build
+sphinx-build: sphinx-install $(LOCALBIN) $(LOCALBUILD)
+	source $(LOCALBIN)/sphinx-venv/bin/activate ;\
+	sphinx-build -M html docs $(LOCALBUILD) ;\
+	deactivate ;\
+
+.PHONY: sphinx-install
+sphinx-install: sphinx-venv
+	source $(LOCALBIN)/sphinx-venv/bin/activate ;\
+	pip install -r docs/requirements.txt ;\
+	deactivate ;\
+
+.PHONY: sphinx-venv
+sphinx-venv: $(LOCALBIN)
+	python3 -m venv $(LOCALBIN)/sphinx-venv
+
 CODECOV_PERCENT ?= 70
 
 .PHONY: test
