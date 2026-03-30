@@ -92,6 +92,10 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 }
 
 func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (*slinkyv1beta1.ControllerList, error) {
+	if accounting == nil {
+		return &slinkyv1beta1.ControllerList{}, nil
+	}
+
 	list := &slinkyv1beta1.ControllerList{}
 	if err := r.reader.List(ctx, list); err != nil {
 		return nil, err
@@ -99,7 +103,7 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 
 	out := &slinkyv1beta1.ControllerList{}
 	for _, item := range list.Items {
-		if item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
+		if item.Spec.AccountingRef != nil && item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
 			out.Items = append(out.Items, item)
 		}
 	}
