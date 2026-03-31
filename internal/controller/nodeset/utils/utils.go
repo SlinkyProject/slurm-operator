@@ -96,6 +96,24 @@ func NewNodeSetDaemonSetPod(
 	return pod
 }
 
+// NewNodeSetDaemonSetSimulatedPod returns a simulated Pod for predicate
+// evaluation. Unlike NewNodeSetDaemonSetPod, it preserves the user's node
+// affinity by setting spec.nodeName directly instead of using
+// ReplaceDaemonSetPodNodeNameNodeAffinity, which overwrites the
+// RequiredDuringSchedulingIgnoredDuringExecution terms.
+func NewNodeSetDaemonSetSimulatedPod(
+	client client.Client,
+	nodeset *slinkyv1beta1.NodeSet,
+	controller *slinkyv1beta1.Controller,
+	nodeName string,
+) *corev1.Pod {
+	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK)
+	podTemplate := builder.New(client).BuildWorkerPodTemplate(nodeset, controller)
+	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
+	pod.Spec.NodeName = nodeName
+	return pod
+}
+
 func getDaemonSetPodHostname(nodeName string) string {
 	name := nodeName
 	if before, _, ok := strings.Cut(nodeName, "."); ok {
