@@ -44,6 +44,10 @@ func (r *RefResolver) GetAccounting(ctx context.Context, ref slinkyv1beta1.Objec
 }
 
 func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.NodeSetList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.NodeSetList{}, nil
+	}
+
 	list := &slinkyv1beta1.NodeSetList{}
 	if err := r.reader.List(ctx, list); err != nil {
 		return nil, err
@@ -60,6 +64,10 @@ func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *
 }
 
 func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.LoginSetList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.LoginSetList{}, nil
+	}
+
 	list := &slinkyv1beta1.LoginSetList{}
 	if err := r.reader.List(ctx, list); err != nil {
 		return nil, err
@@ -76,6 +84,10 @@ func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller 
 }
 
 func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.RestApiList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.RestApiList{}, nil
+	}
+
 	list := &slinkyv1beta1.RestApiList{}
 	if err := r.reader.List(ctx, list); err != nil {
 		return nil, err
@@ -92,6 +104,10 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 }
 
 func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (*slinkyv1beta1.ControllerList, error) {
+	if accounting == nil {
+		return &slinkyv1beta1.ControllerList{}, nil
+	}
+
 	list := &slinkyv1beta1.ControllerList{}
 	if err := r.reader.List(ctx, list); err != nil {
 		return nil, err
@@ -99,7 +115,7 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 
 	out := &slinkyv1beta1.ControllerList{}
 	for _, item := range list.Items {
-		if item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
+		if item.Spec.AccountingRef != nil && item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
 			out.Items = append(out.Items, item)
 		}
 	}
