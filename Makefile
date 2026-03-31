@@ -378,7 +378,7 @@ $(LOCALBUILD):
 .PHONY: sphinx-build
 sphinx-build: sphinx-install $(LOCALBIN) $(LOCALBUILD)
 	source $(LOCALBIN)/sphinx-venv/bin/activate ;\
-	sphinx-build -M html docs $(LOCALBUILD) ;\
+	sphinx-multiversion docs $(LOCALBUILD) ;\
 	deactivate ;\
 
 .PHONY: sphinx-install
