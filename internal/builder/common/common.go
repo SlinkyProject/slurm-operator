@@ -280,31 +280,23 @@ func BuildMergedConfig(confRaw string, mergeConfig map[string][]string) string {
 
 func parseSlurmConfKV(confRaw string) map[string]string {
 	out := make(map[string]string)
-	for _, line := range parseSlurmConfLogicalLines(confRaw) {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	var b strings.Builder
+	setKV := func(logical string) {
+		logical = strings.TrimSpace(logical)
+		if logical == "" {
+			return
 		}
-		key, val, ok := strings.Cut(line, "=")
+		key, val, ok := strings.Cut(logical, "=")
 		if !ok {
-			continue
+			return
 		}
 		key = strings.TrimSpace(key)
 		val = strings.TrimSpace(val)
-		if key == "" || val == "" {
-			continue
-		}
-		if strings.ContainsAny(val, " \n") {
-			continue
+		if key == "" || val == "" || strings.ContainsAny(val, " \n") {
+			return
 		}
 		out[strings.ToLower(key)] = val
 	}
-	return out
-}
-
-func parseSlurmConfLogicalLines(confRaw string) []string {
-	out := make([]string, 0, strings.Count(confRaw, "\n")+1)
-	var b strings.Builder
 	for line := range strings.SplitSeq(confRaw, "\n") {
 		line = strings.TrimSuffix(line, "\r")
 		if i := strings.Index(line, "#"); i >= 0 {
@@ -319,11 +311,11 @@ func parseSlurmConfLogicalLines(confRaw string) []string {
 			continue
 		}
 		b.WriteString(line)
-		out = append(out, b.String())
+		setKV(b.String())
 		b.Reset()
 	}
 	if b.Len() > 0 {
-		out = append(out, b.String())
+		setKV(b.String())
 	}
 	return out
 }
