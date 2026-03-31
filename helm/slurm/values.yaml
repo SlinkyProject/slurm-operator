@@ -526,12 +526,8 @@ sssd:
     [pam]
 
     [domain/DEFAULT]
-    auth_provider = ldap
-    id_provider = ldap
-    ldap_uri = ldap://ldap.example.com
-    ldap_search_base = dc=example,dc=com
-    ldap_user_search_base = ou=Users,dc=example,dc=com
-    ldap_group_search_base = ou=Groups,dc=example,dc=com
+    id_provider = files
+    auth_provider = files
 
 # -- (map[string]object) Slurm LoginSet (sackd, sshd, sssd) configurations.
 loginsets:
