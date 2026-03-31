@@ -286,6 +286,14 @@ func Test_BuildMergedConfig(t *testing.T) {
 			want: `Foo=bar,baz,buzz,fizz`,
 		},
 		{
+			name:    "trailing comma",
+			confRaw: `Foo=fizz,buzz,`,
+			mergeParameters: map[string][]string{
+				"Foo": {"bar", "baz"},
+			},
+			want: `Foo=bar,baz,buzz,fizz`,
+		},
+		{
 			name:    "merge, with overlap",
 			confRaw: `Foo=fizz,overlap,buzz`,
 			mergeParameters: map[string][]string{
@@ -309,7 +317,7 @@ Stuff2=junk`,
 Foo=bar,overlap,thing`,
 		},
 		{
-			name: "merge multiple, with overlap, mixed case",
+			name: "overlap, mixed case",
 			confRaw: `Stuff0=junk
 foo=bar,overlap
 Stuff1=junk
@@ -320,8 +328,44 @@ Stuff2=junk`,
 				"Fizz":  {"Thing", "Overlap"},
 				"Other": {"Thing"},
 			},
-			want: `Fizz=buzz,overlap,thing
-Foo=bar,overlap,thing`,
+			want: `Fizz=Overlap,Thing,buzz
+Foo=Overlap,Thing,bar`,
+		},
+		{
+			name:    "kv parameters",
+			confRaw: `Foo=bar,opt=1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"this", "that=2"},
+			},
+			want: `Foo=bar,opt=1,that=2,this`,
+		},
+		{
+			name:    "kv parameters overlap",
+			confRaw: `Foo=overlap=1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"overlap=0"},
+			},
+			want: `Foo=overlap=0`,
+		},
+		{
+			name: "comments",
+			confRaw: `#
+## HEADER
+Foo=bar # comment
+# Foo=bar1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"opt"},
+			},
+			want: `Foo=bar,opt`,
+		},
+		{
+			name: "duplicate kv",
+			confRaw: `Foo=bar0
+Foo=bar1`,
+			mergeParameters: map[string][]string{
+				"Foo": {"opt"},
+			},
+			want: `Foo=bar1,opt`,
 		},
 	}
 	for _, tt := range tests {
@@ -329,6 +373,112 @@ Foo=bar,overlap,thing`,
 			got := BuildMergedConfig(tt.confRaw, tt.mergeParameters)
 			if got != tt.want {
 				t.Errorf("buildMergedParameters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseSlurmConfKV(t *testing.T) {
+	tests := []struct {
+		name    string
+		confRaw string
+		want    map[string]string
+	}{
+		{
+			name:    "empty",
+			confRaw: "",
+			want:    map[string]string{},
+		},
+		{
+			name: "lines",
+			confRaw: `Foo=Bar
+fizz=buzz`,
+			want: map[string]string{
+				"foo":  "Bar",
+				"fizz": "buzz",
+			},
+		},
+		{
+			name: "comments",
+			confRaw: `Foo=Bar
+# test
+fizz=buzz # comment`,
+			want: map[string]string{
+				"foo":  "Bar",
+				"fizz": "buzz",
+			},
+		},
+		{
+			name: "last duplicate key wins",
+			confRaw: `Foo=first
+# ignored
+Foo=second`,
+			want: map[string]string{
+				"foo": "second",
+			},
+		},
+		{
+			name:    "has a comment",
+			confRaw: `Foo=bar #notpartofvalue`,
+			want: map[string]string{
+				"foo": "bar",
+			},
+		},
+		{
+			name: "backslash continuation",
+			confRaw: `Foo=opt0,\
+opt1`,
+			want: map[string]string{
+				"foo": "opt0,opt1",
+			},
+		},
+		{
+			name: "backslash continuation chained",
+			confRaw: `Foo=a,\
+b,\
+c`,
+			want: map[string]string{
+				"foo": "a,b,c",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseSlurmConfKV(tt.confRaw)
+			if !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("parseSlurmConfKV() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseKVKey(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want string
+	}{
+		{
+			name: "empty",
+			s:    "",
+			want: "",
+		},
+		{
+			name: "kv",
+			s:    "foo=bar",
+			want: "foo",
+		},
+		{
+			name: "titlecase",
+			s:    "FooOpt=bar",
+			want: "fooopt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseKVKey(tt.s)
+			if got != tt.want {
+				t.Errorf("parseKVKey() = %v, want %v", got, tt.want)
 			}
 		})
 	}
