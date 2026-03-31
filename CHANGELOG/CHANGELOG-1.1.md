@@ -1,3 +1,32 @@
+## v1.1.0
+
+### Fixed
+
+- Fixed case where Token with old jwtHs256Key would return incorrect value from
+  CRD helper.
+- Controller CRD only requires slurmKey when `external=false`, just like
+  Accounting CRD.
+- Correctly compute sssd.conf hash to trigger pod updates.
+- Corrected the AnnotationAuthJwtKeyHash string to jwt-key-hash.
+- Fixes duplicate SlurmNodeState pod conditions.
+- Updated google.golang.org/grpc to v1.79.3 to address CVE-2026-33186.
+- Fixed case where a NodeSet pod's status was redundantly patched twice.
+- Fixed cases where NotFound errors were not handled, causing NodeSet
+  reconciliation to prematurely error.
+- Fixed shared objects properly applying multiple owners.
+- Fixed error caused from a race of multiple NodeSets attempting to create the
+  same shared resource.
+
+### Changed
+
+- Hostnames for daemonset scalingMode pods are no longer prefixed with the
+  nodeset name or podSpec.Hostname.
+
+### Removed
+
+- Removed webhook validation for `Controller.Spec.ClusterName` with regards to
+  valid database table characters.
+
 ## v1.1.0-rc1
 
 ### Added
