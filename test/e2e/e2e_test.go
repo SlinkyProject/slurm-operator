@@ -52,18 +52,11 @@ func testMainExistingCluster(m *testing.M) {
 
 	operatorName := os.Getenv("E2E_OPERATOR_IMAGE")
 	webhookName := os.Getenv("E2E_WEBHOOK_IMAGE")
-
 	if operatorName == "" || webhookName == "" {
-		// No pre-built images supplied; build them locally.
-		operatorName = "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
-		webhookName = "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
-		if err := test.BuildOperatorImages(operatorName, webhookName); err != nil {
-			fmt.Printf("Failed to build images for Slurm-operator: %v", err)
-			os.Exit(1)
-		}
+		fmt.Println("E2E_USE_EXISTING_CLUSTER=true requires E2E_OPERATOR_IMAGE and E2E_WEBHOOK_IMAGE to be set")
+		os.Exit(1)
 	}
 
-	// Store image names so downstream helpers can reference them.
 	test.OperatorImage = operatorName
 	test.WebhookImage = webhookName
 
@@ -93,12 +86,7 @@ func testMainKindCluster(m *testing.M) {
 	test.Testenv = env.New()
 	kindClusterName := envconf.RandomName("test-e2e", 16)
 
-	operatorName := "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
-	webhookName := "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
-	if err := test.BuildOperatorImages(operatorName, webhookName); err != nil {
-		fmt.Printf("Failed to build images for Slurm-operator: %v", err)
-		os.Exit(1)
-	}
+	operatorName, webhookName := resolveImages()
 
 	test.OperatorImage = operatorName
 	test.WebhookImage = webhookName
@@ -126,6 +114,25 @@ func testMainKindCluster(m *testing.M) {
 	)
 
 	os.Exit(test.Testenv.Run(m))
+}
+
+// resolveImages returns the operator and webhook image references.
+// If E2E_OPERATOR_IMAGE and E2E_WEBHOOK_IMAGE are both set, those are used as-is.
+// Otherwise images are built locally with a random test tag.
+func resolveImages() (operatorImage, webhookImage string) {
+	operatorImage = os.Getenv("E2E_OPERATOR_IMAGE")
+	webhookImage = os.Getenv("E2E_WEBHOOK_IMAGE")
+	if operatorImage != "" && webhookImage != "" {
+		return operatorImage, webhookImage
+	}
+
+	operatorImage = "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
+	webhookImage = "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
+	if err := test.BuildOperatorImages(operatorImage, webhookImage); err != nil {
+		fmt.Printf("Failed to build images for Slurm-operator: %v", err)
+		os.Exit(1)
+	}
+	return operatorImage, webhookImage
 }
 
 func buildHelmChart() {
