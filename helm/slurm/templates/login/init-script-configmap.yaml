@@ -1,0 +1,17 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.initScriptLogin -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "slurm.initScriptLoginName" . }}
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+data:
+  init.sh: |
+    {{- .Values.initScriptLogin | nindent 4 }}
+{{- end }}{{- /* if .Values.initScriptLogin */}}

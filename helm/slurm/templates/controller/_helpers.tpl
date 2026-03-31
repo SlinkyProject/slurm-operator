@@ -105,3 +105,17 @@ Worker epilog slurmctld scripts.
 {{- define "slurm.controller.epilogSlurmctldName" -}}
 {{- printf "%s-epilog-slurmctld-scripts" (include "slurm.fullname" .) -}}
 {{- end }}
+
+{{/*
+Init script for login nodes.
+*/}}
+{{- define "slurm.initScriptLoginName" -}}
+{{- printf "%s-init-script-login" (include "slurm.fullname" .) -}}
+{{- end }}
+
+{{/*
+Init script for compute nodes.
+*/}}
+{{- define "slurm.initScriptNodesName" -}}
+{{- printf "%s-init-script-nodes" (include "slurm.fullname" .) -}}
+{{- end }}

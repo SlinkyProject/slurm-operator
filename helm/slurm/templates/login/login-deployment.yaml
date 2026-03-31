@@ -80,6 +80,11 @@ spec:
         - name: dshm
           mountPath: /dev/shm
         {{- end }}
+        {{- if .Values.initScriptLogin }}
+        - name: init-script
+          mountPath: /root/init.sh
+          subPath: init.sh
+        {{- end }}
         {{- range .Values.login.extraVolumeMounts }}
         - name: {{ .name }}
           mountPath: {{ .mountPath }}
@@ -108,6 +113,12 @@ spec:
         emptyDir:
           medium: Memory
           sizeLimit: {{ .Values.login.sharedMemorySize }}
+      {{- end }}
+      {{- if .Values.initScriptLogin }}
+      - name: init-script
+        configMap:
+          name: {{ include "slurm.initScriptLoginName" . }}
+          defaultMode: 0755
       {{- end }}
       {{- range .Values.login.extraVolumes }}
       - name: {{ .name }}
