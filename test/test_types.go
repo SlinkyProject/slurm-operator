@@ -18,4 +18,6 @@ var (
 	SlinkyNamespace string = "slinky"
 	SlurmNamespace  string = "slurm"
 	Basepath        string
+	OperatorImage   string
+	WebhookImage    string
 )

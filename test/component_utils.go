@@ -6,6 +6,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -103,21 +104,44 @@ func DoSlurmOperatorCRDInstall(ctx context.Context, t *testing.T, config *envcon
 	return ctx
 }
 
+// splitImageRef splits a container image reference into repository and tag.
+// If no tag is present, the tag defaults to "latest".
+func splitImageRef(ref string) (repo, tag string) {
+	// Handle digests (repo@sha256:...) — keep the full ref as repository.
+	if strings.Contains(ref, "@") {
+		return ref, ""
+	}
+	lastColon := strings.LastIndex(ref, ":")
+	// If there is no colon, or the colon is part of a registry port (contains '/'),
+	// treat the whole string as repository.
+	if lastColon == -1 || strings.Contains(ref[lastColon:], "/") {
+		return ref, "latest"
+	}
+	return ref[:lastColon], ref[lastColon+1:]
+}
+
 func DoSlurmOperatorInstall(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 	manager := helm.New(config.KubeconfigFile())
 
-	setOperatorImage := fmt.Sprintf("--set operator.image.tag=%s", TestUID)
-	setWebhookImage := fmt.Sprintf("--set webhook.image.tag=%s", TestUID)
-
-	err := manager.RunInstall(
+	opts := []helm.Option{
 		helm.WithName("slurm-operator"),
 		helm.WithNamespace(SlinkyNamespace),
-		helm.WithChart(Basepath+"helm/slurm-operator"),
+		helm.WithChart(Basepath + "helm/slurm-operator"),
 		helm.WithWait(),
 		helm.WithTimeout("10m"),
-		helm.WithArgs(setOperatorImage),
-		helm.WithArgs(setWebhookImage))
-	if err != nil {
+	}
+
+	opRepo, opTag := splitImageRef(OperatorImage)
+	whRepo, whTag := splitImageRef(WebhookImage)
+
+	opts = append(opts,
+		helm.WithArgs(fmt.Sprintf("--set operator.image.repository=%s", opRepo)),
+		helm.WithArgs(fmt.Sprintf("--set operator.image.tag=%s", opTag)),
+		helm.WithArgs(fmt.Sprintf("--set webhook.image.repository=%s", whRepo)),
+		helm.WithArgs(fmt.Sprintf("--set webhook.image.tag=%s", whTag)),
+	)
+
+	if err := manager.RunInstall(opts...); err != nil {
 		t.Fatal("failed to invoke helm install slurm-operator due to an error", err)
 	}
 	return ctx

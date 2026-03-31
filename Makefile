@@ -387,5 +387,5 @@ test: envtest ## Run tests.
 		fi
 
 .PHONY: test-e2e
-test-e2e:
+test-e2e: ## Run e2e tests. Set E2E_USE_EXISTING_CLUSTER=true to skip kind provisioning.
 	go test -v -timeout 30m ./test/e2e

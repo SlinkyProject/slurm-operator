@@ -6,6 +6,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/SlinkyProject/slurm-operator/test"
@@ -17,34 +18,93 @@ import (
 	"sigs.k8s.io/e2e-framework/support/kind"
 )
 
+// useExistingCluster returns true when E2E_USE_EXISTING_CLUSTER is set to a truthy value.
+// When true, the tests target the cluster referenced by the current kubeconfig
+// instead of provisioning a disposable kind cluster.
+func useExistingCluster() bool {
+	v := strings.ToLower(os.Getenv("E2E_USE_EXISTING_CLUSTER"))
+	return v == "true" || v == "1" || v == "yes"
+}
+
 // TestMain configures the environment within which all e2e-tests are run
 func TestMain(m *testing.M) {
+	test.Basepath = test.GetBasePath()
+	test.TestUID = envconf.RandomName("testing", 16)
+
+	if useExistingCluster() {
+		testMainExistingCluster(m)
+	} else {
+		testMainKindCluster(m)
+	}
+}
+
+// testMainExistingCluster runs e2e tests against a pre-existing cluster.
+//
+// Supported environment variables:
+//
+//	E2E_USE_EXISTING_CLUSTER=true  - required to activate this path
+//	E2E_OPERATOR_IMAGE             - operator image already available in the cluster
+//	E2E_WEBHOOK_IMAGE              - webhook image already available in the cluster
+//	KUBECONFIG                     - path to kubeconfig (standard kubectl resolution when unset)
+func testMainExistingCluster(m *testing.M) {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	test.Testenv = env.NewWithKubeConfig(kubeconfig)
+
+	operatorName := os.Getenv("E2E_OPERATOR_IMAGE")
+	webhookName := os.Getenv("E2E_WEBHOOK_IMAGE")
+
+	if operatorName == "" || webhookName == "" {
+		// No pre-built images supplied; build them locally.
+		operatorName = "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
+		webhookName = "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
+		if err := test.BuildOperatorImages(operatorName, webhookName); err != nil {
+			fmt.Printf("Failed to build images for Slurm-operator: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	// Store image names so downstream helpers can reference them.
+	test.OperatorImage = operatorName
+	test.WebhookImage = webhookName
+
+	buildHelmChart()
+
+	test.Testenv.Setup(
+		envfuncs.CreateNamespace("slinky"),
+		envfuncs.CreateNamespace("slurm"),
+		envfuncs.CreateNamespace("cert-manager"),
+		envfuncs.CreateNamespace("mariadb"),
+		envfuncs.CreateNamespace("prometheus"),
+	)
+
+	test.Testenv.Finish(
+		envfuncs.DeleteNamespace("slinky"),
+		envfuncs.DeleteNamespace("slurm"),
+		envfuncs.DeleteNamespace("cert-manager"),
+		envfuncs.DeleteNamespace("mariadb"),
+		envfuncs.DeleteNamespace("prometheus"),
+	)
+
+	os.Exit(test.Testenv.Run(m))
+}
+
+// testMainKindCluster runs e2e tests by creating a disposable kind cluster.
+func testMainKindCluster(m *testing.M) {
 	test.Testenv = env.New()
 	kindClusterName := envconf.RandomName("test-e2e", 16)
-	test.Basepath = test.GetBasePath()
 
-	// Build images for Slurm-operator and Slurm-operator-webhook
-	test.TestUID = envconf.RandomName("testing", 16)
 	operatorName := "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
 	webhookName := "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
-	err := test.BuildOperatorImages(operatorName, webhookName)
-	if err != nil {
+	if err := test.BuildOperatorImages(operatorName, webhookName); err != nil {
 		fmt.Printf("Failed to build images for Slurm-operator: %v", err)
 		os.Exit(1)
 	}
 
-	// Build the slurm-operator-crds Helm chart
-	slurmOperatorCRDs := action.Package{
-		DependencyUpdate: true,
-		Destination:      test.Basepath + "helm/slurm-operator/charts",
-	}
-	_, err = slurmOperatorCRDs.Run(test.Basepath+"helm/slurm-operator-crds", nil)
-	if err != nil {
-		fmt.Printf("Failed to build Helm chart for Slurm-operator: %v", err)
-		os.Exit(1)
-	}
+	test.OperatorImage = operatorName
+	test.WebhookImage = webhookName
 
-	// Use pre-defined environment funcs to create a kind cluster prior to test run
+	buildHelmChart()
+
 	test.Testenv.Setup(
 		envfuncs.CreateClusterWithConfig(kind.NewProvider(), kindClusterName, test.Basepath+"hack/kind.yaml"),
 		envfuncs.LoadDockerImageToCluster(kindClusterName, operatorName),
@@ -56,7 +116,6 @@ func TestMain(m *testing.M) {
 		envfuncs.CreateNamespace("prometheus"),
 	)
 
-	// Use pre-defined environment funcs to teardown kind cluster after tests
 	test.Testenv.Finish(
 		envfuncs.DeleteNamespace("slinky"),
 		envfuncs.DeleteNamespace("slurm"),
@@ -66,8 +125,18 @@ func TestMain(m *testing.M) {
 		envfuncs.DestroyCluster(kindClusterName),
 	)
 
-	// launch package tests
 	os.Exit(test.Testenv.Run(m))
+}
+
+func buildHelmChart() {
+	slurmOperatorCRDs := action.Package{
+		DependencyUpdate: true,
+		Destination:      test.Basepath + "helm/slurm-operator/charts",
+	}
+	if _, err := slurmOperatorCRDs.Run(test.Basepath+"helm/slurm-operator-crds", nil); err != nil {
+		fmt.Printf("Failed to build Helm chart for Slurm-operator: %v", err)
+		os.Exit(1)
+	}
 }
 
 func TestInstallation(t *testing.T) {
