@@ -10,6 +10,15 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
 )
 
+func mustNewSigningKey(t *testing.T) []byte {
+	t.Helper()
+	key, err := crypto.NewSigningKey()
+	if err != nil {
+		t.Fatalf("NewSigningKey() error = %v", err)
+	}
+	return key
+}
+
 func newSignedToken(signingKey []byte) string {
 	tokenString, err := NewToken(signingKey).NewSignedToken()
 	if err != nil {
@@ -19,6 +28,8 @@ func newSignedToken(signingKey []byte) string {
 }
 
 func TestToken_NewSignedToken(t *testing.T) {
+	signingKey1 := mustNewSigningKey(t)
+	signingKey2 := mustNewSigningKey(t)
 	type fields struct {
 		token *Token
 	}
@@ -31,14 +42,14 @@ func TestToken_NewSignedToken(t *testing.T) {
 		{
 			name: "Generate",
 			fields: fields{
-				token: NewToken(crypto.NewSigningKey()),
+				token: NewToken(signingKey1),
 			},
 			wantOk: true,
 		},
 		{
 			name: "With Options",
 			fields: fields{
-				token: NewToken(crypto.NewSigningKey()).
+				token: NewToken(signingKey2).
 					WithUsername("foo").
 					WithLifetime(30 * time.Second),
 			},
@@ -66,7 +77,7 @@ func TestToken_NewSignedToken(t *testing.T) {
 }
 
 func TestParseTokenClaims(t *testing.T) {
-	signingKey := crypto.NewSigningKey()
+	signingKey := mustNewSigningKey(t)
 	type args struct {
 		tokenString string
 		signingKey  []byte
@@ -104,7 +115,7 @@ func TestParseTokenClaims(t *testing.T) {
 }
 
 func TestVerifyToken(t *testing.T) {
-	signingKey := crypto.NewSigningKey()
+	signingKey := mustNewSigningKey(t)
 	type args struct {
 		tokenString string
 		signingKey  []byte

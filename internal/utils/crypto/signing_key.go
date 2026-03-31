@@ -5,22 +5,21 @@ package crypto
 
 import (
 	"crypto/rand"
+	"fmt"
 )
 
 const (
 	DefaultSigningKeyLength = 1024
 )
 
-func NewSigningKey() []byte {
+func NewSigningKey() ([]byte, error) {
 	return NewSigningKeyWithLength(DefaultSigningKeyLength)
 }
 
-func NewSigningKeyWithLength(length int) []byte {
+func NewSigningKeyWithLength(length int) ([]byte, error) {
 	key := make([]byte, length)
 	if _, err := rand.Read(key); err != nil {
-		// NOTE: The default Reader uses operating system APIs that are
-		// documented to never return an error on all but legacy Linux systems.
-		panic(err)
+		return nil, fmt.Errorf("failed to generate signing key: %w", err)
 	}
-	return key
+	return key, nil
 }

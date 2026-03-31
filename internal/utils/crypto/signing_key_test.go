@@ -42,7 +42,10 @@ func TestNewSigningKeyWithLength(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewSigningKeyWithLength(tt.args.length)
+			got, err := NewSigningKeyWithLength(tt.args.length)
+			if err != nil {
+				t.Fatalf("NewSigningKeyWithLength() error = %v", err)
+			}
 			if len(got) != tt.args.length {
 				t.Errorf("NewSigningKeyWithLength(): length = %v, got %v", tt.args.length, len(got))
 			}

@@ -104,11 +104,17 @@ func TestNewKeyPair(t *testing.T) {
 			if err != nil {
 				return
 			}
-			if key := got.PrivateKey(); len(key) == 0 {
+			if key, err := got.PrivateKey(); err != nil {
+				t.Errorf("PrivateKey() error = %v", err)
+				return
+			} else if len(key) == 0 {
 				t.Errorf("PrivateKey() len() = %v", len(key))
 				return
 			}
-			if key := got.PublicKey(); len(key) == 0 {
+			if key, err := got.PublicKey(); err != nil {
+				t.Errorf("PublicKey() error = %v", err)
+				return
+			} else if len(key) == 0 {
 				t.Errorf("PublicKey() len() = %v", len(key))
 				return
 			}
