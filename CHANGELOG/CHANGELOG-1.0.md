@@ -1,3 +1,26 @@
+## v1.0.3
+
+### Fixed
+
+- Fixed cases where chart values were omitted because they were falsy but a
+  valid input.
+- Properly default `NodeSet.UpdateStrategy.Type=RollingUpdate` with enum
+  validation.
+- Fixed case where a rolling update could dereference a nil pointer.
+- Fixed case where a NodeSet pod's status was redundantly patched twice.
+- Fixed cases where NotFound errors were not handled, causing NodeSet
+  reconciliation to prematurely error.
+- Updated google.golang.org/grpc to v1.79.3 to address CVE-2026-33186.
+- Fixed duplicate SlurmNodeState pod conditions.
+- Fixed shared objects properly applying multiple owners.
+- Fixed error caused from a race of multiple NodeSets attempting to create the
+  same shared resource.
+
+### Removed
+
+- Removed webhook validation for `Controller.Spec.ClusterName` with regards to
+  valid database table characters.
+
 ## v1.0.2
 
 ### Fixed
