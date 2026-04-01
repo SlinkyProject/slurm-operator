@@ -13,7 +13,9 @@ primitives. For design-level details, see
   - [Table of Contents](#table-of-contents)
   - [Querying Slurm State from Kubernetes](#querying-slurm-state-from-kubernetes)
   - [Cordoning Pods](#cordoning-pods)
-  - [Custom Drain Reasons via Node Annotations](#custom-drain-reasons-via-node-annotations)
+  - [Custom Drain Reasons](#custom-drain-reasons)
+    - [Dynamically from Node Conditions](#dynamically-from-node-conditions)
+    - [Override with Node Annotation](#override-with-node-annotation)
   - [Influencing Scale-in Order](#influencing-scale-in-order)
     - [Pod Deletion Cost](#pod-deletion-cost)
     - [Pod Deadline](#pod-deadline)
@@ -84,11 +86,76 @@ kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-
 The operator will undrain the Slurm node, provided the Kubernetes node is not
 cordoned and the drain reason was set by the operator.
 
-## Custom Drain Reasons via Node Annotations
+## Custom Drain Reasons
 
-When a Kubernetes node is cordoned, the operator drains all NodeSet pods on that
-node. By default, the drain reason is auto-generated. To provide a custom reason
-that propagates to Slurm, set the `node-cordon-reason` annotation on the
+When a Kubernetes node is cordoned, the operator cordons all NodeSet pods on the
+Kubernetes node by ensure the Slurm node is drained. By default, the drain
+reason propagated to Slurm is a generic message.
+
+It should be noted that the operator always prefixed the Slurm node drain reason
+with `slurm-operator:`. This is done to indicate if the reason was set by the
+operator, or some other source. If set by the operator, it can freely manage the
+drain state, otherwise it will not make changes to drain state until cleared by
+the other source.
+
+To customize the drain reason, either configure the operator with
+`propagatedNodeConditions`, or set the `node-cordon-reason` annotation on
+Kubernetes nodes. See sections below for details.
+
+### Dynamically from Node Conditions
+
+It is common for tooling to set Kubernetes node conditions to indicate status of
+the node, especially to report problems. Remediation tooling typically triggers
+off of certain node conditions to take action, such as cordoning or draining the
+node due to system instability or failure.
+
+The operator can be configured to use those same node conditions when generating
+the Slurm node drain reason, keeping Kubernetes and Slurm context in sync. When
+installing or upgrading the slurm-operator helm chart, set a non-empty value for
+`propagatedNodeConditions`, where the value is a list of Kubernetes
+[node conditions][node-condition], by the type field. Each matching node
+condition type is formatted and joined to generate the final Slurm node drain
+reason.
+
+For example, you have [Node Problem Detector][node-problem-detector] (NPD)
+running in your Kubernetes cluster with a custom plugin for hardware monitoring
+which defines a `CPUProblem` and `GPUProblem` condition type, and you want to
+propagate them to Slurm automatically. In the slurm-operator's values.yaml, you
+would add the node condition types `CPUProblem` and `GPUProblem` to the
+`propagatedNodeConditions` list.
+
+```yaml
+propagatedNodeConditions:
+  - CPUProblem
+  - GPUProblem
+```
+
+Let's assume your NPD plugins each reported a CPU and GPU issue by updating the
+Kubernetes node condition with the following.
+
+```yaml
+status:
+  conditions:
+  - type: CPUProblem
+    reason: BadCPU
+    message: "CPU 17: Machine Check Exception"
+  - type: GPUProblem
+    reason: GpuCountMismatch
+    message: "GPU count mismatch detected: Node has 3, expected 4"
+```
+
+Then, when that Kubernetes node is cordoned, the Slurm node drain message would
+be the following.
+
+```console
+$ scontrol show node node-0 | grep -Po "NodeName=[^ ]+|[ ]+Reason=[^\[\]]+"
+NodeName=node-0
+   Reason=slurm-operator: (BadCPU: CPU 17: Machine Check Exception); (GpuCountMismatch: GPU count mismatch detected: Node has 3, expected 4)
+```
+
+### Override with Node Annotation
+
+To provide a custom reason, set the `node-cordon-reason` annotation on the
 Kubernetes node **before** cordoning it:
 
 ```sh
@@ -96,11 +163,12 @@ kubectl annotate node <node> nodeset.slinky.slurm.net/node-cordon-reason="GPU EC
 kubectl cordon <node>
 ```
 
-The operator reads the annotation and uses its value as the Slurm drain reason,
-prefixed with `slurm-operator:`. The resulting reason in Slurm will be:
+When the Kubernetes node is cordoned, the Slurm node drain message would be:
 
 ```console
-slurm-operator: GPU ECC error detected
+$ scontrol show node node-0 | grep -Po "NodeName=[^ ]+|[ ]+Reason=[^\[\]]+"
+NodeName=node-0
+   Reason=slurm-operator: GPU ECC error detected
 ```
 
 To clean up after uncordoning:
@@ -224,7 +292,10 @@ sequenceDiagram
     NS->>SAPI: Undrain Slurm nodes
 ```
 
-See
-[Custom Drain Reasons via Node Annotations](#custom-drain-reasons-via-node-annotations)
-and [Cordoning Pods](#cordoning-pods) for the kubectl commands used in each
-step.
+See [Override with Node Annotation](#override-with-node-annotation) and
+[Cordoning Pods](#cordoning-pods) for the kubectl commands used in each step.
+
+<!-- Links -->
+
+[node-condition]: https://kubernetes.io/docs/reference/node/node-status/#condition
+[node-problem-detector]: https://github.com/kubernetes/node-problem-detector
