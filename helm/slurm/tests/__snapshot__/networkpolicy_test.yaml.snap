@@ -100,7 +100,7 @@ loginset manifest should match snapshot:
         app.kubernetes.io/part-of: slurm
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-1.2.3
-      name: test-release-slurm-loginset
+      name: test-release-slurm-login-slinky
       namespace: test-namespace
     spec:
       egress:
@@ -129,6 +129,7 @@ loginset manifest should match snapshot:
               protocol: TCP
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: test-release-slurm-login-slinky
           app.kubernetes.io/name: login
       policyTypes:
         - Ingress
@@ -143,7 +144,7 @@ nodeset manifest should match snapshot:
         app.kubernetes.io/part-of: slurm
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-1.2.3
-      name: test-release-slurm-nodeset
+      name: test-release-slurm-worker-slinky
       namespace: test-namespace
     spec:
       egress:
@@ -179,6 +180,7 @@ nodeset manifest should match snapshot:
               protocol: TCP
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: test-release-slurm-worker-slinky
           app.kubernetes.io/name: slurmd
       policyTypes:
         - Ingress
