@@ -1,0 +1,78 @@
+operator manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/instance: test-release
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: slurm-operator
+        app.kubernetes.io/part-of: slurm-operator
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-operator-1.2.3
+      name: slurm-operator
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 443
+              protocol: TCP
+        - ports:
+            - port: 6820
+              protocol: TCP
+          to:
+            - namespaceSelector: {}
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: slurmrestd
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - ports:
+            - port: 8080
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release
+          app.kubernetes.io/name: slurm-operator
+      policyTypes:
+        - Ingress
+        - Egress
+webhook manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/instance: test-release
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: slurm-operator-webhook
+        app.kubernetes.io/part-of: slurm-operator
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-operator-1.2.3
+      name: slurm-operator-webhook
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 443
+              protocol: TCP
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - ports:
+            - port: 9443
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release
+          app.kubernetes.io/name: slurm-operator-webhook
+      policyTypes:
+        - Ingress
+        - Egress

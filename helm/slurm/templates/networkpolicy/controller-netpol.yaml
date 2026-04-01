@@ -1,0 +1,72 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if and .Values.networkPolicy.enabled .Values.controller.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "slurm.fullname" . }}-controller
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: slurmctld
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ include "slurm.controller.port" . }}
+      from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmd
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmdbd
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmrestd
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: login
+    {{- with .Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.controller.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - ports:
+        - protocol: TCP
+          port: {{ include "slurm.worker.port" . }}
+      to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmd
+    {{- if .Values.accounting.enabled }}
+    - ports:
+        - protocol: TCP
+          port: 6819
+      to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmdbd
+    {{- end }}
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- with .Values.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.controller.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
