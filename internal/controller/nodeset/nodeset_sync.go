@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -398,10 +399,26 @@ func (r *NodeSetReconciler) syncCordon(
 			if err := r.Get(ctx, key, node); err != nil {
 				return fmt.Errorf("failed to get node: %w", err)
 			}
+
 			if value, ok := node.Annotations[slinkyv1beta1.AnnotationNodeCordonReason]; ok {
 				logger.V(1).Info("Slurm node drain reason overridden by Kubernetes node annotation",
 					"reason", value)
 				reason = value
+			} else {
+				var reasons []string
+				for _, condType := range r.propagatedNodeConditions {
+					for _, nodeCond := range node.Status.Conditions {
+						if nodeCond.Type != condType || nodeCond.Status != corev1.ConditionTrue {
+							continue
+						}
+						reasons = append(reasons, fmt.Sprintf("(%s: %s)", nodeCond.Reason, nodeCond.Message))
+					}
+				}
+				if len(reasons) > 0 {
+					logger.V(1).Info("Slurm node drain reason set by Kubernetes node conditions",
+						"reasons", reasons)
+					reason = strings.Join(reasons, "; ")
+				}
 			}
 
 			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",

@@ -85,6 +85,8 @@ type NodeSetReconciler struct {
 
 	ClientMap *clientmap.ClientMap
 
+	propagatedNodeConditions []corev1.NodeConditionType
+
 	builder        *builder.WorkerBuilder
 	refResolver    *refresolver.RefResolver
 	podControl     podcontrol.PodControlInterface
@@ -167,7 +169,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func NewReconciler(c client.Client, cm *clientmap.ClientMap) *NodeSetReconciler {
+func NewReconciler(c client.Client, cm *clientmap.ClientMap, propagatedNodeConditions []corev1.NodeConditionType) *NodeSetReconciler {
 	s := c.Scheme()
 	er := events.NewFakeRecorder(100)
 	if cm == nil {
@@ -178,6 +180,8 @@ func NewReconciler(c client.Client, cm *clientmap.ClientMap) *NodeSetReconciler 
 		Scheme: s,
 
 		ClientMap: cm,
+
+		propagatedNodeConditions: propagatedNodeConditions,
 
 		builder:        builder.New(c),
 		refResolver:    refresolver.New(c),

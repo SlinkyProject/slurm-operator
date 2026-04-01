@@ -2979,7 +2979,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			r := NewReconciler(tt.kclient, tt.clientMap)
+			r := NewReconciler(tt.kclient, tt.clientMap, nil)
 			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if !tt.wantErr {
