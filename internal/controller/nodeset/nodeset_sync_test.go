@@ -2678,6 +2678,23 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 		},
 	}
 
+	// NodeSet with NodeAffinity required type=production -> does NOT match node with type=staging.
+	nodeSetAffinityMismatch := newNodeSet("foo", controller.Name, 1)
+	nodeSetAffinityMismatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetAffinityMismatch.Spec.Template.PodSpecWrapper.Affinity = &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      "type",
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   []string{"production"},
+					}},
+				}},
+			},
+		},
+	}
+
 	cases := []struct {
 		predicateName                    string
 		node                             *corev1.Node
@@ -2718,6 +2735,13 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 			nodeset:               nodeSetBasic,
 			shouldRun:             true,
 			shouldContinueRunning: true,
+		},
+		{
+			predicateName:         "ErrNodeAffinityNotMatch",
+			node:                  newNodeForNodeSetTest("test-node", map[string]string{"type": "staging"}, false),
+			nodeset:               nodeSetAffinityMismatch,
+			shouldRun:             false,
+			shouldContinueRunning: false,
 		},
 	}
 
