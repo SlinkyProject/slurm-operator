@@ -3,18 +3,22 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- if and .Values.networkPolicy.enabled .Values.networkPolicy.loginset }}
+{{- range $key, $loginset := $.Values.loginsets }}
+{{- if and $.Values.networkPolicy.enabled $loginset.enabled (dig "networkPolicy" "enabled" true $loginset) }}
+{{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "slurm.fullname" . }}-loginset
-  namespace: {{ include "slurm.namespace" . }}
+  name: {{ $name }}
+  namespace: {{ include "slurm.namespace" $ }}
   labels:
-    {{- include "slurm.labels" . | nindent 4 }}
+    {{- include "slurm.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: login
+      app.kubernetes.io/instance: {{ $name }}
   policyTypes:
     - Ingress
     - Egress
@@ -22,13 +26,16 @@ spec:
     - ports:
         - protocol: TCP
           port: 22
-    {{- with .Values.networkPolicy.extraIngress }}
+    {{- with $.Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (dig "networkPolicy" "extraIngress" nil $loginset) }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
     - ports:
         - protocol: TCP
-          port: {{ include "slurm.controller.port" . }}
+          port: {{ include "slurm.controller.port" $ }}
       to:
         - podSelector:
             matchLabels:
@@ -45,7 +52,11 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    {{- with .Values.networkPolicy.extraEgress }}
+    {{- with $.Values.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with (dig "networkPolicy" "extraEgress" nil $loginset) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
 {{- end }}

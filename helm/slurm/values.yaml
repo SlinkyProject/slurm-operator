@@ -563,6 +563,14 @@ loginsets:
   slinky:
     # -- Enable use of this LoginSet.
     enabled: false
+    # NetworkPolicy settings for this LoginSet.
+    networkPolicy:
+      # -- Enable NetworkPolicy for this LoginSet.
+      enabled: true
+      # -- Extra ingress rules appended to this LoginSet NetworkPolicy.
+      extraIngress: []
+      # -- Extra egress rules appended to this LoginSet NetworkPolicy.
+      extraEgress: []
     # -- Number of replicas to deploy.
     replicas: 1
     # -- Deployment strategy configuration.
@@ -677,6 +685,14 @@ nodesets:
   slinky:
     # -- Enable use of this NodeSet.
     enabled: true
+    # NetworkPolicy settings for this NodeSet.
+    networkPolicy:
+      # -- Enable NetworkPolicy for this NodeSet.
+      enabled: true
+      # -- Extra ingress rules appended to this NodeSet NetworkPolicy.
+      extraIngress: []
+      # -- Extra egress rules appended to this NodeSet NetworkPolicy.
+      extraEgress: []
     # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
     scalingMode: StatefulSet
     # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
@@ -849,12 +865,6 @@ vendor:
 networkPolicy:
   # -- Enable NetworkPolicy resources for all Slurm components.
   enabled: false
-  # -- Enable NetworkPolicy for NodeSets (slurmd).
-  # Kept here because `nodesets` is a map and cannot hold a scalar alongside instance entries.
-  nodeset: true
-  # -- Enable NetworkPolicy for LoginSets (sackd/sshd).
-  # Kept here because `loginsets` is a map and cannot hold a scalar alongside instance entries.
-  loginset: true
   # -- Extra ingress rules appended to every NetworkPolicy.
   # Ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#networkpolicyingressrule-v1-networking-k8s-io
   extraIngress: []

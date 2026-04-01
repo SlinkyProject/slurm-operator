@@ -49,12 +49,16 @@ tests:
     asserts:
       - matchSnapshot: {}
 
-  - it: should not create nodeset networkpolicy when networkPolicy.nodeset is false
+  - it: should not create nodeset networkpolicy when per-instance networkPolicy.enabled is false
     template: networkpolicy/nodeset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
-        nodeset: false
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            enabled: false
     asserts:
       - hasDocuments:
           count: 0
@@ -81,11 +85,98 @@ tests:
                   matchLabels:
                     app.kubernetes.io/name: login
 
+  - it: nodeset should use per-instance podSelector
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: slurmd
+            app.kubernetes.io/instance: test-release-slurm-worker-slinky
+
+  - it: nodeset should create one networkpolicy per enabled instance
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        gpu:
+          enabled: true
+        cpu:
+          enabled: true
+        disabled:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: loginset manifest should match snapshot
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create loginset networkpolicy when per-instance networkPolicy.enabled is false
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: loginset should use per-instance podSelector
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: login
+            app.kubernetes.io/instance: test-release-slurm-login-slinky
+
+  - it: loginset should create one networkpolicy per enabled instance
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        alpha:
+          enabled: true
+        beta:
+          enabled: true
+        gamma:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 2
+
   - it: loginset should include SSH egress to nodeset
     template: networkpolicy/loginset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.egress
@@ -152,24 +243,6 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: loginset manifest should match snapshot
-    template: networkpolicy/loginset-netpol.yaml
-    set:
-      networkPolicy:
-        enabled: true
-    asserts:
-      - matchSnapshot: {}
-
-  - it: should not create loginset networkpolicy when networkPolicy.loginset is false
-    template: networkpolicy/loginset-netpol.yaml
-    set:
-      networkPolicy:
-        enabled: true
-        loginset: false
-    asserts:
-      - hasDocuments:
-          count: 0
-
   - it: controller should include accounting egress when accounting is enabled
     template: networkpolicy/controller-netpol.yaml
     set:
@@ -222,6 +295,9 @@ tests:
                 port: 9090
       accounting:
         enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.ingress
@@ -247,6 +323,9 @@ tests:
                 port: 443
       accounting:
         enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.egress
@@ -362,3 +441,115 @@ tests:
             ports:
               - protocol: TCP
                 port: 5432
+
+  - it: should append nodeset-specific extraIngress
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraIngress:
+              - from:
+                  - podSelector:
+                      matchLabels:
+                        app: gpu-monitor
+                ports:
+                  - protocol: TCP
+                    port: 9100
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app: gpu-monitor
+            ports:
+              - protocol: TCP
+                port: 9100
+
+  - it: should append nodeset-specific extraEgress
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraEgress:
+              - to:
+                  - ipBlock:
+                      cidr: 10.2.0.0/16
+                ports:
+                  - protocol: TCP
+                    port: 2049
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.2.0.0/16
+            ports:
+              - protocol: TCP
+                port: 2049
+
+  - it: should append loginset-specific extraIngress
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraIngress:
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        name: bastion
+                ports:
+                  - protocol: TCP
+                    port: 22
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: bastion
+            ports:
+              - protocol: TCP
+                port: 22
+
+  - it: should append loginset-specific extraEgress
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraEgress:
+              - to:
+                  - ipBlock:
+                      cidr: 10.3.0.0/16
+                ports:
+                  - protocol: TCP
+                    port: 636
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.3.0.0/16
+            ports:
+              - protocol: TCP
+                port: 636

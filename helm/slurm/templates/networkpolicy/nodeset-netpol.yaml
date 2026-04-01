@@ -3,25 +3,29 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- if and .Values.networkPolicy.enabled .Values.networkPolicy.nodeset }}
+{{- range $key, $nodeset := $.Values.nodesets }}
+{{- if and $.Values.networkPolicy.enabled $nodeset.enabled (dig "networkPolicy" "enabled" true $nodeset) }}
+{{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "slurm.fullname" . }}-nodeset
-  namespace: {{ include "slurm.namespace" . }}
+  name: {{ $name }}
+  namespace: {{ include "slurm.namespace" $ }}
   labels:
-    {{- include "slurm.labels" . | nindent 4 }}
+    {{- include "slurm.labels" $ | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: slurmd
+      app.kubernetes.io/instance: {{ $name }}
   policyTypes:
     - Ingress
     - Egress
   ingress:
     - ports:
         - protocol: TCP
-          port: {{ include "slurm.worker.port" . }}
+          port: {{ include "slurm.worker.port" $ }}
       from:
         - podSelector:
             matchLabels:
@@ -29,13 +33,7 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
-    {{- $sshEnabled := false }}
-    {{- range $key, $nodeset := .Values.nodesets }}
-      {{- if and $nodeset.enabled (dig "ssh" "enabled" false $nodeset) }}
-        {{- $sshEnabled = true }}
-      {{- end }}
-    {{- end }}
-    {{- if $sshEnabled }}
+    {{- if dig "ssh" "enabled" false $nodeset }}
     - ports:
         - protocol: TCP
           port: 22
@@ -44,20 +42,23 @@ spec:
             matchLabels:
               app.kubernetes.io/name: login
     {{- end }}
-    {{- with .Values.networkPolicy.extraIngress }}
+    {{- with $.Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (dig "networkPolicy" "extraIngress" nil $nodeset) }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
     - ports:
         - protocol: TCP
-          port: {{ include "slurm.controller.port" . }}
+          port: {{ include "slurm.controller.port" $ }}
       to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
     - ports:
         - protocol: TCP
-          port: {{ include "slurm.worker.port" . }}
+          port: {{ include "slurm.worker.port" $ }}
       to:
         - podSelector:
             matchLabels:
@@ -67,7 +68,11 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    {{- with .Values.networkPolicy.extraEgress }}
+    {{- with $.Values.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with (dig "networkPolicy" "extraEgress" nil $nodeset) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
 {{- end }}
