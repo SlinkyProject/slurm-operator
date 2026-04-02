@@ -40,6 +40,17 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	loginset = loginset.DeepCopy()
 	defaults.SetLoginSetDefaults(loginset)
 
+	// Skip reconciliation if the LoginSet is being deleted.
+	// Child resources (Deployment, Service, ConfigMap, Secret) have
+	// blockOwnerDeletion=true, so the Kubernetes garbage collector will
+	// delete them before the LoginSet. If we continue to reconcile, we
+	// would recreate children that the GC is trying to delete, causing
+	// the LoginSet to be stuck in Terminating state.
+	if !loginset.DeletionTimestamp.IsZero() {
+		logger.Info("LoginSet is being deleted, skipping sync", "request", req)
+		return nil
+	}
+
 	controller := &slinkyv1beta1.Controller{}
 	controllerKey := client.ObjectKey(loginset.Spec.ControllerRef.NamespacedName())
 	if err := r.Get(ctx, controllerKey, controller); err != nil {
