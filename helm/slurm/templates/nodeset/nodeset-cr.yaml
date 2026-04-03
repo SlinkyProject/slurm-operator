@@ -37,6 +37,17 @@ SPDX-License-Identifier: Apache-2.0
   {{- $_ := set $podSpec "volumes" $volumes -}}
   {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
 {{- end }}
+{{- /* Add init script volume and mount for compute nodes (Together addition) */}}
+{{- if $.Values.initScriptNodes }}
+  {{- $volumes := $podSpec.volumes | default list -}}
+  {{- $initScriptVolume := dict "name" "init-script" "configMap" (dict "name" (include "slurm.initScriptNodesName" $) "defaultMode" 0755) -}}
+  {{- $volumes = append $volumes $initScriptVolume -}}
+  {{- $_ := set $podSpec "volumes" $volumes -}}
+  {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+  {{- $initScriptVolumeMount := dict "name" "init-script" "mountPath" "/root/init.sh" "subPath" "init.sh" -}}
+  {{- $volumeMounts = append $volumeMounts $initScriptVolumeMount -}}
+  {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
+{{- end }}
 {{- $podTemplate := dict "metadata" $podMetadata "spec" $podSpec -}}
 {{- if $nodeset.useResourceLimits }}
   {{- $envLimts := list (dict "name" "POD_CPUS" "value" (include "slurm.worker.podCpus" $nodeset.slurmd | toString)) (dict "name" "POD_MEMORY" "value" (include "slurm.worker.podMemory" $nodeset.slurmd | toString)) -}}

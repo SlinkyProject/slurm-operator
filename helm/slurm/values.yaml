@@ -118,6 +118,24 @@ epilogScripts: {}
   #   set -euo pipefail
   #   exit 0
 
+# -- (string) Init script mounted to /root/init.sh on all login nodes.
+# WARNING: The script must include a shebang (!) so it can be executed correctly.
+# Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
+initScriptLogin: null
+  # |
+  #   #!/usr/bin/env bash
+  #   set -euo pipefail
+  #   echo "Login node init"
+
+# -- (string) Init script mounted to /root/init.sh on all NodeSets (compute nodes).
+# WARNING: The script must include a shebang (!) so it can be executed correctly.
+# Ref: https://en.wikipedia.org/wiki/Shebang_(Unix)
+initScriptNodes: null
+  # |
+  #   #!/usr/bin/env bash
+  #   set -euo pipefail
+  #   echo "Compute node init"
+
 # Slurm controller (slurmctld) configuration.
 controller:
   # -- Configures this component as external (not in Kubernetes).
