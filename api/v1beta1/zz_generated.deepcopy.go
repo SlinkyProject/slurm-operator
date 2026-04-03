@@ -243,6 +243,11 @@ func (in *ControllerSpec) DeepCopyInto(out *ControllerSpec) {
 	}
 	out.ExternalConfig = in.ExternalConfig
 	in.Slurmctld.DeepCopyInto(&out.Slurmctld)
+	if in.InplaceReconfigure != nil {
+		in, out := &in.InplaceReconfigure, &out.InplaceReconfigure
+		*out = new(bool)
+		**out = **in
+	}
 	in.Reconfigure.DeepCopyInto(&out.Reconfigure)
 	in.LogFile.DeepCopyInto(&out.LogFile)
 	in.Template.DeepCopyInto(&out.Template)

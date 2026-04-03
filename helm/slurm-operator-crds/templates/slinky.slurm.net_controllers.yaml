@@ -156,6 +156,13 @@ spec:
                   ExtraConf is appended onto the end of the `slurm.conf` file.
                   Ref: https://slurm.schedmd.com/slurm.conf.html
                 type: string
+              inplaceReconfigure:
+                default: true
+                description: |-
+                  Indicates how reconfigure is handled when Slurm configuration changes.
+                  When true, the reconfigure sidecar issue reconfigures without pod recreate.
+                  When false, the pod will be recreated and reconfigure issued only on startup.
+                type: boolean
               jwksKeyRef:
                 description: Slurm `auth/jwt` JWKS key authentication.
                 properties:
@@ -565,7 +572,11 @@ spec:
                 nullable: true
                 type: array
               reconfigure:
-                description: The reconfigure container configuration.
+                description: |-
+                  The reconfigure container configuration.
+                  If not empty, then slurmctld will reconfigure in-place, without recreating
+                  the pod when Slurm configuration changes.
+                  Ref: https://slurm.schedmd.com/scontrol.html#OPT_reconfigure
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               service:

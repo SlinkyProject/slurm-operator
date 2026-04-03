@@ -24,6 +24,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller) (*appsv1.StatefulSet, error) {
@@ -102,9 +103,19 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 	ctx := context.TODO()
 	key := controller.Key()
 
-	hashMap, err := b.getAuthHashes(ctx, controller)
-	if err != nil {
-		return corev1.PodTemplateSpec{}, err
+	var hashMap map[string]string
+	if !ptr.Deref(controller.Spec.InplaceReconfigure, defaults.DefaultControllerInplaceReconfigure) {
+		var err error
+		hashMap, err = b.getHashes(ctx, controller)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+	} else {
+		var err error
+		hashMap, err = b.getAuthHashes(ctx, controller)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
 	}
 
 	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
@@ -150,10 +161,14 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 			Containers: []corev1.Container{
 				b.slurmctldContainer(spec.Slurmctld.Container, controller.ClusterName()),
 			},
-			InitContainers: []corev1.Container{
-				b.reconfigureContainer(spec.Reconfigure),
-				b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath),
-			},
+			InitContainers: func() []corev1.Container {
+				var initContainers []corev1.Container
+				if ptr.Deref(controller.Spec.InplaceReconfigure, defaults.DefaultControllerInplaceReconfigure) {
+					initContainers = append(initContainers, b.reconfigureContainer(spec.Reconfigure))
+				}
+				initContainers = append(initContainers, b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath))
+				return initContainers
+			}(),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsNonRoot: ptr.To(true),
 				RunAsUser:    ptr.To(common.SlurmUserUid),
@@ -325,6 +340,32 @@ func (b *ControllerBuilder) reconfigureContainer(container slinkyv1beta1.Contain
 	}
 
 	return b.CommonBuilder.BuildContainer(opts)
+}
+
+const (
+	annotationSlurmConfigHash = slinkyv1beta1.SlinkyPrefix + "slurm-config-hash"
+)
+
+func (b *ControllerBuilder) getHashes(ctx context.Context, controller *slinkyv1beta1.Controller) (map[string]string, error) {
+	hashMap, err := b.getAuthHashes(ctx, controller)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &corev1.ConfigMap{}
+	configKey := controller.ConfigKey()
+	if err := b.client.Get(ctx, configKey, config); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+	slurmConfigHash := crypto.CheckSumFromMap(config.Data)
+
+	hashMap = structutils.MergeMaps(hashMap, map[string]string{
+		annotationSlurmConfigHash: slurmConfigHash,
+	})
+
+	return hashMap, nil
 }
 
 func (b *ControllerBuilder) getAuthHashes(ctx context.Context, controller *slinkyv1beta1.Controller) (map[string]string, error) {
