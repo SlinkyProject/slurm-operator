@@ -22,6 +22,9 @@ primitives. For design-level details, see
   - [Workload Disruption Protection](#workload-disruption-protection)
   - [External Drain Preservation](#external-drain-preservation)
   - [External Health Checker Integration Pattern](#external-health-checker-integration-pattern)
+  - [Node Identity](#node-identity)
+    - [StatefulSet Mode](#statefulset-mode)
+    - [DaemonSet Mode](#daemonset-mode)
 
 <!-- mdformat-toc end -->
 
@@ -294,6 +297,21 @@ sequenceDiagram
 
 See [Override with Node Annotation](#override-with-node-annotation) and
 [Cordoning Pods](#cordoning-pods) for the kubectl commands used in each step.
+
+## Node Identity
+
+A Nodeset's scalingMode will determine whether its pods, which represent Slurm
+nodes, are loosely or strictly mapped to the Kubernetes nodes they run on.
+
+### StatefulSet Mode
+
+When using `scalingMode=StatefulSet`, Nodeset pods are loosely mapped to
+Kubernetes nodes and may be rescheduled freely.
+
+### DaemonSet Mode
+
+When using `scalingMode=Daemonset`, Nodeset pods are strictly mapped to
+Kubernetes nodes and share the hostname of the node they run on.
 
 <!-- Links -->
 
