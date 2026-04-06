@@ -15,10 +15,16 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corev1helper "k8s.io/component-helpers/scheduling/corev1"
+	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
+	"k8s.io/klog/v2"
 	k8scontroller "k8s.io/kubernetes/pkg/controller"
 	daemonutils "k8s.io/kubernetes/pkg/controller/daemon/util"
+	"k8s.io/kubernetes/pkg/features"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
@@ -406,4 +412,43 @@ func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Obje
 	}
 
 	return nil
+}
+
+// PodShouldRunOnNode checks pod preconditions against a node and returns a summary.
+// Returned booleans are:
+//   - shouldRun:
+//     Returns true when a pod should run on the node if a pod is not already
+//     running on that node.
+//   - shouldContinueRunning:
+//     Returns true when a should continue running on a node if a pod is already
+//     running on that node.
+func PodShouldRunOnNode(ctx context.Context, pod *corev1.Pod, node *corev1.Node) (shouldRun bool, shouldContinueRunning bool) {
+	logger := log.FromContext(ctx)
+
+	taints := node.Spec.Taints
+	fitsNodeName, fitsNodeAffinity, fitsTaints := predicates(logger, pod, node, taints)
+	if !fitsNodeName || !fitsNodeAffinity {
+		return false, false
+	}
+
+	if !fitsTaints {
+		// Scheduled pods should continue running if they tolerate NoExecute taint.
+		_, hasUntoleratedTaint := corev1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
+			return t.Effect == corev1.TaintEffectNoExecute
+		}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
+		return false, !hasUntoleratedTaint
+	}
+
+	return true, true
+}
+
+func predicates(logger klog.Logger, pod *corev1.Pod, node *corev1.Node, taints []corev1.Taint) (fitsNodeName, fitsNodeAffinity, fitsTaints bool) {
+	fitsNodeName = len(pod.Spec.NodeName) == 0 || pod.Spec.NodeName == node.Name
+	// Ignore parsing errors for backwards compatibility.
+	fitsNodeAffinity, _ = nodeaffinity.GetRequiredNodeAffinity(pod).Match(node)
+	_, hasUntoleratedTaint := corev1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
+		return t.Effect == corev1.TaintEffectNoExecute || t.Effect == corev1.TaintEffectNoSchedule
+	}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
+	fitsTaints = !hasUntoleratedTaint
+	return fitsNodeName, fitsNodeAffinity, fitsTaints
 }
