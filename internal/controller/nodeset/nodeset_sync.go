@@ -731,7 +731,7 @@ func predicates(logger klog.Logger, pod *corev1.Pod, node *corev1.Node, taints [
 //     running on that node.
 func (r *NodeSetReconciler) NodeShouldRunDaemonPod(ctx context.Context, node *corev1.Node, nodeset *slinkyv1beta1.NodeSet) (bool, bool) {
 	logger := log.FromContext(ctx)
-	pod, err := r.newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
+	pod, err := newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
 	if err != nil {
 		return false, false
 	}
@@ -1082,7 +1082,7 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 // newSimulatedDaemonPod builds a pod for predicate evaluation that preserves
 // the user's node affinity. This avoids ReplaceDaemonSetPodNodeNameNodeAffinity
 // which overwrites RequiredDuringSchedulingIgnoredDuringExecution terms.
-func (r *NodeSetReconciler) newSimulatedDaemonPod(
+func newSimulatedDaemonPod(
 	client client.Client,
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1090,9 +1090,7 @@ func (r *NodeSetReconciler) newSimulatedDaemonPod(
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
 	key := nodeset.Spec.ControllerRef.NamespacedName()
-	if err := r.Get(ctx, key, controller); err != nil {
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
-			"Failed to get Controller (%s): %v", key, err)
+	if err := client.Get(ctx, key, controller); err != nil {
 		return nil, err
 	}
 	if nodeName == "" {
