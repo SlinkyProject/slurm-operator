@@ -39,6 +39,11 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	restapi = restapi.DeepCopy()
 	defaults.SetRestApiDefaults(restapi)
 
+	if !restapi.DeletionTimestamp.IsZero() {
+		logger.Info("Restapi is being deleted, skipping sync", "request", req)
+		return nil
+	}
+
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",

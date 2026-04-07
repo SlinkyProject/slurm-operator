@@ -39,6 +39,11 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	controller = controller.DeepCopy()
 	defaults.SetControllerDefaults(controller)
 
+	if !controller.DeletionTimestamp.IsZero() {
+		logger.Info("Controller is being deleted, skipping sync", "request", req)
+		return nil
+	}
+
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",

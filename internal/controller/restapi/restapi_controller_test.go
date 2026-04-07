@@ -8,6 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -63,6 +65,50 @@ var _ = Describe("RestApi Controller", func() {
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+		}, SpecTimeout(testutils.Timeout))
+
+		It("Should skip sync when RestApi is being deleted", func(ctx SpecContext) {
+			By("Waiting for RestApi children to be created")
+			deploymentKey := restapi.Key()
+			deployment := &appsv1.Deployment{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Deleting RestApi with foreground propagation")
+			restapiKey := client.ObjectKeyFromObject(restapi)
+			Expect(k8sClient.Delete(ctx, restapi,
+				client.PropagationPolicy(metav1.DeletePropagationForeground),
+			)).To(Succeed())
+
+			By("Verifying RestApi has deletionTimestamp set")
+			Eventually(func(g Gomega) {
+				restapi := &slinkyv1beta1.RestApi{}
+				g.Expect(k8sClient.Get(ctx, restapiKey, restapi)).To(Succeed())
+				g.Expect(restapi.DeletionTimestamp.IsZero()).To(BeFalse())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Deleting Deployment child while RestApi is terminating")
+			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
+			Eventually(func(g Gomega) {
+				err := k8sClient.Get(ctx, deploymentKey, deployment)
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Verifying Deployment child is NOT recreated")
+			Consistently(func(g Gomega) {
+				err := k8sClient.Get(ctx, deploymentKey, deployment)
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
+			}, 5*testutils.Interval, testutils.Interval).Should(Succeed())
+
+			By("Cleaning up: removing foregroundDeletion finalizer")
+			restapi := &slinkyv1beta1.RestApi{}
+			Expect(k8sClient.Get(ctx, restapiKey, restapi)).To(Succeed())
+			restapi.Finalizers = nil
+			Expect(k8sClient.Update(ctx, restapi)).To(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })
