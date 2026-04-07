@@ -43,7 +43,10 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	token = token.DeepCopy()
 	defaults.SetTokenDefaults(token)
 
-	if token.DeletionTimestamp.IsZero() {
+	if !token.DeletionTimestamp.IsZero() {
+		logger.Info("Token is being deleted, skipping sync", "request", req)
+		return nil
+	} else {
 		now := time.Now()
 		key := objectutils.KeyFunc(token)
 		expirationTime, err := r.getExpTime(ctx, token)

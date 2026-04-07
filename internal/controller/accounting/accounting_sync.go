@@ -38,6 +38,11 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	accounting = accounting.DeepCopy()
 	defaults.SetAccountingDefaults(accounting)
 
+	if !accounting.DeletionTimestamp.IsZero() {
+		logger.Info("Accounting is being deleted, skipping sync", "request", req)
+		return nil
+	}
+
 	syncSteps := []SyncStep{
 		{
 			Name: "Service",
