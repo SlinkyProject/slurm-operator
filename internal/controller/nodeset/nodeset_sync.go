@@ -1058,7 +1058,7 @@ func newSimulatedDaemonPod(
 		return nil, fmt.Errorf("nodeName must not be empty")
 	}
 
-	pod := nodesetutils.NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, nodeName)
+	pod := nodesetutils.NewNodeSetSimulatedPod(client, nodeset, controller, nodeName)
 	return pod, nil
 }
 

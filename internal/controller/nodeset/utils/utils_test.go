@@ -548,7 +548,7 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	}
 }
 
-func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
+func TestNewNodeSetSimulatedPod(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
@@ -573,9 +573,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		}
 		nodeset.Spec.Template.PodSpecWrapper.Affinity = userAffinity
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-1")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-1")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeName != "node-1" {
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-1")
@@ -596,9 +596,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 	t.Run("Works without user affinity", func(t *testing.T) {
 		nodeset := newNodeSetDaemonset("foo", "")
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-2")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-2")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeName != "node-2" {
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-2")
@@ -609,9 +609,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		nodeset := newNodeSetDaemonset("foo", "")
 		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"disk": "ssd"}
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-3")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-3")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeSelector["disk"] != "ssd" {
 			t.Errorf("nodeSelector not preserved: got %v", pod.Spec.NodeSelector)
@@ -624,9 +624,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 			{Key: "gpu", Operator: corev1.TolerationOpExists, Effect: corev1.TaintEffectNoSchedule},
 		}
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-4")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-4")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		found := false
 		for _, t := range pod.Spec.Tolerations {

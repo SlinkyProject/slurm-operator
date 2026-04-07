@@ -102,12 +102,12 @@ func NewNodeSetDaemonSetPod(
 	return pod
 }
 
-// NewNodeSetDaemonSetSimulatedPod returns a simulated Pod for predicate
+// NewNodeSetSimulatedPod returns a simulated Pod for predicate
 // evaluation. Unlike NewNodeSetDaemonSetPod, it preserves the user's node
 // affinity by setting spec.nodeName directly instead of using
 // ReplaceDaemonSetPodNodeNameNodeAffinity, which overwrites the
 // RequiredDuringSchedulingIgnoredDuringExecution terms.
-func NewNodeSetDaemonSetSimulatedPod(
+func NewNodeSetSimulatedPod(
 	client client.Client,
 	nodeset *slinkyv1beta1.NodeSet,
 	controller *slinkyv1beta1.Controller,
