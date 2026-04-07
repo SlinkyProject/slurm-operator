@@ -263,6 +263,15 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 }
 
 func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinkyv1beta1.Controller) corev1.Container {
+	// Allow user to override SSH port for HostNetwork
+	sshPort := LoginPort
+	if len(merge.Ports) > 0 {
+		for _, port := range merge.Ports {
+			if port.Name == labels.LoginApp && port.ContainerPort != 0 {
+				sshPort = int(port.ContainerPort)
+			}
+		}
+	}
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.LoginApp,
@@ -275,7 +284,7 @@ func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinky
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          labels.LoginApp,
-					ContainerPort: LoginPort,
+					ContainerPort: int32(sshPort),
 					Protocol:      corev1.ProtocolTCP,
 				},
 			},
