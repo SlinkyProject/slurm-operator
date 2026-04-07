@@ -467,6 +467,13 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 }
 
 func TestNodeSetReconciler_sync(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	hash := "test-hash"
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -483,7 +490,59 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Succeeds with zero replicas and empty pod list",
+			fields: fields{
+				Client:    fake.NewFakeClient(controller.DeepCopy()),
+				ClientMap: clientmap.NewClientMap(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 0),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: false,
+		},
+		{
+			name: "Error propagated from RefreshNodeCache on Slurm list failure",
+			fields: fields{
+				Client: fake.NewFakeClient(controller.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					sclient := newFakeClientList(sinterceptor.Funcs{
+						List: func(ctx context.Context, list slurmobject.ObjectList, opts ...slurmclient.ListOption) error {
+							return errors.New("slurm connection refused")
+						},
+					})
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 2),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: true,
+		},
+		{
+			name: "All sync steps succeed with empty pod list",
+			fields: fields{
+				Client: fake.NewFakeClient(controller.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 0),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -496,6 +555,13 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	hash := "test-hash"
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -506,13 +572,108 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 		pods    []*corev1.Pod
 		hash    string
 	}
-	tests := []struct {
+	type testCaseFields struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
-	}{
-		// TODO: Add test cases.
+	}
+	tests := []testCaseFields{
+		{
+			name: "Scale up from 0 to 2 creates pods",
+			fields: fields{
+				Client: fake.NewFakeClient(controller.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 2),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: false,
+		},
+		func() testCaseFields {
+			ns := newNodeSet("foo", controller.Name, 2)
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Steady state with matching replica count processes pods",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy()},
+					hash:    hash,
+				},
+				wantErr: false,
+			}
+		}(),
+		func() testCaseFields {
+			ns := newNodeSet("foo", controller.Name, 1)
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 2, hash)
+			makePodHealthy(pod2)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+					*newNodeSetPodSlurmNode(pod2),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Scale down from 3 to 1 deletes excess pods",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()},
+					hash:    hash,
+				},
+				wantErr: false,
+			}
+		}(),
+		{
+			name: "Scale up fails when Controller CR is missing",
+			fields: fields{
+				Client: fake.NewFakeClient(),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 2),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1044,6 +1205,14 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 }
 
 func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 2)
+	hash := "test-hash"
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -1055,13 +1224,111 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 		podsToDelete []*corev1.Pod
 		hash         string
 	}
-	tests := []struct {
+	type testCaseFields struct {
 		name    string
 		fields  fields
 		args    args
 		wantErr bool
-	}{
-		// TODO: Add test cases.
+	}
+	tests := []testCaseFields{
+		{
+			name: "Empty pod lists",
+			fields: fields{
+				Client: fake.NewFakeClient(nodeset.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:          context.TODO(),
+				nodeset:      nodeset.DeepCopy(),
+				pods:         []*corev1.Pod{},
+				podsToDelete: []*corev1.Pod{},
+				hash:         hash,
+			},
+			wantErr: false,
+		},
+		func() testCaseFields {
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			makePodHealthy(pod0)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Running pods with matching hash are processed",
+				fields: fields{
+					Client:    fake.NewFakeClient(nodeset.DeepCopy(), pod0.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:          context.TODO(),
+					nodeset:      nodeset.DeepCopy(),
+					pods:         []*corev1.Pod{pod0.DeepCopy()},
+					podsToDelete: []*corev1.Pod{},
+					hash:         hash,
+				},
+				wantErr: false,
+			}
+		}(),
+		func() testCaseFields {
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			makePodHealthy(pod0)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+						},
+					},
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Pods to delete are condemned",
+				fields: fields{
+					Client:    fake.NewFakeClient(nodeset.DeepCopy(), pod0.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:          context.TODO(),
+					nodeset:      nodeset.DeepCopy(),
+					pods:         []*corev1.Pod{},
+					podsToDelete: []*corev1.Pod{pod0.DeepCopy()},
+					hash:         hash,
+				},
+				wantErr: false,
+			}
+		}(),
+		func() testCaseFields {
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			makePodHealthy(pod0)
+			sclient := newFakeClientList(sinterceptor.Funcs{
+				Get: func(ctx context.Context, key slurmobject.ObjectKey, obj slurmobject.Object, opts ...slurmclient.GetOption) error {
+					return errors.New("slurm connection refused")
+				},
+			})
+			return testCaseFields{
+				name: "Error propagated when condemned pod processing fails",
+				fields: fields{
+					Client:    fake.NewFakeClient(nodeset.DeepCopy(), pod0.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:          context.TODO(),
+					nodeset:      nodeset.DeepCopy(),
+					pods:         []*corev1.Pod{},
+					podsToDelete: []*corev1.Pod{pod0.DeepCopy()},
+					hash:         hash,
+				},
+				wantErr: true,
+			}
+		}(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1074,6 +1341,14 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 }
 
 func TestNodeSetReconciler_processNodeSetPod(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 2)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -1084,18 +1359,131 @@ func TestNodeSetReconciler_processNodeSetPod(t *testing.T) {
 		pod     *corev1.Pod
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name       string
+		fields     fields
+		args       args
+		wantErr    bool
+		wantDelete bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Running pod with consistent identity is a no-op",
+			fields: fields{
+				Client: func() client.Client {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodRunning
+					return fake.NewFakeClient(nodeset.DeepCopy(), p)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod: func() *corev1.Pod {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodRunning
+					return p
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "Failed pod triggers deletion",
+			fields: fields{
+				Client: func() client.Client {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodFailed
+					return fake.NewFakeClient(nodeset.DeepCopy(), p)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod: func() *corev1.Pod {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodFailed
+					return p
+				}(),
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
+			name: "Succeeded pod triggers deletion",
+			fields: fields{
+				Client: func() client.Client {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodSucceeded
+					return fake.NewFakeClient(nodeset.DeepCopy(), p)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod: func() *corev1.Pod {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodSucceeded
+					return p
+				}(),
+			},
+			wantErr:    false,
+			wantDelete: true,
+		},
+		{
+			name: "Terminating failed pod is skipped",
+			fields: fields{
+				Client: fake.NewFakeClient(nodeset.DeepCopy()),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod: func() *corev1.Pod {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodFailed
+					now := metav1.Now()
+					p.DeletionTimestamp = &now
+					p.Finalizers = []string{"test-finalizer"}
+					return p
+				}(),
+			},
+			wantErr:    false,
+			wantDelete: false,
+		},
+		{
+			name: "Pending pod calls update",
+			fields: fields{
+				Client: func() client.Client {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodPending
+					return fake.NewFakeClient(nodeset.DeepCopy(), p)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod: func() *corev1.Pod {
+					p := pod.DeepCopy()
+					p.Status.Phase = corev1.PodPending
+					return p
+				}(),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
 			if err := r.processNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.processNodeSetPod() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			gotPod := &corev1.Pod{}
+			err := tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod)
+			if tt.wantDelete {
+				if err == nil {
+					t.Errorf("expected pod to be deleted, but it still exists")
+				} else if !apierrors.IsNotFound(err) {
+					t.Errorf("Client.Get() unexpected error = %v", err)
+				}
+			} else if err != nil && !apierrors.IsNotFound(err) {
+				t.Errorf("Client.Get() unexpected error = %v", err)
 			}
 		})
 	}
