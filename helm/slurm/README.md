@@ -189,7 +189,7 @@ Kubernetes: `>= 1.29.0-0`
 | slurmKey.annotations | object | `{}` | Annotations to add to the secret upon creation. |
 | slurmKey.create | bool | `true` | The secret will be created when true. |
 | slurmKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
-| sssd.conf | string | `"[sssd]\nconfig_file_version = 2\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nauth_provider = ldap\nid_provider = ldap\nldap_uri = ldap://ldap.example.com\nldap_search_base = dc=example,dc=com\nldap_user_search_base = ou=Users,dc=example,dc=com\nldap_group_search_base = ou=Groups,dc=example,dc=com\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
+| sssd.conf | string | `"[sssd]\nconfig_file_version = 2\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nid_provider = files\nauth_provider = files\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
 | sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes presence over `conf` if not empty. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |
 | vendor.nvidia.dcgm.jobMappingDir | string | `"/var/lib/dcgm-exporter/job-mapping"` | Directory path where GPU-to-job mapping files will be stored |
