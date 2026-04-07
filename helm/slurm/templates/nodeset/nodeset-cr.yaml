@@ -37,6 +37,15 @@ SPDX-License-Identifier: Apache-2.0
   {{- $_ := set $podSpec "volumes" $volumes -}}
   {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
 {{- end }}
+{{- /* Add volumeClaimTemplate mounts to slurmd (Together addition) */}}
+{{- if and $nodeset.persistence $nodeset.persistence.volumeClaimTemplate }}
+  {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+  {{- range $nodeset.persistence.volumeClaimTemplate }}
+    {{- $vctVolumeMount := dict "name" .metadata.name "mountPath" .spec.mountPath -}}
+    {{- $volumeMounts = append $volumeMounts $vctVolumeMount -}}
+  {{- end }}
+  {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
+{{- end }}
 {{- /* Add init script volume and mount for compute nodes (Together addition) */}}
 {{- if $.Values.initScriptNodes }}
   {{- $volumes := $podSpec.volumes | default list -}}
@@ -98,6 +107,19 @@ spec:
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
+  {{- if and $nodeset.persistence $nodeset.persistence.volumeClaimTemplate }}
+  volumeClaimTemplates:
+    {{- range $nodeset.persistence.volumeClaimTemplate }}
+    - metadata:
+        name: {{ .metadata.name }}
+      spec:
+        accessModes: {{ .spec.accessModes | toYaml | nindent 10 }}
+        resources:
+          {{- toYaml .spec.resources | nindent 10 }}
+        storageClassName: {{ .spec.storageClassName }}
+        volumeMode: {{ .spec.volumeMode }}
+    {{- end }}
+  {{- end }}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}
