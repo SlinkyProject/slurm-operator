@@ -1241,18 +1241,6 @@ func (r *NodeSetReconciler) syncSlurmNodeDrain(
 	pod *corev1.Pod,
 	message string,
 ) error {
-	logger := log.FromContext(ctx)
-
-	isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, pod)
-	if err != nil {
-		return err
-	}
-
-	if isDrain {
-		logger.V(1).Info("Node is drain, skipping drain request")
-		return nil
-	}
-
 	reason := fmt.Sprintf("Pod (%s) has been cordoned", klog.KObj(pod))
 	if message != "" {
 		reason = message
