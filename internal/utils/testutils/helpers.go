@@ -27,7 +27,8 @@ func NewObjectRef(obj client.Object) slinkyv1beta1.ObjectReference {
 func NewController(name string, slurmKeyRef, jwtKeyRef corev1.SecretKeySelector, accounting *slinkyv1beta1.Accounting) *slinkyv1beta1.Controller {
 	accountingRef := &slinkyv1beta1.ObjectReference{}
 	if accounting != nil {
-		accountingRef = new(NewObjectRef(accounting))
+		ref := NewObjectRef(accounting)
+		accountingRef = &ref
 	}
 	return &slinkyv1beta1.Controller{
 		TypeMeta: metav1.TypeMeta{
