@@ -23,11 +23,13 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		controller *slinkyv1beta1.Controller
 	}
 	tests := []struct {
-		name        string
-		fields      fields
-		args        args
-		wantErr     bool
-		wantScripts []string
+		name            string
+		fields          fields
+		args            args
+		wantErr         bool
+		wantScripts     []string
+		wantContains    []string
+		wantNotContains []string
 	}{
 		{
 			name: "default",
@@ -184,6 +186,27 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 			wantScripts: []string{"00-first.sh", "90-second.sh"},
 		},
 		{
+			name: "extraConf partition filtered when nodesets not yet present",
+			fields: fields{
+				client: fake.NewClientBuilder().Build(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.ControllerSpec{
+						ExtraConf: strings.Join([]string{
+							"MinJobAge=2",
+							"PartitionName=batch Nodes=gpu MaxTime=UNLIMITED",
+						}, "\n"),
+					},
+				},
+			},
+			wantContains:    []string{"MinJobAge=2"},
+			wantNotContains: []string{"PartitionName=batch"},
+		},
+		{
 			name: "multiple epilog configmaps",
 			fields: fields{
 				client: fake.NewClientBuilder().
@@ -241,6 +264,16 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 			for _, script := range tt.wantScripts {
 				if !strings.Contains(got.Data[SlurmConfFile], script) {
 					t.Errorf("Expected %s in slurm.conf", script)
+				}
+			}
+			for _, s := range tt.wantContains {
+				if !strings.Contains(got.Data[SlurmConfFile], s) {
+					t.Errorf("Expected %q in slurm.conf, got:\n%s", s, got.Data[SlurmConfFile])
+				}
+			}
+			for _, s := range tt.wantNotContains {
+				if strings.Contains(got.Data[SlurmConfFile], s) {
+					t.Errorf("Did not expect %q in slurm.conf, got:\n%s", s, got.Data[SlurmConfFile])
 				}
 			}
 		})
@@ -433,6 +466,117 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 			if got.Data[SlurmConfFile] != tt.want.Data[SlurmConfFile] {
 				t.Errorf("got.Data[%s] = %v\nwant.Data[%s] = %v", SlurmConfFile, got.Data[SlurmConfFile], SlurmConfFile, tt.want.Data[SlurmConfFile])
 
+			}
+		})
+	}
+}
+
+func Test_nodeSetName(t *testing.T) {
+	tests := []struct {
+		name    string
+		nodeset *slinkyv1beta1.NodeSet
+		want    string
+	}{
+		{
+			name: "uses CR name when no hostname",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-nodeset"},
+			},
+			want: "my-nodeset",
+		},
+		{
+			name: "uses hostname when set",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-nodeset"},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					Template: slinkyv1beta1.PodTemplate{
+						PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
+							PodSpec: corev1.PodSpec{Hostname: "gpu-"},
+						},
+					},
+				},
+			},
+			want: "gpu",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nodeSetName(tt.nodeset); got != tt.want {
+				t.Errorf("nodeSetName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_filterExtraConfPartitions(t *testing.T) {
+	tests := []struct {
+		name       string
+		extraConf  string
+		knownNames map[string]struct{}
+		want       string
+	}{
+		{
+			name:       "empty extraConf",
+			extraConf:  "",
+			knownNames: map[string]struct{}{},
+			want:       "",
+		},
+		{
+			name:       "no partition lines",
+			extraConf:  "MinJobAge=2\nSlurmctldTimeout=60",
+			knownNames: map[string]struct{}{},
+			want:       "MinJobAge=2\nSlurmctldTimeout=60",
+		},
+		{
+			name:       "partition with known nodesets kept",
+			extraConf:  "PartitionName=batch Nodes=gpu MaxTime=UNLIMITED",
+			knownNames: map[string]struct{}{"gpu": {}},
+			want:       "PartitionName=batch Nodes=gpu MaxTime=UNLIMITED",
+		},
+		{
+			name:       "partition with unknown nodesets filtered",
+			extraConf:  "PartitionName=batch Nodes=gpu MaxTime=UNLIMITED",
+			knownNames: map[string]struct{}{},
+			want:       "",
+		},
+		{
+			name:       "mixed: keep non-partition, filter invalid partition",
+			extraConf:  "MinJobAge=2\nPartitionName=batch Nodes=gpu MaxTime=UNLIMITED\nSlurmctldTimeout=60",
+			knownNames: map[string]struct{}{},
+			want:       "MinJobAge=2\nSlurmctldTimeout=60",
+		},
+		{
+			name:       "multi-nodeset partition with all known",
+			extraConf:  "PartitionName=batch Nodes=gpu,cpu MaxTime=UNLIMITED",
+			knownNames: map[string]struct{}{"gpu": {}, "cpu": {}},
+			want:       "PartitionName=batch Nodes=gpu,cpu MaxTime=UNLIMITED",
+		},
+		{
+			name:       "multi-nodeset partition with one unknown",
+			extraConf:  "PartitionName=batch Nodes=gpu,cpu MaxTime=UNLIMITED",
+			knownNames: map[string]struct{}{"gpu": {}},
+			want:       "",
+		},
+		{
+			name:       "partition with Nodes=ALL always kept",
+			extraConf:  "PartitionName=all Nodes=ALL MaxTime=UNLIMITED",
+			knownNames: map[string]struct{}{},
+			want:       "PartitionName=all Nodes=ALL MaxTime=UNLIMITED",
+		},
+		{
+			name: "multiple partitions: some valid some not",
+			extraConf: strings.Join([]string{
+				"PartitionName=good Nodes=gpu MaxTime=UNLIMITED",
+				"PartitionName=bad Nodes=missing MaxTime=UNLIMITED",
+			}, "\n"),
+			knownNames: map[string]struct{}{"gpu": {}},
+			want:       "PartitionName=good Nodes=gpu MaxTime=UNLIMITED",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := filterExtraConfPartitions(tt.extraConf, tt.knownNames); got != tt.want {
+				t.Errorf("filterExtraConfPartitions() = %q, want %q", got, tt.want)
 			}
 		})
 	}

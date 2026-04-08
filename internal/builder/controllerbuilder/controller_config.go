@@ -270,10 +270,11 @@ func buildSlurmConf(
 	}
 
 	extraConf := controller.Spec.ExtraConf
-	if extraConf != "" {
+	filteredExtraConf := filterExtraConfPartitions(extraConf, nodeSetNames(nodesetList))
+	if filteredExtraConf != "" {
 		conf.AddProperty(config.NewPropertyRaw("#"))
 		conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
-		conf.AddProperty(config.NewPropertyRaw(extraConf))
+		conf.AddProperty(config.NewPropertyRaw(filteredExtraConf))
 	}
 
 	if snippet := common.BuildMergedConfig(extraConf, mergeConfig); snippet != "" {
@@ -327,6 +328,72 @@ func buildPrologEpilogConf(prologScripts, epilogScripts []string) string {
 	return conf.WithFinalNewline(false).Build()
 }
 
+// nodeSetName returns the effective slurm.conf name for a NodeSet.
+// The name is derived from the hostname if set, otherwise from the CR name.
+func nodeSetName(nodeset *slinkyv1beta1.NodeSet) string {
+	name := nodeset.Name
+	if hostname := nodeset.Spec.Template.PodSpecWrapper.Hostname; hostname != "" {
+		name = strings.Trim(hostname, "-")
+	}
+	return name
+}
+
+// nodeSetNames returns the set of effective slurm.conf names for all NodeSets.
+func nodeSetNames(nodesetList *slinkyv1beta1.NodeSetList) map[string]struct{} {
+	names := make(map[string]struct{}, len(nodesetList.Items))
+	for i := range nodesetList.Items {
+		names[nodeSetName(&nodesetList.Items[i])] = struct{}{}
+	}
+	return names
+}
+
+// filterExtraConfPartitions removes PartitionName lines from extraConf whose
+// Nodes reference NodeSets that are not present in knownNames. This prevents
+// generating an invalid slurm.conf when NodeSet CRs have not yet been created
+// (e.g. during initial Helm install where the Controller CR is applied before
+// NodeSet CRs).
+func filterExtraConfPartitions(extraConf string, knownNames map[string]struct{}) string {
+	if extraConf == "" {
+		return ""
+	}
+	lines := strings.Split(extraConf, "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if isPartitionLine(line) && !partitionNodesKnown(line, knownNames) {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	return strings.Join(filtered, "\n")
+}
+
+// isPartitionLine reports whether line is a Slurm PartitionName= directive.
+func isPartitionLine(line string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "partitionname=")
+}
+
+// partitionNodesKnown reports whether all node names in the Nodes= field of a
+// partition line are present in knownNames.
+func partitionNodesKnown(line string, knownNames map[string]struct{}) bool {
+	for _, field := range strings.Fields(line) {
+		if !strings.HasPrefix(strings.ToLower(field), "nodes=") {
+			continue
+		}
+		nodesValue := field[len("nodes="):]
+		for _, name := range strings.Split(nodesValue, ",") {
+			name = strings.TrimSpace(name)
+			if name == "" || strings.EqualFold(name, "ALL") {
+				continue
+			}
+			if _, ok := knownNames[name]; !ok {
+				return false
+			}
+		}
+		return true
+	}
+	return true
+}
+
 // buildNodeSetConf() returns a slurm.conf snippet containing NodeSets and their Partitions.
 //
 // https://slurm.schedmd.com/slurm.conf.html#SECTION_NODESET-CONFIGURATION
@@ -338,11 +405,7 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
 	})
 	for _, nodeset := range nodesetList.Items {
-		name := nodeset.Name
-		template := nodeset.Spec.Template.PodSpecWrapper
-		if template.Hostname != "" {
-			name = strings.Trim(template.Hostname, "-")
-		}
+		name := nodeSetName(&nodeset)
 		nodesetLine := []string{
 			fmt.Sprintf("NodeSet=%v", name),
 			fmt.Sprintf("Feature=%v", name),
