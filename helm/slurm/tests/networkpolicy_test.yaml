@@ -63,27 +63,47 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: nodeset should include SSH ingress from login when ssh is enabled
+  - it: nodeset should allow all TCP ingress from login pods
     template: networkpolicy/nodeset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
-      nodesets:
-        slinky:
-          enabled: true
-          ssh:
-            enabled: true
     asserts:
       - contains:
           path: spec.ingress
           content:
-            ports:
-              - protocol: TCP
-                port: 22
             from:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: login
+
+  - it: nodeset should allow all TCP ingress from slurmd pods
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmd
+
+  - it: nodeset should allow all TCP egress to slurmd pods
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmd
 
   - it: nodeset should use per-instance podSelector
     template: networkpolicy/nodeset-netpol.yaml
@@ -169,7 +189,7 @@ tests:
       - hasDocuments:
           count: 2
 
-  - it: loginset should include SSH egress to nodeset
+  - it: loginset should allow all TCP egress to nodeset
     template: networkpolicy/loginset-netpol.yaml
     set:
       networkPolicy:
@@ -181,13 +201,56 @@ tests:
       - contains:
           path: spec.egress
           content:
-            ports:
-              - protocol: TCP
-                port: 22
             to:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmd
+
+  - it: loginset should include accounting egress when accounting is enabled
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
+
+  - it: loginset should not include accounting egress when accounting is disabled
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: false
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - notContains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
 
   - it: accounting manifest should match snapshot
     template: networkpolicy/accounting-netpol.yaml
@@ -261,6 +324,7 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
 
   - it: controller should not include accounting egress when accounting is disabled
     template: networkpolicy/controller-netpol.yaml
@@ -280,6 +344,7 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
 
   - it: should append global extraIngress to all networkpolicies
     set:
