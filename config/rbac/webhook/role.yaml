@@ -7,6 +7,16 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
+  - nodes
+  - pods/binding
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - events
   verbs:
   - create
@@ -14,15 +24,6 @@ rules:
   - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - pods/binding
-  verbs:
-  - get
-  - list
   - watch
 - apiGroups:
   - ""
@@ -42,4 +43,17 @@ rules:
   - create
   - get
   - patch
+  - update
+- apiGroups:
+  - slinky.slurm.net
+  resources:
+  - accountings
+  - controllers
+  - loginsets
+  - nodesets
+  - restapis
+  - tokens
+  verbs:
+  - create
+  - delete
   - update
