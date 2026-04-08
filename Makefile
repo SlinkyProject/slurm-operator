@@ -137,7 +137,7 @@ if [ ! -x "$(HELM)" ]; then \
 	echo "Helm binary not found at $(HELM). Run 'make helm-bin' first." ;\
 	exit 1 ;\
 fi ;\
-helm_major="$$( $(HELM) version --short 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' )"; \
+helm_major="$$( $(HELM) version --short 2>/dev/null | $(SED) -E 's/^v([0-9]+).*/\1/' )"; \
 if [ "$${helm_major}" = "4" ]; then \
 	verify_flag="--verify=false" ;\
 else \
