@@ -26,8 +26,8 @@ Table of Contents
     - `Controller <#controller>`__
     - `NodeSets <#nodesets>`__
 
-      - ```StatefulSet`` (default) <#statefulset-default>`__
-      - ```DaemonSet`` <#daemonset>`__
+      - `StatefulSet (default) <#statefulset-default>`__
+      - `DaemonSet <#daemonset>`__
 
     - `LoginSets <#loginsets>`__
     - `Hybrid Support <#hybrid-support>`__
@@ -144,8 +144,8 @@ pods are created and how they are scaled. This allows you to choose
 between replica-based scaling (like a StatefulSet) or one-pod-per-node
 scaling (like a DaemonSet).
 
-``StatefulSet`` (default)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+StatefulSet (default)
+^^^^^^^^^^^^^^^^^^^^^
 
 - **Behavior**: The controller maintains a fixed number of pods
   according to the ``replicas`` field.
@@ -154,8 +154,8 @@ scaling (like a DaemonSet).
   this mode.
 - **Note**: Each pod has a stable identity (e.g. ordinal-based naming)
 
-``DaemonSet``
-^^^^^^^^^^^^^
+DaemonSet
+^^^^^^^^^
 
 - **Behavior**: The controller schedules one pod per Kubernetes node
   that matches the NodeSet’s pod template (e.g. ``nodeSelector``,
