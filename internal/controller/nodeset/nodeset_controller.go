@@ -94,19 +94,19 @@ type NodeSetReconciler struct {
 	expectations   *kubecontroller.UIDTrackingControllerExpectations
 }
 
-//+kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/finalizers,verbs=update
-//+kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=pods/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch;patch
-//+kubebuilder:rbac:groups=apps,resources=controllerrevisions,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/finalizers,verbs=update
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch;patch
+// +kubebuilder:rbac:groups=apps,resources=controllerrevisions,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
