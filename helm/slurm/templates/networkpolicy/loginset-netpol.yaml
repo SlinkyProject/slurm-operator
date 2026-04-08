@@ -40,10 +40,18 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    {{- if $.Values.accounting.enabled }}
     - ports:
         - protocol: TCP
-          port: 22
+          port: 6819
       to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmdbd
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    {{- end }}
+    - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd

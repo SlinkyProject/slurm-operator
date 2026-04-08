@@ -30,18 +30,15 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
-    {{- if dig "ssh" "enabled" false $nodeset }}
-    - ports:
-        - protocol: TCP
-          port: 22
-      from:
+    - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: login
-    {{- end }}
     {{- with $.Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -56,10 +53,8 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
-    - ports:
-        - protocol: TCP
-          port: {{ include "slurm.worker.port" $ }}
-      to:
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    - to:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd

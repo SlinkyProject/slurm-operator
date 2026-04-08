@@ -18,6 +18,7 @@ accounting manifest should match snapshot:
           to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
         - ports:
             - port: 3306
@@ -31,12 +32,14 @@ accounting manifest should match snapshot:
         - from:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
           ports:
             - port: 6819
               protocol: TCP
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
           app.kubernetes.io/name: slurmdbd
       policyTypes:
         - Ingress
@@ -74,9 +77,11 @@ controller manifest should match snapshot:
                   app.kubernetes.io/name: slurmd
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmdbd
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmrestd
             - podSelector:
                 matchLabels:
@@ -86,6 +91,7 @@ controller manifest should match snapshot:
               protocol: TCP
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
           app.kubernetes.io/name: slurmctld
       policyTypes:
         - Ingress
@@ -110,11 +116,9 @@ loginset manifest should match snapshot:
           to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
-        - ports:
-            - port: 22
-              protocol: TCP
-          to:
+        - to:
             - podSelector:
                 matchLabels:
                   app.kubernetes.io/name: slurmd
@@ -154,11 +158,9 @@ nodeset manifest should match snapshot:
           to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
-        - ports:
-            - port: 6818
-              protocol: TCP
-          to:
+        - to:
             - podSelector:
                 matchLabels:
                   app.kubernetes.io/name: slurmd
@@ -171,13 +173,19 @@ nodeset manifest should match snapshot:
         - from:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/name: slurmd
           ports:
             - port: 6818
               protocol: TCP
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: slurmd
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: login
       podSelector:
         matchLabels:
           app.kubernetes.io/instance: test-release-slurm-worker-slinky
@@ -205,6 +213,7 @@ restapi manifest should match snapshot:
           to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmctld
         - ports:
             - port: 53
@@ -217,6 +226,7 @@ restapi manifest should match snapshot:
               protocol: TCP
       podSelector:
         matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
           app.kubernetes.io/name: slurmrestd
       policyTypes:
         - Ingress

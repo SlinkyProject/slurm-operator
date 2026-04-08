@@ -15,6 +15,7 @@ spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: slurmdbd
+      app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
   policyTypes:
     - Ingress
     - Egress
@@ -26,6 +27,7 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
     {{- with .Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -40,6 +42,7 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
     - ports:
         - protocol: TCP
           port: 3306

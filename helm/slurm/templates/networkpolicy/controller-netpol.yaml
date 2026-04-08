@@ -15,6 +15,7 @@ spec:
   podSelector:
     matchLabels:
       app.kubernetes.io/name: slurmctld
+      app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
   policyTypes:
     - Ingress
     - Egress
@@ -29,9 +30,11 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmdbd
+              app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmrestd
+              app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: login
@@ -57,6 +60,7 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmdbd
+              app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
     {{- end }}
     - ports:
         - protocol: UDP
