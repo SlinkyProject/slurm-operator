@@ -26,6 +26,12 @@ tests:
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - matchSnapshot: {}
 
@@ -46,6 +52,12 @@ tests:
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - matchSnapshot: {}
 
@@ -68,6 +80,12 @@ tests:
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+      loginsets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.ingress
@@ -76,12 +94,16 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: login
+                    app.kubernetes.io/instance: test-release-slurm-login-slinky
 
   - it: nodeset should allow all TCP ingress from slurmd pods
     template: networkpolicy/nodeset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.ingress
@@ -90,12 +112,16 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
 
   - it: nodeset should allow all TCP egress to slurmd pods
     template: networkpolicy/nodeset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
     asserts:
       - contains:
           path: spec.egress
@@ -104,12 +130,16 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
 
-  - it: nodeset should use per-instance podSelector
+  - it: nodeset podSelector should use CR name as instance
     template: networkpolicy/nodeset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
     asserts:
       - equal:
           path: spec.podSelector.matchLabels
@@ -131,13 +161,16 @@ tests:
           enabled: false
     asserts:
       - hasDocuments:
-          count: 3
+          count: 2
 
   - it: loginset manifest should match snapshot
     template: networkpolicy/loginset-netpol.yaml
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
       loginsets:
         slinky:
           enabled: true
@@ -158,7 +191,7 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: loginset should use per-instance podSelector
+  - it: loginset podSelector should use CR name as instance
     template: networkpolicy/loginset-netpol.yaml
     set:
       networkPolicy:
@@ -194,6 +227,9 @@ tests:
     set:
       networkPolicy:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
       loginsets:
         slinky:
           enabled: true
@@ -205,6 +241,7 @@ tests:
               - podSelector:
                   matchLabels:
                     app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
 
   - it: loginset should include accounting egress when accounting is enabled
     template: networkpolicy/loginset-netpol.yaml
@@ -360,6 +397,9 @@ tests:
                 port: 9090
       accounting:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
       loginsets:
         slinky:
           enabled: true
@@ -388,6 +428,9 @@ tests:
                 port: 443
       accounting:
         enabled: true
+      nodesets:
+        slinky:
+          enabled: true
       loginsets:
         slinky:
           enabled: true

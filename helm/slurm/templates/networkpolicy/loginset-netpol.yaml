@@ -53,9 +53,15 @@ spec:
               app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
     {{- end }}
     - to:
+        {{- range $nk, $ns := $.Values.nodesets }}
+        {{- $ns = mergeOverwrite (dict) (deepCopy ($.Values.nodesetDefaults | default dict)) (deepCopy ($ns | default dict)) -}}
+        {{- if $ns.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $nk }}
+        {{- end }}
+        {{- end }}
     - ports:
         - protocol: UDP
           port: 53
