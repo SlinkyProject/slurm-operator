@@ -18,7 +18,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - node
+  - nodes
   - pods/binding
   verbs:
   - get
