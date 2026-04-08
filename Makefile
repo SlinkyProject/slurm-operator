@@ -298,8 +298,11 @@ values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:generateEmbeddedObjectMeta=true webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:generateEmbeddedObjectMeta=true webhook paths="./..." output:crd:artifacts:config=helm/slurm-operator-crds/templates
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role paths=./cmd/manager/... paths=./internal/controller/... output:rbac:dir=config/rbac/manager
+	$(CONTROLLER_GEN) rbac:roleName=webhook-role webhook paths=./cmd/webhook/... paths=./internal/webhook/... output:rbac:dir=config/rbac/webhook output:webhook:dir=./config/webhook
+
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:artifacts:config=helm/slurm-operator-crds/templates
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
