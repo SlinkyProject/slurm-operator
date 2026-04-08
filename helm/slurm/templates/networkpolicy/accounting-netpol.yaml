@@ -28,6 +28,14 @@ spec:
             matchLabels:
               app.kubernetes.io/name: slurmctld
               app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
+        {{- range $key, $loginset := .Values.loginsets }}
+        {{- if $loginset.enabled }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: login
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.login.name" $) $key }}
+        {{- end }}
+        {{- end }}
     {{- with .Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

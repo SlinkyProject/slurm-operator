@@ -24,9 +24,14 @@ spec:
         - protocol: TCP
           port: {{ include "slurm.controller.port" . }}
       from:
+        {{- range $key, $nodeset := .Values.nodesets }}
+        {{- if $nodeset.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $key }}
+        {{- end }}
+        {{- end }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmdbd
@@ -35,9 +40,14 @@ spec:
             matchLabels:
               app.kubernetes.io/name: slurmrestd
               app.kubernetes.io/instance: {{ include "slurm.fullname" . }}
+        {{- range $key, $loginset := .Values.loginsets }}
+        {{- if $loginset.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: login
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.login.name" $) $key }}
+        {{- end }}
+        {{- end }}
     {{- with .Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -49,9 +59,14 @@ spec:
         - protocol: TCP
           port: {{ include "slurm.worker.port" . }}
       to:
+        {{- range $key, $nodeset := .Values.nodesets }}
+        {{- if $nodeset.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $key }}
+        {{- end }}
+        {{- end }}
     {{- if .Values.accounting.enabled }}
     - ports:
         - protocol: TCP

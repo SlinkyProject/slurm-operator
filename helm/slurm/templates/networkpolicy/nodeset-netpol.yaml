@@ -32,13 +32,23 @@ spec:
               app.kubernetes.io/name: slurmctld
               app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
     - from:
+        {{- range $nk, $ns := $.Values.nodesets }}
+        {{- if $ns.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $nk }}
+        {{- end }}
+        {{- end }}
     - from:
+        {{- range $lk, $ls := $.Values.loginsets }}
+        {{- if $ls.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: login
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.login.name" $) $lk }}
+        {{- end }}
+        {{- end }}
     {{- with $.Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -55,9 +65,14 @@ spec:
               app.kubernetes.io/name: slurmctld
               app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
     - to:
+        {{- range $nk, $ns := $.Values.nodesets }}
+        {{- if $ns.enabled }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $nk }}
+        {{- end }}
+        {{- end }}
     - ports:
         - protocol: UDP
           port: 53

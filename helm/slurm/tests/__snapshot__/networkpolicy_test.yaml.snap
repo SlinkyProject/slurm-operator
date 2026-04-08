@@ -64,6 +64,7 @@ controller manifest should match snapshot:
           to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
                   app.kubernetes.io/name: slurmd
         - ports:
             - port: 53
@@ -74,6 +75,7 @@ controller manifest should match snapshot:
         - from:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
                   app.kubernetes.io/name: slurmd
             - podSelector:
                 matchLabels:
@@ -83,9 +85,6 @@ controller manifest should match snapshot:
                 matchLabels:
                   app.kubernetes.io/instance: test-release-slurm
                   app.kubernetes.io/name: slurmrestd
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/name: login
           ports:
             - port: 6817
               protocol: TCP
@@ -121,6 +120,7 @@ loginset manifest should match snapshot:
         - to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
                   app.kubernetes.io/name: slurmd
         - ports:
             - port: 53
@@ -163,6 +163,7 @@ nodeset manifest should match snapshot:
         - to:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
                   app.kubernetes.io/name: slurmd
         - ports:
             - port: 53
@@ -181,11 +182,9 @@ nodeset manifest should match snapshot:
         - from:
             - podSelector:
                 matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
                   app.kubernetes.io/name: slurmd
-        - from:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/name: login
+        - from: null
       podSelector:
         matchLabels:
           app.kubernetes.io/instance: test-release-slurm-worker-slinky
