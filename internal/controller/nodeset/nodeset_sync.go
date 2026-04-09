@@ -404,7 +404,7 @@ func (r *NodeSetReconciler) syncCordon(
 				reason = value
 			}
 
-			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "",
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
 				"Cordoning Pod %s: Kubernetes node %s was cordoned", klog.KObj(pod), name)
 
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason); err != nil {
@@ -539,7 +539,7 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		}
 		logger.Info("Deleting NodeSet pod, Slurm node is not registered but pod is healthy",
 			"pod", klog.KObj(pod))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "",
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
 			"Deleting Pod %s: Slurm node is not registered but pod is healthy", klog.KObj(pod))
 		if err := r.Delete(ctx, pod); err != nil {
 			if !apierrors.IsNotFound(err) {
