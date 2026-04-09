@@ -75,7 +75,10 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	defaults.SetNodeSetDefaults(nodeset)
 	key := objectutils.KeyFunc(nodeset)
 
-	if nodeset.DeletionTimestamp.IsZero() {
+	if !nodeset.DeletionTimestamp.IsZero() {
+		logger.Info("NodeSet is being deleted, skipping sync", "request", req)
+		return nil
+	} else {
 		durationStore.Push(key, 30*time.Second)
 	}
 
