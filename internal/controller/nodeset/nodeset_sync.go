@@ -619,8 +619,6 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
-	logger := log.FromContext(ctx)
-
 	syncSlurmTopologyFn := func(i int) error {
 		pod := pods[i]
 
@@ -643,16 +641,13 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		toUpdate := pod.DeepCopy()
 		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to patch pod annotations: %w", err)
 			}
-			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
-			return err
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil {
-			// Best effort, no guarantee the topology is valid from the admin.
-			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
+			return fmt.Errorf("failed to update Slurm node topology: %w", err)
 		}
 
 		return nil
