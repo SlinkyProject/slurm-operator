@@ -244,13 +244,6 @@ func (r *NodeSetReconciler) sync(
 ) error {
 	steps := []syncsteps.Step[*slinkyv1beta1.NodeSet]{
 		{
-			Name: "RefreshNodeCache",
-			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
-			},
-			StopOnError: true,
-		},
-		{
 			Name: "ClusterWorkerService",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerService(ctx, nodeset)
@@ -269,21 +262,24 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
-			Name: "SlurmNodes",
-			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				return r.syncSlurmNodes(ctx, nodeset, pods)
+			Name: "NodeTaint",
+			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
+				return r.syncNodeTaint(ctx)
 			},
+		},
+		{
+			Name: "RefreshNodeCache",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
+			},
+			// We need to ensure the Slurm client cache is refreshed before proceeding
+			// because stale cache could cause incorrect action to be taken.
+			StopOnError: true,
 		},
 		{
 			Name: "SlurmDeadline",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmDeadline(ctx, nodeset, pods)
-			},
-		},
-		{
-			Name: "SlurmTopology",
-			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				return r.syncSlurmTopology(ctx, nodeset, pods)
 			},
 		},
 		{
@@ -293,15 +289,21 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
-			Name: "NodeTaint",
-			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
-				return r.syncNodeTaint(ctx)
-			},
-		},
-		{
 			Name: "NodeSetPods",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
+			},
+		},
+		{
+			Name: "SlurmNodes",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmNodes(ctx, nodeset, pods)
+			},
+		},
+		{
+			Name: "SlurmTopology",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmTopology(ctx, nodeset, pods)
 			},
 		},
 	}
