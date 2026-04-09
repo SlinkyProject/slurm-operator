@@ -452,7 +452,7 @@ func (r *NodeSetReconciler) syncNodeTaint(
 	}
 	nodesetUIDs := sets.New[types.UID]()
 	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.TaintKubeNodes {
+		if nodeset.Spec.TaintKubeNodes { //nolint:staticcheck // SA1019
 			nodesetUIDs.Insert(nodeset.UID)
 		}
 	}

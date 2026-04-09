@@ -117,6 +117,8 @@ type NodeSetSpec struct {
 	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
 	// +optional
 	// +default:=false
+	//
+	// Deprecated: To be removed in the future.
 	TaintKubeNodes bool `json:"taintKubeNodes,omitempty"`
 
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
