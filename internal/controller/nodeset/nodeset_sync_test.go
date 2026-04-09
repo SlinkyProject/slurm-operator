@@ -59,13 +59,13 @@ func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) 
 		Client:         client,
 		Scheme:         client.Scheme(),
 		ClientMap:      clientMap,
+		builder:        builder.New(client),
 		eventRecorder:  eventRecorder,
 		historyControl: historycontrol.NewHistoryControl(client),
 		podControl:     podcontrol.NewPodControl(client, eventRecorder),
 		slurmControl:   slurmcontrol.NewSlurmControl(clientMap),
 		expectations:   kubecontroller.NewUIDTrackingControllerExpectations(kubecontroller.NewControllerExpectations()),
 	}
-	r.builder = builder.New(r.Client)
 	return r
 }
 
