@@ -1,37 +1,30 @@
 ---
-name: Bug Report
-about: Submit a bug report.
-title: "[Bug]: "
+name: Bug report
+about: Create a bug report to help us improve Slurm Operator
+title: "[BUG]"
+labels: "? - Needs Triage, bug"
+assignees: ''
+
 ---
 
-<!--
-Feature requests, code contributions, and bug reports are welcome!
-Github/Gitlab submitted issues and PRs/MRs are handled on a best effort basis.
-The SchedMD official issue tracker is at <https://support.schedmd.com/>.
--->
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
 
-## Description
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-<!--
-Describe the problem being encountered.
--->
+**Steps/Code to reproduce bug**
+Follow [this guide](http://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports) to craft a minimal bug report. This helps us reproduce the issue you're having and resolve the issue more quickly.
 
-## Steps to Reproduce
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
-<!--
-Provide step to reproduce the bug.
-What environment/version does this occur?
--->
+**Environment details (please complete the following information):**
+ - Environment location: [Bare-metal, Docker, Cloud(specify cloud provider)]
+ - Install / deployment method: [Docker, Helm or Kubernetes manifests, from source, or other]
+   - If using containers, provide relevant `docker pull` / `docker run` or Helm values as applicable
 
-## Expected Behavior
+**Additional context**
+Add any other context about the problem here.
 
-<!--
-Describe what you expect should happen.
--->
-
-## Additional Context
-
-<!--
-Provide any other additional information here.
-(e.g. source code snippets/links; conjecture of root cause)
--->
+-----
+By submitting this issue, you agree to follow our [code of conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md) and our [contributing guidelines](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md).

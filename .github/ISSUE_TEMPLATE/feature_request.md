@@ -1,32 +1,25 @@
 ---
-name: Feature Request
-about: Suggest a new feature.
-title: "[Feature]: "
+name: Feature request
+about: Suggest an idea for Slurm Operator
+title: "[FEA]"
+labels: "? - Needs Triage, feature request"
+assignees: ''
+
 ---
 
-<!--
-Feature requests, code contributions, and bug reports are welcome!
-Github/Gitlab submitted issues and PRs/MRs are handled on a best effort basis.
-The SchedMD official issue tracker is at <https://support.schedmd.com/>.
--->
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved. -->
 
-## Description
+**Is your feature request related to a problem? Please describe.**
+A clear and concise description of what the problem is. Ex. I wish I could use Slurm Operator to do [...]
 
-<!--
-Describe the problem being solved.
-What alternatives/workarounds have been considered?
--->
+**Describe the solution you'd like**
+A clear and concise description of what you want to happen.
 
-## Intended Behavior
+**Describe alternatives you've considered**
+A clear and concise description of any alternative solutions or features you've considered.
 
-<!--
-Describe the desired behavior.
-Use [ISO/IEC Directives](https://www.iso.org/foreword-supplementary-information.html) if it helps.
--->
+**Additional context**
+Add any other context, code examples, or references to existing implementations about the feature request here.
 
-## Additional Context
-
-<!--
-Provide any other additional information here.
-(e.g. technical notes; design analysis/thoughts; code snippets)
--->
+-----
+By submitting this issue, you agree to follow our [code of conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md) and our [contributing guidelines](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md).
