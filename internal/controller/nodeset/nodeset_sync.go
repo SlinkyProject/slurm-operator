@@ -248,6 +248,7 @@ func (r *NodeSetReconciler) sync(
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
 			},
+			StopOnError: true,
 		},
 		{
 			Name: "ClusterWorkerService",
