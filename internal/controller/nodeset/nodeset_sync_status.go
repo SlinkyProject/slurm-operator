@@ -291,30 +291,22 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 
 	syncPodPDBLabelsFn := func(i int) error {
 		pod := pods[i]
-
-		// Refresh Pod to get current Pod Conditions
-		podKey := client.ObjectKeyFromObject(pod)
-		if err := r.Get(ctx, podKey, pod); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+		mutateFn := func(pod *corev1.Pod) error {
+			podProtect := slurmconditions.IsNodeBusy(&pod.Status)
+			logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
+			if podProtect {
+				podLabel := labels.NewBuilder().WithPodProtect().Build()
+				pod.Labels = structutils.MergeMaps(pod.Labels, podLabel)
+			} else {
+				delete(pod.Labels, slinkyv1beta1.LabelNodeSetPodProtect)
 			}
-			return err
+			return nil
 		}
-
-		podProtect := slurmconditions.IsNodeBusy(&pod.Status)
-		logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
-		toUpdate := pod.DeepCopy()
-
-		if podProtect {
-			podLabel := labels.NewBuilder().WithPodProtect().Build()
-			toUpdate.Labels = structutils.MergeMaps(toUpdate.Labels, podLabel)
-		} else {
-			delete(toUpdate.Labels, slinkyv1beta1.LabelNodeSetPodProtect)
-		}
-
-		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-			logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(toUpdate))
-			return err
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(pod))
+				return err
+			}
 		}
 		return nil
 	}

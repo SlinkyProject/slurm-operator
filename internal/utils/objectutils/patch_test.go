@@ -570,3 +570,63 @@ func TestSyncObject(t *testing.T) {
 		})
 	}
 }
+
+func TestPatchObject_Pod(t *testing.T) {
+	ctx := context.Background()
+	key := client.ObjectKey{Namespace: "default", Name: "test-pod"}
+	existing := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+			Labels: map[string]string{
+				"app": "before",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "c", Image: "nginx:1.25"},
+			},
+		},
+	}
+	c := fake.NewClientBuilder().WithObjects(existing).Build()
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+		},
+	}
+
+	err := PatchObject(c, ctx, pod, func(pod *corev1.Pod) error {
+		pod.Labels = map[string]string{
+			"app":     "after",
+			"patched": "true",
+		}
+		pod.Annotations = map[string]string{"note": "via PatchObject"}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("PatchObject() error = %v", err)
+	}
+
+	if pod.Labels["app"] != "after" || pod.Labels["patched"] != "true" {
+		t.Errorf("pod.Labels after PatchObject = %v, want app=after and patched=true", pod.Labels)
+	}
+	if pod.Annotations["note"] != "via PatchObject" {
+		t.Errorf("pod.Annotations after PatchObject = %v", pod.Annotations)
+	}
+
+	stored := &corev1.Pod{}
+	if err := c.Get(ctx, key, stored); err != nil {
+		t.Fatalf("Get() after patch: %v", err)
+	}
+	if stored.Labels["app"] != "after" {
+		t.Errorf("stored pod labels = %v, want app=after", stored.Labels)
+	}
+	if stored.Annotations["note"] != "via PatchObject" {
+		t.Errorf("stored pod annotations = %v", stored.Annotations)
+	}
+	if !equality.Semantic.DeepEqual(pod.Labels, stored.Labels) {
+		t.Errorf("returned pod labels %v != stored %v", pod.Labels, stored.Labels)
+	}
+}

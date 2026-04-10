@@ -83,7 +83,7 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 		return nil
 	}
 
-	var patch client.Patch
+	var patchErr error
 	switch o := newObj.(type) {
 	case *corev1.ConfigMap:
 		obj := oldObj.(*corev1.ConfigMap)
@@ -91,159 +91,203 @@ func SyncObject(c client.Client, ctx context.Context, newObj client.Object, shou
 			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping...", key))
 			return nil
 		}
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Data = o.Data
-		obj.BinaryData = o.BinaryData
+		patchErr = PatchObject(c, ctx, obj, func(obj *corev1.ConfigMap) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Data = o.Data
+			obj.BinaryData = o.BinaryData
+			return nil
+		})
 	case *corev1.Secret:
 		obj := oldObj.(*corev1.Secret)
 		if ptr.Deref(obj.Immutable, false) {
 			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping...", key))
 			return nil
 		}
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Data = o.Data
-		obj.StringData = o.StringData
+		patchErr = PatchObject(c, ctx, obj, func(obj *corev1.Secret) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Data = o.Data
+			obj.StringData = o.StringData
+			return nil
+		})
 	case *corev1.Service:
 		obj := oldObj.(*corev1.Service)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec = o.Spec
+		patchErr = PatchObject(c, ctx, obj, func(obj *corev1.Service) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec = o.Spec
+			return nil
+		})
 	case *appsv1.Deployment:
 		obj := oldObj.(*appsv1.Deployment)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
-		obj.Spec.Replicas = o.Spec.Replicas
-		obj.Spec.Strategy = o.Spec.Strategy
-		obj.Spec.Template = o.Spec.Template
+		patchErr = PatchObject(c, ctx, obj, func(obj *appsv1.Deployment) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
+			obj.Spec.Replicas = o.Spec.Replicas
+			obj.Spec.Strategy = o.Spec.Strategy
+			obj.Spec.Template = o.Spec.Template
+			return nil
+		})
 	case *appsv1.StatefulSet:
 		obj := oldObj.(*appsv1.StatefulSet)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
-		obj.Spec.Ordinals = o.Spec.Ordinals
-		obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
-		obj.Spec.Replicas = o.Spec.Replicas
-		obj.Spec.Template = o.Spec.Template
-		obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
+		patchErr = PatchObject(c, ctx, obj, func(obj *appsv1.StatefulSet) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
+			obj.Spec.Ordinals = o.Spec.Ordinals
+			obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
+			obj.Spec.Replicas = o.Spec.Replicas
+			obj.Spec.Template = o.Spec.Template
+			obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
+			return nil
+		})
 	case *slinkyv1beta1.Controller:
 		obj := oldObj.(*slinkyv1beta1.Controller)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec = o.Spec
+		patchErr = PatchObject(c, ctx, obj, func(obj *slinkyv1beta1.Controller) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec = o.Spec
+			return nil
+		})
 	case *slinkyv1beta1.RestApi:
 		obj := oldObj.(*slinkyv1beta1.RestApi)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec = o.Spec
+		patchErr = PatchObject(c, ctx, obj, func(obj *slinkyv1beta1.RestApi) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec = o.Spec
+			return nil
+		})
 	case *slinkyv1beta1.Accounting:
 		obj := oldObj.(*slinkyv1beta1.Accounting)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec = o.Spec
+		patchErr = PatchObject(c, ctx, obj, func(obj *slinkyv1beta1.Accounting) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec = o.Spec
+			return nil
+		})
 	case *slinkyv1beta1.NodeSet:
 		obj := oldObj.(*slinkyv1beta1.NodeSet)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
-		obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
-		obj.Spec.Replicas = o.Spec.Replicas
-		obj.Spec.Template = o.Spec.Template
-		obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
+		patchErr = PatchObject(c, ctx, obj, func(obj *slinkyv1beta1.NodeSet) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
+			obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
+			obj.Spec.Replicas = o.Spec.Replicas
+			obj.Spec.Template = o.Spec.Template
+			obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
+			return nil
+		})
 	case *slinkyv1beta1.LoginSet:
 		obj := oldObj.(*slinkyv1beta1.LoginSet)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.Replicas = o.Spec.Replicas
-		obj.Spec.Template = o.Spec.Template
+		patchErr = PatchObject(c, ctx, obj, func(obj *slinkyv1beta1.LoginSet) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.Replicas = o.Spec.Replicas
+			obj.Spec.Template = o.Spec.Template
+			return nil
+		})
 	case *policyv1.PodDisruptionBudget:
 		obj := oldObj.(*policyv1.PodDisruptionBudget)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
-		obj.Spec.MinAvailable = o.Spec.MinAvailable
-		obj.Spec.Selector = o.Spec.Selector
+		patchErr = PatchObject(c, ctx, obj, func(obj *policyv1.PodDisruptionBudget) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.MaxUnavailable = o.Spec.MaxUnavailable
+			obj.Spec.MinAvailable = o.Spec.MinAvailable
+			obj.Spec.Selector = o.Spec.Selector
+			return nil
+		})
 	case *monitoringv1.ServiceMonitor:
 		obj := oldObj.(*monitoringv1.ServiceMonitor)
-		patch = client.MergeFrom(obj.DeepCopy())
-		obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
-		obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
-		if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
-			obj.OwnerReferences = o.OwnerReferences
-		}
-		obj.Spec.JobLabel = o.Spec.JobLabel
-		obj.Spec.TargetLabels = o.Spec.TargetLabels
-		obj.Spec.PodTargetLabels = o.Spec.PodTargetLabels
-		obj.Spec.Endpoints = o.Spec.Endpoints
-		obj.Spec.Selector = o.Spec.Selector
-		obj.Spec.SelectorMechanism = o.Spec.SelectorMechanism
-		obj.Spec.NamespaceSelector = o.Spec.NamespaceSelector
-		obj.Spec.SampleLimit = o.Spec.SampleLimit
-		obj.Spec.ScrapeProtocols = o.Spec.ScrapeProtocols
-		obj.Spec.FallbackScrapeProtocol = o.Spec.FallbackScrapeProtocol
-		obj.Spec.TargetLimit = o.Spec.TargetLimit
-		obj.Spec.LabelLimit = o.Spec.LabelLimit
-		obj.Spec.LabelNameLengthLimit = o.Spec.LabelNameLengthLimit
-		obj.Spec.LabelValueLengthLimit = o.Spec.LabelValueLengthLimit
-		obj.Spec.NativeHistogramConfig = o.Spec.NativeHistogramConfig
-		obj.Spec.KeepDroppedTargets = o.Spec.KeepDroppedTargets
-		obj.Spec.AttachMetadata = o.Spec.AttachMetadata
-		obj.Spec.ScrapeClassName = o.Spec.ScrapeClassName
-		obj.Spec.BodySizeLimit = o.Spec.BodySizeLimit
-		obj.Spec.ServiceDiscoveryRole = o.Spec.ServiceDiscoveryRole
+		patchErr = PatchObject(c, ctx, obj, func(obj *monitoringv1.ServiceMonitor) error {
+			obj.Annotations = structutils.MergeMaps(obj.Annotations, o.Annotations)
+			obj.Labels = structutils.MergeMaps(obj.Labels, o.Labels)
+			if !equality.Semantic.DeepEqual(obj.OwnerReferences, o.OwnerReferences) {
+				obj.OwnerReferences = o.OwnerReferences
+			}
+			obj.Spec.JobLabel = o.Spec.JobLabel
+			obj.Spec.TargetLabels = o.Spec.TargetLabels
+			obj.Spec.PodTargetLabels = o.Spec.PodTargetLabels
+			obj.Spec.Endpoints = o.Spec.Endpoints
+			obj.Spec.Selector = o.Spec.Selector
+			obj.Spec.SelectorMechanism = o.Spec.SelectorMechanism
+			obj.Spec.NamespaceSelector = o.Spec.NamespaceSelector
+			obj.Spec.SampleLimit = o.Spec.SampleLimit
+			obj.Spec.ScrapeProtocols = o.Spec.ScrapeProtocols
+			obj.Spec.FallbackScrapeProtocol = o.Spec.FallbackScrapeProtocol
+			obj.Spec.TargetLimit = o.Spec.TargetLimit
+			obj.Spec.LabelLimit = o.Spec.LabelLimit
+			obj.Spec.LabelNameLengthLimit = o.Spec.LabelNameLengthLimit
+			obj.Spec.LabelValueLengthLimit = o.Spec.LabelValueLengthLimit
+			obj.Spec.NativeHistogramConfig = o.Spec.NativeHistogramConfig
+			obj.Spec.KeepDroppedTargets = o.Spec.KeepDroppedTargets
+			obj.Spec.AttachMetadata = o.Spec.AttachMetadata
+			obj.Spec.ScrapeClassName = o.Spec.ScrapeClassName
+			obj.Spec.BodySizeLimit = o.Spec.BodySizeLimit
+			obj.Spec.ServiceDiscoveryRole = o.Spec.ServiceDiscoveryRole
+			return nil
+		})
 	default:
 		return errors.New("unhandled patch object, this is a bug")
 	}
-
-	if err := c.Patch(ctx, oldObj, patch); err != nil {
-		return fmt.Errorf("error patching %s: %w", key, err)
+	if patchErr != nil {
+		return fmt.Errorf("error patching %s: %w", key, patchErr)
 	}
+	return nil
+}
 
+func PatchObject[T client.Object](c client.Client, ctx context.Context, obj T, mutateFn func(T) error) error {
+	if mutateFn == nil {
+		return errors.New("mutateFn is required")
+	}
+	key := client.ObjectKeyFromObject(obj)
+	if err := c.Get(ctx, key, obj); err != nil {
+		return fmt.Errorf("error getting %s: %w", key, err)
+	}
+	baseline, ok := obj.DeepCopyObject().(client.Object)
+	if !ok {
+		return fmt.Errorf("DeepCopy of %T did not yield a client.Object", obj)
+	}
+	if err := mutateFn(obj); err != nil {
+		return err
+	}
+	patch := client.MergeFrom(baseline)
+	if err := c.Patch(ctx, obj, patch); err != nil {
+		return fmt.Errorf("failed to patch %s: %w", key, err)
+	}
 	return nil
 }
