@@ -37,7 +37,6 @@ const (
 
 // Reasons for LoginSet events
 const (
-	SyncFailedReason          = "SyncFailed"
 	ControllerRefFailedReason = "ControllerRefFailed"
 )
 

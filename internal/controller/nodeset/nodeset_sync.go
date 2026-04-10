@@ -38,6 +38,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
@@ -234,11 +235,6 @@ func (r *NodeSetReconciler) canAdoptFunc(nodeset *slinkyv1beta1.NodeSet) func(ct
 	})
 }
 
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error
-}
-
 // sync is the main reconciliation logic.
 func (r *NodeSetReconciler) sync(
 	ctx context.Context,
@@ -246,78 +242,69 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
-	syncSteps := []SyncStep{
+	steps := []syncsteps.Step[*slinkyv1beta1.NodeSet]{
 		{
 			Name: "RefreshNodeCache",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
 			},
 		},
 		{
 			Name: "ClusterWorkerService",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerService(ctx, nodeset)
 			},
 		},
 		{
 			Name: "ClusterWorkerPDB",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerPDB(ctx, nodeset)
 			},
 		},
 		{
 			Name: "SSHConfig",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSshConfig(ctx, nodeset)
 			},
 		},
 		{
 			Name: "SlurmNodes",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmNodes(ctx, nodeset, pods)
 			},
 		},
 		{
 			Name: "SlurmDeadline",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmDeadline(ctx, nodeset, pods)
 			},
 		},
 		{
 			Name: "SlurmTopology",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmTopology(ctx, nodeset, pods)
 			},
 		},
 		{
 			Name: "Cordon",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncCordon(ctx, nodeset, pods)
 			},
 		},
 		{
 			Name: "NodeTaint",
-			Sync: func(ctx context.Context, _ *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeTaint(ctx)
 			},
 		},
 		{
 			Name: "NodeSetPods",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
 			},
 		},
 	}
-
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, nodeset, pods, hash); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			return fmt.Errorf("failed %q step: %w", s.Name, err)
-		}
-	}
-
-	return nil
+	return syncsteps.Sync(ctx, r.eventRecorder, nodeset, steps)
 }
 
 // syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.
