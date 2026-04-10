@@ -80,6 +80,10 @@ spec:
             - --namespaces
             - {{ . | quote }}
             {{- end }}{{- /* with .Values.operator.namespaces */}}
+            {{- with .Values.propagatedNodeConditions }}
+            - --propagated-node-conditions
+            - {{ join "," . | quote }}
+            {{- end }}{{- /* with .Values.propagatedNodeConditions */}}
           livenessProbe:
             httpGet:
               path: /healthz

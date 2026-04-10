@@ -166,6 +166,11 @@ certManager:
   # -- Certificate renewal time. Should be before the expiration.
   renewBefore: 8760h0m0s # 1 year
 
+# -- List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason.
+# Ref: https://kubernetes.io/docs/reference/node/node-status/#condition
+propagatedNodeConditions: []
+  # - KubeletUnhealthy
+
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.
 # Supports Helm templating (e.g. {{ .Release.Namespace }}).

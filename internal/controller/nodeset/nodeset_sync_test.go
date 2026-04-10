@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,13 +60,23 @@ func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) 
 		Client:         client,
 		Scheme:         client.Scheme(),
 		ClientMap:      clientMap,
+		builder:        builder.New(client),
 		eventRecorder:  eventRecorder,
 		historyControl: historycontrol.NewHistoryControl(client),
 		podControl:     podcontrol.NewPodControl(client, eventRecorder),
 		slurmControl:   slurmcontrol.NewSlurmControl(clientMap),
 		expectations:   kubecontroller.NewUIDTrackingControllerExpectations(kubecontroller.NewControllerExpectations()),
 	}
-	r.builder = builder.New(r.Client)
+	return r
+}
+
+func newNodeSetControllerWithPropagatedNodeConditions(
+	client client.Client,
+	clientMap *clientmap.ClientMap,
+	propagated []corev1.NodeConditionType,
+) *NodeSetReconciler {
+	r := newNodeSetController(client, clientMap)
+	r.propagatedNodeConditions = propagated
 	return r
 }
 
@@ -933,12 +944,13 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 		i         int
 	}
 	type testCaseFields struct {
-		name       string
-		fields     fields
-		args       args
-		wantErr    bool
-		wantDrain  bool
-		wantDelete bool
+		name           string
+		fields         fields
+		args           args
+		wantErr        bool
+		wantDrain      bool
+		wantDelete     bool
+		wantPodDeleted bool
 	}
 	tests := []testCaseFields{
 		func() testCaseFields {
@@ -989,9 +1001,10 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    false,
-				wantDrain:  true,
-				wantDelete: false,
+				wantErr:        false,
+				wantDrain:      true,
+				wantDelete:     false,
+				wantPodDeleted: false,
 			}
 		}(),
 		func() testCaseFields {
@@ -1032,9 +1045,10 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    false,
-				wantDrain:  false,
-				wantDelete: true,
+				wantErr:        false,
+				wantDrain:      false,
+				wantDelete:     true,
+				wantPodDeleted: true,
 			}
 		}(),
 		func() testCaseFields {
@@ -1088,9 +1102,121 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    false,
-				wantDrain:  true,
-				wantDelete: false,
+				wantErr:        false,
+				wantDrain:      true,
+				wantDelete:     false,
+				wantPodDeleted: true,
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			now := metav1.Now()
+			pods := []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         corev1.NamespaceDefault,
+						Name:              "pod-0",
+						DeletionTimestamp: &now,
+						Finalizers:        []string{"test-finalizer"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			}
+			podList := &corev1.PodList{
+				Items: structutils.DereferenceList(pods),
+			}
+			client := fake.NewFakeClient(nodeset, podList)
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+
+			return testCaseFields{
+				name: "skip terminating pod",
+				fields: fields{
+					Client:    client,
+					ClientMap: clientMap,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset,
+					condemned: pods,
+					i:         0,
+				},
+				wantErr:        false,
+				wantDrain:      false,
+				wantDelete:     false,
+				wantPodDeleted: false,
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			pods := []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "pod-0",
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			}
+			podList := &corev1.PodList{
+				Items: structutils.DereferenceList(pods),
+			}
+			client := fake.NewFakeClient(nodeset, podList)
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+						},
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+
+			return testCaseFields{
+				name: "wait for drain while slurm node is busy",
+				fields: fields{
+					Client:    client,
+					ClientMap: clientMap,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset,
+					condemned: pods,
+					i:         0,
+				},
+				wantErr:        false,
+				wantDrain:      true,
+				wantDelete:     false,
+				wantPodDeleted: false,
 			}
 		}(),
 		func() testCaseFields {
@@ -1151,9 +1277,10 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    true,
-				wantDrain:  false,
-				wantDelete: false,
+				wantErr:        true,
+				wantDrain:      false,
+				wantDelete:     false,
+				wantPodDeleted: false,
 			}
 		}(),
 		func() testCaseFields {
@@ -1208,9 +1335,10 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:    true,
-				wantDrain:  false,
-				wantDelete: false,
+				wantErr:        true,
+				wantDrain:      false,
+				wantDelete:     false,
+				wantPodDeleted: false,
 			}
 		}(),
 	}
@@ -1227,10 +1355,428 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				t.Errorf("slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
 			}
 			key := client.ObjectKeyFromObject(pod)
-			if err := r.Get(tt.args.ctx, key, pod); err != nil && !apierrors.IsNotFound(err) {
-				t.Errorf("Client.Get() error = %v, wantDelete %v", err, tt.wantDelete)
+			err := r.Get(tt.args.ctx, key, pod)
+			podStillExists := err == nil
+			podGone := apierrors.IsNotFound(err)
+			if err != nil && !podGone {
+				t.Errorf("Client.Get() error = %v", err)
+			}
+			if tt.wantPodDeleted && !podGone {
+				t.Errorf("expected pod to be deleted from the API server")
+			}
+			if !tt.wantPodDeleted && !podStillExists && !tt.wantErr {
+				t.Errorf("expected pod to still exist")
 			}
 		})
+	}
+}
+
+func TestNodeSetReconciler_syncCordon(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "slurm",
+			Namespace: corev1.NamespaceDefault,
+		},
+	}
+	nodeset := newNodeSet("nodeset-a", controller.Name, 2)
+
+	newPod := func(cordon bool) *corev1.Pod {
+		p := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+		p.Spec.NodeName = "kube-node-1"
+		if cordon {
+			if p.Annotations == nil {
+				p.Annotations = make(map[string]string)
+			}
+			p.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+		}
+		return p
+	}
+
+	slurmNodeName := nodesetutils.GetSlurmNodeName(newPod(false))
+
+	tests := []struct {
+		name                     string
+		kubeNode                 *corev1.Node
+		pod                      *corev1.Pod
+		slurmNodeList            *slurmtypes.V0044NodeList
+		propagatedNodeConditions []corev1.NodeConditionType
+		wantErr                  bool
+		wantPodCordoned          bool
+		wantSlurmDrain           bool
+		wantReasonSub            string
+	}{
+		{
+			name: "kubernetes node cordoned cordons pod and drains slurm",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+			wantReasonSub:   "kube-node-1",
+		},
+		{
+			name: "kubernetes node cordon reason annotation is propagated to slurm",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kube-node-1",
+					Annotations: map[string]string{
+						slinkyv1beta1.AnnotationNodeCordonReason: "custom maintenance window",
+					},
+				},
+				Spec: corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+			wantReasonSub:   "custom maintenance window",
+		},
+		{
+			name: "cordoned pod on schedulable node drains slurm",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+		},
+		{
+			name: "uncordoned pod undrains slurm node",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name: new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{
+								slurmapi.V0044NodeStateIDLE,
+								slurmapi.V0044NodeStateDRAIN,
+							}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: false,
+			wantSlurmDrain:  false,
+		},
+		{
+			name: "external slurm reason is left unchanged",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   new(slurmNodeName),
+							State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Reason: new("manual operator drain outside slurm-operator"),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  false,
+		},
+		{
+			name: "unresponsive slurm node is left unchanged",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   new(slurmNodeName),
+							State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN}),
+							Reason: new("Not responding to ping"),
+						},
+					},
+				},
+			},
+			wantPodCordoned: false,
+			wantSlurmDrain:  false,
+		},
+		{
+			name: "propagated node condition true becomes slurm drain reason",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    corev1.NodeDiskPressure,
+							Status:  corev1.ConditionTrue,
+							Reason:  "KubeletHasDiskPressure",
+							Message: "POD has insufficient ephemeral storage",
+						},
+					},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeDiskPressure},
+			wantPodCordoned:          true,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "(KubeletHasDiskPressure: POD has insufficient ephemeral storage)",
+		},
+		{
+			name: "multiple propagated node conditions join with semicolon",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    corev1.NodeMemoryPressure,
+							Status:  corev1.ConditionTrue,
+							Reason:  "KubeletHasInsufficientMemory",
+							Message: "Memory pressure",
+						},
+						{
+							Type:    corev1.NodeDiskPressure,
+							Status:  corev1.ConditionTrue,
+							Reason:  "KubeletHasDiskPressure",
+							Message: "Disk pressure",
+						},
+					},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{
+				corev1.NodeMemoryPressure,
+				corev1.NodeDiskPressure,
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+			wantReasonSub:   "(KubeletHasInsufficientMemory: Memory pressure); (KubeletHasDiskPressure: Disk pressure)",
+		},
+		{
+			name: "propagated type not true falls back to default cordon reason",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    corev1.NodeDiskPressure,
+							Status:  corev1.ConditionFalse,
+							Reason:  "KubeletHasNoDiskPressure",
+							Message: "ignored",
+						},
+					},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeDiskPressure},
+			wantPodCordoned:          true,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "kube-node-1",
+		},
+		{
+			name: "node condition not in propagated list uses default cordon reason",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    corev1.NodeDiskPressure,
+							Status:  corev1.ConditionTrue,
+							Reason:  "KubeletHasDiskPressure",
+							Message: "should not propagate",
+						},
+					},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeMemoryPressure},
+			wantPodCordoned:          true,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "kube-node-1",
+		},
+		{
+			name: "node cordon reason annotation overrides propagated conditions",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kube-node-1",
+					Annotations: map[string]string{
+						slinkyv1beta1.AnnotationNodeCordonReason: "annotation overrides conditions",
+					},
+				},
+				Spec: corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    corev1.NodePIDPressure,
+							Status:  corev1.ConditionTrue,
+							Reason:  "KubeletHasPIDPressure",
+							Message: "many processes",
+						},
+					},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodePIDPressure},
+			wantPodCordoned:          true,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "annotation overrides conditions",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pod := tt.pod.DeepCopy()
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, tt.slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+			k8sClient := fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy(), tt.kubeNode.DeepCopy())
+			r := newNodeSetControllerWithPropagatedNodeConditions(k8sClient, clientMap, tt.propagatedNodeConditions)
+
+			if err := r.syncCordon(context.Background(), nodeset.DeepCopy(), []*corev1.Pod{pod}); (err != nil) != tt.wantErr {
+				t.Fatalf("syncCordon() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			gotPod := &corev1.Pod{}
+			if err := r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod); err != nil {
+				t.Fatalf("Get pod: %v", err)
+			}
+			if got, want := podutils.IsPodCordon(gotPod), tt.wantPodCordoned; got != want {
+				t.Errorf("IsPodCordon() = %v, want %v", got, want)
+			}
+
+			gotNode := &slurmtypes.V0044Node{}
+			sc := r.ClientMap.Get(nodeset.Spec.ControllerRef.NamespacedName())
+			if sc == nil {
+				t.Fatal("ClientMap.Get() returned nil")
+			}
+			if err := sc.Get(context.Background(), slurmclient.ObjectKey(slurmNodeName), gotNode); err != nil {
+				t.Fatalf("slurm Get node: %v", err)
+			}
+			if got, want := gotNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN), tt.wantSlurmDrain; got != want {
+				t.Errorf("Slurm node DRAIN = %v, want %v", got, want)
+			}
+			if tt.wantReasonSub != "" {
+				if reason := ptr.Deref(gotNode.Reason, ""); !strings.Contains(reason, tt.wantReasonSub) {
+					t.Errorf("Slurm node Reason = %q, want substring %q", reason, tt.wantReasonSub)
+				}
+			}
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncSlurmNodeUndrain_skipsWhenNotDrained(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "slurm",
+			Namespace: corev1.NamespaceDefault,
+		},
+	}
+	nodeset := newNodeSet("nodeset-b", controller.Name, 2)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	slurmName := nodesetutils.GetSlurmNodeName(pod)
+	slurmNodeList := &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name:  new(slurmName),
+					State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+				},
+			},
+		},
+	}
+	slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+	r := newNodeSetController(fake.NewFakeClient(nodeset), newClientMap(controller.Name, slurmClient))
+
+	if err := r.syncSlurmNodeUndrain(context.Background(), nodeset, pod, "should not be used"); err != nil {
+		t.Fatalf("syncSlurmNodeUndrain() = %v", err)
 	}
 }
 
@@ -3421,7 +3967,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			r := NewReconciler(tt.kclient, tt.clientMap)
+			r := NewReconciler(tt.kclient, tt.clientMap, nil)
 			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if !tt.wantErr {

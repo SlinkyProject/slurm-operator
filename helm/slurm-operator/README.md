@@ -64,6 +64,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.tokenWorkers | int | `4` | Set the max concurrent workers for the Token controller. |
 | operator.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | priorityClassName | string | `""` | Set the priority class to use. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass |
+| propagatedNodeConditions | list | `[]` | List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason. Ref: https://kubernetes.io/docs/reference/node/node-status/#condition |
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | webhook.enabled | bool | `true` | Enable the webhook. |
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
