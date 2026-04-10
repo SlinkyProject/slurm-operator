@@ -1,4 +1,4 @@
-sphinx
+sphinx < 9 # Ref: https://github.com/sphinx-contrib/multiversion/issues/201
 myst-parser >= 4.0.1
 sphinx-autobuild
 sphinx-design
@@ -6,3 +6,4 @@ sphinx-copybutton
 sphinx_rtd_theme
 linkify-it-py
 sphinx-mermaid
+sphinx-multiversion
