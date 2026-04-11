@@ -109,6 +109,7 @@ rules:
   - loginsets
   - nodesets
   - restapis
+  - slurmqos
   - tokens
   verbs:
   - create
@@ -126,6 +127,7 @@ rules:
   - loginsets/finalizers
   - nodesets/finalizers
   - restapis/finalizers
+  - slurmqos/finalizers
   - tokens/finalizers
   verbs:
   - update
@@ -137,6 +139,7 @@ rules:
   - loginsets/status
   - nodesets/status
   - restapis/status
+  - slurmqos/status
   - tokens/status
   verbs:
   - get

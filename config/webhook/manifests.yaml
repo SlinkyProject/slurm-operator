@@ -141,6 +141,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-slinky-slurm-net-v1beta1-slurmqos
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: slurmqos-v1beta1.kb.io
+  rules:
+  - apiGroups:
+    - slinky.slurm.net
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - slurmqos
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-slinky-slurm-net-v1beta1-token
   failurePolicy: Fail
   matchPolicy: Equivalent
