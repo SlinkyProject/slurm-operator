@@ -46,6 +46,7 @@ var controllerWebhook ControllerWebhook
 var loginSetWebhook LoginSetWebhook
 var nodeSetWebhook NodeSetWebhook
 var restapiWebhook RestapiWebhook
+var slurmQosWebhook SlurmQosWebhook
 var tokenWebhook TokenWebhook
 
 func TestAPIs(t *testing.T) {
@@ -127,6 +128,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&restapiWebhook).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	slurmQosWebhook = SlurmQosWebhook{
+		Client: mgr.GetClient(),
+	}
+	err = (&slurmQosWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&tokenWebhook).SetupWebhookWithManager(mgr)

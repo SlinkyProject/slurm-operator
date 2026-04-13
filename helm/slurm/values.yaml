@@ -802,6 +802,94 @@ partitions:
       Default: "YES"
       MaxTime: UNLIMITED
 
+# -- (map[string]object) Slurm QOS configurations (requires accounting.enabled=true).
+# The map key is the QOS name; the map value contains the QOS definition.
+# Config keys map directly to V0044Qos JSON fields from the Slurm REST API.
+# Ref: https://slurm.schedmd.com/qos.html
+# Ref: https://slurm.schedmd.com/rest.html
+qos: {}
+  # Real-world examples based on production cluster QOS hierarchy.
+  # Config keys map directly to V0044Qos JSON fields.
+  # NOTE: Account-QOS associations (accounts allowed/denied) are NOT part of
+  # the V0044Qos API and must be managed separately via sacctmgr.
+  #
+  # normal:
+  #   enabled: true
+  #   description: "Default QOS for standard batch jobs"
+  #   config:
+  #     preempt:
+  #       list: ["free-admin", "free"]
+  #     limits:
+  #       max:
+  #         accruing:
+  #           per:
+  #             user: { set: true, number: 20 }
+  #         jobs:
+  #           per:
+  #             user: { set: true, number: 2000 }
+  #         tres:
+  #           per:
+  #             user:
+  #               - { type: "node", count: 250 }   # Set to 0.5 * total cluster GPU nodes
+  #
+  # unlimited:
+  #   enabled: true
+  #   description: "High priority preempting QOS"
+  #   config:
+  #     priority: { set: true, number: 800 }
+  #     flags: ["DenyOnLimit"]
+  #     usage_factor: { set: true, number: 1 }
+  #     preempt:
+  #       list: ["free", "free-admin"]
+  #       mode: ["requeue"]
+  #     limits:
+  #       min:
+  #         tres:
+  #           per:
+  #             job:
+  #               - { type: "gres", name: "gpu", count: 4 }
+  #
+  # free-admin:
+  #   enabled: true
+  #   description: "Free-admin tier with preempt grace"
+  #   config:
+  #     priority: { set: true, number: 0 }
+  #     flags: ["DenyOnLimit"]
+  #     usage_factor: { set: true, number: 0 }
+  #     preempt:
+  #       mode: ["requeue"]
+  #       exempt_time: { set: true, number: 60 }
+  #     limits:
+  #       grace_time: 60
+  #       min:
+  #         tres:
+  #           per:
+  #             job:
+  #               - { type: "gres", name: "gpu", count: 4 }
+  #
+  # short:
+  #   enabled: true
+  #   description: "Short high-priority GPU jobs"
+  #   config:
+  #     priority: { set: true, number: 200 }
+  #     preempt:
+  #       list: ["free-admin", "free"]
+  #       mode: ["requeue"]
+  #     limits:
+  #       max:
+  #         tres:
+  #           total:
+  #             - { type: "gres", name: "gpu", count: 64 }
+  #           per:
+  #             user:
+  #               - { type: "gres", name: "gpu", count: 64 }
+  #         accruing:
+  #           per:
+  #             user: { set: true, number: 20 }
+  #         jobs:
+  #           per:
+  #             user: { set: true, number: 20 }
+
 # Vendor specific integration and configurations.
 vendor:
   # NVIDIA

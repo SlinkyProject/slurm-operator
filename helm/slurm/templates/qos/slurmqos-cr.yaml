@@ -1,0 +1,29 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.accounting.enabled }}
+{{- range $name, $qos := .Values.qos }}
+{{- if $qos.enabled }}
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: SlurmQos
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "slurm.namespace" $ }}
+  labels:
+    {{- include "slurm.labels" $ | nindent 4 }}
+spec:
+  controllerRef:
+    name: {{ include "slurm.fullname" $ }}
+    namespace: {{ include "slurm.namespace" $ }}
+  {{- with $qos.description }}
+  description: {{ . | quote }}
+  {{- end }}
+  {{- with $qos.config }}
+  config: {{ . | toJson }}
+  {{- end }}
+{{- end }}{{- /* if $qos.enabled */}}
+{{- end }}{{- /* range */}}
+{{- end }}{{- /* if accounting.enabled */}}

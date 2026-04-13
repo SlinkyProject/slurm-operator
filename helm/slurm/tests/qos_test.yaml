@@ -1,0 +1,133 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test qos
+templates:
+  - qos/slurmqos-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should not render when accounting is disabled
+    set:
+      accounting:
+        enabled: false
+      qos:
+        normal:
+          enabled: true
+          description: "Default QOS"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when qos is empty
+    set:
+      accounting:
+        enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a single QOS CR
+    set:
+      accounting:
+        enabled: true
+      qos:
+        normal:
+          enabled: true
+          description: "Default QOS for standard batch jobs"
+          config:
+            preempt:
+              list: ["free-admin", "free"]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: SlurmQos
+      - equal:
+          path: metadata.name
+          value: normal
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+      - equal:
+          path: spec.controllerRef.name
+          value: test-release-slurm
+      - equal:
+          path: spec.controllerRef.namespace
+          value: test-namespace
+      - equal:
+          path: spec.description
+          value: "Default QOS for standard batch jobs"
+      - isNotEmpty:
+          path: spec.config
+      - exists:
+          path: metadata.labels
+
+  - it: should render multiple QOS CRs
+    set:
+      accounting:
+        enabled: true
+      qos:
+        normal:
+          enabled: true
+          description: "Default QOS"
+        short:
+          enabled: true
+          description: "Short high-priority GPU jobs"
+          config:
+            priority:
+              set: true
+              number: 200
+        disabled-qos:
+          enabled: false
+          description: "This should not render"
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should skip disabled QOS entries
+    set:
+      accounting:
+        enabled: true
+      qos:
+        normal:
+          enabled: false
+          description: "Disabled"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render QOS without description
+    set:
+      accounting:
+        enabled: true
+      qos:
+        minimal:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: SlurmQos
+      - equal:
+          path: metadata.name
+          value: minimal
+      - isNull:
+          path: spec.description
+
+  - it: should render QOS without config
+    set:
+      accounting:
+        enabled: true
+      qos:
+        basic:
+          enabled: true
+          description: "Basic QOS"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isNull:
+          path: spec.config
