@@ -1,0 +1,232 @@
+accounting manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-accounting
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 6817
+              protocol: TCP
+          to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+        - ports:
+            - port: 3306
+              protocol: TCP
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+          ports:
+            - port: 6819
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
+          app.kubernetes.io/name: slurmdbd
+      policyTypes:
+        - Ingress
+        - Egress
+controller manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-controller
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 6818
+              protocol: TCP
+          to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
+                  app.kubernetes.io/name: slurmd
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
+                  app.kubernetes.io/name: slurmd
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmdbd
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmrestd
+          ports:
+            - port: 6817
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
+          app.kubernetes.io/name: slurmctld
+      policyTypes:
+        - Ingress
+        - Egress
+loginset manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-login-slinky
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 6817
+              protocol: TCP
+          to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
+                  app.kubernetes.io/name: slurmd
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - ports:
+            - port: 22
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release-slurm-login-slinky
+          app.kubernetes.io/name: login
+      policyTypes:
+        - Ingress
+        - Egress
+nodeset manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-worker-slinky
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 6817
+              protocol: TCP
+          to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
+                  app.kubernetes.io/name: slurmd
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+          ports:
+            - port: 6818
+              protocol: TCP
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm-worker-slinky
+                  app.kubernetes.io/name: slurmd
+        - from: null
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release-slurm-worker-slinky
+          app.kubernetes.io/name: slurmd
+      policyTypes:
+        - Ingress
+        - Egress
+restapi manifest should match snapshot:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: test-release-slurm-restapi
+      namespace: test-namespace
+    spec:
+      egress:
+        - ports:
+            - port: 6817
+              protocol: TCP
+          to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: test-release-slurm
+                  app.kubernetes.io/name: slurmctld
+        - ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+      ingress:
+        - ports:
+            - port: 6820
+              protocol: TCP
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: test-release-slurm
+          app.kubernetes.io/name: slurmrestd
+      policyTypes:
+        - Ingress
+        - Egress

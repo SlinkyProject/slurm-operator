@@ -30,6 +30,14 @@ crds:
 operator:
   # -- Enables the operator.
   enabled: true
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the operator.
+    enabled: true
+    # -- Extra ingress rules appended to the operator NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the operator NetworkPolicy.
+    extraEgress: []
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.
@@ -99,6 +107,14 @@ operator:
 webhook:
   # -- Enable the webhook.
   enabled: true
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the webhook.
+    enabled: true
+    # -- Extra ingress rules appended to the webhook NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the webhook NetworkPolicy.
+    extraEgress: []
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.
@@ -165,6 +181,16 @@ certManager:
   duration: 43800h0m0s # 5 year
   # -- Certificate renewal time. Should be before the expiration.
   renewBefore: 8760h0m0s # 1 year
+
+# Configure Kubernetes NetworkPolicies for slurm-operator components.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+networkPolicy:
+  # -- Enable NetworkPolicy resources for all slurm-operator components.
+  enabled: false
+  # -- Extra ingress rules appended to every NetworkPolicy.
+  extraIngress: []
+  # -- Extra egress rules appended to every NetworkPolicy.
+  extraEgress: []
 
 # -- List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason.
 # Ref: https://kubernetes.io/docs/reference/node/node-status/#condition
