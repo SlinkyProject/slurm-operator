@@ -947,12 +947,16 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 // podsToKeep - should be uncordoned and undrained.
 // podsToDelete - should be cordoned and drained, then deleted.
 // podsToCreate - should be newly created.
+// Any pod that appears in both podsToKeep and podsToDelete is automatically
+// removed from podsToKeep to prevent syncPodUncordon from fighting the drain
+// initiated by processCondemned.
 func (r *NodeSetReconciler) doPodScale(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	podsToKeep, podsToDelete, podsToCreate []*corev1.Pod,
 ) error {
 	logger := log.FromContext(ctx)
+	podsToKeep = nodesetutils.ExcludePods(podsToKeep, podsToDelete)
 	key := objectutils.KeyFunc(nodeset)
 	errs := []error{}
 
