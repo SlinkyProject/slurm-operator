@@ -61,14 +61,15 @@ func NewNodeSetDaemonSetPod(
 	nodeset *slinkyv1beta1.NodeSet,
 	controller *slinkyv1beta1.Controller,
 	nodeName string,
+	hostnameOverride string,
 	revisionHash string,
 ) *corev1.Pod {
 	controllerRef := metav1.NewControllerRef(nodeset, slinkyv1beta1.NodeSetGVK)
 	podTemplate := builder.New(client).BuildWorkerPodTemplate(nodeset, controller)
 	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
 
-	// Ensure the hostname is RFC 1178 compliant
-	safeHostname := getDaemonSetPodHostname(nodeName)
+	// Ensure the hostname is RFC 1178 compliant, using the override if provided.
+	safeHostname := GetDaemonSetPodHostname(nodeName, hostnameOverride)
 	pod.Spec.Hostname = safeHostname
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
@@ -114,7 +115,10 @@ func NewNodeSetDaemonSetSimulatedPod(
 	return pod
 }
 
-func getDaemonSetPodHostname(nodeName string) string {
+func GetDaemonSetPodHostname(nodeName, hostnameOverride string) string {
+	if hostnameOverride != "" {
+		return hostnameOverride
+	}
 	name := nodeName
 	if before, _, ok := strings.Cut(nodeName, "."); ok {
 		name = before

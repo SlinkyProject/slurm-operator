@@ -812,7 +812,19 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				podsToDelete = append(podsToDelete, pod)
 
 			default:
-				daemonPodsRunning = append(daemonPodsRunning, pod)
+				hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+				expectedHostname := nodesetutils.GetDaemonSetPodHostname(node.Name, hostnameOverride)
+				if pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] != expectedHostname {
+					logger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
+						"pod", klog.KObj(pod), "node", klog.KObj(node),
+						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
+					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
+						"Recreating daemon pod %s/%s: hostname changed from %q to %q",
+						pod.Namespace, pod.Name, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], expectedHostname)
+					podsToDelete = append(podsToDelete, pod)
+				} else {
+					daemonPodsRunning = append(daemonPodsRunning, pod)
+				}
 			}
 		}
 
@@ -1079,7 +1091,13 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 		return nil, fmt.Errorf("nodeName must not be empty")
 	}
 
-	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, revisionHash)
+	node := &corev1.Node{}
+	if err := r.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
+		return nil, err
+	}
+	hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+
+	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, hostnameOverride, revisionHash)
 	return pod, nil
 }
 
