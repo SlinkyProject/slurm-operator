@@ -86,6 +86,41 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			},
 		},
 		{
+			name: "custom ssh port",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+						Login: slinkyv1beta1.ContainerWrapper{
+							Container: corev1.Container{
+								Ports: []corev1.ContainerPort{
+									{
+										Name:          labels.LoginApp,
+										ContainerPort: 33,
+										Protocol:      corev1.ProtocolTCP,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "failure",
 			fields: fields{
 				client: fake.NewFakeClient(),
@@ -125,8 +160,15 @@ func TestBuilder_BuildLogin(t *testing.T) {
 					got.Spec.Template.Spec.Containers[0].Ports[0].Name, labels.LoginApp)
 
 			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != LoginPort:
-				t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Ports[0].Name, LoginPort)
+				if len(tt.args.loginset.Spec.Login.Ports) > 0 && tt.args.loginset.Spec.Login.Ports[0].ContainerPort != 0 {
+					if tt.args.loginset.Spec.Login.Ports[0].ContainerPort != got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort {
+						t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
+							got.Spec.Template.Spec.Containers[0].Ports[0].Name, tt.args.loginset.Spec.Login.Ports[0].ContainerPort)
+					}
+				} else {
+					t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
+						got.Spec.Template.Spec.Containers[0].Ports[0].Name, LoginPort)
+				}
 
 			case got.Spec.Template.Spec.DNSConfig == nil:
 				t.Errorf("Template.Spec.DNSConfig = %v , want = non-nil", got.Spec.Template.Spec.DNSConfig)
