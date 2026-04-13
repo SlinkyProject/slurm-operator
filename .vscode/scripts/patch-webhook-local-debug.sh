@@ -4,19 +4,25 @@
 
 set -euo pipefail
 
-CERT_DIR="/tmp/k8s-webhook-server/serving-certs"
+CERT_DIR="${TMPDIR:-/tmp}/k8s-webhook-server/serving-certs"
 BACKUP_DIR="/tmp/webhook-config-backup"
 WEBHOOK_PORT="9443"
-WEBHOOK_HOST=$(docker network inspect kind -f '{{(index .IPAM.Config 0).Gateway}}')
 API_VERSION="v1beta1"
 
-# Determines URL that can be used to access the Webhook
-if [[ ${WEBHOOK_HOST} =~ : ]]; then
-	# If host contains colons, it's IPv6
-	BASE_URL="https://[${WEBHOOK_HOST}]:${WEBHOOK_PORT}"
-else
-	# Otherwise, no need to wrap it in brackets
+# On macOS/Docker Desktop, containers resolve the host via host.docker.internal.
+# On Linux, the Docker bridge gateway is directly reachable from containers.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+	WEBHOOK_HOST="host.docker.internal"
 	BASE_URL="https://${WEBHOOK_HOST}:${WEBHOOK_PORT}"
+else
+	WEBHOOK_HOST=$(docker network inspect kind -f '{{(index .IPAM.Config 0).Gateway}}')
+	if [[ ${WEBHOOK_HOST} =~ : ]]; then
+		# If host contains colons, it's IPv6
+		BASE_URL="https://[${WEBHOOK_HOST}]:${WEBHOOK_PORT}"
+	else
+		# Otherwise, no need to wrap it in brackets
+		BASE_URL="https://${WEBHOOK_HOST}:${WEBHOOK_PORT}"
+	fi
 fi
 
 # Create directory to store backups of the current webhook configuration
