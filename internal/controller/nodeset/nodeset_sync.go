@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -75,7 +76,10 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	defaults.SetNodeSetDefaults(nodeset)
 	key := objectutils.KeyFunc(nodeset)
 
-	if nodeset.DeletionTimestamp.IsZero() {
+	if !nodeset.DeletionTimestamp.IsZero() {
+		logger.Info("NodeSet is being deleted, skipping sync", "request", req)
+		return nil
+	} else {
 		durationStore.Push(key, 30*time.Second)
 	}
 
@@ -398,13 +402,29 @@ func (r *NodeSetReconciler) syncCordon(
 			if err := r.Get(ctx, key, node); err != nil {
 				return fmt.Errorf("failed to get node: %w", err)
 			}
+
 			if value, ok := node.Annotations[slinkyv1beta1.AnnotationNodeCordonReason]; ok {
 				logger.V(1).Info("Slurm node drain reason overridden by Kubernetes node annotation",
 					"reason", value)
 				reason = value
+			} else {
+				var reasons []string
+				for _, condType := range r.propagatedNodeConditions {
+					for _, nodeCond := range node.Status.Conditions {
+						if nodeCond.Type != condType || nodeCond.Status != corev1.ConditionTrue {
+							continue
+						}
+						reasons = append(reasons, fmt.Sprintf("(%s: %s)", nodeCond.Reason, nodeCond.Message))
+					}
+				}
+				if len(reasons) > 0 {
+					logger.V(1).Info("Slurm node drain reason set by Kubernetes node conditions",
+						"reasons", reasons)
+					reason = strings.Join(reasons, "; ")
+				}
 			}
 
-			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "",
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
 				"Cordoning Pod %s: Kubernetes node %s was cordoned", klog.KObj(pod), name)
 
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason); err != nil {
@@ -539,7 +559,7 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		}
 		logger.Info("Deleting NodeSet pod, Slurm node is not registered but pod is healthy",
 			"pod", klog.KObj(pod))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "",
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
 			"Deleting Pod %s: Slurm node is not registered but pod is healthy", klog.KObj(pod))
 		if err := r.Delete(ctx, pod); err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -711,7 +731,7 @@ func predicates(logger klog.Logger, pod *corev1.Pod, node *corev1.Node, taints [
 //     running on that node.
 func (r *NodeSetReconciler) NodeShouldRunDaemonPod(ctx context.Context, node *corev1.Node, nodeset *slinkyv1beta1.NodeSet) (bool, bool) {
 	logger := log.FromContext(ctx)
-	pod, err := r.newNodeSetPodDaemon(r.Client, ctx, nodeset, node.Name, "")
+	pod, err := r.newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
 	if err != nil {
 		return false, false
 	}
@@ -1059,6 +1079,30 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 	return pod, nil
 }
 
+// newSimulatedDaemonPod builds a pod for predicate evaluation that preserves
+// the user's node affinity. This avoids ReplaceDaemonSetPodNodeNameNodeAffinity
+// which overwrites RequiredDuringSchedulingIgnoredDuringExecution terms.
+func (r *NodeSetReconciler) newSimulatedDaemonPod(
+	client client.Client,
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	nodeName string,
+) (*corev1.Pod, error) {
+	controller := &slinkyv1beta1.Controller{}
+	key := nodeset.Spec.ControllerRef.NamespacedName()
+	if err := r.Get(ctx, key, controller); err != nil {
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
+			"Failed to get Controller (%s): %v", key, err)
+		return nil, err
+	}
+	if nodeName == "" {
+		return nil, fmt.Errorf("nodeName must not be empty")
+	}
+
+	pod := nodesetutils.NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, nodeName)
+	return pod, nil
+}
+
 func (r *NodeSetReconciler) newNodeSetPodOrdinal(
 	client client.Client,
 	ctx context.Context,
@@ -1241,18 +1285,6 @@ func (r *NodeSetReconciler) syncSlurmNodeDrain(
 	pod *corev1.Pod,
 	message string,
 ) error {
-	logger := log.FromContext(ctx)
-
-	isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, pod)
-	if err != nil {
-		return err
-	}
-
-	if isDrain {
-		logger.V(1).Info("Node is drain, skipping drain request")
-		return nil
-	}
-
 	reason := fmt.Sprintf("Pod (%s) has been cordoned", klog.KObj(pod))
 	if message != "" {
 		reason = message

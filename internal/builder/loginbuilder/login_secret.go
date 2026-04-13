@@ -29,6 +29,31 @@ func (b *LoginBuilder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (
 		return nil, fmt.Errorf("failed to create ECDSA key pair: %w", err)
 	}
 
+	ecdsaPriv, err := keyPairEcdsa.PrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode ECDSA private key: %w", err)
+	}
+	ecdsaPub, err := keyPairEcdsa.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode ECDSA public key: %w", err)
+	}
+	ed25519Priv, err := keyPairEd25519.PrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode ED25519 private key: %w", err)
+	}
+	ed25519Pub, err := keyPairEd25519.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode ED25519 public key: %w", err)
+	}
+	rsaPriv, err := keyPairRsa.PrivateKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode RSA private key: %w", err)
+	}
+	rsaPub, err := keyPairRsa.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode RSA public key: %w", err)
+	}
+
 	opts := common.SecretOpts{
 		Key: loginset.SshHostKeys(),
 		Metadata: slinkyv1beta1.Metadata{
@@ -36,12 +61,12 @@ func (b *LoginBuilder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (
 			Labels:      structutils.MergeMaps(loginset.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build()),
 		},
 		Data: map[string][]byte{
-			SshHostEcdsaKeyFile:      keyPairEcdsa.PrivateKey(),
-			SshHostEcdsaPubKeyFile:   keyPairEcdsa.PublicKey(),
-			SshHostEd25519KeyFile:    keyPairEd25519.PrivateKey(),
-			SshHostEd25519PubKeyFile: keyPairEd25519.PublicKey(),
-			SshHostRsaKeyFile:        keyPairRsa.PrivateKey(),
-			SshHostRsaPubKeyFile:     keyPairRsa.PublicKey(),
+			SshHostEcdsaKeyFile:      ecdsaPriv,
+			SshHostEcdsaPubKeyFile:   ecdsaPub,
+			SshHostEd25519KeyFile:    ed25519Priv,
+			SshHostEd25519PubKeyFile: ed25519Pub,
+			SshHostRsaKeyFile:        rsaPriv,
+			SshHostRsaPubKeyFile:     rsaPub,
 		},
 		Immutable: true,
 	}

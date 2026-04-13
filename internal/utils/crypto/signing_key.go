@@ -18,8 +18,11 @@ func NewSigningKey() []byte {
 func NewSigningKeyWithLength(length int) []byte {
 	key := make([]byte, length)
 	if _, err := rand.Read(key); err != nil {
-		// NOTE: The default Reader uses operating system APIs that are
-		// documented to never return an error on all but legacy Linux systems.
+		// rand.Read() signature returns an error, but in practice it never will
+		// because it internally panics on error.
+		//
+		// Should a non-nil error ever be returned we panic here to ensure we
+		// never return a dubious value on accident.
 		panic(err)
 	}
 	return key

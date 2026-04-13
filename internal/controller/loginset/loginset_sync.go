@@ -40,6 +40,11 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	loginset = loginset.DeepCopy()
 	defaults.SetLoginSetDefaults(loginset)
 
+	if !loginset.DeletionTimestamp.IsZero() {
+		logger.Info("LoginSet is being deleted, skipping sync", "request", req)
+		return nil
+	}
+
 	controller := &slinkyv1beta1.Controller{}
 	controllerKey := client.ObjectKey(loginset.Spec.ControllerRef.NamespacedName())
 	if err := r.Get(ctx, controllerKey, controller); err != nil {

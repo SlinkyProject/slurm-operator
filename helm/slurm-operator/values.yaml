@@ -192,6 +192,11 @@ networkPolicy:
   # -- Extra egress rules appended to every NetworkPolicy.
   extraEgress: []
 
+# -- List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason.
+# Ref: https://kubernetes.io/docs/reference/node/node-status/#condition
+propagatedNodeConditions: []
+  # - KubeletUnhealthy
+
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.
 # Supports Helm templating (e.g. {{ .Release.Namespace }}).

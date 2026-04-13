@@ -6,7 +6,6 @@ package common
 import (
 	_ "embed"
 	"fmt"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -248,25 +247,80 @@ func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) c
 func BuildMergedConfig(confRaw string, mergeConfig map[string][]string) string {
 	conf := config.NewBuilder().WithFinalNewline(false)
 
+	lineVals := parseSlurmConfKV(confRaw)
+
 	paramKeys := structutils.Keys(mergeConfig)
 	slices.Sort(paramKeys)
 	for _, pKey := range paramKeys {
-		r := regexp.MustCompile(fmt.Sprintf(`(?im)^%s=[^\n ]+$`, pKey))
-		found := r.FindStringSubmatch(confRaw)
-		mergeVals := mergeConfig[pKey]
-		if len(found) > 0 {
-			items := strings.Split(found[0], "=")
-			_, val := items[0], items[1]
-			valList := strings.Split(val, ",")
-			mergeVals = append(mergeVals, valList...)
-			vals := []string{}
-			for _, v := range mergeVals {
-				vals = append(vals, strings.ToLower(v))
-			}
-			mergeVals = set.New(vals...).SortedList()
-			conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals, ",")))
+		val, ok := lineVals[strings.ToLower(pKey)]
+		if !ok {
+			continue
 		}
+		mergeVals := set.New(mergeConfig[pKey]...)
+		seenOptKeys := set.New[string]()
+		for _, mv := range mergeVals.UnsortedList() {
+			seenOptKeys.Insert(parseKVKey(mv))
+		}
+		for v := range strings.SplitSeq(val, ",") {
+			if v == "" {
+				continue
+			}
+			olk := parseKVKey(v)
+			if seenOptKeys.Has(olk) {
+				continue
+			}
+			mergeVals.Insert(strings.ToLower(v))
+			seenOptKeys.Insert(olk)
+		}
+		conf.AddProperty(config.NewProperty(pKey, strings.Join(mergeVals.SortedList(), ",")))
 	}
 
 	return conf.Build()
+}
+
+func parseSlurmConfKV(confRaw string) map[string]string {
+	out := make(map[string]string)
+	var b strings.Builder
+	setKV := func(logical string) {
+		logical = strings.TrimSpace(logical)
+		if logical == "" {
+			return
+		}
+		key, val, ok := strings.Cut(logical, "=")
+		if !ok {
+			return
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		if key == "" || val == "" || strings.ContainsAny(val, " \n") {
+			return
+		}
+		out[strings.ToLower(key)] = val
+	}
+	for line := range strings.SplitSeq(confRaw, "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i]
+		}
+		line = strings.TrimRight(line, " \t")
+		if line == "" {
+			continue
+		}
+		if before, ok := strings.CutSuffix(line, `\`); ok {
+			b.WriteString(before)
+			continue
+		}
+		b.WriteString(line)
+		setKV(b.String())
+		b.Reset()
+	}
+	if b.Len() > 0 {
+		setKV(b.String())
+	}
+	return out
+}
+
+func parseKVKey(s string) string {
+	k, _, _ := strings.Cut(s, "=")
+	return strings.ToLower(k)
 }

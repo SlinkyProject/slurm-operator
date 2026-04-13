@@ -548,6 +548,99 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	}
 }
 
+func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+	client := fake.NewFakeClient()
+
+	t.Run("Preserves user node affinity and sets NodeName", func(t *testing.T) {
+		nodeset := newNodeSetDaemonset("foo", "")
+		userAffinity := &corev1.Affinity{
+			NodeAffinity: &corev1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+						MatchExpressions: []corev1.NodeSelectorRequirement{{
+							Key:      "gpu",
+							Operator: corev1.NodeSelectorOpIn,
+							Values:   []string{"true"},
+						}},
+					}},
+				},
+			},
+		}
+		nodeset.Spec.Template.PodSpecWrapper.Affinity = userAffinity
+
+		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-1")
+		if pod == nil {
+			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+		}
+		if pod.Spec.NodeName != "node-1" {
+			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-1")
+		}
+		if pod.Spec.Affinity == nil || pod.Spec.Affinity.NodeAffinity == nil ||
+			pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+			t.Fatal("user node affinity was not preserved")
+		}
+		terms := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
+		if len(terms) != 1 {
+			t.Fatalf("expected 1 NodeSelectorTerm, got %d", len(terms))
+		}
+		if len(terms[0].MatchExpressions) != 1 || terms[0].MatchExpressions[0].Key != "gpu" {
+			t.Errorf("user MatchExpressions not preserved: %+v", terms[0].MatchExpressions)
+		}
+	})
+
+	t.Run("Works without user affinity", func(t *testing.T) {
+		nodeset := newNodeSetDaemonset("foo", "")
+
+		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-2")
+		if pod == nil {
+			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+		}
+		if pod.Spec.NodeName != "node-2" {
+			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-2")
+		}
+	})
+
+	t.Run("Preserves nodeSelector", func(t *testing.T) {
+		nodeset := newNodeSetDaemonset("foo", "")
+		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"disk": "ssd"}
+
+		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-3")
+		if pod == nil {
+			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+		}
+		if pod.Spec.NodeSelector["disk"] != "ssd" {
+			t.Errorf("nodeSelector not preserved: got %v", pod.Spec.NodeSelector)
+		}
+	})
+
+	t.Run("Preserves tolerations", func(t *testing.T) {
+		nodeset := newNodeSetDaemonset("foo", "")
+		nodeset.Spec.Template.PodSpecWrapper.Tolerations = []corev1.Toleration{
+			{Key: "gpu", Operator: corev1.TolerationOpExists, Effect: corev1.TaintEffectNoSchedule},
+		}
+
+		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-4")
+		if pod == nil {
+			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+		}
+		found := false
+		for _, t := range pod.Spec.Tolerations {
+			if t.Key == "gpu" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("user toleration not preserved: got %v", pod.Spec.Tolerations)
+		}
+	})
+}
+
 func TestGetDaemonSetPodHostname(t *testing.T) {
 	tests := []struct {
 		name     string

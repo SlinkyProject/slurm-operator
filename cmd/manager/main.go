@@ -15,6 +15,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -51,13 +52,14 @@ func init() {
 
 // Input flags to the command
 type Flags struct {
-	enableLeaderElection    bool
-	leaderElectionNamespace string
-	probeAddr               string
-	metricsAddr             string
-	secureMetrics           bool
-	enableHTTP2             bool
-	namespaces              string
+	enableLeaderElection     bool
+	leaderElectionNamespace  string
+	probeAddr                string
+	metricsAddr              string
+	secureMetrics            bool
+	enableHTTP2              bool
+	namespaces               string
+	propagatedNodeConditions string
 }
 
 func parseFlags(flags *Flags) {
@@ -92,6 +94,8 @@ func parseFlags(flags *Flags) {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&flags.namespaces, "namespaces", "",
 		"Comma-separated list of namespaces the controller will watch. If empty, all namespaces are watched.")
+	flag.StringVar(&flags.propagatedNodeConditions, "propagated-node-conditions", "",
+		"Comma-separated list of Kube node conditions, by type field, the controller will parse when setting drain reason on Slurm nodes.")
 	flag.Parse()
 }
 
@@ -133,6 +137,18 @@ func main() {
 		setupLog.Info("watching namespaces", "namespaces", flags.namespaces)
 	}
 
+	var propagatedNodeConditions []corev1.NodeConditionType
+	if flags.propagatedNodeConditions != "" {
+		propagatedNodeConditions = make([]corev1.NodeConditionType, 0)
+		for nodeCondType := range strings.SplitSeq(flags.propagatedNodeConditions, ",") {
+			nodeCondType = strings.TrimSpace(nodeCondType)
+			if nodeCondType != "" {
+				propagatedNodeConditions = append(propagatedNodeConditions, corev1.NodeConditionType(nodeCondType))
+			}
+		}
+		setupLog.Info("propagated node conditions", "propagatedNodeConditions", flags.propagatedNodeConditions)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
@@ -166,7 +182,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Accounting")
 		os.Exit(1)
 	}
-	if err := nodeset.NewReconciler(mgr.GetClient(), clientMap).SetupWithManager(mgr); err != nil {
+	if err := nodeset.NewReconciler(mgr.GetClient(), clientMap, propagatedNodeConditions).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NodeSet")
 		os.Exit(1)
 	}

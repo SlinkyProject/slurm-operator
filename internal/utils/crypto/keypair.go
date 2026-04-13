@@ -137,14 +137,12 @@ func (o *KeyPair) generateEd25519() error {
 }
 
 // PrivateKey returns the private SSH key in PEM format.
-func (o *KeyPair) PrivateKey() []byte {
+func (o *KeyPair) PrivateKey() ([]byte, error) {
 	block, err := o.pemBlock()
 	if err != nil {
-		// Should never happen unless key type is unknown, or Reader fails.
-		panic(fmt.Errorf("failed to create PEM block: %w", err))
+		return nil, fmt.Errorf("failed to create PEM block: %w", err)
 	}
-	return pem.EncodeToMemory(block)
-
+	return pem.EncodeToMemory(block), nil
 }
 
 // pemBlock returns the PEM key metadata block.
@@ -156,12 +154,10 @@ func (o *KeyPair) pemBlock() (*pem.Block, error) {
 }
 
 // PublicKey returns the public SSH key in `authorized_keys` format.
-func (o *KeyPair) PublicKey() []byte {
+func (o *KeyPair) PublicKey() ([]byte, error) {
 	key, err := ssh.NewPublicKey(o.publicKey)
 	if err != nil {
-		// Should never happen unless key type is unknown.
-		panic(fmt.Errorf("failed to create public key: %w", err))
+		return nil, fmt.Errorf("failed to create public key: %w", err)
 	}
-	b := ssh.MarshalAuthorizedKey(key)
-	return b
+	return ssh.MarshalAuthorizedKey(key), nil
 }

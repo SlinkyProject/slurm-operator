@@ -13,8 +13,8 @@ Run [Slurm] on [Kubernetes], by [SchedMD]. A [Slinky] project.
   - [Features](#features)
     - [Controller](#controller)
     - [NodeSets](#nodesets)
-      - [`StatefulSet` (default)](#statefulset-default)
-      - [`DaemonSet`](#daemonset)
+      - [StatefulSet (default)](#statefulset-default)
+      - [DaemonSet](#daemonset)
     - [LoginSets](#loginsets)
     - [Hybrid Support](#hybrid-support)
     - [Slurm](#slurm)
@@ -101,7 +101,7 @@ The NodeSet CRD supports a `scalingMode` field that controls how many pods are
 created and how they are scaled. This allows you to choose between replica-based
 scaling (like a StatefulSet) or one-pod-per-node scaling (like a DaemonSet).
 
-#### `StatefulSet` (default)
+#### StatefulSet (default)
 
 - **Behavior**: The controller maintains a fixed number of pods according to the
   `replicas` field.
@@ -109,7 +109,7 @@ scaling (like a StatefulSet) or one-pod-per-node scaling (like a DaemonSet).
   Scale-to-zero and horizontal autoscaling (e.g. HPA) apply to this mode.
 - **Note**: Each pod has a stable identity (e.g. ordinal-based naming)
 
-#### `DaemonSet`
+#### DaemonSet
 
 - **Behavior**: The controller schedules one pod per Kubernetes node that
   matches the NodeSet's pod template (e.g. `nodeSelector`, `tolerations`). Pod

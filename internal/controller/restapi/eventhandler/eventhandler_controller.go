@@ -46,6 +46,7 @@ func (e *ControllerEventHandler) Update(
 	evt event.UpdateEvent,
 	q workqueue.TypedRateLimitingInterface[reconcile.Request],
 ) {
+	e.enqueueRequest(ctx, evt.ObjectOld, q)
 	e.enqueueRequest(ctx, evt.ObjectNew, q)
 }
 
