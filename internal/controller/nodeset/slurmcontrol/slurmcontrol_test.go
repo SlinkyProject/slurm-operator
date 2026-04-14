@@ -2394,3 +2394,157 @@ func Test_nodeState(t *testing.T) {
 		})
 	}
 }
+
+func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	otherNodeSet := newNodeSet("bar", controller.Name, 1)
+	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 7)
+
+	type fields struct {
+		nodes []types.V0044Node
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    []DefunctNode
+		wantOk  bool
+		wantErr bool
+	}{
+		{
+			name: "returns only down and not responding nodes with PodInfo from this nodeset",
+			fields: fields{
+				nodes: []types.V0044Node{
+					{
+						V0044Node: api.V0044Node{
+							Name: ptr.To("foo-ghost"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+							Comment: ptr.To((&podinfo.PodInfo{
+								Namespace: corev1.NamespaceDefault,
+								PodName:   defunctPodName,
+								Node:      "worker-a",
+							}).ToString()),
+						},
+					},
+					{
+						V0044Node: api.V0044Node{
+							Name: ptr.To("foo-missing-flag"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+							}),
+							Comment: ptr.To((&podinfo.PodInfo{
+								Namespace: corev1.NamespaceDefault,
+								PodName:   nodesetutils.GetOrdinalPodName(nodeset, 8),
+							}).ToString()),
+						},
+					},
+					{
+						V0044Node: api.V0044Node{
+							Name: ptr.To("bar-ghost"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+							Comment: ptr.To((&podinfo.PodInfo{
+								Namespace: corev1.NamespaceDefault,
+								PodName:   nodesetutils.GetOrdinalPodName(otherNodeSet, 0),
+							}).ToString()),
+						},
+					},
+					{
+						V0044Node: api.V0044Node{
+							Name: ptr.To("foo-no-comment"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+						},
+					},
+				},
+			},
+			want: []DefunctNode{
+				{
+					Name: "foo-ghost",
+					PodInfo: podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   defunctPodName,
+						Node:      "worker-a",
+					},
+				},
+			},
+			wantOk: true,
+		},
+		{
+			name:   "no client",
+			fields: fields{},
+			wantOk: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var clientMap *clientmap.ClientMap
+			if tt.wantOk {
+				objects := make([]object.Object, 0, len(tt.fields.nodes))
+				for i := range tt.fields.nodes {
+					node := tt.fields.nodes[i]
+					objects = append(objects, &node)
+				}
+				sclient := fake.NewClientBuilder().WithObjects(objects...).Build()
+				clientMap = newSlurmClientMap(controller.Name, sclient)
+			} else {
+				clientMap = clientmap.NewClientMap()
+			}
+
+			r := &realSlurmControl{clientMap: clientMap}
+			got, ok, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("GetDefunctNodesForNodeSet() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if ok != tt.wantOk {
+				t.Fatalf("GetDefunctNodesForNodeSet() ok = %v, want %v", ok, tt.wantOk)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("GetDefunctNodesForNodeSet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_DeleteNode(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	node := &types.V0044Node{
+		V0044Node: api.V0044Node{
+			Name: ptr.To("foo-0"),
+			State: ptr.To([]api.V0044NodeState{
+				api.V0044NodeStateDOWN,
+				api.V0044NodeStateNOTRESPONDING,
+			}),
+		},
+	}
+	sclient := fake.NewClientBuilder().WithObjects(node).Build()
+	r := &realSlurmControl{clientMap: newSlurmClientMap(controller.Name, sclient)}
+
+	if err := r.DeleteNode(ctx, nodeset, "foo-0"); err != nil {
+		t.Fatalf("DeleteNode() error = %v", err)
+	}
+
+	checkNode := &types.V0044Node{}
+	err := sclient.Get(ctx, node.GetKey(), checkNode)
+	if !tolerateError(err) {
+		t.Fatalf("DeleteNode() node still exists: %v", err)
+	}
+}

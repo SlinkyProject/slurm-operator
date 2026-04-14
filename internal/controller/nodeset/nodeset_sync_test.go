@@ -49,6 +49,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
@@ -4004,5 +4005,172 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	existingPod := newNodeSetPodWithStatus(nodeset, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
+	existingPod.Spec.Hostname = "worker-b"
+	if existingPod.Labels == nil {
+		existingPod.Labels = make(map[string]string)
+	}
+	existingPod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(slinkyv1beta1.ScalingModeDaemonset)
+	existingKubeNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker-b",
+		},
+	}
+	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+
+	kclient := fake.NewFakeClient(nodeset, existingPod, existingKubeNode)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("foo-ghost"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   defunctPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To(nodesetutils.GetSlurmNodeName(existingPod)),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   existingPod.Name,
+						Node:      "worker-b",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	r := NewReconciler(kclient, clientMap, nil)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
+	defunctNode := &slurmtypes.V0044Node{}
+	defunctErr := sclient.Get(context.Background(), slurmclient.ObjectKey("foo-ghost"), defunctNode)
+	if defunctErr == nil {
+		t.Fatalf("syncDefunctNodes() defunct node still exists")
+	}
+
+	existingNode := &slurmtypes.V0044Node{}
+	existingName := nodesetutils.GetSlurmNodeName(existingPod)
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey(existingName), existingNode); err != nil {
+		t.Fatalf("syncDefunctNodes() deleted existing node unexpectedly: %v", err)
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeExists(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	// The pod is gone but its Kubernetes node is still present.
+	ghostPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+	survivingKubeNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker-a",
+		},
+	}
+
+	kclient := fake.NewFakeClient(nodeset, survivingKubeNode)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("foo-ghost"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   ghostPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	r := NewReconciler(kclient, clientMap, nil)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
+	// The Slurm node must still exist because the Kubernetes node is alive.
+	defunctNode := &slurmtypes.V0044Node{}
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("foo-ghost"), defunctNode); err != nil {
+		t.Fatalf("syncDefunctNodes() pruned Slurm node while Kubernetes node still exists: %v", err)
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes_skipsForStatefulSet(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+
+	kclient := fake.NewFakeClient(nodeset)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("foo-ghost"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   defunctPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	r := NewReconciler(kclient, clientMap, nil)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
+	defunctNode := &slurmtypes.V0044Node{}
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("foo-ghost"), defunctNode); err != nil {
+		t.Fatalf("syncDefunctNodes() deleted defunct node unexpectedly for StatefulSet mode: %v", err)
 	}
 }
