@@ -41,7 +41,7 @@ func (o *Token) JwtHs256Key() types.NamespacedName {
 }
 
 // Deprecated: use JwtRef() instead.
-func (o *Token) JwtHs256Ref() JwtSecretKeySelector {
+func (o *Token) JwtHs256Ref() corev1.SecretKeySelector {
 	return o.JwtRef()
 }
 
@@ -49,24 +49,20 @@ func (o *Token) JwtKey() types.NamespacedName {
 	ref := o.JwtRef()
 	return types.NamespacedName{
 		Name:      ref.Name,
-		Namespace: ref.Namespace,
+		Namespace: o.Namespace,
 	}
 }
 
 // NOTE: Return non-nil because this field is effectively required.
-func (o *Token) JwtRef() JwtSecretKeySelector {
-	var refPtr *JwtSecretKeySelector
+func (o *Token) JwtRef() corev1.SecretKeySelector {
+	var refPtr *corev1.SecretKeySelector
 	switch {
 	case o.Spec.JwtKeyRef != nil:
 		refPtr = o.Spec.JwtKeyRef
 	case o.Spec.JwtHs256KeyRef != nil:
 		refPtr = o.Spec.JwtHs256KeyRef
 	}
-	ref := ptr.Deref(refPtr, JwtSecretKeySelector{})
-	if ref.Namespace == "" {
-		ref.Namespace = o.Namespace
-	}
-	return ref
+	return ptr.Deref(refPtr, corev1.SecretKeySelector{})
 }
 
 func (o *Token) SecretKey() types.NamespacedName {
