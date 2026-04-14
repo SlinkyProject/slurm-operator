@@ -694,14 +694,7 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodeName)
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
-		if tolerateError(err) {
-			return nil
-		}
-		return err
-	}
-
+	slurmNode.Name = ptr.To(nodeName)
 	if err := slurmClient.Delete(ctx, slurmNode); err != nil && !tolerateError(err) {
 		return err
 	}

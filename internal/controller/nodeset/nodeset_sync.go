@@ -596,7 +596,7 @@ func (r *NodeSetReconciler) syncDefunctNodes(
 
 		// Both the pod and the Kubernetes node are gone — prune the Slurm node.
 		logger.Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod",
-			"node", defunctNode.Name, "pod", podKey, "kubeNode", kubeNodeKey.Name)
+			"slurmNode", defunctNode.Name, "pod", podKey, "node", kubeNodeKey.Name)
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
 			"Deleting defunct Slurm node %s: Pod %s/%s and Kubernetes node %s no longer exist",
 			defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
