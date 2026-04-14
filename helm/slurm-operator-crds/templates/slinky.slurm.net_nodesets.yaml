@@ -169,6 +169,17 @@ spec:
                     - Delete
                     type: string
                 type: object
+              pinToNode:
+                default: false
+                description: |-
+                  PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
+                  When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
+                  Kubernetes node pinnings are reset when:
+                  * The Node does not exist.
+                  * The new NodeSet pod no longer matches the Node it was pinned to.
+                  When disabled, all stored node pinnings are removed.
+                  Used only when `scalingMode=StatefulSet`.
+                type: boolean
               replicas:
                 default: 1
                 description: |-
@@ -437,6 +448,12 @@ spec:
                   NodeSet's generation, which is updated on mutation by the API Server.
                 format: int64
                 type: integer
+              ordinalToNode:
+                additionalProperties:
+                  type: string
+                description: OrdinalToNode stores the node name to pod ordinal map.
+                nullable: true
+                type: object
               readyReplicas:
                 description: readyReplicas is the number of pods targeted by this
                   NodeSet with a Ready Condition.

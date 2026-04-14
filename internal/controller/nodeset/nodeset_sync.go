@@ -18,15 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	v1helper "k8s.io/component-helpers/scheduling/corev1"
-	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	daemonutils "k8s.io/kubernetes/pkg/controller/daemon/util"
 	"k8s.io/kubernetes/pkg/controller/history"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -710,47 +706,12 @@ func (r *NodeSetReconciler) getNodesToDaemonPods(ctx context.Context, nodeset *s
 	return nodeToDaemonPods
 }
 
-func predicates(logger klog.Logger, pod *corev1.Pod, node *corev1.Node, taints []corev1.Taint) (fitsNodeName, fitsNodeAffinity, fitsTaints bool) {
-	fitsNodeName = len(pod.Spec.NodeName) == 0 || pod.Spec.NodeName == node.Name
-	// Ignore parsing errors for backwards compatibility.
-	fitsNodeAffinity, _ = nodeaffinity.GetRequiredNodeAffinity(pod).Match(node)
-	_, hasUntoleratedTaint := v1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
-		return t.Effect == corev1.TaintEffectNoExecute || t.Effect == corev1.TaintEffectNoSchedule
-	}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
-	fitsTaints = !hasUntoleratedTaint
-	return
-}
-
-// NodeShouldRunDaemonPod checks a set of preconditions against a (node,daemonset) and returns a
-// summary. Returned booleans are:
-//   - shouldRun:
-//     Returns true when a daemonset should run on the node if a daemonset pod is not already
-//     running on that node.
-//   - shouldContinueRunning:
-//     Returns true when a daemonset should continue running on a node if a daemonset pod is already
-//     running on that node.
 func (r *NodeSetReconciler) NodeShouldRunDaemonPod(ctx context.Context, node *corev1.Node, nodeset *slinkyv1beta1.NodeSet) (bool, bool) {
-	logger := log.FromContext(ctx)
-	pod, err := r.newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
+	pod, err := newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
 	if err != nil {
 		return false, false
 	}
-
-	taints := node.Spec.Taints
-	fitsNodeName, fitsNodeAffinity, fitsTaints := predicates(logger, pod, node, taints)
-	if !fitsNodeName || !fitsNodeAffinity {
-		return false, false
-	}
-
-	if !fitsTaints {
-		// Scheduled daemon pods should continue running if they tolerate NoExecute taint.
-		_, hasUntoleratedTaint := v1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
-			return t.Effect == corev1.TaintEffectNoExecute
-		}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
-		return false, !hasUntoleratedTaint
-	}
-
-	return true, true
+	return nodesetutils.PodShouldRunOnNode(ctx, pod, node)
 }
 
 func failedPodsBackoffKey(nodeset *slinkyv1beta1.NodeSet, nodeName string) string {
@@ -1082,7 +1043,7 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 // newSimulatedDaemonPod builds a pod for predicate evaluation that preserves
 // the user's node affinity. This avoids ReplaceDaemonSetPodNodeNameNodeAffinity
 // which overwrites RequiredDuringSchedulingIgnoredDuringExecution terms.
-func (r *NodeSetReconciler) newSimulatedDaemonPod(
+func newSimulatedDaemonPod(
 	client client.Client,
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1090,16 +1051,14 @@ func (r *NodeSetReconciler) newSimulatedDaemonPod(
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
 	key := nodeset.Spec.ControllerRef.NamespacedName()
-	if err := r.Get(ctx, key, controller); err != nil {
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
-			"Failed to get Controller (%s): %v", key, err)
+	if err := client.Get(ctx, key, controller); err != nil {
 		return nil, err
 	}
 	if nodeName == "" {
 		return nil, fmt.Errorf("nodeName must not be empty")
 	}
 
-	pod := nodesetutils.NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, nodeName)
+	pod := nodesetutils.NewNodeSetSimulatedPod(client, nodeset, controller, nodeName)
 	return pod, nil
 }
 

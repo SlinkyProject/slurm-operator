@@ -6,6 +6,7 @@ package nodeset
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,6 +110,10 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 	if err != nil {
 		return err
 	}
+	ordinalToNode, err := r.calculateOrdinalToNode(ctx, nodeset, pods)
+	if err != nil {
+		return err
+	}
 
 	newStatus := &slinkyv1beta1.NodeSetStatus{
 		Replicas:            replicaStatus.Replicas,
@@ -124,6 +129,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		ObservedGeneration:  nodeset.Generation,
 		NodeSetHash:         hash,
 		CollisionCount:      &collisionCount,
+		OrdinalToNode:       ordinalToNode,
 		Selector:            selector.String(),
 		Conditions:          []metav1.Condition{},
 	}
@@ -207,6 +213,59 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 		status.Desired = int32(desiredNodes)
 	}
 	return status, nil
+}
+
+// calculateOrdinalToNode builds the ordinal to node pinning map.
+// Add a node pin if pod is scheduled and running.
+// Clear the node pin if the node was deleted, or the pod template no longer matches the node.
+func (r *NodeSetReconciler) calculateOrdinalToNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (map[string]string, error) {
+	if !nodeset.Spec.PinToNode || nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+		return nil, nil //nolint:nilnil
+	}
+
+	ordinalToNode := make(map[string]string)
+	for ordinalStr, nodeName := range nodeset.Status.OrdinalToNode {
+		node := &corev1.Node{}
+		nodeKey := types.NamespacedName{Name: nodeName}
+		if err := r.Get(ctx, nodeKey, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return nil, err
+		}
+		pod := nodesetutils.NewNodeSetSimulatedPod(r.Client, nodeset, &slinkyv1beta1.Controller{}, nodeName)
+		if shouldRun, _ := nodesetutils.PodShouldRunOnNode(ctx, pod, node); !shouldRun {
+			continue
+		}
+		ordinalToNode[ordinalStr] = nodeName
+	}
+
+	for _, pod := range pods {
+		nodeName := pod.Spec.NodeName
+		if nodeName == "" || !podutils.IsRunning(pod) {
+			continue
+		}
+		ordinal := nodesetutils.GetOrdinal(pod)
+		if ordinal < 0 {
+			continue
+		}
+
+		node := &corev1.Node{}
+		nodeKey := types.NamespacedName{Name: nodeName}
+		if err := r.Get(ctx, nodeKey, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return nil, err
+		}
+		podFromTemplate := nodesetutils.NewNodeSetSimulatedPod(r.Client, nodeset, &slinkyv1beta1.Controller{}, nodeName)
+		if shouldRun, _ := nodesetutils.PodShouldRunOnNode(ctx, podFromTemplate, node); !shouldRun {
+			continue
+		}
+		ordinalToNode[strconv.Itoa(ordinal)] = nodeName
+	}
+
+	return ordinalToNode, nil
 }
 
 // Sync NodeSet Pod Conditions to reflect Slurm base and flag states

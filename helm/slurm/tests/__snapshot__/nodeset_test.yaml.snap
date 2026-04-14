@@ -21,6 +21,7 @@ manifest should match snapshot:
       ordinalPadding: 0
       partition:
         enabled: false
+      pinToNode: false
       replicas: 1
       scalingMode: StatefulSet
       slurmd:

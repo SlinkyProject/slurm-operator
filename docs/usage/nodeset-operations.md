@@ -22,6 +22,10 @@ primitives. For design-level details, see
   - [Workload Disruption Protection](#workload-disruption-protection)
   - [External Drain Preservation](#external-drain-preservation)
   - [External Health Checker Integration Pattern](#external-health-checker-integration-pattern)
+  - [Node Identity](#node-identity)
+    - [StatefulSet Mode](#statefulset-mode)
+      - [Node Pinning](#node-pinning)
+    - [DaemonSet Mode](#daemonset-mode)
 
 <!-- mdformat-toc end -->
 
@@ -295,7 +299,67 @@ sequenceDiagram
 See [Override with Node Annotation](#override-with-node-annotation) and
 [Cordoning Pods](#cordoning-pods) for the kubectl commands used in each step.
 
+## Node Identity
+
+A Nodeset's scalingMode will determine whether its pods, which represent Slurm
+nodes, are loosely or strictly mapped to the Kubernetes nodes they run on.
+
+### StatefulSet Mode
+
+When using `scalingMode=StatefulSet`, Nodeset pods are loosely mapped to
+Kubernetes nodes and may be rescheduled freely.
+
+If a stricter node mapping is preferred, node pinning can be enabled on the
+NodeSet.
+
+#### Node Pinning
+
+When enabled, NodeSet pods are pinned to the Kubernetes node it was first
+scheduled on. Once a pod is assigned to a node, subsequent recreations of that
+pod (e.g. after eviction, deletion, or node maintenance) will always land on the
+same physical node. If the node is unavailable, the pod remains in `Pending`
+state until the node comes back. However, node pinnings will be removed under
+specific conditions: if the node no longer exists; or if the new NodeSet pod no
+longer matches the node it was pinned to (e.g. affinity, nodeSelector).
+
+To use node pinning, set `pinToNode=true` on a NodeSet in the Slurm Helm chart:
+
+```yaml
+nodesets:
+  slinky:
+    pinToNode: true
+```
+
+Or directly in the NodeSet CR:
+
+```yaml
+apiVersion: slinky.slurm.net/v1beta1
+kind: NodeSet
+metadata:
+  name: gpu-workers
+spec:
+  pinToNode: true
+  replicas: 4
+```
+
+When enabled, the controller:
+
+1. The pod is initially scheduled like normal.
+1. Records the node-to-pod mapping in `status.nodeToOrdinal`.
+1. On subsequent pod recreations, a [node affinity][node-affinity] is added to
+   the pod such that it can only be scheduled to the recorded node.
+1. Reset the node in the node-to-pod map if:
+   - the Kubernetes node no longer exists
+   - the NodeSet pod template no longer matches the recorded Kubernetes Node
+     (e.g. affinity, nodeSelector).
+
+### DaemonSet Mode
+
+When using `scalingMode=Daemonset`, Nodeset pods are strictly mapped to
+Kubernetes nodes and share the hostname of the node they run on.
+
 <!-- Links -->
 
+[node-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity
 [node-condition]: https://kubernetes.io/docs/reference/node/node-status/#condition
 [node-problem-detector]: https://github.com/kubernetes/node-problem-detector

@@ -113,6 +113,17 @@ type NodeSetSpec struct {
 	// +default:=0
 	OrdinalPadding uint `json:"ordinalPadding,omitempty"`
 
+	// PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
+	// When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
+	// Kubernetes node pinnings are reset when:
+	// * The Node does not exist.
+	// * The new NodeSet pod no longer matches the Node it was pinned to.
+	// When disabled, all stored node pinnings are removed.
+	// Used only when `scalingMode=StatefulSet`.
+	// +optional
+	// +default:=false
+	PinToNode bool `json:"pinToNode"`
+
 	// TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
 	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
 	// +optional
@@ -328,6 +339,11 @@ type NodeSetStatus struct {
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+
+	// OrdinalToNode stores the node name to pod ordinal map.
+	// +optional
+	// +nullable
+	OrdinalToNode map[string]string `json:"ordinalToNode,omitempty"`
 
 	// Add Selector to status for HPA support in the scale subresource.
 	Selector string `json:"selector"`
