@@ -20,6 +20,7 @@ tests:
               tag: v1.2.3
     asserts:
       - matchSnapshot: {}
+
   - it: should set imagePullSecrets
     set:
       imagePullSecrets:
@@ -32,7 +33,32 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[1].name
           value: docker-secret-2
-  - it: should set resourceSettings
+
+  - it: should set pod template resource claims
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          podSpec:
+            resourceClaims:
+              - name: gpu
+                resourceClaimName: slurm-nodeset-gpu
+            resources:
+              claims:
+                - name: gpu
+    asserts:
+      - contains:
+          path: spec.template.spec.resourceClaims
+          content:
+            name: gpu
+            resourceClaimName: slurm-nodeset-gpu
+      - equal:
+          path: spec.template.spec.resources
+          value:
+            claims:
+              - name: gpu
+
+  - it: should set pod template resources
     set:
       nodesets:
         slinky:
@@ -55,6 +81,7 @@ tests:
             requests:
               cpu: "1"
               memory: "2"
+
   - it: should add nodeSelector
     set:
       nodesets:
@@ -67,6 +94,7 @@ tests:
       - equal:
           path: spec.template.spec.nodeSelector["beta.kubernetes.io/os"]
           value: linux
+
   - it: should set affinity
     set:
       nodesets:
@@ -84,8 +112,17 @@ tests:
                             - x86_64
     asserts:
       - equal:
-          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
-          value: x86_64
+          path: spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: arch
+                        operator: In
+                        values:
+                          - x86_64
+
   - it: should add tolerations
     set:
       nodesets:
@@ -101,6 +138,7 @@ tests:
       - equal:
           path: spec.template.spec.tolerations[0].key
           value: test
+
   - it: should add topologySpreadConstraints
     set:
       nodesets:
@@ -115,9 +153,16 @@ tests:
                   matchLabels:
                     foo: bar
     asserts:
-      - equal:
-          path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
-          value: bar
+      - contains:
+          path: spec.template.spec.topologySpreadConstraints
+          content:
+            maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                foo: bar
+
   - it: should not use priority class
     set:
       priorityClass:
@@ -130,6 +175,7 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: ""
+
   - it: should use priority class
     set:
       priorityClass:
@@ -142,6 +188,7 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: slurm-priorityclass
+
   - it: should override priority class
     set:
       priorityClass:
