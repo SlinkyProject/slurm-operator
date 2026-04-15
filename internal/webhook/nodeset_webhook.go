@@ -75,6 +75,10 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		errs = append(errs, errors.New("controllerRef.name must not be empty"))
 	}
 
+	if nodeset.Spec.TaintKubeNodes { //nolint:staticcheck // SA1019
+		warns = append(warns, "TaintKubeNodes option is deprecated and will removed in the future.")
+	}
+
 	if mu := nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable; mu != nil {
 		switch mu.Type {
 		case intstr.Int:
