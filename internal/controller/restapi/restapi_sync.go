@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -79,6 +80,15 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 					return fmt.Errorf("failed to build: %w", err)
 				}
 				if !restapiPodDisruptionBudgetDesired(restapi) {
+					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, restapi, object); err != nil {
+						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
+					}
+					return nil
+				}
+				if restapiPodDisruptionBudgetMinDemandsAllReplicas(restapi) {
+					repl := ptr.Deref(restapi.Spec.Replicas, 1)
+					r.eventRecorder.Eventf(restapi, nil, corev1.EventTypeWarning, PodDisruptionBudgetSkippedReason, "PodDisruptionBudget",
+						"minAvailable requires all %d replica(s); skipping PodDisruptionBudget until minAvailable is below replica count or maxUnavailable is set instead", repl)
 					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, restapi, object); err != nil {
 						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
 					}

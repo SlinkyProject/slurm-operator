@@ -146,3 +146,82 @@ func Test_restapiPodDisruptionBudgetDesired(t *testing.T) {
 		})
 	}
 }
+
+func Test_restapiPodDisruptionBudgetMinDemandsAllReplicas(t *testing.T) {
+	tests := []struct {
+		name    string
+		restapi *slinkyv1beta1.RestApi
+		want    bool
+	}{
+		{
+			name: "single replica with minAvailable 1",
+			restapi: &slinkyv1beta1.RestApi{
+				Spec: slinkyv1beta1.RestApiSpec{
+					Replicas: ptr.To[int32](1),
+					PodDisruptionBudget: &slinkyv1beta1.RestApiPodDisruptionBudget{
+						PodDisruptionBudgetSpec: policyv1.PodDisruptionBudgetSpec{
+							MinAvailable: ptr.To(intstr.FromInt(1)),
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "two replicas minAvailable 2",
+			restapi: &slinkyv1beta1.RestApi{
+				Spec: slinkyv1beta1.RestApiSpec{
+					Replicas: ptr.To[int32](2),
+					PodDisruptionBudget: &slinkyv1beta1.RestApiPodDisruptionBudget{
+						PodDisruptionBudgetSpec: policyv1.PodDisruptionBudgetSpec{
+							MinAvailable: ptr.To(intstr.FromInt(2)),
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "three replicas minAvailable 100%",
+			restapi: &slinkyv1beta1.RestApi{
+				Spec: slinkyv1beta1.RestApiSpec{
+					Replicas: ptr.To[int32](3),
+					PodDisruptionBudget: &slinkyv1beta1.RestApiPodDisruptionBudget{
+						PodDisruptionBudgetSpec: policyv1.PodDisruptionBudgetSpec{
+							MinAvailable: ptr.To(intstr.FromString("100%")),
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "three replicas minAvailable 2",
+			restapi: &slinkyv1beta1.RestApi{
+				Spec: slinkyv1beta1.RestApiSpec{
+					Replicas: ptr.To[int32](3),
+					PodDisruptionBudget: &slinkyv1beta1.RestApiPodDisruptionBudget{
+						PodDisruptionBudgetSpec: policyv1.PodDisruptionBudgetSpec{
+							MinAvailable: ptr.To(intstr.FromInt(2)),
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "two replicas default minAvailable unset",
+			restapi: &slinkyv1beta1.RestApi{
+				Spec: slinkyv1beta1.RestApiSpec{Replicas: ptr.To[int32](2)},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := restapiPodDisruptionBudgetMinDemandsAllReplicas(tt.restapi); got != tt.want {
+				t.Fatalf("restapiPodDisruptionBudgetMinDemandsAllReplicas() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

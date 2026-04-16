@@ -38,6 +38,9 @@ const (
 // Reasons for RestAPI events
 const (
 	SyncFailedReason = "SyncFailed"
+	// PodDisruptionBudgetSkippedReason is used when spec.podDisruptionBudget.minAvailable would require
+	// all replicas to remain available, so no PodDisruptionBudget is applied.
+	PodDisruptionBudgetSkippedReason = "PodDisruptionBudgetSkipped"
 )
 
 func init() {
