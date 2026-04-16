@@ -71,6 +71,25 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 				return nil
 			},
 		},
+		{
+			Name: "PodDisruptionBudget",
+			Sync: func(ctx context.Context, restapi *slinkyv1beta1.RestApi) error {
+				object, err := r.builder.BuildRestapiPodDisruptionBudget(restapi)
+				if err != nil {
+					return fmt.Errorf("failed to build: %w", err)
+				}
+				if !restapiPodDisruptionBudgetDesired(restapi) {
+					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, restapi, object); err != nil {
+						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
+					}
+					return nil
+				}
+				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, restapi, object, true); err != nil {
+					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
+				}
+				return nil
+			},
+		},
 	}
 
 	for _, s := range syncSteps {

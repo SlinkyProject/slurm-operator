@@ -324,6 +324,14 @@ controller:
 restapi:
   # -- Number of replicas to deploy.
   replicas: 1
+  # -- PodDisruptionBudget for the slurmrestd Deployment when `replicas` is greater than one.
+  # Uses policy/v1 PodDisruptionBudgetSpec fields (`minAvailable`, `maxUnavailable`, etc.); the operator sets `selector`.
+  # Ref: https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/pod-disruption-budget-v1/
+  podDisruptionBudget:
+    # -- When true (default), the operator reconciles a PDB while `replicas` > 1. Set to false to disable.
+    enabled: true
+    # -- Example: PodDisruptionBudget `spec.minAvailable`. If neither `minAvailable` nor `maxUnavailable` is set, the operator defaults `minAvailable` to 1.
+    minAvailable: 1
   # slurmrestd container configurations.
   slurmrestd:
     # -- (string \| object) The image to use.
