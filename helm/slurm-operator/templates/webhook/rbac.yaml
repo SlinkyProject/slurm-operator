@@ -20,68 +20,7 @@ metadata:
   namespace: {{ include "slurm-operator.namespace" . }}
   labels:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
-rules:
-- apiGroups:
-  - {{ include "slurm-operator.apiGroup" . }}
-  resources:
-  - accountings
-  - controllers
-  - loginsets
-  - nodesets
-  - restapis
-  - tokens
-  verbs:
-  - create
-  - delete
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - pods/binding
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - get
-  - create
-  - update
-  - patch
+{{- .Files.Get "files/webhook_rbac_rules.yaml" | nindent 0 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
