@@ -34,6 +34,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
@@ -230,11 +231,6 @@ func (r *NodeSetReconciler) canAdoptFunc(nodeset *slinkyv1beta1.NodeSet) func(ct
 	})
 }
 
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error
-}
-
 // sync is the main reconciliation logic.
 func (r *NodeSetReconciler) sync(
 	ctx context.Context,
@@ -242,78 +238,72 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
-	syncSteps := []SyncStep{
-		{
-			Name: "RefreshNodeCache",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
-				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
-			},
-		},
+	steps := []syncsteps.Step[*slinkyv1beta1.NodeSet]{
 		{
 			Name: "ClusterWorkerService",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerService(ctx, nodeset)
 			},
 		},
 		{
 			Name: "ClusterWorkerPDB",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerPDB(ctx, nodeset)
 			},
 		},
 		{
 			Name: "SSHConfig",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSshConfig(ctx, nodeset)
 			},
 		},
 		{
-			Name: "SlurmNodes",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncSlurmNodes(ctx, nodeset, pods)
-			},
-		},
-		{
-			Name: "SlurmDeadline",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncSlurmDeadline(ctx, nodeset, pods)
-			},
-		},
-		{
-			Name: "SlurmTopology",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncSlurmTopology(ctx, nodeset, pods)
-			},
-		},
-		{
-			Name: "Cordon",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncCordon(ctx, nodeset, pods)
-			},
-		},
-		{
 			Name: "NodeTaint",
-			Sync: func(ctx context.Context, _ *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeTaint(ctx)
 			},
 		},
 		{
+			Name: "RefreshNodeCache",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
+			},
+			// We need to ensure the Slurm client cache is refreshed before proceeding
+			// because stale cache could cause incorrect action to be taken.
+			StopOnError: true,
+		},
+		{
+			Name: "SlurmDeadline",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmDeadline(ctx, nodeset, pods)
+			},
+		},
+		{
+			Name: "Cordon",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncCordon(ctx, nodeset, pods)
+			},
+		},
+		{
 			Name: "NodeSetPods",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
 			},
 		},
+		{
+			Name: "SlurmNodes",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmNodes(ctx, nodeset, pods)
+			},
+		},
+		{
+			Name: "SlurmTopology",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmTopology(ctx, nodeset, pods)
+			},
+		},
 	}
-
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, nodeset, pods, hash); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			return fmt.Errorf("failed %q step: %w", s.Name, err)
-		}
-	}
-
-	return nil
+	return syncsteps.Sync(ctx, r.eventRecorder, nodeset, steps)
 }
 
 // syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.
@@ -615,8 +605,6 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
-	logger := log.FromContext(ctx)
-
 	syncSlurmTopologyFn := func(i int) error {
 		pod := pods[i]
 
@@ -639,16 +627,13 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		toUpdate := pod.DeepCopy()
 		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to patch pod annotations: %w", err)
 			}
-			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
-			return err
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil {
-			// Best effort, no guarantee the topology is valid from the admin.
-			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
+			return fmt.Errorf("failed to update Slurm node topology: %w", err)
 		}
 
 		return nil
