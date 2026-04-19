@@ -4,6 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- range $key, $loginset := $.Values.loginsets }}
+{{- if eq $key "_defaults" }}{{- continue }}{{- end }}
+{{- $loginset = include "slurm.loginset.withDefaults" (dict "ctx" $ "entry" $loginset) | fromYaml }}
 {{- if $loginset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
 {{- $metadata := merge dict ($loginset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}

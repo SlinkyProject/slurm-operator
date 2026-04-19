@@ -48,6 +48,8 @@ APP VERSION: {{ .Chart.AppVersion }}
   $ kubectl --namespace={{ include "slurm.namespace" $ }} get pods -l helm.sh/chart={{ include "slurm.chart" $ }} --watch
 
 {{- range $key, $loginset := $.Values.loginsets -}}
+{{- if eq $key "_defaults" }}{{- continue }}{{- end }}
+{{- $loginset = include "slurm.loginset.withDefaults" (dict "ctx" $ "entry" $loginset) | fromYaml }}
 {{- if $loginset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
 

@@ -530,9 +530,18 @@ sssd:
     auth_provider = files
 
 # -- (map[string]object) Slurm LoginSet (sackd, sshd, sssd) configurations.
+# Every entry under this map inherits the settings in `_defaults` unless
+# explicitly overridden. Use `_defaults` to set chart-wide overrides that
+# should apply to every LoginSet. Individual entries (e.g. `slinky`,
+# `highmem`) only need to specify the fields that differ from `_defaults`.
 loginsets:
-  # Sample LoginSet.
-  slinky:
+  # Shared defaults applied to every LoginSet entry below.
+  # To override a field for a single LoginSet, set it on that entry.
+  # Keep `_defaults.enabled: false` — it is not itself a rendered LoginSet.
+  # Do not null out this block in an overlay (`_defaults: null`) — sparse
+  # entries rely on inheriting these fields and will fail to render without
+  # them.
+  _defaults:
     # -- Enable use of this LoginSet.
     enabled: false
     # -- Number of replicas to deploy.
@@ -643,12 +652,24 @@ loginsets:
       # port: 22
       # nodePort: 32222
 
-# -- (map[string]object) Slurm NodeSet (slurmd) configurations.
-nodesets:
-  # Sample NodeSet.
+  # Sample LoginSet. Disabled by default; inherits all fields from `_defaults`.
   slinky:
+    enabled: false
+
+# -- (map[string]object) Slurm NodeSet (slurmd) configurations.
+# Every entry under this map inherits the settings in `_defaults` unless
+# explicitly overridden. Use `_defaults` to set chart-wide overrides that
+# should apply to every NodeSet. Individual entries (e.g. `slinky`, `gpu`)
+# only need to specify the fields that differ from `_defaults`.
+nodesets:
+  # Shared defaults applied to every NodeSet entry below.
+  # Keep `_defaults.enabled: false` — it is not itself a rendered NodeSet.
+  # Do not null out this block in an overlay (`_defaults: null`) — sparse
+  # entries rely on inheriting these fields and will fail to render without
+  # them.
+  _defaults:
     # -- Enable use of this NodeSet.
-    enabled: true
+    enabled: false
     # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
     scalingMode: StatefulSet
     # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
@@ -781,6 +802,11 @@ nodesets:
         #   nfs:
         #     server: nfs-server.example.com
         #     path: /exports/home
+
+  # Sample NodeSet. Enabled by default so `helm install` produces a
+  # ready-to-use cluster; inherits all other fields from `_defaults`.
+  slinky:
+    enabled: true
 
 # -- (map[string]object) Slurm partition configurations.
 # The map key represents the partition name (must be unique); the map value represents the partition definition.
