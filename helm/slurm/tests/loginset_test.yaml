@@ -244,6 +244,49 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
+  - it: should propagate user-set _defaults to every enabled loginset
+    # Verifies that overriding a field on `loginsets._defaults` is inherited
+    # by every sibling entry that does not explicitly override it.
+    set:
+      loginsets:
+        _defaults:
+          replicas: 5
+          login:
+            image:
+              tag: from-defaults
+        slinky:
+          enabled: false
+        highmem:
+          enabled: true
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-highmem
+        documentIndex: 0
+      - equal:
+          path: spec.replicas
+          value: 5
+        documentIndex: 0
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:from-defaults
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-standard
+        documentIndex: 1
+      - equal:
+          path: spec.replicas
+          value: 5
+        documentIndex: 1
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:from-defaults
+        documentIndex: 1
   - it: overrides on one loginset must not bleed into a sibling
     # Pins the deepCopy invariant in the withDefaults helper: without
     # deepCopy, mustMergeOverwrite would mutate the shared _defaults map

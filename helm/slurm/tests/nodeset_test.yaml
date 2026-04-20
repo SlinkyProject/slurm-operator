@@ -221,6 +221,49 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
+  - it: should propagate user-set _defaults to every enabled nodeset
+    # Verifies that overriding a field on `nodesets._defaults` is inherited
+    # by every sibling entry that does not explicitly override it.
+    set:
+      nodesets:
+        _defaults:
+          scalingMode: DaemonSet
+          slurmd:
+            image:
+              tag: from-defaults
+        slinky:
+          enabled: false
+        gpu:
+          enabled: true
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-gpu
+        documentIndex: 0
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+        documentIndex: 0
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:from-defaults
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-standard
+        documentIndex: 1
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+        documentIndex: 1
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:from-defaults
+        documentIndex: 1
   - it: overrides on one nodeset must not bleed into a sibling
     # Pins the deepCopy invariant in the withDefaults helper: without
     # deepCopy, mustMergeOverwrite would mutate the shared _defaults map
