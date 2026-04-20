@@ -89,7 +89,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	clientMap = clientmap.NewClientMap()
-	err = NewReconciler(k8sManager.GetClient(), clientMap, nil).SetupWithManager(k8sManager)
+	err = NewReconciler(k8sManager.GetClient(), clientMap, nil, false).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

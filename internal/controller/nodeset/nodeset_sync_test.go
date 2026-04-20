@@ -3968,7 +3968,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			r := NewReconciler(tt.kclient, tt.clientMap, nil)
+			r := NewReconciler(tt.kclient, tt.clientMap, nil, false)
 			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if !tt.wantErr {
@@ -4064,7 +4064,7 @@ func TestNodeSetReconciler_syncDefunctNodes(t *testing.T) {
 		},
 	})
 	clientMap := newClientMap(controller.Name, sclient)
-	r := NewReconciler(kclient, clientMap, nil)
+	r := NewReconciler(kclient, clientMap, nil, true)
 
 	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
 		t.Fatalf("syncDefunctNodes() error = %v", err)
@@ -4083,7 +4083,7 @@ func TestNodeSetReconciler_syncDefunctNodes(t *testing.T) {
 	}
 }
 
-func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeExists(t *testing.T) {
+func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeStillMaps(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -4092,7 +4092,8 @@ func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeExists(t *testing.T
 
 	nodeset := newNodeSet("foo", controller.Name, 1)
 	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
-	// The pod is gone but its Kubernetes node is still present.
+	// The pod is gone but its Kubernetes node is still present and still maps
+	// (by default derivation) to the Slurm node name.
 	ghostPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
 	survivingKubeNode := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
@@ -4105,7 +4106,7 @@ func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeExists(t *testing.T
 		Items: []slurmtypes.V0044Node{
 			{
 				V0044Node: slurmapi.V0044Node{
-					Name: ptr.To("foo-ghost"),
+					Name: ptr.To("worker-a"),
 					State: ptr.To([]slurmapi.V0044NodeState{
 						slurmapi.V0044NodeStateDOWN,
 						slurmapi.V0044NodeStateNOTRESPONDING,
@@ -4120,16 +4121,170 @@ func TestNodeSetReconciler_syncDefunctNodes_skipsWhenKubeNodeExists(t *testing.T
 		},
 	})
 	clientMap := newClientMap(controller.Name, sclient)
-	r := NewReconciler(kclient, clientMap, nil)
+	r := NewReconciler(kclient, clientMap, nil, true)
 
 	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
 		t.Fatalf("syncDefunctNodes() error = %v", err)
 	}
 
-	// The Slurm node must still exist because the Kubernetes node is alive.
+	// The Slurm node must still exist because the Kubernetes node is alive
+	// and still maps to this Slurm node name.
+	defunctNode := &slurmtypes.V0044Node{}
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("worker-a"), defunctNode); err != nil {
+		t.Fatalf("syncDefunctNodes() pruned Slurm node while Kubernetes node still maps to it: %v", err)
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes_skipsWhenOverrideMaps(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	// The K8s node has a hostname-override annotation that still matches the
+	// defunct Slurm node's name — pod is likely just restarting under the same
+	// Slurm identity, so the node should not be pruned.
+	ghostPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+	survivingKubeNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker-a",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeHostnameOverride: "slurm-node-x",
+			},
+		},
+	}
+
+	kclient := fake.NewFakeClient(nodeset, survivingKubeNode)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("slurm-node-x"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   ghostPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	r := NewReconciler(kclient, clientMap, nil, true)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
+	defunctNode := &slurmtypes.V0044Node{}
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("slurm-node-x"), defunctNode); err != nil {
+		t.Fatalf("syncDefunctNodes() pruned Slurm node while Kubernetes node's override still maps to it: %v", err)
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes_prunesWhenKubeNodeNoLongerMaps(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	// The K8s node still exists, but its hostname-override annotation has since
+	// changed so it no longer maps to the defunct Slurm node. This represents
+	// annotation churn or a node recreated with a different mapping.
+	ghostPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+	survivingKubeNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "worker-a",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeHostnameOverride: "new-name",
+			},
+		},
+	}
+
+	kclient := fake.NewFakeClient(nodeset, survivingKubeNode)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("stale-name"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   ghostPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	r := NewReconciler(kclient, clientMap, nil, true)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
+	defunctNode := &slurmtypes.V0044Node{}
+	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("stale-name"), defunctNode); err == nil {
+		t.Fatalf("syncDefunctNodes() did not prune Slurm node whose mapping is stale")
+	}
+}
+
+func TestNodeSetReconciler_syncDefunctNodes_skipsWhenGateDisabled(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	// Pod and Kubernetes node are both gone — pruning would normally proceed.
+	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 1)
+
+	kclient := fake.NewFakeClient(nodeset)
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To("foo-ghost"),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateDOWN,
+						slurmapi.V0044NodeStateNOTRESPONDING,
+					}),
+					Comment: ptr.To((&podinfo.PodInfo{
+						Namespace: corev1.NamespaceDefault,
+						PodName:   defunctPodName,
+						Node:      "worker-a",
+					}).ToString()),
+				},
+			},
+		},
+	})
+	clientMap := newClientMap(controller.Name, sclient)
+	// Gate disabled — pruning must not run even though conditions are met.
+	r := NewReconciler(kclient, clientMap, nil, false)
+
+	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
+		t.Fatalf("syncDefunctNodes() error = %v", err)
+	}
+
 	defunctNode := &slurmtypes.V0044Node{}
 	if err := sclient.Get(context.Background(), slurmclient.ObjectKey("foo-ghost"), defunctNode); err != nil {
-		t.Fatalf("syncDefunctNodes() pruned Slurm node while Kubernetes node still exists: %v", err)
+		t.Fatalf("syncDefunctNodes() pruned Slurm node while gate is disabled: %v", err)
 	}
 }
 
@@ -4163,7 +4318,7 @@ func TestNodeSetReconciler_syncDefunctNodes_skipsForStatefulSet(t *testing.T) {
 		},
 	})
 	clientMap := newClientMap(controller.Name, sclient)
-	r := NewReconciler(kclient, clientMap, nil)
+	r := NewReconciler(kclient, clientMap, nil, true)
 
 	if err := r.syncDefunctNodes(context.Background(), nodeset); err != nil {
 		t.Fatalf("syncDefunctNodes() error = %v", err)

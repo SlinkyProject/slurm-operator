@@ -290,8 +290,8 @@ func (r *NodeSetReconciler) sync(
 				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
 			},
 		},
-    {
-      Name: "DefunctNodes",
+		{
+			Name: "DefunctNodes",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncDefunctNodes(ctx, nodeset)
 			},
@@ -524,12 +524,18 @@ func (r *NodeSetReconciler) syncNodeTaint(
 	return nil
 }
 
-// syncDefunctNodes prunes Slurm nodes that still exist after their backing NodeSet pods are gone.
+// syncDefunctNodes prunes Slurm nodes that still exist after their backing NodeSet pods/nodes are gone.
 func (r *NodeSetReconciler) syncDefunctNodes(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
 	logger := log.FromContext(ctx)
+
+	// Operator-level opt-in gate. Off by default so the pruning behavior is
+	// enabled explicitly per cluster via the --enable-defunct-node-pruning flag.
+	if !r.enableDefunctNodePruning {
+		return nil
+	}
 
 	// This pruning logic only applies to DaemonSet mode because the Slurm node
 	// identity is derived from the Kubernetes node identity. If a Kubernetes node
@@ -569,22 +575,32 @@ func (r *NodeSetReconciler) syncDefunctNodes(
 			return nil
 		}
 
-		// If the Kubernetes node still exists the pod may just be restarting — skip.
+		// If the Kubernetes node still exists, check whether it still maps to this Slurm node.
+		// With the hostname-override annotation (AnnotationNodeHostnameOverride) the Slurm node
+		// name is no longer derived purely from the K8s node name, so mere existence of the K8s
+		// node is not sufficient evidence that the pod is restarting under the same identity.
 		kubeNodeKey := types.NamespacedName{Name: defunctNode.PodInfo.Node}
 		kubeNode := &corev1.Node{}
-		if err := r.Get(ctx, kubeNodeKey, kubeNode); err == nil {
-			logger.Info("Skipping defunct Slurm node deletion because the Kubernetes node still exists",
-				"node", defunctNode.Name, "pod", podKey, "kubeNode", kubeNodeKey.Name)
-			return nil
-		} else if !apierrors.IsNotFound(err) {
+		switch err := r.Get(ctx, kubeNodeKey, kubeNode); {
+		case apierrors.IsNotFound(err):
+			// K8s node is gone — fall through to prune.
+		case err != nil:
 			return err
+		default:
+			override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+			expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
+			if expected == defunctNode.Name {
+				logger.Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it",
+					"node", defunctNode.Name, "pod", podKey, "kubeNode", kubeNodeKey.Name)
+				return nil
+			}
 		}
 
-		// Both the pod and the Kubernetes node are gone — prune the Slurm node.
-		logger.Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod",
+		// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
+		logger.Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node",
 			"slurmNode", defunctNode.Name, "pod", podKey, "node", kubeNodeKey.Name)
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
-			"Deleting defunct Slurm node %s: Pod %s/%s and Kubernetes node %s no longer exist",
+			"Deleting defunct Slurm node %s: backing Pod %s/%s is gone and Kubernetes node %s no longer maps to this Slurm node",
 			defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
 		return r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name)
 	}

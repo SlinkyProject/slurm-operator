@@ -87,6 +87,11 @@ type NodeSetReconciler struct {
 
 	propagatedNodeConditions []corev1.NodeConditionType
 
+	// enableDefunctNodePruning gates the DaemonSet-mode pruning of Slurm nodes
+	// whose backing pod and Kubernetes node are gone (or whose Kubernetes node
+	// no longer maps to the Slurm node name). Operator CLI flag.
+	enableDefunctNodePruning bool
+
 	builder        *builder.WorkerBuilder
 	refResolver    *refresolver.RefResolver
 	podControl     podcontrol.PodControlInterface
@@ -169,7 +174,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func NewReconciler(c client.Client, cm *clientmap.ClientMap, propagatedNodeConditions []corev1.NodeConditionType) *NodeSetReconciler {
+func NewReconciler(c client.Client, cm *clientmap.ClientMap, propagatedNodeConditions []corev1.NodeConditionType, enableDefunctNodePruning bool) *NodeSetReconciler {
 	s := c.Scheme()
 	er := events.NewFakeRecorder(100)
 	if cm == nil {
@@ -182,6 +187,7 @@ func NewReconciler(c client.Client, cm *clientmap.ClientMap, propagatedNodeCondi
 		ClientMap: cm,
 
 		propagatedNodeConditions: propagatedNodeConditions,
+		enableDefunctNodePruning: enableDefunctNodePruning,
 
 		builder:        builder.New(c),
 		refResolver:    refresolver.New(c),

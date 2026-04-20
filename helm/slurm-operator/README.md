@@ -43,6 +43,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.accountingWorkers | int | `4` | Set the max concurrent workers for the Accounting controller. |
 | operator.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | operator.controllerWorkers | int | `4` | Set the max concurrent workers for the Controller controller. |
+| operator.enableDefunctNodePruning | bool | `false` | Enable pruning of defunct Slurm nodes in DaemonSet-mode NodeSets. When enabled, the controller deletes Slurm node records whose backing pod is gone AND whose Kubernetes node either no longer exists or no longer maps to that Slurm node name (e.g. after the nodeset.slinky.slurm.net/hostname-override annotation changed). Opt-in because the behavior is destructive on the Slurm side and should be exercised deliberately per cluster. |
 | operator.enabled | bool | `true` | Enables the operator. |
 | operator.healthPort | int | `8081` | Set the port used for health checks. |
 | operator.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
