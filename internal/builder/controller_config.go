@@ -270,6 +270,13 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewPropertyRaw(partitionLineRendered))
 	}
 
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### SYSTEM DEFAULTS ###"))
+	conf.AddProperty(config.NewProperty("UnkillableStepTimeout", 600))
+	conf.AddProperty(config.NewProperty("HealthCheckInterval", 60))
+	conf.AddProperty(config.NewProperty("HealthCheckNodeState", "ANY"))
+	conf.AddProperty(config.NewProperty("HealthCheckProgram", "/usr/bin/gpu_healthcheck.sh"))
+
 	extraConf := controller.Spec.ExtraConf
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))

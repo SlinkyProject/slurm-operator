@@ -159,6 +159,19 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 
 			case got.Data[slurmConfFile] == "" && got.BinaryData[slurmConfFile] == nil:
 				t.Errorf("got.Data[%s] = %v", slurmConfFile, got.Data[slurmConfFile])
+
+			default:
+				slurmConf := got.Data[slurmConfFile]
+				for _, directive := range []string{
+					"UnkillableStepTimeout=600",
+					"HealthCheckInterval=60",
+					"HealthCheckNodeState=ANY",
+					"HealthCheckProgram=/usr/bin/gpu_healthcheck.sh",
+				} {
+					if !strings.Contains(slurmConf, directive) {
+						t.Errorf("slurm.conf missing system default %q", directive)
+					}
+				}
 			}
 		})
 	}
