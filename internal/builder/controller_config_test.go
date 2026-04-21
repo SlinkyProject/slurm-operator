@@ -172,6 +172,11 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 						t.Errorf("slurm.conf missing system default %q", directive)
 					}
 				}
+				if cgroupConf, ok := got.Data[cgroupConfFile]; ok {
+					if !strings.Contains(cgroupConf, "ConstrainRAMSpace=yes") {
+						t.Errorf("cgroup.conf missing ConstrainRAMSpace=yes")
+					}
+				}
 			}
 		})
 	}

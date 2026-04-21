@@ -291,6 +291,7 @@ func buildCgroupConf() string {
 
 	conf.AddProperty(config.NewProperty("CgroupPlugin", "cgroup/v2"))
 	conf.AddProperty(config.NewProperty("IgnoreSystemd", "yes"))
+	conf.AddProperty(config.NewProperty("ConstrainRAMSpace", "yes"))
 
 	return conf.Build()
 }
