@@ -7,8 +7,10 @@ import (
 	"context"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -90,9 +92,18 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 			},
 		},
 		{
-			Name: "Deployment",
+			Name: "Stale Workload",
 			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
-				object, err := r.builder.BuildLogin(loginset)
+				if err := r.cleanupStaleWorkload(ctx, loginset); err != nil {
+					return fmt.Errorf("failed to cleanup stale workload: %w", err)
+				}
+				return nil
+			},
+		},
+		{
+			Name: "Workload",
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+				object, err := r.builder.BuildLoginWorkload(loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
 				}
@@ -114,4 +125,38 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	}
 
 	return r.syncStatus(ctx, loginset)
+}
+
+// cleanupStaleWorkload deletes the previously-rendered workload of the kind
+// not selected by Spec.Strategy.Type, so flipping the strategy type does not
+// leave a Deployment and a StatefulSet sharing the same name.
+func (r *LoginSetReconciler) cleanupStaleWorkload(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+	logger := log.FromContext(ctx)
+	key := loginset.Key()
+
+	var stale client.Object
+	if loginset.Spec.Strategy.Type == slinkyv1beta1.OnDeleteLoginSetStrategyType {
+		stale = &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace}}
+	} else {
+		stale = &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace}}
+	}
+
+	if err := r.Get(ctx, key, stale); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to get stale workload (%s): %w", klog.KObj(stale), err)
+	}
+
+	if !metav1.IsControlledBy(stale, loginset) {
+		logger.V(1).Info("Stale workload is not controlled by this LoginSet, skipping",
+			"object", klog.KObj(stale))
+		return nil
+	}
+
+	logger.Info("Deleting stale workload", "object", klog.KObj(stale))
+	if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete stale workload (%s): %w", klog.KObj(stale), err)
+	}
+	return nil
 }

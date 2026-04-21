@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -67,6 +68,13 @@ const (
 	rootAuthorizedKeysFilePath = "/root/.ssh/" + authorizedKeysFile
 )
 
+func (b *LoginBuilder) BuildLoginWorkload(loginset *slinkyv1beta1.LoginSet) (client.Object, error) {
+	if loginset.Spec.Strategy.Type == slinkyv1beta1.OnDeleteLoginSetStrategyType {
+		return b.BuildLoginStatefulSet(loginset)
+	}
+	return b.BuildLogin(loginset)
+}
+
 func (b *LoginBuilder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Deployment, error) {
 	key := loginset.Key()
 
@@ -95,6 +103,49 @@ func (b *LoginBuilder) BuildLogin(loginset *slinkyv1beta1.LoginSet) (*appsv1.Dep
 				MatchLabels: selectorLabels,
 			},
 			Template: podTemplate,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(loginset, out, b.client.Scheme()); err != nil {
+		return nil, fmt.Errorf("failed to set owner controller: %w", err)
+	}
+
+	return out, nil
+}
+
+func (b *LoginBuilder) BuildLoginStatefulSet(loginset *slinkyv1beta1.LoginSet) (*appsv1.StatefulSet, error) {
+	key := loginset.Key()
+	serviceKey := loginset.ServiceKey()
+
+	selectorLabels := labels.NewBuilder().
+		WithLoginSelectorLabels(loginset).
+		Build()
+	objectMeta := metadata.NewBuilder(key).
+		WithAnnotations(loginset.Annotations).
+		WithLabels(loginset.Labels).
+		WithMetadata(loginset.Spec.Template.Metadata).
+		WithLabels(labels.NewBuilder().WithLoginLabels(loginset).Build()).
+		Build()
+
+	podTemplate, err := b.loginPodTemplate(loginset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build pod template: %w", err)
+	}
+
+	out := &appsv1.StatefulSet{
+		ObjectMeta: objectMeta,
+		Spec: appsv1.StatefulSetSpec{
+			PodManagementPolicy:  appsv1.ParallelPodManagement,
+			Replicas:             loginset.Spec.Replicas,
+			RevisionHistoryLimit: ptr.To[int32](0),
+			ServiceName:          serviceKey.Name,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: selectorLabels,
+			},
+			Template: podTemplate,
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type: appsv1.OnDeleteStatefulSetStrategyType,
+			},
 		},
 	}
 

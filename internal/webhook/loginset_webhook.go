@@ -6,7 +6,9 @@ package webhook
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -74,6 +76,27 @@ func (r *LoginSetWebhook) validateLoginSet(loginset *slinkyv1beta1.LoginSet) (ad
 
 	if loginset.Spec.SssdConfRef.Name == "" {
 		errs = append(errs, errors.New("sssdConfRef.name must not be empty"))
+	}
+
+	switch loginset.Spec.Strategy.Type {
+	case "",
+		appsv1.RollingUpdateDeploymentStrategyType,
+		appsv1.RecreateDeploymentStrategyType,
+		slinkyv1beta1.OnDeleteLoginSetStrategyType:
+	default:
+		errs = append(errs, fmt.Errorf("strategy.type must be one of %q, %q, %q; got %q",
+			appsv1.RollingUpdateDeploymentStrategyType,
+			appsv1.RecreateDeploymentStrategyType,
+			slinkyv1beta1.OnDeleteLoginSetStrategyType,
+			loginset.Spec.Strategy.Type))
+	}
+
+	if loginset.Spec.Strategy.RollingUpdate != nil &&
+		loginset.Spec.Strategy.Type != "" &&
+		loginset.Spec.Strategy.Type != appsv1.RollingUpdateDeploymentStrategyType {
+		errs = append(errs, fmt.Errorf("strategy.rollingUpdate may only be set when strategy.type is %q; got %q",
+			appsv1.RollingUpdateDeploymentStrategyType,
+			loginset.Spec.Strategy.Type))
 	}
 
 	return warns, errs

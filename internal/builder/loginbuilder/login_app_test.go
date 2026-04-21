@@ -9,6 +9,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -196,5 +197,120 @@ func TestBuilder_BuildLogin(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuilder_BuildLoginStatefulSet(t *testing.T) {
+	c := fake.NewClientBuilder().
+		WithObjects(&slinkyv1beta1.Controller{
+			ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		}).
+		Build()
+
+	loginset := &slinkyv1beta1.LoginSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.LoginSetSpec{
+			ControllerRef: slinkyv1beta1.ObjectReference{Name: "slurm"},
+			Strategy: appsv1.DeploymentStrategy{
+				Type: slinkyv1beta1.OnDeleteLoginSetStrategyType,
+			},
+		},
+	}
+
+	b := New(c)
+	got, err := b.BuildLoginStatefulSet(loginset)
+	if err != nil {
+		t.Fatalf("BuildLoginStatefulSet() unexpected error: %v", err)
+	}
+
+	if got.Spec.UpdateStrategy.Type != appsv1.OnDeleteStatefulSetStrategyType {
+		t.Errorf("UpdateStrategy.Type = %q, want %q",
+			got.Spec.UpdateStrategy.Type, appsv1.OnDeleteStatefulSetStrategyType)
+	}
+	if got.Spec.PodManagementPolicy != appsv1.ParallelPodManagement {
+		t.Errorf("PodManagementPolicy = %q, want %q",
+			got.Spec.PodManagementPolicy, appsv1.ParallelPodManagement)
+	}
+	if got.Spec.ServiceName != loginset.ServiceKey().Name {
+		t.Errorf("ServiceName = %q, want %q",
+			got.Spec.ServiceName, loginset.ServiceKey().Name)
+	}
+	if !set.KeySet(got.Spec.Template.Labels).
+		HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...) {
+		t.Errorf("Template.Labels = %v , Selector.MatchLabels = %v",
+			got.Spec.Template.Labels, got.Spec.Selector.MatchLabels)
+	}
+	if got.Spec.Template.Spec.Containers[0].Name != labels.LoginApp {
+		t.Errorf("Template.Spec.Containers[0].Name = %q , want %q",
+			got.Spec.Template.Spec.Containers[0].Name, labels.LoginApp)
+	}
+}
+
+func TestBuilder_BuildLoginWorkload(t *testing.T) {
+	tests := []struct {
+		name         string
+		strategyType appsv1.DeploymentStrategyType
+		want         client.Object
+	}{
+		{
+			name:         "default renders a Deployment",
+			strategyType: "",
+			want:         &appsv1.Deployment{},
+		},
+		{
+			name:         "RollingUpdate renders a Deployment",
+			strategyType: appsv1.RollingUpdateDeploymentStrategyType,
+			want:         &appsv1.Deployment{},
+		},
+		{
+			name:         "Recreate renders a Deployment",
+			strategyType: appsv1.RecreateDeploymentStrategyType,
+			want:         &appsv1.Deployment{},
+		},
+		{
+			name:         "OnDelete renders a StatefulSet",
+			strategyType: slinkyv1beta1.OnDeleteLoginSetStrategyType,
+			want:         &appsv1.StatefulSet{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := fake.NewClientBuilder().
+				WithObjects(&slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+				}).
+				Build()
+
+			loginset := &slinkyv1beta1.LoginSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+				Spec: slinkyv1beta1.LoginSetSpec{
+					ControllerRef: slinkyv1beta1.ObjectReference{Name: "slurm"},
+					Strategy:      appsv1.DeploymentStrategy{Type: tt.strategyType},
+				},
+			}
+
+			b := New(c)
+			got, err := b.BuildLoginWorkload(loginset)
+			if err != nil {
+				t.Fatalf("BuildLoginWorkload() unexpected error: %v", err)
+			}
+
+			gotType := reflectKind(got)
+			wantType := reflectKind(tt.want)
+			if gotType != wantType {
+				t.Errorf("BuildLoginWorkload() returned %s, want %s", gotType, wantType)
+			}
+		})
+	}
+}
+
+func reflectKind(o client.Object) string {
+	switch o.(type) {
+	case *appsv1.Deployment:
+		return "Deployment"
+	case *appsv1.StatefulSet:
+		return "StatefulSet"
+	default:
+		return "unknown"
 	}
 }

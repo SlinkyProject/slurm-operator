@@ -7,9 +7,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -68,6 +71,77 @@ var _ = Describe("LoginSet Webhook", func() {
 
 			_, err := loginSetWebhook.ValidateDelete(ctx, loginset)
 			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("When validating Spec.Strategy", func() {
+		newWithStrategy := func(s appsv1.DeploymentStrategy) *slinkyv1beta1.LoginSet {
+			controller := testutils.NewController("c", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			ls := testutils.NewLoginset("test-loginset", controller, testutils.NewSssdConfRef("test"))
+			ls.Spec.Strategy = s
+			return ls
+		}
+
+		It("Should admit empty strategy", func(ctx SpecContext) {
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should admit RollingUpdate strategy with parameters", func(ctx SpecContext) {
+			maxUnavailable := intstr.FromInt(0)
+			maxSurge := intstr.FromInt(1)
+			ls := newWithStrategy(appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+					MaxSurge:       &maxSurge,
+				},
+			})
+			_, err := loginSetWebhook.ValidateCreate(ctx, ls)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should admit Recreate strategy", func(ctx SpecContext) {
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{
+				Type: appsv1.RecreateDeploymentStrategyType,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should admit OnDelete strategy", func(ctx SpecContext) {
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{
+				Type: slinkyv1beta1.OnDeleteLoginSetStrategyType,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should reject unknown strategy.type", func(ctx SpecContext) {
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{
+				Type: "Bogus",
+			}))
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("Should reject Recreate combined with rollingUpdate", func(ctx SpecContext) {
+			maxUnavailable := intstr.FromInt(1)
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{
+				Type: appsv1.RecreateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+				},
+			}))
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("Should reject OnDelete combined with rollingUpdate", func(ctx SpecContext) {
+			maxUnavailable := intstr.FromInt(1)
+			_, err := loginSetWebhook.ValidateCreate(ctx, newWithStrategy(appsv1.DeploymentStrategy{
+				Type: slinkyv1beta1.OnDeleteLoginSetStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxUnavailable: &maxUnavailable,
+				},
+			}))
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

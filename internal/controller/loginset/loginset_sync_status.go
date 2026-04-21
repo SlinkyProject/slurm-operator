@@ -66,17 +66,21 @@ func (r *LoginSetReconciler) calculateReplicaStatus(
 	ctx context.Context,
 	loginset *slinkyv1beta1.LoginSet,
 ) (replicaStatus, error) {
+	key := loginset.Key()
+
+	if loginset.Spec.Strategy.Type == slinkyv1beta1.OnDeleteLoginSetStrategyType {
+		sts := &appsv1.StatefulSet{}
+		if err := r.Get(ctx, key, sts); err != nil {
+			return replicaStatus{}, err
+		}
+		return replicaStatus{Replicas: sts.Status.Replicas}, nil
+	}
+
 	deployment := &appsv1.Deployment{}
-	deploymentKey := loginset.Key()
-	if err := r.Get(ctx, deploymentKey, deployment); err != nil {
+	if err := r.Get(ctx, key, deployment); err != nil {
 		return replicaStatus{}, err
 	}
-
-	status := replicaStatus{
-		Replicas: deployment.Status.Replicas,
-	}
-
-	return status, nil
+	return replicaStatus{Replicas: deployment.Status.Replicas}, nil
 }
 
 func (r *LoginSetReconciler) updateStatus(

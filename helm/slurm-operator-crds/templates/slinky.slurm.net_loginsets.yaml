@@ -171,7 +171,9 @@ spec:
                 x-kubernetes-map-type: atomic
               strategy:
                 description: |-
-                  Strategy is the deployment strategy to use to replace existing pods with new ones.
+                  Strategy is the rollout strategy. Type "RollingUpdate" (default) and
+                  "Recreate" render a Deployment. Type "OnDelete" renders a StatefulSet
+                  with updateStrategy.type=OnDelete.
                   Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
                 properties:
                   rollingUpdate:

@@ -11,6 +11,12 @@ import (
 
 const (
 	LoginSetKind = "LoginSet"
+
+	// OnDeleteLoginSetStrategyType, when set as Spec.Strategy.Type, makes the
+	// LoginSet render as a StatefulSet with updateStrategy.type=OnDelete
+	// instead of a Deployment. Pod template changes then only take effect
+	// when the Pod is deleted.
+	OnDeleteLoginSetStrategyType appsv1.DeploymentStrategyType = "OnDelete"
 )
 
 var (
@@ -63,7 +69,9 @@ type LoginSetSpec struct {
 	// +required
 	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
 
-	// Strategy is the deployment strategy to use to replace existing pods with new ones.
+	// Strategy is the rollout strategy. Type "RollingUpdate" (default) and
+	// "Recreate" render a Deployment. Type "OnDelete" renders a StatefulSet
+	// with updateStrategy.type=OnDelete.
 	// Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 	// +optional
 	Strategy appsv1.DeploymentStrategy `json:"strategy,omitzero"`
