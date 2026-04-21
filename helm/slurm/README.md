@@ -1,6 +1,6 @@
 # slurm
 
-![Version: 1.1.0-rc1](https://img.shields.io/badge/Version-1.1.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
+![Version: 1.2.0-rc1](https://img.shields.io/badge/Version-1.2.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
 
 Slurm Cluster
 
@@ -126,7 +126,7 @@ Kubernetes: `>= 1.29.0-0`
 | loginsets.slinky.strategy | object | `{}` | Deployment strategy configuration. Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy |
 | nameOverride | string | `nil` | Overrides the name of the release. |
 | namespaceOverride | string | `nil` | Overrides the namespace of the release. |
-| nodesets | map[string]object | `{"slinky":{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"ordinalPadding":0,"partition":{"config":null,"configMap":{},"enabled":false},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"scalingMode":"StatefulSet","slurmd":{"args":[],"env":[],"image":{"repository":"ghcr.io/slinkyproject/slurmd","tag":"25.11-ubuntu24.04"},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false,"extraSshdConfig":null},"taintKubeNodes":false,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"type":"RollingUpdate"},"workloadDisruptionProtection":true}}` | Slurm NodeSet (slurmd) configurations. |
+| nodesets | map[string]object | `{"slinky":{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"ordinalPadding":0,"partition":{"config":null,"configMap":{},"enabled":false},"pinToNode":false,"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"scalingMode":"StatefulSet","slurmd":{"args":[],"env":[],"image":{"repository":"ghcr.io/slinkyproject/slurmd","tag":"25.11-ubuntu24.04"},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false,"extraSshdConfig":null},"taintKubeNodes":false,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"type":"RollingUpdate"},"workloadDisruptionProtection":true}}` | Slurm NodeSet (slurmd) configurations. |
 | nodesets.slinky.enabled | bool | `true` | Enable use of this NodeSet. |
 | nodesets.slinky.extraConf | string | `nil` | Raw extra configuration added to the `--conf` argument. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesets.slinky.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra configuration added to the `--conf` option. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
@@ -137,6 +137,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesets.slinky.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesets.slinky.partition.configMap | map[string]string \| map[string][]string | `{}` | The Slurm partition configuration options added to the partition line. If `config` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesets.slinky.partition.enabled | bool | `false` | Enable NodeSet partition creation. |
+| nodesets.slinky.pinToNode | bool | `false` | Pin pods to their initially assigned Kubernetes nodes. |
 | nodesets.slinky.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | nodesets.slinky.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | nodesets.slinky.podSpec.initContainers | list | `[]` | Additional initContainers for the pod. Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ |

@@ -16,13 +16,9 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
-
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, controller *slinkyv1beta1.Controller) error
-}
 
 // Sync implements control logic for synchronizing a Controller.
 func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) error {
@@ -44,10 +40,10 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		return nil
 	}
 
-	syncSteps := []SyncStep{
+	steps := []syncsteps.Step[*slinkyv1beta1.Controller]{
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				if controller.Spec.External {
 					return nil
 				}
@@ -63,7 +59,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "Config",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				var object *corev1.ConfigMap
 				var err error
 				if controller.Spec.External {
@@ -82,7 +78,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "StatefulSet",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				if controller.Spec.External {
 					return nil
 				}
@@ -98,7 +94,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "ServiceMonitor",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				object, err := r.builder.BuildControllerServiceMonitor(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -119,18 +115,13 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 	}
 
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, controller); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(controller, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			e := fmt.Errorf("failed %q step: %w", s.Name, err)
-			errs := []error{e}
-			if err := r.syncStatus(ctx, controller); err != nil {
-				e := fmt.Errorf("failed status sync: %w", err)
-				errs = append(errs, e)
-			}
-			return utilerrors.NewAggregate(errs)
+	if err := syncsteps.Sync(ctx, r.eventRecorder, controller, steps); err != nil {
+		errs := []error{err}
+		if err := r.syncStatus(ctx, controller); err != nil {
+			e := fmt.Errorf("failed status syncFn: %w", err)
+			errs = append(errs, e)
 		}
+		return utilerrors.NewAggregate(errs)
 	}
 
 	return r.syncStatus(ctx, controller)

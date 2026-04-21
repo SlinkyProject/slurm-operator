@@ -653,6 +653,8 @@ nodesets:
     scalingMode: StatefulSet
     # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
     replicas: 1
+    # -- Pin pods to their initially assigned Kubernetes nodes.
+    pinToNode: false
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
     taintKubeNodes: false
     # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them

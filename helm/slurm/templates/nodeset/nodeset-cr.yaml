@@ -70,6 +70,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
   ordinalPadding: {{ $nodeset.ordinalPadding }}
+  pinToNode: {{ $nodeset.pinToNode }}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
 {{- end }}{{- /* $nodeset.enabled */}}

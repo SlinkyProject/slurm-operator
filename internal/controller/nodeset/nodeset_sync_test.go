@@ -744,7 +744,7 @@ func TestNodeSetReconciler_syncNodeTaint(t *testing.T) {
 	}
 
 	nodesetTaint := newNodeSet("bar", controller.Name, 2)
-	nodesetTaint.Spec.TaintKubeNodes = true
+	nodesetTaint.Spec.TaintKubeNodes = true //nolint:staticcheck // SA1019
 	nodesetTaint.UID = "2345"
 	podTaint := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodesetTaint, controller, 0, "")
 	podTaint.Spec.NodeName = "node1"

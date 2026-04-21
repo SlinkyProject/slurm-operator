@@ -18,15 +18,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	v1helper "k8s.io/component-helpers/scheduling/corev1"
-	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	daemonutils "k8s.io/kubernetes/pkg/controller/daemon/util"
 	"k8s.io/kubernetes/pkg/controller/history"
-	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -38,6 +34,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
@@ -234,11 +231,6 @@ func (r *NodeSetReconciler) canAdoptFunc(nodeset *slinkyv1beta1.NodeSet) func(ct
 	})
 }
 
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error
-}
-
 // sync is the main reconciliation logic.
 func (r *NodeSetReconciler) sync(
 	ctx context.Context,
@@ -246,84 +238,78 @@ func (r *NodeSetReconciler) sync(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
-	syncSteps := []SyncStep{
-		{
-			Name: "RefreshNodeCache",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
-				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
-			},
-		},
+	steps := []syncsteps.Step[*slinkyv1beta1.NodeSet]{
 		{
 			Name: "ClusterWorkerService",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerService(ctx, nodeset)
 			},
 		},
 		{
 			Name: "ClusterWorkerPDB",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncClusterWorkerPDB(ctx, nodeset)
 			},
 		},
 		{
 			Name: "SSHConfig",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSshConfig(ctx, nodeset)
 			},
 		},
 		{
-			Name: "DefunctNodes",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
+			Name: "NodeTaint",
+			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
+				return r.syncNodeTaint(ctx)
+			},
+		},
+		{
+			Name: "RefreshNodeCache",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
+			},
+			// We need to ensure the Slurm client cache is refreshed before proceeding
+			// because stale cache could cause incorrect action to be taken.
+			StopOnError: true,
+		},
+		{
+			Name: "SlurmDeadline",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmDeadline(ctx, nodeset, pods)
+			},
+		},
+		{
+			Name: "Cordon",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncCordon(ctx, nodeset, pods)
+			},
+		},
+		{
+			Name: "NodeSetPods",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
+			},
+		},
+    {
+      Name: "DefunctNodes",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncDefunctNodes(ctx, nodeset)
 			},
 		},
 		{
 			Name: "SlurmNodes",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmNodes(ctx, nodeset, pods)
 			},
 		},
 		{
-			Name: "SlurmDeadline",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncSlurmDeadline(ctx, nodeset, pods)
-			},
-		},
-		{
 			Name: "SlurmTopology",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmTopology(ctx, nodeset, pods)
 			},
 		},
-		{
-			Name: "Cordon",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, _ string) error {
-				return r.syncCordon(ctx, nodeset, pods)
-			},
-		},
-		{
-			Name: "NodeTaint",
-			Sync: func(ctx context.Context, _ *slinkyv1beta1.NodeSet, _ []*corev1.Pod, _ string) error {
-				return r.syncNodeTaint(ctx)
-			},
-		},
-		{
-			Name: "NodeSetPods",
-			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod, hash string) error {
-				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
-			},
-		},
 	}
-
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, nodeset, pods, hash); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			return fmt.Errorf("failed %q step: %w", s.Name, err)
-		}
-	}
-
-	return nil
+	return syncsteps.Sync(ctx, r.eventRecorder, nodeset, steps)
 }
 
 // syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.
@@ -478,7 +464,7 @@ func (r *NodeSetReconciler) syncNodeTaint(
 	}
 	nodesetUIDs := sets.New[types.UID]()
 	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.TaintKubeNodes {
+		if nodeset.Spec.TaintKubeNodes { //nolint:staticcheck // SA1019
 			nodesetUIDs.Insert(nodeset.UID)
 		}
 	}
@@ -696,8 +682,6 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
-	logger := log.FromContext(ctx)
-
 	syncSlurmTopologyFn := func(i int) error {
 		pod := pods[i]
 
@@ -720,16 +704,13 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		toUpdate := pod.DeepCopy()
 		toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to patch pod annotations: %w", err)
 			}
-			logger.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
-			return err
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil {
-			// Best effort, no guarantee the topology is valid from the admin.
-			logger.Error(err, "failed to update Slurm node topology", "pod", klog.KObj(pod))
+			return fmt.Errorf("failed to update Slurm node topology: %w", err)
 		}
 
 		return nil
@@ -787,47 +768,12 @@ func (r *NodeSetReconciler) getNodesToDaemonPods(ctx context.Context, nodeset *s
 	return nodeToDaemonPods
 }
 
-func predicates(logger klog.Logger, pod *corev1.Pod, node *corev1.Node, taints []corev1.Taint) (fitsNodeName, fitsNodeAffinity, fitsTaints bool) {
-	fitsNodeName = len(pod.Spec.NodeName) == 0 || pod.Spec.NodeName == node.Name
-	// Ignore parsing errors for backwards compatibility.
-	fitsNodeAffinity, _ = nodeaffinity.GetRequiredNodeAffinity(pod).Match(node)
-	_, hasUntoleratedTaint := v1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
-		return t.Effect == corev1.TaintEffectNoExecute || t.Effect == corev1.TaintEffectNoSchedule
-	}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
-	fitsTaints = !hasUntoleratedTaint
-	return
-}
-
-// NodeShouldRunDaemonPod checks a set of preconditions against a (node,daemonset) and returns a
-// summary. Returned booleans are:
-//   - shouldRun:
-//     Returns true when a daemonset should run on the node if a daemonset pod is not already
-//     running on that node.
-//   - shouldContinueRunning:
-//     Returns true when a daemonset should continue running on a node if a daemonset pod is already
-//     running on that node.
 func (r *NodeSetReconciler) NodeShouldRunDaemonPod(ctx context.Context, node *corev1.Node, nodeset *slinkyv1beta1.NodeSet) (bool, bool) {
-	logger := log.FromContext(ctx)
-	pod, err := r.newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
+	pod, err := newSimulatedDaemonPod(r.Client, ctx, nodeset, node.Name)
 	if err != nil {
 		return false, false
 	}
-
-	taints := node.Spec.Taints
-	fitsNodeName, fitsNodeAffinity, fitsTaints := predicates(logger, pod, node, taints)
-	if !fitsNodeName || !fitsNodeAffinity {
-		return false, false
-	}
-
-	if !fitsTaints {
-		// Scheduled daemon pods should continue running if they tolerate NoExecute taint.
-		_, hasUntoleratedTaint := v1helper.FindMatchingUntoleratedTaint(logger, taints, pod.Spec.Tolerations, func(t *corev1.Taint) bool {
-			return t.Effect == corev1.TaintEffectNoExecute
-		}, utilfeature.DefaultFeatureGate.Enabled(features.TaintTolerationComparisonOperators))
-		return false, !hasUntoleratedTaint
-	}
-
-	return true, true
+	return nodesetutils.PodShouldRunOnNode(ctx, pod, node)
 }
 
 func failedPodsBackoffKey(nodeset *slinkyv1beta1.NodeSet, nodeName string) string {
@@ -889,7 +835,19 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				podsToDelete = append(podsToDelete, pod)
 
 			default:
-				daemonPodsRunning = append(daemonPodsRunning, pod)
+				hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+				expectedHostname := nodesetutils.GetDaemonSetPodHostname(node.Name, hostnameOverride)
+				if pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] != expectedHostname {
+					logger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
+						"pod", klog.KObj(pod), "node", klog.KObj(node),
+						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
+					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
+						"Recreating daemon pod %s/%s: hostname changed from %q to %q",
+						pod.Namespace, pod.Name, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], expectedHostname)
+					podsToDelete = append(podsToDelete, pod)
+				} else {
+					daemonPodsRunning = append(daemonPodsRunning, pod)
+				}
 			}
 		}
 
@@ -1024,12 +982,16 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 // podsToKeep - should be uncordoned and undrained.
 // podsToDelete - should be cordoned and drained, then deleted.
 // podsToCreate - should be newly created.
+// Any pod that appears in both podsToKeep and podsToDelete is automatically
+// removed from podsToKeep to prevent syncPodUncordon from fighting the drain
+// initiated by processCondemned.
 func (r *NodeSetReconciler) doPodScale(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	podsToKeep, podsToDelete, podsToCreate []*corev1.Pod,
 ) error {
 	logger := log.FromContext(ctx)
+	podsToKeep = nodesetutils.ExcludePods(podsToKeep, podsToDelete)
 	key := objectutils.KeyFunc(nodeset)
 	errs := []error{}
 
@@ -1152,14 +1114,20 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 		return nil, fmt.Errorf("nodeName must not be empty")
 	}
 
-	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, revisionHash)
+	node := &corev1.Node{}
+	if err := r.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
+		return nil, err
+	}
+	hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+
+	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, hostnameOverride, revisionHash)
 	return pod, nil
 }
 
 // newSimulatedDaemonPod builds a pod for predicate evaluation that preserves
 // the user's node affinity. This avoids ReplaceDaemonSetPodNodeNameNodeAffinity
 // which overwrites RequiredDuringSchedulingIgnoredDuringExecution terms.
-func (r *NodeSetReconciler) newSimulatedDaemonPod(
+func newSimulatedDaemonPod(
 	client client.Client,
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1167,16 +1135,14 @@ func (r *NodeSetReconciler) newSimulatedDaemonPod(
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
 	key := nodeset.Spec.ControllerRef.NamespacedName()
-	if err := r.Get(ctx, key, controller); err != nil {
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
-			"Failed to get Controller (%s): %v", key, err)
+	if err := client.Get(ctx, key, controller); err != nil {
 		return nil, err
 	}
 	if nodeName == "" {
 		return nil, fmt.Errorf("nodeName must not be empty")
 	}
 
-	pod := nodesetutils.NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, nodeName)
+	pod := nodesetutils.NewNodeSetSimulatedPod(client, nodeset, controller, nodeName)
 	return pod, nil
 }
 
