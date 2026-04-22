@@ -93,13 +93,6 @@ operator:
   # -- Comma-separated list of namespaces the operator will watch.
   # If empty, all namespaces are watched.
   namespaces: ""
-  # -- Enable pruning of defunct Slurm nodes in DaemonSet-mode NodeSets.
-  # When enabled, the controller deletes Slurm node records whose backing pod is
-  # gone AND whose Kubernetes node either no longer exists or no longer maps to
-  # that Slurm node name (e.g. after the nodeset.slinky.slurm.net/hostname-override
-  # annotation changed). Opt-in because the behavior is destructive on the Slurm
-  # side and should be exercised deliberately per cluster.
-  enableDefunctNodePruning: false
 
 
 # Webhook configurations.

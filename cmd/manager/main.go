@@ -60,7 +60,6 @@ type Flags struct {
 	enableHTTP2              bool
 	namespaces               string
 	propagatedNodeConditions string
-	enableDefunctNodePruning bool
 }
 
 func parseFlags(flags *Flags) {
@@ -97,8 +96,6 @@ func parseFlags(flags *Flags) {
 		"Comma-separated list of namespaces the controller will watch. If empty, all namespaces are watched.")
 	flag.StringVar(&flags.propagatedNodeConditions, "propagated-node-conditions", "",
 		"Comma-separated list of Kube node conditions, by type field, the controller will parse when setting drain reason on Slurm nodes.")
-	flag.BoolVar(&flags.enableDefunctNodePruning, "enable-defunct-node-pruning", false,
-		"If set, the NodeSet controller prunes Slurm nodes in DaemonSet-mode NodeSets whose backing pod and Kubernetes node are gone (or whose Kubernetes node no longer maps to the Slurm node name).")
 	flag.Parse()
 }
 
@@ -185,7 +182,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Accounting")
 		os.Exit(1)
 	}
-	if err := nodeset.NewReconciler(mgr.GetClient(), clientMap, propagatedNodeConditions, flags.enableDefunctNodePruning).SetupWithManager(mgr); err != nil {
+	if err := nodeset.NewReconciler(mgr.GetClient(), clientMap, propagatedNodeConditions).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NodeSet")
 		os.Exit(1)
 	}

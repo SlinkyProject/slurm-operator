@@ -531,9 +531,9 @@ func (r *NodeSetReconciler) syncDefunctNodes(
 ) error {
 	logger := log.FromContext(ctx)
 
-	// Operator-level opt-in gate. Off by default so the pruning behavior is
-	// enabled explicitly per cluster via the --enable-defunct-node-pruning flag.
-	if !r.enableDefunctNodePruning {
+	// Per-NodeSet opt-in gate (spec.pruneDefunctSlurmNodes). Off by default so
+	// the destructive pruning behavior is enabled explicitly per NodeSet.
+	if !nodeset.Spec.PruneDefunctSlurmNodes {
 		return nil
 	}
 
@@ -602,7 +602,14 @@ func (r *NodeSetReconciler) syncDefunctNodes(
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
 			"Deleting defunct Slurm node %s: backing Pod %s/%s is gone and Kubernetes node %s no longer maps to this Slurm node",
 			defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
-		return r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name)
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
+			// Slurm may refuse to delete the node (e.g. it is a member of an active
+			// reservation). Log and move on — failing hard here would hot-loop the
+			// controller until a human intervenes; the next reconcile will retry.
+			logger.Error(err, "Failed to delete defunct Slurm node",
+				"slurmNode", defunctNode.Name, "pod", podKey, "node", kubeNodeKey.Name)
+		}
+		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(defunctNodes), utils.SlowStartInitialBatchSize, pruneDefunctNodeFn); err != nil {
 		return err

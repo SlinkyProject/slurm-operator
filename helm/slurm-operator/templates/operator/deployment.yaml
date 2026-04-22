@@ -84,9 +84,6 @@ spec:
             - --propagated-node-conditions
             - {{ join "," . | quote }}
             {{- end }}{{- /* with .Values.propagatedNodeConditions */}}
-            {{- if .Values.operator.enableDefunctNodePruning }}
-            - --enable-defunct-node-pruning
-            {{- end }}{{- /* if .Values.operator.enableDefunctNodePruning */}}
           livenessProbe:
             httpGet:
               path: /healthz
