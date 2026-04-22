@@ -145,7 +145,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesets.slinky.podSpec.resources | object | `{}` | The pod resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesets.slinky.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | nodesets.slinky.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
-| nodesets.slinky.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never. |
+| nodesets.slinky.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never; NodeNotFound. |
 | nodesets.slinky.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is daemonset. |
 | nodesets.slinky.scalingMode | string | `"StatefulSet"` | Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node). |
 | nodesets.slinky.slurmd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS |

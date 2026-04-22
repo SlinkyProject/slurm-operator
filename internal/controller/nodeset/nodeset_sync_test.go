@@ -49,6 +49,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
@@ -4001,6 +4002,242 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 				slurmNodeName := nodesetutils.GetSlurmNodeName(&pod)
 				if !slurmNodeNameSet.Has(slurmNodeName) {
 					t.Errorf("syncSlurmNodes() unexpected pod exists: %v", slurmNodeName)
+				}
+			}
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+
+	defunctNodeState := new([]slurmapi.V0044NodeState{
+		slurmapi.V0044NodeStateDOWN,
+		slurmapi.V0044NodeStateNOTRESPONDING,
+	})
+
+	tests := []struct {
+		name              string
+		scalingMode       slinkyv1beta1.ScalingModeType
+		pruneSlurmRecords slinkyv1beta1.NodeSetPruneSlurmNodeRecordType
+		setup             func(ns *slinkyv1beta1.NodeSet) (kubeObjs []runtime.Object, slurmNodes []slurmtypes.V0044Node, stillExist, pruned []string)
+		interceptor       sinterceptor.Funcs
+		wantErr           bool
+	}{
+		{
+			name:              "prunes defunct ghost node but keeps node backed by running pod",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				pod := newNodeSetPodWithStatus(ns, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
+				pod.Spec.Hostname = "worker-b"
+				if pod.Labels == nil {
+					pod.Labels = make(map[string]string)
+				}
+				pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(slinkyv1beta1.ScalingModeDaemonset)
+				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}}
+				existingSlurmName := nodesetutils.GetSlurmNodeName(pod)
+				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("foo-ghost"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   defunctPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new(existingSlurmName),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   pod.Name,
+							Node:      "worker-b",
+						}).ToString()),
+					}},
+				}
+				return []runtime.Object{pod, kubeNode}, nodes, []string{existingSlurmName}, []string{"foo-ghost"}
+			},
+		},
+		{
+			name:              "skips when kube node still maps to slurm node by default",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("worker-a"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   ghostPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
+			},
+		},
+		{
+			name:              "skips when kube node override still maps to slurm node",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				kubeNode := &corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "worker-a",
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationNodeHostnameOverride: "slurm-node-x",
+						},
+					},
+				}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("slurm-node-x"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   ghostPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return []runtime.Object{kubeNode}, nodes, []string{"slurm-node-x"}, nil
+			},
+		},
+		{
+			name:              "prunes when kube node override no longer maps to slurm node",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				kubeNode := &corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "worker-a",
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationNodeHostnameOverride: "new-name",
+						},
+					},
+				}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("stale-name"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   ghostPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return []runtime.Object{kubeNode}, nodes, nil, []string{"stale-name"}
+			},
+		},
+		{
+			name:              "skips when prune gate disabled",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNever,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("foo-ghost"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   defunctPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return nil, nodes, []string{"foo-ghost"}, nil
+			},
+		},
+		{
+			name:              "skips for statefulset scaling mode",
+			scalingMode:       "",
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("foo-ghost"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   defunctPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return nil, nodes, []string{"foo-ghost"}, nil
+			},
+		},
+		{
+			name:              "error when slurm delete fails (e.g. reservation conflict)",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  new("reserved-node"),
+						State: defunctNodeState,
+						Comment: new((&podinfo.PodInfo{
+							Namespace: corev1.NamespaceDefault,
+							PodName:   defunctPodName,
+							Node:      "worker-a",
+						}).ToString()),
+					}},
+				}
+				return nil, nodes, []string{"reserved-node"}, nil
+			},
+			interceptor: sinterceptor.Funcs{
+				Delete: func(_ context.Context, _ slurmobject.Object, _ ...slurmclient.DeleteOption) error {
+					return errors.New("Node used by active reservation")
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeset := newNodeSet("foo", controller.Name, 1)
+			if tt.scalingMode != "" {
+				nodeset.Spec.ScalingMode = tt.scalingMode
+			}
+			nodeset.Spec.PruneSlurmNodeRecords = tt.pruneSlurmRecords
+
+			kubeObjs, slurmNodes, stillExist, pruned := tt.setup(nodeset)
+			initObjs := append([]runtime.Object{nodeset}, kubeObjs...)
+
+			kclient := fake.NewFakeClient(initObjs...)
+			sclient := newFakeClientList(tt.interceptor, &slurmtypes.V0044NodeList{Items: slurmNodes})
+			clientMap := newClientMap(controller.Name, sclient)
+			r := NewReconciler(kclient, clientMap, nil)
+
+			if err := r.syncSlurmNodeRecords(context.Background(), nodeset); (err != nil) != tt.wantErr {
+				t.Fatalf("syncSlurmNodeRecords() error = %v", err)
+			}
+
+			for _, name := range stillExist {
+				if err := sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}); err != nil {
+					t.Fatalf("expected Slurm node %q to remain, got: %v", name, err)
+				}
+			}
+			for _, name := range pruned {
+				if err := sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}); err == nil {
+					t.Fatalf("expected Slurm node %q to be pruned, it still exists", name)
 				}
 			}
 		})

@@ -186,6 +186,7 @@ spec:
                   Slurm node records.
                 enum:
                 - Never
+                - NodeNotFound
                 type: string
               replicas:
                 default: 1
