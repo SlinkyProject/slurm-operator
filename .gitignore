@@ -138,3 +138,6 @@ values-*.yaml
 docs/build/html
 *debug_bin*
 test-values.yaml
+
+# codemogger db
+.codemogger/

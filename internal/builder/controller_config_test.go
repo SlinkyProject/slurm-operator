@@ -167,6 +167,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 					"HealthCheckInterval=60",
 					"HealthCheckNodeState=ANY",
 					"HealthCheckProgram=/usr/bin/gpu_healthcheck.sh",
+					"JobRequeue=0",
 				} {
 					if !strings.Contains(slurmConf, directive) {
 						t.Errorf("slurm.conf missing system default %q", directive)

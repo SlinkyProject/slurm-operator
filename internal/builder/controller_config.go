@@ -276,6 +276,7 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewProperty("HealthCheckInterval", 60))
 	conf.AddProperty(config.NewProperty("HealthCheckNodeState", "ANY"))
 	conf.AddProperty(config.NewProperty("HealthCheckProgram", "/usr/bin/gpu_healthcheck.sh"))
+	conf.AddProperty(config.NewProperty("JobRequeue", 0))
 
 	extraConf := controller.Spec.ExtraConf
 	conf.AddProperty(config.NewPropertyRaw("#"))
