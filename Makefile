@@ -83,7 +83,7 @@ push: push-images push-charts ## Push OCI packages.
 
 .PHONY: push-images
 push-images: build-images ## Push container images.
-	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push --metadata-file $(BAKE_METADATA_FILE)
+	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push --metadata-file $(BAKE_METADATA_FILE) --sbom=true
 
 .PHONY: sign-images
 sign-images: push-images cosign-bin ## Sign pushed images with cosign keyless signing.
