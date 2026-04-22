@@ -42,6 +42,9 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		if ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
 			t.Errorf("PersistentVolumeClaimRetentionPolicy.WhenScaled: want %q, got %q", slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
 		}
+		if ns.Spec.PruneSlurmNodeRecords != DefaultNodeSetPruneSlurmNodeRecordType {
+			t.Errorf("PruneSlurmNodeRecords: want %q, got %q", DefaultNodeSetPruneSlurmNodeRecordType, ns.Spec.PruneSlurmNodeRecords)
+		}
 	})
 
 	t.Run("explicit values are not overridden", func(t *testing.T) {

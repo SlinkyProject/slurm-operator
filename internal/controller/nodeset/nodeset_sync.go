@@ -291,6 +291,12 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
+			Name: "SlurmNodeRecords",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmNodeRecords(ctx, nodeset)
+			},
+		},
+		{
 			Name: "SlurmNodes",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmNodes(ctx, nodeset, pods)
@@ -515,6 +521,14 @@ func (r *NodeSetReconciler) syncNodeTaint(
 		return err
 	}
 
+	return nil
+}
+
+// syncSlurmNodeRecords prunes Slurm node records under certain conditions.
+func (r *NodeSetReconciler) syncSlurmNodeRecords(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+) error {
 	return nil
 }
 
