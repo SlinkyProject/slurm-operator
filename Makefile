@@ -64,6 +64,7 @@ all: build ## Build slurm-operator.
 
 REGISTRY ?= slinky.slurm.net
 BUILDER ?= project-v3-builder
+BAKE_METADATA_FILE ?= bake-metadata.json
 
 .PHONY: build
 build: build-images build-chart ## Build OCI packages.
@@ -82,7 +83,12 @@ push: push-images push-charts ## Push OCI packages.
 
 .PHONY: push-images
 push-images: build-images ## Push container images.
-	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push
+	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push --metadata-file $(BAKE_METADATA_FILE) --sbom=true
+
+.PHONY: sign-images
+sign-images: push-images cosign-bin ## Sign pushed images with cosign keyless signing.
+	@jq -r 'to_entries[] | .value | select(."containerimage.digest") | (."image.name" | split(",")[0] | sub(":[^:/]+$$"; "")) + "@" + ."containerimage.digest"' $(BAKE_METADATA_FILE) | \
+	    while IFS= read -r ref; do echo "Signing $$ref"; $(COSIGN) sign --yes "$$ref" || exit 1; done
 
 .PHONY: push-charts
 push-charts: build-chart ## Push OCI packages.
@@ -95,6 +101,7 @@ clean: ## Clean executable files.
 	rm -rf vendor/
 	rm -f cover.out cover.html
 	rm -f *.tgz
+	rm -f $(BAKE_METADATA_FILE)
 	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
 
 ##@ Deployment
@@ -165,6 +172,7 @@ HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
 YQ ?= $(LOCALBIN)/yq-$(YQ_VERSION)
 HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
+COSIGN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 HELM_CONFIG_HOME ?= $(LOCALBIN)/helm-config
 HELM_CACHE_HOME ?= $(LOCALBIN)/helm-cache
 HELM_DATA_HOME ?= $(LOCALBIN)/helm-data
@@ -184,6 +192,7 @@ PANDOC_VERSION ?= 3.9
 YQ_VERSION ?= v4.45.1
 HELM_VERSION ?= v4.1.1
 HELM_UNITTEST_VERSION ?= v1.0.3
+COSIGN_VERSION ?= v2.4.1
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -207,6 +216,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 		wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(LOCALBIN) $(GOLANGCI_LINT_VERSION) ;\
 		mv $(LOCALBIN)/golangci-lint $(GOLANGCI_LINT) ;\
 	fi
+
+.PHONY: cosign-bin
+cosign-bin: $(COSIGN) ## Download cosign locally if necessary.
+$(COSIGN): $(LOCALBIN)
+	$(call go-install-tool,$(COSIGN),github.com/sigstore/cosign/v2/cmd/cosign,$(COSIGN_VERSION))
 
 .PHONY: helm-docs-bin
 helm-docs-bin: $(HELM_DOCS) ## Download helm-docs locally if necessary.
