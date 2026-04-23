@@ -11,8 +11,7 @@ manifest should match snapshot:
       name: test-release-slurm
       namespace: test-namespace
     spec:
-      epilogScriptRefs:
-        - name: test-release-slurm-epilog-dcgm
+      epilogScriptRefs: null
       epilogSlurmctldScriptRefs: null
       extraConf: PartitionName=all Nodes=ALL Default=YES MaxTime=UNLIMITED State=UP
       jwtKeyRef:
@@ -43,8 +42,7 @@ manifest should match snapshot:
         resources:
           requests:
             storage: 4Gi
-      prologScriptRefs:
-        - name: test-release-slurm-prolog-dcgm
+      prologScriptRefs: null
       prologSlurmctldScriptRefs: null
       reconfigure:
         image: ghcr.io/slinkyproject/slurmctld:v1.2.3
