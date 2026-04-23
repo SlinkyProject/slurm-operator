@@ -180,6 +180,17 @@ spec:
                   When disabled, all stored node pinnings are removed.
                   Used only when `scalingMode=StatefulSet`.
                 type: boolean
+              pruneDefunctSlurmNodes:
+                default: false
+                description: |-
+                  PruneDefunctSlurmNodes controls whether the operator deletes Slurm node
+                  records whose backing pod is gone and whose Kubernetes node no longer
+                  maps to that Slurm node name (for example after the
+                  `nodeset.slinky.slurm.net/hostname-override` annotation changed, or the
+                  Kubernetes node was removed). Only takes effect when `scalingMode=DaemonSet`;
+                  Off by default because pruning is destructive on the Slurm side and should
+                  be opted into per NodeSet.
+                type: boolean
               replicas:
                 default: 1
                 description: |-

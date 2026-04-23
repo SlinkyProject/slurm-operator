@@ -57,6 +57,15 @@ type SlurmControlInterface interface {
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 	// GetNodesForPods returns a list of Slurm nodes associated with the NodeSet pods.
 	GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, bool, error)
+	// GetDefunctNodesForNodeSet returns defunct-node candidates owned by this NodeSet.
+	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error)
+	// DeleteNode deletes a Slurm node by name.
+	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
+}
+
+type DefunctNode struct {
+	Name    string
+	PodInfo podinfo.PodInfo
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
@@ -623,6 +632,74 @@ func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv
 	}
 
 	return slurmNodeNames, true, nil
+}
+
+// GetDefunctNodesForNodeSet implements SlurmControlInterface.
+func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do GetDefunctNodesForNodeSet()")
+		return nil, false, nil
+	}
+
+	nodeList := &slurmtypes.V0044NodeList{}
+	if err := slurmClient.List(ctx, nodeList); err != nil {
+		return nil, true, err
+	}
+
+	defunctNodes := make([]DefunctNode, 0)
+	for _, node := range nodeList.Items {
+		if !node.GetStateAsSet().HasAll(slurmapi.V0044NodeStateDOWN, slurmapi.V0044NodeStateNOTRESPONDING) {
+			continue
+		}
+
+		info := &podinfo.PodInfo{}
+		if err := podinfo.ParseIntoPodInfo(node.Comment, info); err != nil {
+			continue
+		}
+		if info.Namespace != nodeset.Namespace || info.PodName == "" {
+			continue
+		}
+
+		pod := &corev1.Pod{}
+		pod.Name = info.PodName
+		if !nodesetutils.IsPodFromNodeSet(nodeset, pod) {
+			continue
+		}
+
+		nodeName := ptr.Deref(node.Name, "")
+		if nodeName == "" {
+			continue
+		}
+
+		defunctNodes = append(defunctNodes, DefunctNode{
+			Name:    nodeName,
+			PodInfo: *info,
+		})
+	}
+
+	return defunctNodes, true, nil
+}
+
+// DeleteNode implements SlurmControlInterface.
+func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do DeleteNode()", "nodeName", nodeName)
+		return nil
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	slurmNode.Name = ptr.To(nodeName)
+	if err := slurmClient.Delete(ctx, slurmNode); err != nil && !tolerateError(err) {
+		return err
+	}
+
+	return nil
 }
 
 func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {

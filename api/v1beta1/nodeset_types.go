@@ -138,6 +138,17 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=true
 	WorkloadDisruptionProtection *bool `json:"workloadDisruptionProtection,omitempty"`
+
+	// PruneDefunctSlurmNodes controls whether the operator deletes Slurm node
+	// records whose backing pod is gone and whose Kubernetes node no longer
+	// maps to that Slurm node name (for example after the
+	// `nodeset.slinky.slurm.net/hostname-override` annotation changed, or the
+	// Kubernetes node was removed). Only takes effect when `scalingMode=DaemonSet`;
+	// Off by default because pruning is destructive on the Slurm side and should
+	// be opted into per NodeSet.
+	// +optional
+	// +default:=false
+	PruneDefunctSlurmNodes bool `json:"pruneDefunctSlurmNodes,omitempty"`
 }
 
 // ScalingModeType is a string enumeration of how a NodeSet scales its pods.
