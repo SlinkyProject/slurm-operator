@@ -1,8 +1,10 @@
 ---
-suite: test vendor nvidia dcgm configmaps
+suite: test vendor nvidia dcgm
 templates:
   - vendor/nvidia/dcgm/prolog-configmap.yaml
   - vendor/nvidia/dcgm/epilog-configmap.yaml
+  - controller/controller-cr.yaml
+  - nodeset/nodeset-cr.yaml
 release:
   name: test-release
   namespace: test-namespace
@@ -10,6 +12,7 @@ chart:
   version: 1.2.3
   appVersion: 1.2.3
 tests:
+# prolog-configmap
   - it: should render dcgm prolog configmap with correct metadata when enabled
     template: vendor/nvidia/dcgm/prolog-configmap.yaml
     set:
@@ -35,6 +38,7 @@ tests:
           path: metadata.labels["app.kubernetes.io/part-of"]
           value: slurm
 
+# epilog-configmap
   - it: should render dcgm epilog configmap with correct metadata when enabled
     template: vendor/nvidia/dcgm/epilog-configmap.yaml
     set:
@@ -74,3 +78,143 @@ tests:
       - equal:
           path: metadata.namespace
           value: custom-namespace
+
+  - it: should not render dcgm prolog configmap when disabled
+    template: vendor/nvidia/dcgm/prolog-configmap.yaml
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render dcgm epilog configmap when disabled
+    template: vendor/nvidia/dcgm/epilog-configmap.yaml
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+# controller-cr
+  - it: should not reference dcgm prolog/epilog scripts on controller when disabled
+    template: controller/controller-cr.yaml
+    set:
+      controller:
+        slurmctld:
+          image:
+            tag: v1.2.3
+        reconfigure:
+          image:
+            tag: v1.2.3
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: false
+    asserts:
+      - isNullOrEmpty:
+          path: spec.prologScriptRefs
+      - isNullOrEmpty:
+          path: spec.epilogScriptRefs
+
+  - it: should reference dcgm prolog/epilog scripts on controller when enabled
+    template: controller/controller-cr.yaml
+    set:
+      controller:
+        slurmctld:
+          image:
+            tag: v1.2.3
+        reconfigure:
+          image:
+            tag: v1.2.3
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: true
+    asserts:
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: test-release-slurm-prolog-dcgm
+      - contains:
+          path: spec.epilogScriptRefs
+          content:
+            name: test-release-slurm-epilog-dcgm
+
+# nodeset-cr
+  - it: should not mount dcgm job-mapping volume on nodeset when disabled
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: false
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+    asserts:
+      - isNullOrEmpty:
+          path: spec.template.spec.volumes
+      - isNullOrEmpty:
+          path: spec.slurmd.volumeMounts
+
+  - it: should mount dcgm job-mapping volume on nodeset when enabled and GPUs are allocated
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: true
+            jobMappingDir: /var/lib/dcgm-exporter/job-mapping
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+            resources:
+              limits:
+                nvidia.com/gpu: "8"
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: dcgm-job-mapping
+            hostPath:
+              path: /var/lib/dcgm-exporter/job-mapping
+              type: DirectoryOrCreate
+      - contains:
+          path: spec.slurmd.volumeMounts
+          content:
+            name: dcgm-job-mapping
+            mountPath: /var/lib/dcgm-exporter/job-mapping
+
+  - it: should not mount dcgm job-mapping volume on nodeset when enabled but no GPUs allocated
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - isNullOrEmpty:
+          path: spec.template.spec.volumes
+      - isNullOrEmpty:
+          path: spec.slurmd.volumeMounts
