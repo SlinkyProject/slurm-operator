@@ -15,7 +15,7 @@ manifest should match snapshot:
         - name: test-release-slurm-epilog-dcgm
       epilogSlurmctldScriptRefs: null
       extraConf: PartitionName=all Nodes=ALL Default=YES MaxTime=UNLIMITED State=UP
-      inplaceReconfigure: true
+      inplaceReconfigure: false
       jwtKeyRef:
         key: jwt.key
         name: test-release-slurm-auth-jwt

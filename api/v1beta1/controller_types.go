@@ -70,8 +70,8 @@ type ControllerSpec struct {
 	// When true, the reconfigure sidecar issue reconfigures without pod recreate.
 	// When false, the pod will be recreated and reconfigure issued only on startup.
 	// +optional
-	// +default:=true
-	InplaceReconfigure *bool `json:"inplaceReconfigure,omitempty"`
+	// +default:=false
+	InplaceReconfigure bool `json:"inplaceReconfigure"`
 
 	// The reconfigure container configuration.
 	// If not empty, then slurmctld will reconfigure in-place, without recreating

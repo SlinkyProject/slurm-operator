@@ -104,15 +104,15 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 	key := controller.Key()
 
 	var hashMap map[string]string
-	if !ptr.Deref(controller.Spec.InplaceReconfigure, defaults.DefaultControllerInplaceReconfigure) {
+	if controller.Spec.InplaceReconfigure {
 		var err error
-		hashMap, err = b.getHashes(ctx, controller)
+		hashMap, err = b.getAuthHashes(ctx, controller)
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
 	} else {
 		var err error
-		hashMap, err = b.getAuthHashes(ctx, controller)
+		hashMap, err = b.getHashes(ctx, controller)
 		if err != nil {
 			return corev1.PodTemplateSpec{}, err
 		}
@@ -163,7 +163,7 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 			},
 			InitContainers: func() []corev1.Container {
 				var initContainers []corev1.Container
-				if ptr.Deref(controller.Spec.InplaceReconfigure, defaults.DefaultControllerInplaceReconfigure) {
+				if controller.Spec.InplaceReconfigure {
 					initContainers = append(initContainers, b.reconfigureContainer(spec.Reconfigure))
 				}
 				initContainers = append(initContainers, b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath))

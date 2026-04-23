@@ -189,7 +189,7 @@ controller:
   # -- Indicates how reconfigure is handled when Slurm configuration changes.
   # When true, the reconfigure sidecar will do reconfigure inplace.
   # When false, the pod will be recreated and reconfigure done only on startup.
-  inplaceReconfigure: true
+  inplaceReconfigure: false
   # Reconfigure container configurations.
   reconfigure:
     # -- (string \| object) The image to use.

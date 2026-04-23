@@ -12,7 +12,6 @@ import (
 // Default values for Controller Spec fields when unspecified.
 const (
 	DefaultControllerPersistenceEnabled bool = true
-	DefaultControllerInplaceReconfigure bool = true
 )
 
 func SetControllerDefaults(controller *slinkyv1beta1.Controller) {
@@ -23,9 +22,5 @@ func SetControllerDefaults(controller *slinkyv1beta1.Controller) {
 
 	if s.Persistence.Enabled == nil {
 		s.Persistence.Enabled = ptr.To(DefaultControllerPersistenceEnabled)
-	}
-
-	if s.InplaceReconfigure == nil {
-		s.InplaceReconfigure = ptr.To(DefaultControllerInplaceReconfigure)
 	}
 }

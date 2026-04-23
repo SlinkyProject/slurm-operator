@@ -157,7 +157,7 @@ spec:
                   Ref: https://slurm.schedmd.com/slurm.conf.html
                 type: string
               inplaceReconfigure:
-                default: true
+                default: false
                 description: |-
                   Indicates how reconfigure is handled when Slurm configuration changes.
                   When true, the reconfigure sidecar issue reconfigures without pod recreate.
