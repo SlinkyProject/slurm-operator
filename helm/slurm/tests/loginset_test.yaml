@@ -199,3 +199,125 @@ tests:
           count: 2
       - isKind:
           of: LoginSet
+  - it: should inherit chart defaults on a non-slinky loginset
+    set:
+      loginsets:
+        highmem:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: LoginSet
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:25.11-ubuntu24.04
+      - equal:
+          path: spec.initconf.image
+          value: docker.io/library/alpine:latest
+      - equal:
+          path: spec.replicas
+          value: 1
+  - it: should apply user overrides on top of inherited defaults (loginset)
+    set:
+      loginsets:
+        highmem:
+          enabled: true
+          replicas: 8
+          login:
+            image:
+              tag: my-custom-fork
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 8
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:my-custom-fork
+  - it: should deploy a slinky + custom loginset together
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+        highmem:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+  - it: should propagate user-set _defaults to every enabled loginset
+    # Verifies that overriding a field on `loginsets._defaults` is inherited
+    # by every sibling entry that does not explicitly override it.
+    set:
+      loginsets:
+        _defaults:
+          replicas: 5
+          login:
+            image:
+              tag: from-defaults
+        slinky:
+          enabled: false
+        highmem:
+          enabled: true
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-highmem
+        documentIndex: 0
+      - equal:
+          path: spec.replicas
+          value: 5
+        documentIndex: 0
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:from-defaults
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-standard
+        documentIndex: 1
+      - equal:
+          path: spec.replicas
+          value: 5
+        documentIndex: 1
+      - equal:
+          path: spec.login.image
+          value: ghcr.io/slinkyproject/login:from-defaults
+        documentIndex: 1
+  - it: overrides on one loginset must not bleed into a sibling
+    # Pins the deepCopy invariant in the withDefaults helper: without
+    # deepCopy, mustMergeOverwrite would mutate the shared _defaults map
+    # on the first iteration, and `standard` would inherit highmem's
+    # replicas override. Map keys iterate in sorted order, so the
+    # alphabetically-first key (highmem) is documentIndex 0.
+    set:
+      loginsets:
+        slinky:
+          enabled: false
+        highmem:
+          enabled: true
+          replicas: 8
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-highmem
+        documentIndex: 0
+      - equal:
+          path: spec.replicas
+          value: 8
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-login-standard
+        documentIndex: 1
+      - equal:
+          path: spec.replicas
+          value: 1
+        documentIndex: 1

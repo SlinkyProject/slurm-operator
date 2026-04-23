@@ -36,6 +36,8 @@ Determine controller extraConf
 {{- end -}}
 {{- $nodesetList := list "ALL" -}}
 {{- range $nodesetName, $nodeset := .Values.nodesets -}}
+  {{- if eq $nodesetName "_defaults" }}{{- continue }}{{- end }}
+  {{- $nodeset = include "slurm.nodeset.withDefaults" (dict "ctx" $ "entry" $nodeset) | fromYaml -}}
   {{- if $nodeset.enabled }}
     {{- $nodesetList = append $nodesetList $nodesetName }}
   {{- end }}{{- /* if $nodeset.enabled */}}

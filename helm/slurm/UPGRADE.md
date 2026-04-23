@@ -7,6 +7,8 @@
 - [Upgrade](#upgrade)
   - [Table of Contents](#table-of-contents)
   - [From 1.0.x to 1.1.x](#from-10x-to-11x)
+  - [From 1.1.x to 1.2.x](#from-11x-to-12x)
+    - [Shared defaults for loginsets and nodesets](#shared-defaults-for-loginsets-and-nodesets)
 
 <!-- mdformat-toc end -->
 
@@ -31,3 +33,32 @@ jwtKey:
     name: slurm-auth-jwths256
     key: jwt_hs256.key
 ```
+
+## From 1.1.x to 1.2.x
+
+### Shared defaults for loginsets and nodesets
+
+Every entry under `loginsets:` and `nodesets:` now inherits from a shared
+`_defaults:` block, so custom entries no longer need to redeclare every
+field. Existing values files continue to work unchanged — `slinky` overrides
+still land on top of `_defaults`.
+
+The fields that previously lived under `loginsets.slinky.*` and
+`nodesets.slinky.*` in the chart's own `values.yaml` have moved to
+`loginsets._defaults.*` and `nodesets._defaults.*`. The `slinky:` entry is
+now a thin stub. If you are diffing the chart's `values.yaml` across
+versions, look for your defaults there.
+
+To apply a chart-wide override (e.g. pin every loginset to an internal
+image registry), set the field on `_defaults` instead of duplicating it
+across every entry:
+
+```yaml
+loginsets:
+  _defaults:
+    login:
+      image:
+        repository: registry.internal.example.com/slinky/login
+```
+
+Refs: [issue #176](https://github.com/SlinkyProject/slurm-operator/issues/176)
