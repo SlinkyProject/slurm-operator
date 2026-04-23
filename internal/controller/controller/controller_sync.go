@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -101,6 +102,21 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 				}
 
 				if !controller.Spec.Metrics.Enabled || !controller.Spec.Metrics.ServiceMonitor.Enabled {
+					// Determine GVK for ServiceMonitor
+					serviceMonitor, err := r.GroupVersionKindFor(object.DeepCopy())
+					if err != nil {
+						return err
+					}
+
+					// Determine if the ServiceMonitor Kind is installed server-side
+					if _, err = r.RESTMapper().RESTMapping(serviceMonitor.GroupKind(), serviceMonitor.Version); err != nil {
+						if meta.IsNoMatchError(err) {
+							logger.Info("skipping sync of servicemonitor for controller because GVK is not recognized", "GVK", serviceMonitor)
+							return nil
+						}
+						return err
+					}
+
 					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, controller, object); err != nil {
 						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
 					}
