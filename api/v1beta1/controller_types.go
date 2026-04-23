@@ -66,7 +66,17 @@ type ControllerSpec struct {
 	// +optional
 	Slurmctld ContainerWrapper `json:"slurmctld,omitempty"`
 
+	// Indicates how reconfigure is handled when Slurm configuration changes.
+	// When true, the reconfigure sidecar issue reconfigures without pod recreate.
+	// When false, the pod will be recreated and reconfigure issued only on startup.
+	// +optional
+	// +default:=false
+	InplaceReconfigure bool `json:"inplaceReconfigure"`
+
 	// The reconfigure container configuration.
+	// If not empty, then slurmctld will reconfigure in-place, without recreating
+	// the pod when Slurm configuration changes.
+	// Ref: https://slurm.schedmd.com/scontrol.html#OPT_reconfigure
 	// +optional
 	Reconfigure ContainerWrapper `json:"reconfigure,omitzero"`
 
