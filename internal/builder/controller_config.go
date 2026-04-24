@@ -270,6 +270,14 @@ func buildSlurmConf(
 		conf.AddProperty(config.NewPropertyRaw(partitionLineRendered))
 	}
 
+	conf.AddProperty(config.NewPropertyRaw("#"))
+	conf.AddProperty(config.NewPropertyRaw("### SYSTEM DEFAULTS ###"))
+	conf.AddProperty(config.NewProperty("UnkillableStepTimeout", 600))
+	conf.AddProperty(config.NewProperty("HealthCheckInterval", 60))
+	conf.AddProperty(config.NewProperty("HealthCheckNodeState", "ANY"))
+	conf.AddProperty(config.NewProperty("HealthCheckProgram", "/usr/bin/gpu_healthcheck.sh"))
+	conf.AddProperty(config.NewProperty("JobRequeue", 0))
+
 	extraConf := controller.Spec.ExtraConf
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### EXTRA CONFIG ###"))
@@ -284,6 +292,7 @@ func buildCgroupConf() string {
 
 	conf.AddProperty(config.NewProperty("CgroupPlugin", "cgroup/v2"))
 	conf.AddProperty(config.NewProperty("IgnoreSystemd", "yes"))
+	conf.AddProperty(config.NewProperty("ConstrainRAMSpace", "yes"))
 
 	return conf.Build()
 }
