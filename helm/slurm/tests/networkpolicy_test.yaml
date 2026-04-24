@@ -1,0 +1,627 @@
+---
+suite: test networkpolicy
+templates:
+  - networkpolicy/controller-netpol.yaml
+  - networkpolicy/nodeset-netpol.yaml
+  - networkpolicy/accounting-netpol.yaml
+  - networkpolicy/restapi-netpol.yaml
+  - networkpolicy/loginset-netpol.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should not create any networkpolicy when disabled
+    set:
+      networkPolicy:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: controller manifest should match snapshot
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create controller networkpolicy when controller.networkPolicy.enabled is false
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      controller:
+        networkPolicy:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: nodeset manifest should match snapshot
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create nodeset networkpolicy when per-instance networkPolicy.enabled is false
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: nodeset should allow all TCP ingress from login pods
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: login
+                    app.kubernetes.io/instance: test-release-slurm-login-slinky
+
+  - it: nodeset should allow all TCP ingress from slurmd pods
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
+
+  - it: nodeset should allow all TCP egress to slurmd pods
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
+
+  - it: nodeset podSelector should use CR name as instance
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: slurmd
+            app.kubernetes.io/instance: test-release-slurm-worker-slinky
+
+  - it: nodeset should create one networkpolicy per enabled instance
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        gpu:
+          enabled: true
+        cpu:
+          enabled: true
+        disabled:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: loginset manifest should match snapshot
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create loginset networkpolicy when per-instance networkPolicy.enabled is false
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: loginset podSelector should use CR name as instance
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: login
+            app.kubernetes.io/instance: test-release-slurm-login-slinky
+
+  - it: loginset should create one networkpolicy per enabled instance
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        alpha:
+          enabled: true
+        beta:
+          enabled: true
+        gamma:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: loginset should allow all TCP egress to nodeset
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmd
+                    app.kubernetes.io/instance: test-release-slurm-worker-slinky
+
+  - it: loginset should include accounting egress when accounting is enabled
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
+
+  - it: loginset should not include accounting egress when accounting is disabled
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: false
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - notContains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
+
+  - it: accounting manifest should match snapshot
+    template: networkpolicy/accounting-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create accounting networkpolicy when accounting is disabled
+    template: networkpolicy/accounting-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create accounting networkpolicy when accounting.networkPolicy.enabled is false
+    template: networkpolicy/accounting-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+        networkPolicy:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: restapi manifest should match snapshot
+    template: networkpolicy/restapi-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create restapi networkpolicy when restapi.networkPolicy.enabled is false
+    template: networkpolicy/restapi-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      restapi:
+        networkPolicy:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: controller should include accounting egress when accounting is enabled
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
+
+  - it: controller should not include accounting egress when accounting is disabled
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: false
+    asserts:
+      - notContains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6819
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmdbd
+                    app.kubernetes.io/instance: test-release-slurm
+
+  - it: should append global extraIngress to all networkpolicies
+    set:
+      networkPolicy:
+        enabled: true
+        extraIngress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: monitoring
+            ports:
+              - protocol: TCP
+                port: 9090
+      accounting:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: monitoring
+            ports:
+              - protocol: TCP
+                port: 9090
+
+  - it: should append global extraEgress to all networkpolicies
+    set:
+      networkPolicy:
+        enabled: true
+        extraEgress:
+          - to:
+              - ipBlock:
+                  cidr: 10.0.0.0/8
+            ports:
+              - protocol: TCP
+                port: 443
+      accounting:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.0.0.0/8
+            ports:
+              - protocol: TCP
+                port: 443
+
+  - it: should append controller-specific extraIngress
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      controller:
+        networkPolicy:
+          extraIngress:
+            - from:
+                - podSelector:
+                    matchLabels:
+                      app: custom-client
+              ports:
+                - protocol: TCP
+                  port: 8080
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app: custom-client
+            ports:
+              - protocol: TCP
+                port: 8080
+
+  - it: should append controller-specific extraEgress
+    template: networkpolicy/controller-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      controller:
+        networkPolicy:
+          extraEgress:
+            - to:
+                - ipBlock:
+                    cidr: 192.168.0.0/16
+              ports:
+                - protocol: TCP
+                  port: 8443
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 192.168.0.0/16
+            ports:
+              - protocol: TCP
+                port: 8443
+
+  - it: should append restapi-specific extraIngress
+    template: networkpolicy/restapi-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      restapi:
+        networkPolicy:
+          extraIngress:
+            - from:
+                - namespaceSelector:
+                    matchLabels:
+                      name: ingress
+              ports:
+                - protocol: TCP
+                  port: 6820
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: ingress
+            ports:
+              - protocol: TCP
+                port: 6820
+
+  - it: should append accounting-specific extraEgress
+    template: networkpolicy/accounting-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      accounting:
+        enabled: true
+        networkPolicy:
+          extraEgress:
+            - to:
+                - ipBlock:
+                    cidr: 10.1.0.0/16
+              ports:
+                - protocol: TCP
+                  port: 5432
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.1.0.0/16
+            ports:
+              - protocol: TCP
+                port: 5432
+
+  - it: should append nodeset-specific extraIngress
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraIngress:
+              - from:
+                  - podSelector:
+                      matchLabels:
+                        app: gpu-monitor
+                ports:
+                  - protocol: TCP
+                    port: 9100
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - podSelector:
+                  matchLabels:
+                    app: gpu-monitor
+            ports:
+              - protocol: TCP
+                port: 9100
+
+  - it: should append nodeset-specific extraEgress
+    template: networkpolicy/nodeset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      nodesets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraEgress:
+              - to:
+                  - ipBlock:
+                      cidr: 10.2.0.0/16
+                ports:
+                  - protocol: TCP
+                    port: 2049
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.2.0.0/16
+            ports:
+              - protocol: TCP
+                port: 2049
+
+  - it: should append loginset-specific extraIngress
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraIngress:
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        name: bastion
+                ports:
+                  - protocol: TCP
+                    port: 22
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: bastion
+            ports:
+              - protocol: TCP
+                port: 22
+
+  - it: should append loginset-specific extraEgress
+    template: networkpolicy/loginset-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      loginsets:
+        slinky:
+          enabled: true
+          networkPolicy:
+            extraEgress:
+              - to:
+                  - ipBlock:
+                      cidr: 10.3.0.0/16
+                ports:
+                  - protocol: TCP
+                    port: 636
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.3.0.0/16
+            ports:
+              - protocol: TCP
+                port: 636

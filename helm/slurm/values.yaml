@@ -160,6 +160,14 @@ epilogScripts: {}
 
 # Slurm controller (slurmctld) configuration.
 controller:
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the Controller.
+    enabled: true
+    # -- Extra ingress rules appended to the Controller NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the Controller NetworkPolicy.
+    extraEgress: []
   # -- Configures this component as external (not in Kubernetes).
   external: false
   # Details required to communicate with an external slurmdbd.
@@ -326,6 +334,14 @@ controller:
 
 # Slurm REST API (slurmrestd) configuration.
 restapi:
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the REST API.
+    enabled: true
+    # -- Extra ingress rules appended to the REST API NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the REST API NetworkPolicy.
+    extraEgress: []
   # -- Number of replicas to deploy.
   replicas: 1
   # slurmrestd container configurations.
@@ -398,6 +414,14 @@ restapi:
 
 # Slurm accounting (slurmdbd) configuration.
 accounting:
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for Accounting.
+    enabled: true
+    # -- Extra ingress rules appended to the Accounting NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the Accounting NetworkPolicy.
+    extraEgress: []
   # -- Enables Slurm accounting subsystem, stores job/step historical records.
   # Ref: https://slurm.schedmd.com/accounting.html#Overview
   enabled: false
@@ -539,6 +563,14 @@ loginsets:
   slinky:
     # -- Enable use of this LoginSet.
     enabled: false
+    # NetworkPolicy settings for this LoginSet.
+    networkPolicy:
+      # -- Enable NetworkPolicy for this LoginSet.
+      enabled: true
+      # -- Extra ingress rules appended to this LoginSet NetworkPolicy.
+      extraIngress: []
+      # -- Extra egress rules appended to this LoginSet NetworkPolicy.
+      extraEgress: []
     # -- Number of replicas to deploy.
     replicas: 1
     # -- Deployment strategy configuration.
@@ -653,6 +685,14 @@ nodesets:
   slinky:
     # -- Enable use of this NodeSet.
     enabled: true
+    # NetworkPolicy settings for this NodeSet.
+    networkPolicy:
+      # -- Enable NetworkPolicy for this NodeSet.
+      enabled: true
+      # -- Extra ingress rules appended to this NodeSet NetworkPolicy.
+      extraIngress: []
+      # -- Extra egress rules appended to this NodeSet NetworkPolicy.
+      extraEgress: []
     # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
     scalingMode: StatefulSet
     # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
@@ -821,6 +861,18 @@ vendor:
       jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
       # -- Script execution priority (lower numbers run first)
       scriptPriority: "90"
+
+# Configure Kubernetes NetworkPolicies for Slurm components.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+networkPolicy:
+  # -- Enable NetworkPolicy resources for all Slurm components.
+  enabled: false
+  # -- Extra ingress rules appended to every NetworkPolicy.
+  # Ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#networkpolicyingressrule-v1-networking-k8s-io
+  extraIngress: []
+  # -- Extra egress rules appended to every NetworkPolicy.
+  # Ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.31/#networkpolicyegressrule-v1-networking-k8s-io
+  extraEgress: []
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.

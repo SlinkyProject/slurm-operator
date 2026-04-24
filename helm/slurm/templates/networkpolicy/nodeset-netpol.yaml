@@ -1,0 +1,88 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- range $key, $nodeset := $.Values.nodesets }}
+{{- if and $.Values.networkPolicy.enabled $nodeset.enabled (dig "networkPolicy" "enabled" true $nodeset) }}
+{{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "slurm.namespace" $ }}
+  labels:
+    {{- include "slurm.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: slurmd
+      app.kubernetes.io/instance: {{ $name }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ include "slurm.worker.port" $ }}
+      from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    - from:
+        {{- range $nk, $ns := $.Values.nodesets }}
+        {{- if $ns.enabled }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $nk }}
+        {{- end }}
+        {{- end }}
+    - from:
+        {{- range $lk, $ls := $.Values.loginsets }}
+        {{- if $ls.enabled }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: login
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.login.name" $) $lk }}
+        {{- end }}
+        {{- end }}
+    {{- with $.Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (dig "networkPolicy" "extraIngress" nil $nodeset) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - ports:
+        - protocol: TCP
+          port: {{ include "slurm.controller.port" $ }}
+      to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmctld
+              app.kubernetes.io/instance: {{ include "slurm.fullname" $ }}
+    - to:
+        {{- range $nk, $ns := $.Values.nodesets }}
+        {{- if $ns.enabled }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: slurmd
+              app.kubernetes.io/instance: {{ printf "%s-%s" (include "slurm.worker.name" $) $nk }}
+        {{- end }}
+        {{- end }}
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- with $.Values.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (dig "networkPolicy" "extraEgress" nil $nodeset) }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- end }}
