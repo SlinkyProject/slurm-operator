@@ -44,6 +44,13 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "slurm.login.selectorLabels" . | nindent 12 }}
       initContainers:
       - name: fix-perms
         image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
