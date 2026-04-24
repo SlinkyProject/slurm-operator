@@ -104,4 +104,8 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}{{- /* with .Values.operator.tolerations */}}
+      {{- with .Values.operator.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}{{- /* with .Values.operator.topologySpreadConstraints */}}
 {{- end }}{{- /* if .Values.operator.enabled */}}
