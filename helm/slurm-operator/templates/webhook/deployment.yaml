@@ -82,6 +82,10 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}{{- /* with .Values.webhook.tolerations */}}
+      {{- with .Values.webhook.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}{{- /* with .Values.webhook.topologySpreadConstraints */}}
       volumes:
         - name: certificates
           secret:
