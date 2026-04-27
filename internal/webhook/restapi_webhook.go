@@ -5,8 +5,11 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -36,14 +39,14 @@ var _ admission.Validator[*slinkyv1beta1.RestApi] = &RestapiWebhook{}
 func (r *RestapiWebhook) ValidateCreate(ctx context.Context, restapi *slinkyv1beta1.RestApi) (admission.Warnings, error) {
 	restapilog.Info("validate create", "restapi", klog.KObj(restapi))
 
-	return nil, nil
+	return nil, validateRestApiPodDisruptionBudget(restapi)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *RestapiWebhook) ValidateUpdate(ctx context.Context, oldRestapi, newRestapi *slinkyv1beta1.RestApi) (admission.Warnings, error) {
 	restapilog.Info("validate update", "newRestapi", klog.KObj(newRestapi))
 
-	return nil, nil
+	return nil, validateRestApiPodDisruptionBudget(newRestapi)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -51,4 +54,24 @@ func (r *RestapiWebhook) ValidateDelete(ctx context.Context, restapi *slinkyv1be
 	restapilog.Info("validate delete", "restapi", klog.KObj(restapi))
 
 	return nil, nil
+}
+
+// validateRestApiPodDisruptionBudget enforces PDB shape when the operator would honor it.
+// When replicas is at most one and podDisruptionBudget is enabled (default), validation is skipped
+// because the controller does not reconcile a PDB in that case.
+func validateRestApiPodDisruptionBudget(restapi *slinkyv1beta1.RestApi) error {
+	pdb := restapi.Spec.PodDisruptionBudget
+	if pdb == nil {
+		return nil
+	}
+	replicas := ptr.Deref(restapi.Spec.Replicas, 1)
+	if replicas <= 1 && ptr.Deref(pdb.Enabled, true) {
+		return nil
+	}
+	var errs []error
+	spec := pdb.PodDisruptionBudgetSpec
+	if spec.MinAvailable != nil && spec.MaxUnavailable != nil {
+		errs = append(errs, fmt.Errorf("spec.podDisruptionBudget: minAvailable and maxUnavailable cannot both be set"))
+	}
+	return utilerrors.NewAggregate(errs)
 }
