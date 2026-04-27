@@ -186,6 +186,10 @@ controller:
       # requests:
       #   cpu: 1
       #   memory: 1Gi
+  # -- Indicates how reconfigure is handled when Slurm configuration changes.
+  # When true, the reconfigure sidecar will do reconfigure inplace.
+  # When false, the pod will be recreated and reconfigure done only on startup.
+  inplaceReconfigure: false
   # Reconfigure container configurations.
   reconfigure:
     # -- (string \| object) The image to use.

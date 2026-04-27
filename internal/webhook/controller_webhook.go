@@ -23,7 +23,8 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=delete;create;update
 
 type ControllerWebhook struct {
 	client.Client
@@ -38,7 +39,6 @@ func (r *ControllerWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:path=/validate-slinky-slurm-net-v1beta1-controller,mutating=false,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups=slinky.slurm.net,resources=controllers,verbs=create;update,versions=v1beta1,name=controller-v1beta1.kb.io,admissionReviewVersions=v1beta1
 
 var _ admission.Validator[*slinkyv1beta1.Controller] = &ControllerWebhook{}

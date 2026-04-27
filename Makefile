@@ -64,6 +64,7 @@ all: build ## Build slurm-operator.
 
 REGISTRY ?= slinky.slurm.net
 BUILDER ?= project-v3-builder
+BAKE_METADATA_FILE ?= bake-metadata.json
 
 .PHONY: build
 build: build-images build-chart ## Build OCI packages.
@@ -82,7 +83,12 @@ push: push-images push-charts ## Push OCI packages.
 
 .PHONY: push-images
 push-images: build-images ## Push container images.
-	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push
+	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push --metadata-file $(BAKE_METADATA_FILE) --sbom=true
+
+.PHONY: sign-images
+sign-images: push-images cosign-bin ## Sign pushed images with cosign keyless signing.
+	@jq -r 'to_entries[] | .value | select(."containerimage.digest") | (."image.name" | split(",")[0] | sub(":[^:/]+$$"; "")) + "@" + ."containerimage.digest"' $(BAKE_METADATA_FILE) | \
+	    while IFS= read -r ref; do echo "Signing $$ref"; $(COSIGN) sign --yes "$$ref" || exit 1; done
 
 .PHONY: push-charts
 push-charts: build-chart ## Push OCI packages.
@@ -95,6 +101,7 @@ clean: ## Clean executable files.
 	rm -rf vendor/
 	rm -f cover.out cover.html
 	rm -f *.tgz
+	rm -f $(BAKE_METADATA_FILE)
 	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
 
 ##@ Deployment
@@ -137,7 +144,7 @@ if [ ! -x "$(HELM)" ]; then \
 	echo "Helm binary not found at $(HELM). Run 'make helm-bin' first." ;\
 	exit 1 ;\
 fi ;\
-helm_major="$$( $(HELM) version --short 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' )"; \
+helm_major="$$( $(HELM) version --short 2>/dev/null | $(SED) -E 's/^v([0-9]+).*/\1/' )"; \
 if [ "$${helm_major}" = "4" ]; then \
 	verify_flag="--verify=false" ;\
 else \
@@ -163,7 +170,9 @@ GOVULNCHECK ?= $(LOCALBIN)/govulncheck-$(GOVULNCHECK_VERSION)
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
+YQ ?= $(LOCALBIN)/yq-$(YQ_VERSION)
 HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
+COSIGN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
 HELM_CONFIG_HOME ?= $(LOCALBIN)/helm-config
 HELM_CACHE_HOME ?= $(LOCALBIN)/helm-cache
 HELM_DATA_HOME ?= $(LOCALBIN)/helm-data
@@ -180,8 +189,10 @@ GOVULNCHECK_VERSION ?= latest
 GOLANGCI_LINT_VERSION ?= v2.11.1
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.9
+YQ_VERSION ?= v4.45.1
 HELM_VERSION ?= v4.1.1
 HELM_UNITTEST_VERSION ?= v1.0.3
+COSIGN_VERSION ?= v2.4.1
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -206,10 +217,20 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 		mv $(LOCALBIN)/golangci-lint $(GOLANGCI_LINT) ;\
 	fi
 
+.PHONY: cosign-bin
+cosign-bin: $(COSIGN) ## Download cosign locally if necessary.
+$(COSIGN): $(LOCALBIN)
+	$(call go-install-tool,$(COSIGN),github.com/sigstore/cosign/v2/cmd/cosign,$(COSIGN_VERSION))
+
 .PHONY: helm-docs-bin
 helm-docs-bin: $(HELM_DOCS) ## Download helm-docs locally if necessary.
 $(HELM_DOCS): $(LOCALBIN)
 	$(call go-install-tool,$(HELM_DOCS),github.com/norwoodj/helm-docs/cmd/helm-docs,$(HELM_DOCS_VERSION))
+
+.PHONY: yq-bin
+yq-bin: $(YQ) ## Download yq (mikefarah/v4) locally if necessary.
+$(YQ): $(LOCALBIN)
+	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,$(YQ_VERSION))
 
 .PHONY: helm-bin
 helm-bin: $(HELM) ## Download Helm locally if necessary.
@@ -296,10 +317,20 @@ helm-dependency-update: helm-bin ## Update Helm chart dependencies.
 values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
 	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
 
+OPERATOR_CHART_DIR ?= helm/slurm-operator
+OPERATOR_HELM_FILES ?= $(OPERATOR_CHART_DIR)/files
+
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:generateEmbeddedObjectMeta=true webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:generateEmbeddedObjectMeta=true webhook paths="./..." output:crd:artifacts:config=helm/slurm-operator-crds/templates
+manifests: controller-gen yq-bin ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role paths=./cmd/manager/... paths=./internal/controller/... output:rbac:dir=config/rbac/manager
+	$(CONTROLLER_GEN) rbac:roleName=webhook-role webhook paths=./cmd/webhook/... paths=./internal/webhook/... output:rbac:dir=config/rbac/webhook output:webhook:dir=./config/webhook
+
+	$(CONTROLLER_GEN) crd paths=./api/... output:crd:artifacts:config=helm/slurm-operator-crds/templates
+
+	mkdir -p $(OPERATOR_HELM_FILES)
+	$(YQ) '{"rules": .rules}' config/rbac/manager/role.yaml > $(OPERATOR_HELM_FILES)/operator_rbac_rules.yaml
+	$(YQ) '{"rules": .rules}' config/rbac/webhook/role.yaml > $(OPERATOR_HELM_FILES)/webhook_rbac_rules.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

@@ -4,6 +4,7 @@
 package controllerbuilder
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"path"
@@ -11,6 +12,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -21,6 +23,8 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/metadata"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller) (*appsv1.StatefulSet, error) {
@@ -96,7 +100,23 @@ func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller
 }
 
 func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Controller) (corev1.PodTemplateSpec, error) {
+	ctx := context.TODO()
 	key := controller.Key()
+
+	var hashMap map[string]string
+	if controller.Spec.InplaceReconfigure {
+		var err error
+		hashMap, err = b.getAuthHashes(ctx, controller)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+	} else {
+		var err error
+		hashMap, err = b.getHashes(ctx, controller)
+		if err != nil {
+			return corev1.PodTemplateSpec{}, err
+		}
+	}
 
 	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
 	extraConfigMapNames := make([]string, 0, size)
@@ -121,6 +141,7 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 		WithLabels(controller.Labels).
 		WithMetadata(controller.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithControllerLabels(controller).Build()).
+		WithAnnotations(hashMap).
 		WithAnnotations(map[string]string{
 			annotationDefaultContainer: labels.ControllerApp,
 		}).
@@ -140,10 +161,14 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 			Containers: []corev1.Container{
 				b.slurmctldContainer(spec.Slurmctld.Container, controller.ClusterName()),
 			},
-			InitContainers: []corev1.Container{
-				b.reconfigureContainer(spec.Reconfigure),
-				b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath),
-			},
+			InitContainers: func() []corev1.Container {
+				var initContainers []corev1.Container
+				if controller.Spec.InplaceReconfigure {
+					initContainers = append(initContainers, b.reconfigureContainer(spec.Reconfigure))
+				}
+				initContainers = append(initContainers, b.CommonBuilder.LogfileContainer(spec.LogFile, common.SlurmctldLogFilePath))
+				return initContainers
+			}(),
 			SecurityContext: &corev1.PodSecurityContext{
 				RunAsNonRoot: ptr.To(true),
 				RunAsUser:    ptr.To(common.SlurmUserUid),
@@ -315,4 +340,55 @@ func (b *ControllerBuilder) reconfigureContainer(container slinkyv1beta1.Contain
 	}
 
 	return b.CommonBuilder.BuildContainer(opts)
+}
+
+const (
+	annotationSlurmConfigHash = slinkyv1beta1.SlinkyPrefix + "slurm-config-hash"
+)
+
+func (b *ControllerBuilder) getHashes(ctx context.Context, controller *slinkyv1beta1.Controller) (map[string]string, error) {
+	hashMap, err := b.getAuthHashes(ctx, controller)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &corev1.ConfigMap{}
+	configKey := controller.ConfigKey()
+	if err := b.client.Get(ctx, configKey, config); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+	slurmConfigHash := crypto.CheckSumFromMap(config.Data)
+
+	hashMap = structutils.MergeMaps(hashMap, map[string]string{
+		annotationSlurmConfigHash: slurmConfigHash,
+	})
+
+	return hashMap, nil
+}
+
+func (b *ControllerBuilder) getAuthHashes(ctx context.Context, controller *slinkyv1beta1.Controller) (map[string]string, error) {
+	authSlurm := &corev1.Secret{}
+	authSlurmKey := controller.AuthSlurmKey()
+	if err := b.client.Get(ctx, authSlurmKey, authSlurm); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	authJwt := &corev1.Secret{}
+	authJwtKey := controller.AuthJwtKey()
+	if err := b.client.Get(ctx, authJwtKey, authJwt); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	hashMap := map[string]string{
+		common.AnnotationAuthSlurmKeyHash: crypto.CheckSumFromMap(authSlurm.Data),
+		common.AnnotationAuthJwtKeyHash:   crypto.CheckSumFromMap(authJwt.Data),
+	}
+
+	return hashMap, nil
 }
