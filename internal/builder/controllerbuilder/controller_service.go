@@ -34,6 +34,7 @@ func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Con
 		Protocol:   corev1.ProtocolTCP,
 		Port:       common.DefaultPort(int32(spec.Port), common.SlurmctldPort),
 		TargetPort: intstr.FromString(labels.ControllerApp),
+		NodePort:   int32(spec.NodePort),
 	}
 	opts.Ports = append(opts.Ports, port)
 
