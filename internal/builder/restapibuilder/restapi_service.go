@@ -31,6 +31,7 @@ func (b *RestapiBuilder) BuildRestapiService(restapi *slinkyv1beta1.RestApi) (*c
 		Protocol:   corev1.ProtocolTCP,
 		Port:       common.DefaultPort(int32(spec.Port), SlurmrestdPort),
 		TargetPort: intstr.FromString(labels.RestapiApp),
+		NodePort:   int32(spec.NodePort),
 	}
 	opts.Ports = append(opts.Ports, port)
 

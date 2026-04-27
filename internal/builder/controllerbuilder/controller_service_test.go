@@ -14,6 +14,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestBuilder_BuildControllerService_NodePort(t *testing.T) {
+	const want int32 = 30817
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.ControllerSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			Service: slinkyv1beta1.ServiceSpec{
+				NodePort: int(want),
+			},
+		},
+	}
+	got, err := New(fake.NewFakeClient()).BuildControllerService(controller)
+	if err != nil {
+		t.Fatalf("BuildControllerService() error = %v", err)
+	}
+	if got.Spec.Ports[0].NodePort != want {
+		t.Errorf("Ports[0].NodePort = %d, want %d", got.Spec.Ports[0].NodePort, want)
+	}
+}
+
 func TestBuilder_BuildControllerService(t *testing.T) {
 	type fields struct {
 		client client.Client
