@@ -179,6 +179,33 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should use repo:tag for login when digest is unset
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          login:
+            image:
+              repository: example.com/login
+              tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.login.image
+          value: example.com/login:v9.9.9
+  - it: should use repo@digest for login when digest is set, taking priority over tag
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          login:
+            image:
+              repository: example.com/login
+              tag: v9.9.9
+              digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.login.image
+          value: example.com/login@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   - it: should deploy multiple loginsets
     set:
       loginsets:

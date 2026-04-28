@@ -56,6 +56,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/*
 Format image reference from image object.
+When `digest` is set on the object form, it takes priority over `tag` and the
+image is rendered as `${repository}@${digest}`. Otherwise it falls back to
+`${repository}:${tag}`.
 */}}
 {{- define "format-image" -}}
 {{- if kindIs "string" . -}}
@@ -63,8 +66,13 @@ Format image reference from image object.
   {{- printf $image | toString -}}
 {{- else -}}
   {{- $repository := required "image repository is required" .repository -}}
-  {{- $tag := required "image tag is required" .tag -}}
-  {{- printf "%s:%s" $repository $tag | toString -}}
+  {{- $digest := default "" .digest -}}
+  {{- if $digest -}}
+    {{- printf "%s@%s" $repository $digest | toString -}}
+  {{- else -}}
+    {{- $tag := required "image tag is required (or set image digest)" .tag -}}
+    {{- printf "%s:%s" $repository $tag | toString -}}
+  {{- end -}}
 {{- end -}}
 {{- end -}}
 

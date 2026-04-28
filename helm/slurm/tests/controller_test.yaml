@@ -149,6 +149,44 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should use repo:tag for slurmctld and reconfigure when digest is unset
+    set:
+      controller:
+        slurmctld:
+          image:
+            repository: example.com/slurmctld
+            tag: v9.9.9
+        reconfigure:
+          image:
+            repository: example.com/slurmctld
+            tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: example.com/slurmctld:v9.9.9
+      - equal:
+          path: spec.reconfigure.image
+          value: example.com/slurmctld:v9.9.9
+  - it: should use repo@digest for slurmctld and reconfigure when digest is set, taking priority over tag
+    set:
+      controller:
+        slurmctld:
+          image:
+            repository: example.com/slurmctld
+            tag: v9.9.9
+            digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        reconfigure:
+          image:
+            repository: example.com/slurmctld
+            tag: v9.9.9
+            digest: sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: example.com/slurmctld@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - equal:
+          path: spec.reconfigure.image
+          value: example.com/slurmctld@sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
   - it: should set slurmctld livenessProbe exec
     set:
       controller:

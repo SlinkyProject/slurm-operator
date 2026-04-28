@@ -50,10 +50,25 @@ Define operator image tag
 {{- end }}
 
 {{/*
-Determine operator image reference (repo:tag)
+Define operator image digest
+*/}}
+{{- define "slurm-operator.operator.image.digest" -}}
+{{ .Values.operator.image.digest | default "" }}
+{{- end }}
+
+{{/*
+Determine operator image reference. Prefers `repo@digest` when digest is set,
+falling back to `repo:tag` otherwise.
 */}}
 {{- define "slurm-operator.operator.imageRef" -}}
-{{ printf "%s:%s" (include "slurm-operator.operator.image.repository" .) (include "slurm-operator.operator.image.tag" .) | quote }}
+{{- $repo := include "slurm-operator.operator.image.repository" . | trim -}}
+{{- $digest := include "slurm-operator.operator.image.digest" . | trim -}}
+{{- if $digest -}}
+{{ printf "%s@%s" $repo $digest | quote }}
+{{- else -}}
+{{- $tag := include "slurm-operator.operator.image.tag" . | trim -}}
+{{ printf "%s:%s" $repo $tag | quote }}
+{{- end -}}
 {{- end }}
 
 {{/*

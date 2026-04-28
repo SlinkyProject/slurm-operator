@@ -57,10 +57,25 @@ Define operator webhook image tag
 {{- end }}
 
 {{/*
-Determine operator webhook image reference (repo:tag)
+Define operator webhook image digest
+*/}}
+{{- define "slurm-operator.webhook.image.digest" -}}
+{{ .Values.webhook.image.digest | default "" }}
+{{- end }}
+
+{{/*
+Determine operator webhook image reference. Prefers `repo@digest` when digest
+is set, falling back to `repo:tag` otherwise.
 */}}
 {{- define "slurm-operator.webhook.imageRef" -}}
-{{ printf "%s:%s" (include "slurm-operator.webhook.image.repository" .) (include "slurm-operator.webhook.image.tag" .) | quote }}
+{{- $repo := include "slurm-operator.webhook.image.repository" . | trim -}}
+{{- $digest := include "slurm-operator.webhook.image.digest" . | trim -}}
+{{- if $digest -}}
+{{ printf "%s@%s" $repo $digest | quote }}
+{{- else -}}
+{{- $tag := include "slurm-operator.webhook.image.tag" . | trim -}}
+{{ printf "%s:%s" $repo $tag | quote }}
+{{- end -}}
 {{- end }}
 
 {{/*
