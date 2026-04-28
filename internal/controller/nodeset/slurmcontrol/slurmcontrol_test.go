@@ -95,6 +95,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.UID = k8stypes.UID("foo-uid")
 	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
 	pod.Spec.NodeName = "foo"
 	type fields struct {
@@ -130,9 +131,11 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 				pod:     pod,
 			},
 			wantPodInfo: podinfo.PodInfo{
-				Namespace: nodeset.Namespace,
-				PodName:   pod.Name,
-				Node:      pod.Spec.NodeName,
+				Namespace:   nodeset.Namespace,
+				PodName:     pod.Name,
+				Node:        pod.Spec.NodeName,
+				NodeSetName: nodeset.Name,
+				NodeSetUID:  string(nodeset.UID),
 			},
 		},
 	}

@@ -4019,6 +4019,15 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		slurmapi.V0044NodeStateDOWN,
 		slurmapi.V0044NodeStateNOTRESPONDING,
 	})
+	podInfo := func(ns *slinkyv1beta1.NodeSet, podName, node string) *string {
+		return new((&podinfo.PodInfo{
+			Namespace:   corev1.NamespaceDefault,
+			PodName:     podName,
+			Node:        node,
+			NodeSetName: ns.Name,
+			NodeSetUID:  string(ns.UID),
+		}).ToString())
+	}
 
 	tests := []struct {
 		name              string
@@ -4044,22 +4053,14 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("foo-ghost"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   defunctPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("foo-ghost"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, defunctPodName, "worker-a"),
 					}},
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new(existingSlurmName),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   pod.Name,
-							Node:      "worker-b",
-						}).ToString()),
+						Name:    ptr.To(existingSlurmName),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, pod.Name, "worker-b"),
 					}},
 				}
 				return []runtime.Object{pod, kubeNode}, nodes, []string{existingSlurmName}, []string{"foo-ghost"}
@@ -4074,13 +4075,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("worker-a"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   ghostPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("worker-a"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, ghostPodName, "worker-a"),
 					}},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
@@ -4102,13 +4099,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				}
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("slurm-node-x"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   ghostPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("slurm-node-x"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, ghostPodName, "worker-a"),
 					}},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"slurm-node-x"}, nil
@@ -4130,13 +4123,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				}
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("stale-name"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   ghostPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("stale-name"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, ghostPodName, "worker-a"),
 					}},
 				}
 				return []runtime.Object{kubeNode}, nodes, nil, []string{"stale-name"}
@@ -4150,13 +4139,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("foo-ghost"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   defunctPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("foo-ghost"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, defunctPodName, "worker-a"),
 					}},
 				}
 				return nil, nodes, []string{"foo-ghost"}, nil
@@ -4170,13 +4155,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("foo-ghost"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   defunctPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("foo-ghost"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, defunctPodName, "worker-a"),
 					}},
 				}
 				return nil, nodes, []string{"foo-ghost"}, nil
@@ -4190,13 +4171,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{
-						Name:  new("reserved-node"),
-						State: defunctNodeState,
-						Comment: new((&podinfo.PodInfo{
-							Namespace: corev1.NamespaceDefault,
-							PodName:   defunctPodName,
-							Node:      "worker-a",
-						}).ToString()),
+						Name:    ptr.To("reserved-node"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, defunctPodName, "worker-a"),
 					}},
 				}
 				return nil, nodes, []string{"reserved-node"}, nil
@@ -4213,6 +4190,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nodeset := newNodeSet("foo", controller.Name, 1)
+			nodeset.UID = types.UID("foo-uid")
 			if tt.scalingMode != "" {
 				nodeset.Spec.ScalingMode = tt.scalingMode
 			}

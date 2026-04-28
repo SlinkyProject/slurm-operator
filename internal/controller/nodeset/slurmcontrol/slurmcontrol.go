@@ -108,9 +108,11 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 	}
 
 	podInfo := podinfo.PodInfo{
-		Namespace: pod.GetNamespace(),
-		PodName:   pod.GetName(),
-		Node:      pod.Spec.NodeName,
+		Namespace:   pod.GetNamespace(),
+		PodName:     pod.GetName(),
+		Node:        pod.Spec.NodeName,
+		NodeSetName: nodeset.Name,
+		NodeSetUID:  string(nodeset.UID),
 	}
 	podInfoOld := &podinfo.PodInfo{}
 	_ = podinfo.ParseIntoPodInfo(slurmNode.Comment, podInfoOld)
