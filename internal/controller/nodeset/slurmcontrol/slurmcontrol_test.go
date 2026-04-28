@@ -2406,8 +2406,19 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.UID = k8stypes.UID("foo-uid")
 	otherNodeSet := newNodeSet("bar", controller.Name, 1)
+	otherNodeSet.UID = k8stypes.UID("bar-uid")
 	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 7)
+	podInfo := func(nodeset *slinkyv1beta1.NodeSet, podName, node string) *string {
+		return new((&podinfo.PodInfo{
+			Namespace:   corev1.NamespaceDefault,
+			PodName:     podName,
+			Node:        node,
+			NodeSetName: nodeset.Name,
+			NodeSetUID:  string(nodeset.UID),
+		}).ToString())
+	}
 
 	type fields struct {
 		nodes []types.V0044Node
@@ -2430,11 +2441,7 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 								api.V0044NodeStateDOWN,
 								api.V0044NodeStateNOTRESPONDING,
 							}),
-							Comment: ptr.To((&podinfo.PodInfo{
-								Namespace: corev1.NamespaceDefault,
-								PodName:   defunctPodName,
-								Node:      "worker-a",
-							}).ToString()),
+							Comment: podInfo(nodeset, defunctPodName, "worker-a"),
 						},
 					},
 					{
@@ -2443,10 +2450,7 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 							State: ptr.To([]api.V0044NodeState{
 								api.V0044NodeStateDOWN,
 							}),
-							Comment: ptr.To((&podinfo.PodInfo{
-								Namespace: corev1.NamespaceDefault,
-								PodName:   nodesetutils.GetOrdinalPodName(nodeset, 8),
-							}).ToString()),
+							Comment: podInfo(nodeset, nodesetutils.GetOrdinalPodName(nodeset, 8), ""),
 						},
 					},
 					{
@@ -2456,10 +2460,7 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 								api.V0044NodeStateDOWN,
 								api.V0044NodeStateNOTRESPONDING,
 							}),
-							Comment: ptr.To((&podinfo.PodInfo{
-								Namespace: corev1.NamespaceDefault,
-								PodName:   nodesetutils.GetOrdinalPodName(otherNodeSet, 0),
-							}).ToString()),
+							Comment: podInfo(otherNodeSet, nodesetutils.GetOrdinalPodName(otherNodeSet, 0), ""),
 						},
 					},
 					{
@@ -2477,9 +2478,11 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 				{
 					Name: "foo-ghost",
 					PodInfo: podinfo.PodInfo{
-						Namespace: corev1.NamespaceDefault,
-						PodName:   defunctPodName,
-						Node:      "worker-a",
+						Namespace:   corev1.NamespaceDefault,
+						PodName:     defunctPodName,
+						Node:        "worker-a",
+						NodeSetName: nodeset.Name,
+						NodeSetUID:  string(nodeset.UID),
 					},
 				},
 			},

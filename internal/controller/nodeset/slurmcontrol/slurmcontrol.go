@@ -661,13 +661,11 @@ func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodese
 		if err := podinfo.ParseIntoPodInfo(node.Comment, info); err != nil {
 			continue
 		}
-		if info.Namespace != nodeset.Namespace || info.PodName == "" {
-			continue
-		}
-
-		pod := &corev1.Pod{}
-		pod.Name = info.PodName
-		if !nodesetutils.IsPodFromNodeSet(nodeset, pod) {
+		if info.Namespace != nodeset.Namespace ||
+			info.PodName == "" ||
+			info.NodeSetName != nodeset.Name ||
+			info.NodeSetUID == "" ||
+			info.NodeSetUID != string(nodeset.UID) {
 			continue
 		}
 
