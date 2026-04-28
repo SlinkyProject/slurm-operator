@@ -76,5 +76,43 @@ var _ = Describe("SlurmClient Controller", func() {
 				g.Expect(slurmClient).Should(BeNil())
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
+
+		It("Should remove the Slurm Client when its RestApi is deleted but Controller remains", func(ctx SpecContext) {
+			controllerKey := client.ObjectKeyFromObject(controller)
+
+			By("Simulating RestApi Deployment Ready Status")
+			restapiDeploymentKey := restapi.Key()
+			createdDeployment := &appsv1.Deployment{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, restapiDeploymentKey, createdDeployment)).To(Succeed())
+				createdDeployment.Status.Replicas = 1
+				createdDeployment.Status.ReadyReplicas = 1
+				g.Expect(k8sClient.Status().Update(ctx, createdDeployment)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Creating Slurm Client")
+			Eventually(func(g Gomega) {
+				g.Expect(clientMap.Get(controllerKey)).ShouldNot(BeNil())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Deleting RestApi but leaving Controller in place")
+			Expect(k8sClient.Delete(ctx, restapi.DeepCopy())).To(Succeed())
+
+			By("Touching Controller to trigger a reconcile")
+			Eventually(func(g Gomega) {
+				fresh := &slinkyv1beta1.Controller{}
+				g.Expect(k8sClient.Get(ctx, controllerKey, fresh)).To(Succeed())
+				if fresh.Annotations == nil {
+					fresh.Annotations = map[string]string{}
+				}
+				fresh.Annotations["test.slinky.slurm.net/touch"] = "1"
+				g.Expect(k8sClient.Update(ctx, fresh)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Removing Slurm Client")
+			Eventually(func(g Gomega) {
+				g.Expect(clientMap.Get(controllerKey)).Should(BeNil())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+		}, SpecTimeout(testutils.Timeout))
 	})
 })
