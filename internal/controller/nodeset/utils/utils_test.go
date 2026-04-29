@@ -174,6 +174,100 @@ func TestIsPodFromNodeSet(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "Does not match sibling NodeSet with same prefix",
+			args: args{
+				nodeset: newNodeSet("foo"),
+				pod:     NewNodeSetStatefulSetPod(fake.NewFakeClient(), newNodeSet("foo-gpu"), controller, 1234, ""),
+			},
+			want: false,
+		},
+		{
+			name: "Does not match orphan sibling NodeSet with same prefix",
+			args: args{
+				nodeset: newNodeSet("foo"),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "foo-gpu-1234",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Matches orphan StatefulSet pod for adoption",
+			args: args{
+				nodeset: newNodeSet("foo"),
+				pod: func() *corev1.Pod {
+					pod := NewNodeSetStatefulSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, "")
+					pod.OwnerReferences = nil
+					return pod
+				}(),
+			},
+			want: true,
+		},
+		{
+			name: "Does not match controller ref with wrong UID",
+			args: args{
+				nodeset: func() *slinkyv1beta1.NodeSet {
+					nodeset := newNodeSet("foo")
+					nodeset.UID = "different-uid"
+					return nodeset
+				}(),
+				pod: NewNodeSetStatefulSetPod(fake.NewFakeClient(), newNodeSet("foo"), controller, 0, ""),
+			},
+			want: false,
+		},
+		{
+			name: "Non-controller owner reference is not enough",
+			args: args{
+				nodeset: newNodeSet("foo"),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "unrelated",
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion: slinkyv1beta1.NodeSetAPIVersion,
+								Kind:       slinkyv1beta1.NodeSetKind,
+								Name:       "foo",
+								UID:        newNodeSet("foo").UID,
+								Controller: ptr.To(false),
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Matches orphan DaemonSet pod for adoption",
+			args: args{
+				nodeset: newNodeSetDaemonset("foo", ""),
+				pod: func() *corev1.Pod {
+					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "")
+					pod.OwnerReferences = nil
+					pod.Name = "foo-abc123"
+					return pod
+				}(),
+			},
+			want: true,
+		},
+		{
+			name: "Does not match orphan DaemonSet sibling with same prefix",
+			args: args{
+				nodeset: newNodeSetDaemonset("foo", ""),
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:    corev1.NamespaceDefault,
+						Name:         "foo-gpu-abc123",
+						GenerateName: "foo-gpu-",
+					},
+				},
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
