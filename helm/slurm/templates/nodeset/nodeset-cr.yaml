@@ -4,6 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- range $key, $nodeset := $.Values.nodesets }}
+{{- if eq $key "_defaults" }}{{- continue }}{{- end }}
+{{- $nodeset = include "slurm.nodeset.withDefaults" (dict "ctx" $ "entry" $nodeset) | fromYaml }}
 {{- if $nodeset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
 {{- $metadata := merge dict ($nodeset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}

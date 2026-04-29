@@ -166,3 +166,134 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should inherit chart defaults on a non-slinky nodeset
+    set:
+      nodesets:
+        slinky:
+          enabled: false
+        gpu:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: NodeSet
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:25.11-ubuntu24.04
+      - equal:
+          path: spec.logfile.image
+          value: docker.io/library/alpine:latest
+      - equal:
+          path: spec.scalingMode
+          value: StatefulSet
+      - equal:
+          path: spec.pinToNode
+          value: false
+      - equal:
+          path: spec.workloadDisruptionProtection
+          value: true
+  - it: should apply user overrides on top of inherited defaults (nodeset)
+    set:
+      nodesets:
+        slinky:
+          enabled: false
+        gpu:
+          enabled: true
+          scalingMode: DaemonSet
+          slurmd:
+            image:
+              tag: my-custom-fork
+    asserts:
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:my-custom-fork
+  - it: should deploy a slinky + custom nodeset together
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+        gpu:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+  - it: should propagate user-set _defaults to every enabled nodeset
+    # Verifies that overriding a field on `nodesets._defaults` is inherited
+    # by every sibling entry that does not explicitly override it.
+    set:
+      nodesets:
+        _defaults:
+          scalingMode: DaemonSet
+          slurmd:
+            image:
+              tag: from-defaults
+        slinky:
+          enabled: false
+        gpu:
+          enabled: true
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-gpu
+        documentIndex: 0
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+        documentIndex: 0
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:from-defaults
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-standard
+        documentIndex: 1
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+        documentIndex: 1
+      - equal:
+          path: spec.slurmd.image
+          value: ghcr.io/slinkyproject/slurmd:from-defaults
+        documentIndex: 1
+  - it: overrides on one nodeset must not bleed into a sibling
+    # Pins the deepCopy invariant in the withDefaults helper: without
+    # deepCopy, mustMergeOverwrite would mutate the shared _defaults map
+    # on the first iteration, and `standard` would inherit gpu's
+    # scalingMode override. Map keys iterate in sorted order.
+    set:
+      nodesets:
+        slinky:
+          enabled: false
+        gpu:
+          enabled: true
+          scalingMode: DaemonSet
+        standard:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-gpu
+        documentIndex: 0
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-worker-standard
+        documentIndex: 1
+      - equal:
+          path: spec.scalingMode
+          value: StatefulSet
+        documentIndex: 1
