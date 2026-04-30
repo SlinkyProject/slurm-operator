@@ -162,3 +162,28 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should use repo:tag for slurmdbd when digest is unset
+    set:
+      accounting:
+        enabled: true
+        slurmdbd:
+          image:
+            repository: example.com/slurmdbd
+            tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.slurmdbd.image
+          value: example.com/slurmdbd:v9.9.9
+  - it: should use repo@digest for slurmdbd when digest is set, taking priority over tag
+    set:
+      accounting:
+        enabled: true
+        slurmdbd:
+          image:
+            repository: example.com/slurmdbd
+            tag: v9.9.9
+            digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.slurmdbd.image
+          value: example.com/slurmdbd@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

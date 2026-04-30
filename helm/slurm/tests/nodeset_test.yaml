@@ -166,3 +166,30 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should use repo:tag for slurmd when digest is unset
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              repository: example.com/slurmd
+              tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.slurmd.image
+          value: example.com/slurmd:v9.9.9
+  - it: should use repo@digest for slurmd when digest is set, taking priority over tag
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              repository: example.com/slurmd
+              tag: v9.9.9
+              digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.slurmd.image
+          value: example.com/slurmd@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

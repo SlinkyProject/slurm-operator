@@ -109,3 +109,24 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
           value: 256Mi
+  - it: should use repo:tag when digest is unset
+    set:
+      webhook:
+        image:
+          repository: example.com/wh
+          tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.com/wh:v9.9.9
+  - it: should use repo@digest when digest is set, taking priority over tag
+    set:
+      webhook:
+        image:
+          repository: example.com/wh
+          tag: v9.9.9
+          digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.com/wh@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

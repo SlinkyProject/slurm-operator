@@ -178,3 +178,26 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should use repo:tag for slurmrestd when digest is unset
+    set:
+      restapi:
+        slurmrestd:
+          image:
+            repository: example.com/slurmrestd
+            tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.slurmrestd.image
+          value: example.com/slurmrestd:v9.9.9
+  - it: should use repo@digest for slurmrestd when digest is set, taking priority over tag
+    set:
+      restapi:
+        slurmrestd:
+          image:
+            repository: example.com/slurmrestd
+            tag: v9.9.9
+            digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.slurmrestd.image
+          value: example.com/slurmrestd@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

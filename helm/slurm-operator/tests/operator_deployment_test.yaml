@@ -110,3 +110,24 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
           value: 512Mi
+  - it: should use repo:tag when digest is unset
+    set:
+      operator:
+        image:
+          repository: example.com/op
+          tag: v9.9.9
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.com/op:v9.9.9
+  - it: should use repo@digest when digest is set, taking priority over tag
+    set:
+      operator:
+        image:
+          repository: example.com/op
+          tag: v9.9.9
+          digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.com/op@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

@@ -176,6 +176,7 @@ controller:
     image:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 25.11-ubuntu24.04
+      digest: ""
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS
     args: []
@@ -197,6 +198,7 @@ controller:
     image:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 25.11-ubuntu24.04
+      digest: ""
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -210,6 +212,7 @@ controller:
     image:
       repository: docker.io/library/alpine
       tag: latest
+      digest: ""
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -335,6 +338,7 @@ restapi:
     image:
       repository: ghcr.io/slinkyproject/slurmrestd
       tag: 25.11-ubuntu24.04
+      digest: ""
     # -- Environment passed to the image.
     # Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES
     env: []
@@ -417,6 +421,7 @@ accounting:
     image:
       repository: ghcr.io/slinkyproject/slurmdbd
       tag: 25.11-ubuntu24.04
+      digest: ""
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS
     args: []
@@ -555,6 +560,7 @@ loginsets:
       image:
         repository: ghcr.io/slinkyproject/login
         tag: 25.11-ubuntu24.04
+        digest: ""
       # -- Environment passed to the image.
       env: []
         # - name: SACKD_DEBUG
@@ -584,6 +590,7 @@ loginsets:
       image:
         repository: docker.io/library/alpine
         tag: latest
+        digest: ""
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
@@ -673,6 +680,7 @@ nodesets:
       image:
         repository: ghcr.io/slinkyproject/slurmd
         tag: 25.11-ubuntu24.04
+        digest: ""
       # -- Arguments passed to the image.
       # Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS
       args: []
@@ -699,6 +707,7 @@ nodesets:
       image:
         repository: docker.io/library/alpine
         tag: latest
+        digest: ""
       # -- The container resource limits and requests.
       # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
       resources: {}
