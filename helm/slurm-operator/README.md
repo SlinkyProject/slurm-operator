@@ -54,7 +54,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.namespaces | string | `""` | Comma-separated list of namespaces the operator will watch. If empty, all namespaces are watched. |
 | operator.nodesetWorkers | int | `4` | Set the max concurrent workers for the NodeSet controller. |
 | operator.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
-| operator.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
+| operator.pdb.minAvailable | int | `1` | Minimum pods that must remain available after eviction (int or quoted percent). |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | operator.restapiWorkers | int | `4` | Set the max concurrent workers for the Restapi controller. |
@@ -75,7 +75,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.namespaces | string | `""` | Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched. |
 | webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
-| webhook.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
+| webhook.pdb.minAvailable | int | `1` | Minimum pods that must remain available after eviction (int or quoted percent). |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.serverPort | int | `9443` | Set the port used for the webhook server |
