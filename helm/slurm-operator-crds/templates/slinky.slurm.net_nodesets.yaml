@@ -180,6 +180,14 @@ spec:
                   When disabled, all stored node pinnings are removed.
                   Used only when `scalingMode=StatefulSet`.
                 type: boolean
+              pruneSlurmNodeRecords:
+                default: Never
+                description: PruneSlurmNodeRecords controls when the operator deletes
+                  Slurm node records.
+                enum:
+                - Never
+                - NodeNotFound
+                type: string
               replicas:
                 default: 1
                 description: |-

@@ -42,6 +42,9 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		if ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
 			t.Errorf("PersistentVolumeClaimRetentionPolicy.WhenScaled: want %q, got %q", slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
 		}
+		if ns.Spec.PruneSlurmNodeRecords != DefaultNodeSetPruneSlurmNodeRecordType {
+			t.Errorf("PruneSlurmNodeRecords: want %q, got %q", DefaultNodeSetPruneSlurmNodeRecordType, ns.Spec.PruneSlurmNodeRecords)
+		}
 	})
 
 	t.Run("explicit values are not overridden", func(t *testing.T) {
@@ -53,6 +56,7 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable = ptr.To(maxUnavailable)
 		ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
 		ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
+		ns.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
 		SetNodeSetDefaults(ns)
 		if ptr.Deref(ns.Spec.Replicas, 0) != 3 {
 			t.Errorf("Replicas: want 3, got %v", ptr.Deref(ns.Spec.Replicas, 0))
@@ -71,6 +75,9 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		}
 		if ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled != slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType {
 			t.Errorf("PersistentVolumeClaimRetentionPolicy.WhenScaled: want %q, got %q", slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
+		}
+		if ns.Spec.PruneSlurmNodeRecords != slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound {
+			t.Errorf("PruneSlurmNodeRecords: want %q, got %q", slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, ns.Spec.PruneSlurmNodeRecords)
 		}
 	})
 }

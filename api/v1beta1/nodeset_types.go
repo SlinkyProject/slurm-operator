@@ -138,6 +138,12 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=true
 	WorkloadDisruptionProtection *bool `json:"workloadDisruptionProtection,omitempty"`
+
+	// PruneSlurmNodeRecords controls when the operator deletes Slurm node records.
+	// +optional
+	// +kubebuilder:validation:Enum=Never;NodeNotFound
+	// +kubebuilder:default:=Never
+	PruneSlurmNodeRecords NodeSetPruneSlurmNodeRecordType `json:"pruneSlurmNodeRecords,omitempty"`
 }
 
 // ScalingModeType is a string enumeration of how a NodeSet scales its pods.
@@ -265,6 +271,23 @@ type RollingUpdateNodeSetStrategy struct {
 	// +kubebuilder:default:="25%"
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
+
+// NodeSetPruneNodeRecordType is a string enumeration of how a NodeSet has its
+// Slurm node records pruned.
+// +enum
+type NodeSetPruneSlurmNodeRecordType string
+
+const (
+	// NodeSetPruneNodeRecordTypeNever indicates that Slurm node records will
+	// never be pruned by the operator.
+	// This is the default.
+	NodeSetPruneNodeRecordTypeNever NodeSetPruneSlurmNodeRecordType = "Never"
+
+	// NodeSetPruneNodeRecordTypeNodeNotFound indicates that Slurm node records
+	// will only be pruned when the backing Kubernetes node does not exist.
+	// Only works for `ScalingMode=DaemonSet`.
+	NodeSetPruneNodeRecordTypeNodeNotFound NodeSetPruneSlurmNodeRecordType = "NodeNotFound"
+)
 
 // NodeSetStatus defines the observed state of NodeSet
 type NodeSetStatus struct {

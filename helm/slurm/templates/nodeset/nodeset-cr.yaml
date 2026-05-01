@@ -73,5 +73,6 @@ spec:
   pinToNode: {{ $nodeset.pinToNode }}
   taintKubeNodes: {{ $nodeset.taintKubeNodes }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
+  pruneSlurmNodeRecords: {{ $nodeset.pruneSlurmNodeRecords }}
 {{- end }}{{- /* $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := $.Values.nodesets */}}

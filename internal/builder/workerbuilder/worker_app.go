@@ -263,7 +263,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 						Command: []string{
 							"/usr/bin/sh",
 							"-c",
-							"scontrol update nodename=$(hostname) state=down reason='Pod is terminating' && scontrol delete nodename=$(hostname);",
+							"scontrol update nodename=$(hostname) state=down reason='Pod is terminating';",
 						},
 					},
 				},
