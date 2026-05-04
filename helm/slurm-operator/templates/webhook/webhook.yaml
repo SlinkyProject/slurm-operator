@@ -263,6 +263,9 @@ webhooks:
           values:
             - kube-system
             - {{ include "slurm-operator.namespace" . }}
+    objectSelector:
+      matchLabels:
+        app.kubernetes.io/name: slurmd
     admissionReviewVersions:
       - v1
     clientConfig:
