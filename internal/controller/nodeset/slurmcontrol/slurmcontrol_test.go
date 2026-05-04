@@ -316,6 +316,88 @@ var _ = Describe("SlurmControlInterface", func() {
 		})
 	})
 
+	Context("DeleteOrphanedNodes()", func() {
+		It("Should delete Slurm nodes with no matching pod", func() {
+			By("Setup: 3 Slurm nodes but only 2 pods")
+			nodeset = newNodeSet("foo", controller.Name, 3)
+			pod0 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			pod2 := nodesetutils.NewNodeSetPod(nodeset, controller, 2, "")
+			node0 := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod0)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			node1 := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod1)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			orphanNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod2)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateDOWN}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithObjects(node0, node1, orphanNode).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Delete orphaned nodes (pod2 has no matching pod)")
+			pods := []*corev1.Pod{pod0, pod1}
+			err := slurmcontrol.DeleteOrphanedNodes(ctx, nodeset, pods)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify orphan is deleted")
+			checkNode := &types.V0044Node{}
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod2)), checkNode)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Not Found"))
+
+			By("Verify non-orphans still exist")
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod0)), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod1)), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Should do nothing when all nodes have matching pods", func() {
+			By("Setup: 2 Slurm nodes and 2 pods")
+			nodeset = newNodeSet("foo", controller.Name, 2)
+			pod0 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			pod1 := nodesetutils.NewNodeSetPod(nodeset, controller, 1, "")
+			node0 := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod0)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			node1 := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod1)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithObjects(node0, node1).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("No orphans to delete")
+			pods := []*corev1.Pod{pod0, pod1}
+			err := slurmcontrol.DeleteOrphanedNodes(ctx, nodeset, pods)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Both nodes still exist")
+			checkNode := &types.V0044Node{}
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod0)), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod1)), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
 	Context("GetNodeDeadlines()", func() {
 		now := time.Now()
 

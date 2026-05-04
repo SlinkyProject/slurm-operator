@@ -54,6 +54,8 @@ type SlurmControlInterface interface {
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 	// DeleteNode removes a Slurm node registration by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
+	// DeleteOrphanedNodes removes Slurm node registrations that have no matching pod.
+	DeleteOrphanedNodes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) error
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
@@ -618,6 +620,44 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 			return nil
 		}
 		return err
+	}
+
+	return nil
+}
+
+// DeleteOrphanedNodes implements SlurmControlInterface.
+func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do DeleteOrphanedNodes()")
+		return nil
+	}
+
+	nodeList := &slurmtypes.V0044NodeList{}
+	if err := slurmClient.List(ctx, nodeList); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	podNodeNameSet := set.New[string]()
+	for _, pod := range pods {
+		podNodeNameSet.Insert(nodesetutils.GetNodeName(pod))
+	}
+
+	for _, node := range nodeList.Items {
+		nodeName := ptr.Deref(node.Name, "")
+		if nodeName == "" || podNodeNameSet.Has(nodeName) {
+			continue
+		}
+		logger.Info("deleting orphaned slurm node (no matching pod)",
+			"nodeName", nodeName)
+		if err := r.DeleteNode(ctx, nodeset, nodeName); err != nil {
+			return err
+		}
 	}
 
 	return nil
