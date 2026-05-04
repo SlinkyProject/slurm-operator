@@ -52,6 +52,8 @@ type SlurmControlInterface interface {
 	CalculateNodeStatus(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (SlurmNodeStatus, error)
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
+	// DeleteNode removes a Slurm node registration by name.
+	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
@@ -587,6 +589,38 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 	}
 
 	return ts, nil
+}
+
+// DeleteNode implements SlurmControlInterface.
+func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do DeleteNode()",
+			"nodeName", nodeName)
+		return nil
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	key := slurmobject.ObjectKey(nodeName)
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	logger.V(1).Info("deleting slurm node",
+		"nodeName", nodeName)
+	if err := slurmClient.Delete(ctx, slurmNode); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {

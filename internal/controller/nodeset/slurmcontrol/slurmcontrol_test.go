@@ -273,6 +273,49 @@ var _ = Describe("SlurmControlInterface", func() {
 		})
 	})
 
+	Context("DeleteNode()", func() {
+		It("Should delete the Slurm node", func() {
+			By("Setup initial system state")
+			nodeset = newNodeSet("foo", controller.Name, 1)
+			pod = nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			slurmNodename := nodesetutils.GetNodeName(pod)
+			node := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name: ptr.To(slurmNodename),
+					State: ptr.To([]api.V0044NodeState{
+						api.V0044NodeStateDOWN,
+					}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithObjects(node).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Deleting Slurm node")
+			err := slurmcontrol.DeleteNode(ctx, nodeset, slurmNodename)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify node no longer exists")
+			checkNode := &types.V0044Node{}
+			key := object.ObjectKey(slurmNodename)
+			err = sclient.Get(ctx, key, checkNode)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Not Found"))
+		})
+
+		It("Should tolerate deleting a non-existent node", func() {
+			By("Setup initial system state with no nodes")
+			nodeset = newNodeSet("foo", controller.Name, 1)
+			sclient = fake.NewClientBuilder().Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Deleting non-existent Slurm node should not error")
+			err := slurmcontrol.DeleteNode(ctx, nodeset, "nonexistent-0")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
 	Context("GetNodeDeadlines()", func() {
 		now := time.Now()
 
