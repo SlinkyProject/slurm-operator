@@ -37,6 +37,8 @@ func (r *PodBindingWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;update;patch;watch
 // +kubebuilder:rbac:groups="",resources=pods/binding,verbs=get;list;watch
 // +kubebuilder:webhook:path=/mutate--v1-binding,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups="",resources=pods/binding,verbs=create,versions=v1,name=podsbinding-v1.kb.io,admissionReviewVersions=v1
+// NOTE: objectSelector (matchLabels: app.kubernetes.io/name=slurmd) is manually
+// maintained in config/webhook/manifests.yaml and helm template.
 
 var _ admission.Defaulter[*corev1.Binding] = &PodBindingWebhook{}
 
