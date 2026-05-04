@@ -315,7 +315,8 @@ helm-dependency-update: helm-bin ## Update Helm chart dependencies.
 
 .PHONY: values-dev
 values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
-	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
+	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | \
+		xargs -n2 sh -c 'test -f "$$1" || cp -v "$$0" "$$1"'
 
 OPERATOR_CHART_DIR ?= helm/slurm-operator
 OPERATOR_HELM_FILES ?= $(OPERATOR_CHART_DIR)/files
