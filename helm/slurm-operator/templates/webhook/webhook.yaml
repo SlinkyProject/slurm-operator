@@ -276,7 +276,11 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /mutate--v1-binding
-    failurePolicy: Fail
+    {{- $podBindingFP := .Values.webhook.podBinding.failurePolicy | default "Ignore" }}
+    {{- if not (or (eq $podBindingFP "Fail") (eq $podBindingFP "Ignore")) }}
+    {{- fail (printf "webhook.podBinding.failurePolicy must be 'Fail' or 'Ignore', got: '%s'" $podBindingFP) }}
+    {{- end }}
+    failurePolicy: {{ $podBindingFP }}
     matchPolicy: Equivalent
     rules:
       - apiGroups:
