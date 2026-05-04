@@ -648,9 +648,16 @@ func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *sli
 		podNodeNameSet.Insert(nodesetutils.GetNodeName(pod))
 	}
 
+	// Only consider Slurm nodes that belong to this NodeSet.
+	// Node names follow the pattern "<nodeset-name>-<ordinal>".
+	nodeNamePrefix := nodeset.Name + "-"
+
 	for _, node := range nodeList.Items {
 		nodeName := ptr.Deref(node.Name, "")
-		if nodeName == "" || podNodeNameSet.Has(nodeName) {
+		if nodeName == "" || !strings.HasPrefix(nodeName, nodeNamePrefix) {
+			continue
+		}
+		if podNodeNameSet.Has(nodeName) {
 			continue
 		}
 		logger.Info("deleting orphaned slurm node (no matching pod)",

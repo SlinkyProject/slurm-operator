@@ -396,6 +396,39 @@ var _ = Describe("SlurmControlInterface", func() {
 			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(pod1)), checkNode)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("Should not delete nodes belonging to a different NodeSet", func() {
+			By("Setup: NodeSet 'foo' with 1 pod, plus a node from NodeSet 'bar'")
+			nodeset = newNodeSet("foo", controller.Name, 1)
+			pod0 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			fooNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(pod0)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			otherNodeSet := newNodeSet("bar", controller.Name, 1)
+			otherPod := nodesetutils.NewNodeSetPod(otherNodeSet, controller, 0, "")
+			barNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To(nodesetutils.GetNodeName(otherPod)),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateDOWN}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithObjects(fooNode, barNode).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Delete orphans for NodeSet 'foo' only")
+			pods := []*corev1.Pod{pod0}
+			err := slurmcontrol.DeleteOrphanedNodes(ctx, nodeset, pods)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify bar's node was NOT deleted")
+			checkNode := &types.V0044Node{}
+			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(otherPod)), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Context("GetNodeDeadlines()", func() {
