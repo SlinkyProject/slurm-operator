@@ -7,6 +7,7 @@ import (
 	"context"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -648,13 +649,9 @@ func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *sli
 		podNodeNameSet.Insert(nodesetutils.GetNodeName(pod))
 	}
 
-	// Only consider Slurm nodes that belong to this NodeSet.
-	// Node names follow the pattern "<nodeset-name>-<ordinal>".
-	nodeNamePrefix := nodeset.Name + "-"
-
 	for _, node := range nodeList.Items {
 		nodeName := ptr.Deref(node.Name, "")
-		if nodeName == "" || !strings.HasPrefix(nodeName, nodeNamePrefix) {
+		if nodeName == "" || !isNodeFromNodeSet(nodeName, nodeset.Name) {
 			continue
 		}
 		if podNodeNameSet.Has(nodeName) {
@@ -668,6 +665,17 @@ func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *sli
 	}
 
 	return nil
+}
+
+func isNodeFromNodeSet(nodeName, nodesetName string) bool {
+	ordinal, found := strings.CutPrefix(nodeName, nodesetName+"-")
+	if !found || ordinal == "" {
+		return false
+	}
+
+	_, err := strconv.Atoi(ordinal)
+
+	return err == nil
 }
 
 func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {
