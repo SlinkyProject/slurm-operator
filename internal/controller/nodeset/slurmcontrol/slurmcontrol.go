@@ -649,9 +649,11 @@ func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *sli
 		podNodeNameSet.Insert(nodesetutils.GetNodeName(pod))
 	}
 
+	nodeNamePrefix := nodeNamePrefixForNodeSet(nodeset)
+
 	for _, node := range nodeList.Items {
 		nodeName := ptr.Deref(node.Name, "")
-		if nodeName == "" || !isNodeFromNodeSet(nodeName, nodeset.Name) {
+		if nodeName == "" || !isNodeFromNodeSet(nodeName, nodeNamePrefix) {
 			continue
 		}
 		if podNodeNameSet.Has(nodeName) {
@@ -667,8 +669,16 @@ func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *sli
 	return nil
 }
 
-func isNodeFromNodeSet(nodeName, nodesetName string) bool {
-	ordinal, found := strings.CutPrefix(nodeName, nodesetName+"-")
+func nodeNamePrefixForNodeSet(nodeset *slinkyv1beta1.NodeSet) string {
+	if h := nodeset.Spec.Template.PodSpecWrapper.Hostname; h != "" {
+		return h
+	}
+
+	return nodeset.Name + "-"
+}
+
+func isNodeFromNodeSet(nodeName, prefix string) bool {
+	ordinal, found := strings.CutPrefix(nodeName, prefix)
 	if !found || ordinal == "" {
 		return false
 	}

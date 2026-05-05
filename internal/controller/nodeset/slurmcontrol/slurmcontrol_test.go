@@ -462,6 +462,55 @@ var _ = Describe("SlurmControlInterface", func() {
 			err = sclient.Get(ctx, object.ObjectKey(nodesetutils.GetNodeName(otherPod)), checkNode)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("Should use hostname template prefix when set (matches real prod naming)", func() {
+			By("Setup: NodeSet with hostname template 'slinky-' (like prod)")
+			nodeset = newNodeSet("slurm-worker-slinky", controller.Name, 1)
+			nodeset.Spec.Template.PodSpecWrapper.Hostname = "slinky-"
+			pod0 := nodesetutils.NewNodeSetPod(nodeset, controller, 0, "")
+			Expect(nodesetutils.GetNodeName(pod0)).To(Equal("slinky-0"))
+
+			activeNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To("slinky-0"),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+				},
+			}
+			orphanNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To("slinky-99"),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateDOWN}),
+				},
+			}
+			unrelatedNode := &types.V0044Node{
+				V0044Node: api.V0044Node{
+					Name:  ptr.To("slinky-extra-0"),
+					State: ptr.To([]api.V0044NodeState{api.V0044NodeStateDOWN}),
+				},
+			}
+			sclient = fake.NewClientBuilder().WithObjects(activeNode, orphanNode, unrelatedNode).Build()
+			controllers := newSlurmClientMap(controller.Name, sclient)
+			slurmcontrol = NewSlurmControl(controllers)
+
+			By("Delete orphans — should delete slinky-99 but keep slinky-0 and slinky-extra-0")
+			pods := []*corev1.Pod{pod0}
+			err := slurmcontrol.DeleteOrphanedNodes(ctx, nodeset, pods)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify slinky-99 was deleted")
+			checkNode := &types.V0044Node{}
+			err = sclient.Get(ctx, object.ObjectKey("slinky-99"), checkNode)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Not Found"))
+
+			By("Verify slinky-0 still exists")
+			err = sclient.Get(ctx, object.ObjectKey("slinky-0"), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verify slinky-extra-0 still exists (not an integer ordinal)")
+			err = sclient.Get(ctx, object.ObjectKey("slinky-extra-0"), checkNode)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Context("GetNodeDeadlines()", func() {
