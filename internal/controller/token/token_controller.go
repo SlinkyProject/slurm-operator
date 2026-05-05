@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	flag.IntVar(&maxConcurrentReconciles, "token-workers", maxConcurrentReconciles, "Max concurrent workers for Restapi controller.")
+	flag.IntVar(&maxConcurrentReconciles, "token-workers", maxConcurrentReconciles, "Max concurrent workers for Token controller.")
 }
 
 var (
