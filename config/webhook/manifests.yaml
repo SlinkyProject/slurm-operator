@@ -11,9 +11,12 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /mutate--v1-binding
-  failurePolicy: Fail
+  failurePolicy: Ignore
   matchPolicy: Equivalent
   name: podsbinding-v1.kb.io
+  objectSelector:
+    matchLabels:
+      app.kubernetes.io/name: slurmd
   rules:
   - apiGroups:
     - ""

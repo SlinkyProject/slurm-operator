@@ -60,7 +60,7 @@ tests:
           path: webhooks[5].name
           value: token-v1beta1.kb.io
 
-  - it: should render MutatingWebhookConfiguration for pods/binding
+  - it: should render MutatingWebhookConfiguration for pods/binding with default failurePolicy Ignore
     documentSelector:
       path: kind
       value: MutatingWebhookConfiguration
@@ -80,13 +80,47 @@ tests:
           value: podsbinding-v1.kb.io
       - equal:
           path: webhooks[0].failurePolicy
-          value: Fail
+          value: Ignore
       - equal:
           path: webhooks[0].timeoutSeconds
           value: 10
       - equal:
           path: webhooks[0].rules[0].resources[0]
           value: pods/binding
+      - equal:
+          path: webhooks[0].objectSelector.matchLabels["app.kubernetes.io/name"]
+          value: slurmd
+
+  - it: should allow overriding podBinding failurePolicy to Fail
+    documentSelector:
+      path: kind
+      value: MutatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        timeoutSeconds: 10
+        podBinding:
+          failurePolicy: Fail
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - equal:
+          path: webhooks[0].failurePolicy
+          value: Fail
+
+  - it: should reject invalid podBinding failurePolicy value
+    set:
+      webhook:
+        enabled: true
+        podBinding:
+          failurePolicy: InvalidValue
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "webhook.podBinding.failurePolicy must be 'Fail' or 'Ignore'"
 
   - it: should include cert-manager annotations when certManager is enabled
     documentSelector:

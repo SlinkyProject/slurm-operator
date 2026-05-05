@@ -173,6 +173,13 @@ webhook:
   # -- Comma-separated list of namespaces the webhook will watch.
   # If empty, all namespaces are watched.
   namespaces: ""
+  # pods/binding webhook configurations.
+  podBinding:
+    # -- Set the failure policy for the pods/binding MutatingWebhook.
+    # "Ignore" (default) prevents cluster-wide scheduling outages if the webhook is unreachable.
+    # "Fail" ensures strict scheduling consistency for Slurm worker Pods.
+    # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+    failurePolicy: Ignore
 
 #
 # Cert-Manager certificate configurations.
