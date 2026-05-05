@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,6 +186,30 @@ func makePodHealthy(pod *corev1.Pod) *corev1.Pod {
 	}
 	pod.Status.Conditions = append(pod.Status.Conditions, podCond)
 	return pod
+}
+
+func extractSlurmdPreStopReason(pod *corev1.Pod) string {
+	for _, c := range pod.Spec.Containers {
+		if c.Name != labels.WorkerApp {
+			continue
+		}
+		if c.Lifecycle == nil || c.Lifecycle.PreStop == nil || c.Lifecycle.PreStop.Exec == nil {
+			return ""
+		}
+		cmd := strings.Join(c.Lifecycle.PreStop.Exec.Command, " ")
+		const marker = "reason='"
+		start := strings.Index(cmd, marker)
+		if start < 0 {
+			return ""
+		}
+		start += len(marker)
+		end := strings.Index(cmd[start:], "'")
+		if end < 0 {
+			return ""
+		}
+		return cmd[start : start+end]
+	}
+	return ""
 }
 
 func TestNodeSetReconciler_adoptOrphanRevisions(t *testing.T) {
@@ -2294,6 +2319,7 @@ func Test_syncPodUncordon(t *testing.T) {
 	nodeset := newNodeSet("foo", controller.Name, 2)
 	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+	pod.Spec.NodeName = "test-node"
 
 	type fields struct {
 		Client    client.Client
@@ -2304,12 +2330,15 @@ func Test_syncPodUncordon(t *testing.T) {
 		nodeset *slinkyv1beta1.NodeSet
 		pod     *corev1.Pod
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
+	type testCaseFields struct {
+		name                 string
+		fields               fields
+		args                 args
+		wantErr              bool
+		wantPodCordoned      bool
+		wantSlurmNodeDrained bool
+	}
+	tests := []testCaseFields{
 		{
 			name: "success - pod uncordoned when node not cordoned",
 			fields: fields{
@@ -2348,7 +2377,9 @@ func Test_syncPodUncordon(t *testing.T) {
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
 			},
-			wantErr: false,
+			wantErr:              false,
+			wantPodCordoned:      false,
+			wantSlurmNodeDrained: false,
 		},
 		{
 			name: "skip - pod not uncordoned when node is cordoned",
@@ -2388,7 +2419,82 @@ func Test_syncPodUncordon(t *testing.T) {
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
 			},
-			wantErr: false,
+			wantErr:              false,
+			wantPodCordoned:      true,
+			wantSlurmNodeDrained: true,
+		},
+		func() testCaseFields {
+			preStopReason := extractSlurmdPreStopReason(pod)
+			return testCaseFields{
+				name: "success - pod uncordoned when slurm node was drained by our own preStop hook",
+				fields: fields{
+					Client: fake.NewFakeClient(
+						nodeset.DeepCopy(),
+						pod.DeepCopy(),
+					),
+					ClientMap: func() *clientmap.ClientMap {
+						nodeList := &slurmtypes.V0044NodeList{
+							Items: []slurmtypes.V0044Node{
+								{
+									V0044Node: slurmapi.V0044Node{
+										Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+										State: ptr.To([]slurmapi.V0044NodeState{
+											slurmapi.V0044NodeStateDOWN,
+											slurmapi.V0044NodeStateDRAIN,
+										}),
+										Reason: ptr.To(preStopReason),
+									},
+								},
+							},
+						}
+						sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+						return newClientMap(controller.Name, sclient)
+					}(),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: nodeset.DeepCopy(),
+					pod:     pod.DeepCopy(),
+				},
+				wantErr:              false,
+				wantPodCordoned:      false,
+				wantSlurmNodeDrained: false,
+			}
+		}(),
+		{
+			name: "skip - pod not uncordoned when slurm node reason is externally-set",
+			fields: fields{
+				Client: fake.NewFakeClient(
+					nodeset.DeepCopy(),
+					pod.DeepCopy(),
+				),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{
+						Items: []slurmtypes.V0044Node{
+							{
+								V0044Node: slurmapi.V0044Node{
+									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+									State: ptr.To([]slurmapi.V0044NodeState{
+										slurmapi.V0044NodeStateIDLE,
+										slurmapi.V0044NodeStateDRAIN,
+									}),
+									Reason: ptr.To("manual cluster admin drain"),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     pod.DeepCopy(),
+			},
+			wantErr:              false,
+			wantPodCordoned:      true,
+			wantSlurmNodeDrained: true,
 		},
 	}
 	for _, tt := range tests {
@@ -2396,6 +2502,22 @@ func Test_syncPodUncordon(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
 			if err := r.syncPodUncordon(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
 				t.Errorf("syncPodUncordon() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			gotPod := &corev1.Pod{}
+			if err := tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
+				t.Fatalf("Get() pod failed: %v", err)
+			}
+			if got := podutils.IsPodCordon(gotPod); got != tt.wantPodCordoned {
+				t.Errorf("pod cordon state after syncPodUncordon() = %v, want %v", got, tt.wantPodCordoned)
+			}
+
+			gotDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if err != nil {
+				t.Fatalf("IsNodeDrain() failed: %v", err)
+			}
+			if gotDrain != tt.wantSlurmNodeDrained {
+				t.Errorf("slurm node DRAIN state after syncPodUncordon() = %v, want %v", gotDrain, tt.wantSlurmNodeDrained)
 			}
 		})
 	}
