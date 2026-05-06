@@ -1,0 +1,208 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test partitions
+templates:
+  - controller/controller-cr.yaml
+  - nodeset/nodeset-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  # --- Global partitions (Controller extraConf) ---
+  - it: should render default partition line in controller extraConf
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        all:
+          enabled: true
+          nodesets:
+            - ALL
+          config: null
+          configMap:
+            State: UP
+            Default: "YES"
+            MaxTime: UNLIMITED
+    asserts:
+      - matchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=all
+      - matchRegex:
+          path: spec.extraConf
+          pattern: Nodes=ALL
+      - matchRegex:
+          path: spec.extraConf
+          pattern: State=UP
+
+  - it: should append a custom partition with explicit nodesets to extraConf
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        all:
+          enabled: true
+          nodesets:
+            - ALL
+          config: null
+          configMap:
+            State: UP
+            Default: "YES"
+            MaxTime: UNLIMITED
+        gpu:
+          enabled: true
+          nodesets:
+            - slinky
+          config: MaxTime=1:00:00
+          configMap: {}
+    asserts:
+      - matchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=all
+      - matchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=gpu
+      - matchRegex:
+          path: spec.extraConf
+          pattern: Nodes=slinky
+      - matchRegex:
+          path: spec.extraConf
+          pattern: MaxTime=1:00:00
+
+  - it: should build partition options from configMap when config is unset
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        custom:
+          enabled: true
+          nodesets:
+            - slinky
+          config: null
+          configMap:
+            MaxNodes: "32"
+            State: UP
+    asserts:
+      - matchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=custom
+      - matchRegex:
+          path: spec.extraConf
+          pattern: MaxNodes=32
+      - matchRegex:
+          path: spec.extraConf
+          pattern: State=UP
+
+  - it: should not include disabled partitions in extraConf
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        all:
+          enabled: false
+          nodesets:
+            - ALL
+          config: null
+          configMap: {}
+        active:
+          enabled: true
+          nodesets:
+            - slinky
+          config: null
+          configMap:
+            State: UP
+    asserts:
+      - notMatchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=all
+      - matchRegex:
+          path: spec.extraConf
+          pattern: PartitionName=active
+      - matchRegex:
+          path: spec.extraConf
+          pattern: Nodes=slinky
+
+  - it: should fail when partition references an unknown nodeset
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        bad:
+          enabled: true
+          nodesets:
+            - does-not-exist
+          config: null
+          configMap: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: referencing nodeset .* that does not exist
+
+  - it: should fail when partition has no nodesets
+    template: controller/controller-cr.yaml
+    set:
+      partitions:
+        empty:
+          enabled: true
+          nodesets: []
+          config: null
+          configMap: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: must contain at least one NodeSet
+
+  # --- Per-NodeSet partition (NodeSet CR) ---
+  - it: should set nodeset partition enabled with raw config string
+    template: nodeset/nodeset-cr.yaml
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          partition:
+            enabled: true
+            config: MaxNodes=4 State=UP
+    asserts:
+      - equal:
+          path: spec.partition.enabled
+          value: true
+      - equal:
+          path: spec.partition.config
+          value: MaxNodes=4 State=UP
+
+  - it: should set nodeset partition config from configMap when config string is empty
+    template: nodeset/nodeset-cr.yaml
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          partition:
+            enabled: true
+            config: null
+            configMap:
+              MaxNodes: "8"
+              State: DRAIN
+    asserts:
+      - equal:
+          path: spec.partition.enabled
+          value: true
+      - equal:
+          path: spec.partition.config
+          value: MaxNodes=8 State=DRAIN
+
+  - it: should omit spec.partition when nodeset partition is null
+    template: nodeset/nodeset-cr.yaml
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          partition: null
+    asserts:
+      - notExists:
+          path: spec.partition
+
+  - it: should default partition disabled in rendered NodeSet
+    template: nodeset/nodeset-cr.yaml
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.partition.enabled
+          value: false

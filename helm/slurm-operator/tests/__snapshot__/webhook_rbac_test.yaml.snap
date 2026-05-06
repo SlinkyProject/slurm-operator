@@ -28,22 +28,11 @@ manifest should match snapshot:
       namespace: test-namespace
     rules:
       - apiGroups:
-          - slinky.slurm.net
-        resources:
-          - accountings
-          - controllers
-          - loginsets
-          - nodesets
-          - restapis
-          - tokens
-        verbs:
-          - create
-          - delete
-          - update
-      - apiGroups:
           - ""
         resources:
           - configmaps
+          - nodes
+          - pods/binding
         verbs:
           - get
           - list
@@ -54,7 +43,6 @@ manifest should match snapshot:
           - events
         verbs:
           - create
-          - delete
           - get
           - list
           - patch
@@ -71,23 +59,27 @@ manifest should match snapshot:
           - update
           - watch
       - apiGroups:
-          - ""
-        resources:
-          - nodes
-          - pods/binding
-        verbs:
-          - get
-          - list
-          - watch
-      - apiGroups:
           - coordination.k8s.io
         resources:
           - leases
         verbs:
-          - get
           - create
-          - update
+          - get
           - patch
+          - update
+      - apiGroups:
+          - slinky.slurm.net
+        resources:
+          - accountings
+          - controllers
+          - loginsets
+          - nodesets
+          - restapis
+          - tokens
+        verbs:
+          - create
+          - delete
+          - update
   3: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding

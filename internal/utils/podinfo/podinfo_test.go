@@ -13,9 +13,11 @@ import (
 
 func TestPodInfo_Equal(t *testing.T) {
 	type fields struct {
-		Namespace string
-		PodName   string
-		Node      string
+		Namespace   string
+		PodName     string
+		Node        string
+		NodeSetName string
+		NodeSetUID  string
 	}
 	type args struct {
 		cmp PodInfo
@@ -37,13 +39,17 @@ func TestPodInfo_Equal(t *testing.T) {
 		{
 			name: "Populated",
 			fields: fields{
-				Namespace: corev1.NamespaceDefault,
-				PodName:   "foo",
+				Namespace:   corev1.NamespaceDefault,
+				PodName:     "foo",
+				NodeSetName: "foo",
+				NodeSetUID:  "uid-foo",
 			},
 			args: args{
 				cmp: PodInfo{
-					Namespace: corev1.NamespaceDefault,
-					PodName:   "foo",
+					Namespace:   corev1.NamespaceDefault,
+					PodName:     "foo",
+					NodeSetName: "foo",
+					NodeSetUID:  "uid-foo",
 				},
 			},
 			want: true,
@@ -87,12 +93,47 @@ func TestPodInfo_Equal(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "Mismatch NodeSetName",
+			fields: fields{
+				Namespace:   corev1.NamespaceDefault,
+				PodName:     "foo",
+				NodeSetName: "foo",
+			},
+			args: args{
+				cmp: PodInfo{
+					Namespace:   corev1.NamespaceDefault,
+					PodName:     "foo",
+					NodeSetName: "bar",
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Mismatch NodeSetUID",
+			fields: fields{
+				Namespace:  corev1.NamespaceDefault,
+				PodName:    "foo",
+				NodeSetUID: "uid-foo",
+			},
+			args: args{
+				cmp: PodInfo{
+					Namespace:  corev1.NamespaceDefault,
+					PodName:    "foo",
+					NodeSetUID: "uid-bar",
+				},
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			podInfo := &PodInfo{
-				Namespace: tt.fields.Namespace,
-				PodName:   tt.fields.PodName,
+				Namespace:   tt.fields.Namespace,
+				PodName:     tt.fields.PodName,
+				Node:        tt.fields.Node,
+				NodeSetName: tt.fields.NodeSetName,
+				NodeSetUID:  tt.fields.NodeSetUID,
 			}
 			if got := podInfo.Equal(tt.args.cmp); got != tt.want {
 				t.Errorf("PodInfo.Equal() = %v, want %v", got, tt.want)
@@ -103,9 +144,11 @@ func TestPodInfo_Equal(t *testing.T) {
 
 func TestPodInfo_ToString(t *testing.T) {
 	type fields struct {
-		Namespace string
-		PodName   string
-		Node      string
+		Namespace   string
+		PodName     string
+		Node        string
+		NodeSetName string
+		NodeSetUID  string
 	}
 	tests := []struct {
 		name   string
@@ -120,19 +163,23 @@ func TestPodInfo_ToString(t *testing.T) {
 		{
 			name: "Populated",
 			fields: fields{
-				Namespace: corev1.NamespaceDefault,
-				PodName:   "foo",
-				Node:      "bar",
+				Namespace:   corev1.NamespaceDefault,
+				PodName:     "foo",
+				Node:        "bar",
+				NodeSetName: "foo-nodeset",
+				NodeSetUID:  "uid-foo",
 			},
-			want: `{"namespace":"default","podName":"foo","node":"bar"}`,
+			want: `{"namespace":"default","podName":"foo","node":"bar","nodeSetName":"foo-nodeset","nodeSetUID":"uid-foo"}`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			podInfo := &PodInfo{
-				Namespace: tt.fields.Namespace,
-				PodName:   tt.fields.PodName,
-				Node:      tt.fields.Node,
+				Namespace:   tt.fields.Namespace,
+				PodName:     tt.fields.PodName,
+				Node:        tt.fields.Node,
+				NodeSetName: tt.fields.NodeSetName,
+				NodeSetUID:  tt.fields.NodeSetUID,
 			}
 			if got := podInfo.ToString(); got != tt.want {
 				t.Errorf("PodInfo.ToString() = %v, want %v", got, tt.want)
@@ -173,17 +220,21 @@ func TestParseIntoPodInfo(t *testing.T) {
 		{
 			name: "Overwrite PodInfo",
 			args: args{
-				str: ptr.To(`{"namespace":"default","podName":"foo","node":"foo"}`),
+				str: ptr.To(`{"namespace":"default","podName":"foo","node":"foo","nodeSetName":"foo-nodeset","nodeSetUID":"uid-foo"}`),
 				out: &PodInfo{
-					Namespace: "baz",
-					PodName:   "bar",
-					Node:      "bar",
+					Namespace:   "baz",
+					PodName:     "bar",
+					Node:        "bar",
+					NodeSetName: "bar-nodeset",
+					NodeSetUID:  "uid-bar",
 				},
 			},
 			want: &PodInfo{
-				Namespace: "default",
-				PodName:   "foo",
-				Node:      "foo",
+				Namespace:   "default",
+				PodName:     "foo",
+				Node:        "foo",
+				NodeSetName: "foo-nodeset",
+				NodeSetUID:  "uid-foo",
 			},
 			wantErr: false,
 		},

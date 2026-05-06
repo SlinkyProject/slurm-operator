@@ -377,7 +377,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
 				pod: func() *corev1.Pod {
-					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "")
+					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "", "")
 					pod.Name = "foo-abc123"
 					pod.Labels[slinkyv1beta1.LabelNodeSetPodName] = pod.Name
 					return pod
@@ -390,7 +390,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
 				pod: func() *corev1.Pod {
-					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("bar", ""), controller, "node-1", "")
+					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("bar", ""), controller, "node-1", "", "")
 					pod.Name = "bar-abc123"
 					pod.Labels[slinkyv1beta1.LabelNodeSetPodName] = pod.Name
 					return pod
@@ -403,7 +403,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
 				pod: func() *corev1.Pod {
-					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "")
+					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "", "")
 					pod.Name = "foo-abc123"
 					pod.Labels[slinkyv1beta1.LabelNodeSetPodName] = "bar-abc123"
 					return pod
@@ -447,8 +447,9 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	nodeset := newNodeSetDaemonset("foo", "")
 
 	type args struct {
-		nodeName     string
-		revisionHash string
+		nodeName         string
+		hostnameOverride string
+		revisionHash     string
 	}
 	tests := []struct {
 		name          string
@@ -462,6 +463,15 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 			args: args{
 				nodeName:     "node-1",
 				revisionHash: "",
+			},
+			checkIdentity: true,
+		},
+		{
+			name: "Uses hostname override when set",
+			args: args{
+				nodeName:         "node-1.example.com",
+				hostnameOverride: "custom-hostname",
+				revisionHash:     "",
 			},
 			checkIdentity: true,
 		},
@@ -492,12 +502,12 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pod := NewNodeSetDaemonSetPod(client, nodeset, controller, tt.args.nodeName, tt.args.revisionHash)
+			pod := NewNodeSetDaemonSetPod(client, nodeset, controller, tt.args.nodeName, tt.args.hostnameOverride, tt.args.revisionHash)
 			if pod == nil {
 				t.Fatal("NewNodeSetDaemonSetPod() returned nil")
 			}
 			if tt.checkIdentity {
-				wantHostname := getDaemonSetPodHostname(tt.args.nodeName)
+				wantHostname := GetDaemonSetPodHostname(tt.args.nodeName, tt.args.hostnameOverride)
 				if pod.GenerateName != nodeset.Name+"-" {
 					t.Errorf("GenerateName = %q, want %q", pod.GenerateName, nodeset.Name+"-")
 				}
@@ -548,7 +558,7 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	}
 }
 
-func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
+func TestNewNodeSetSimulatedPod(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
@@ -573,9 +583,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		}
 		nodeset.Spec.Template.PodSpecWrapper.Affinity = userAffinity
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-1")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-1")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeName != "node-1" {
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-1")
@@ -596,9 +606,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 	t.Run("Works without user affinity", func(t *testing.T) {
 		nodeset := newNodeSetDaemonset("foo", "")
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-2")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-2")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeName != "node-2" {
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-2")
@@ -609,9 +619,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		nodeset := newNodeSetDaemonset("foo", "")
 		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"disk": "ssd"}
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-3")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-3")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		if pod.Spec.NodeSelector["disk"] != "ssd" {
 			t.Errorf("nodeSelector not preserved: got %v", pod.Spec.NodeSelector)
@@ -624,9 +634,9 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 			{Key: "gpu", Operator: corev1.TolerationOpExists, Effect: corev1.TaintEffectNoSchedule},
 		}
 
-		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-4")
+		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-4")
 		if pod == nil {
-			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			t.Fatal("NewNodeSetSimulatedPod() returned nil")
 		}
 		found := false
 		for _, t := range pod.Spec.Tolerations {
@@ -643,9 +653,10 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 
 func TestGetDaemonSetPodHostname(t *testing.T) {
 	tests := []struct {
-		name     string
-		nodeName string
-		want     string
+		name             string
+		nodeName         string
+		hostnameOverride string
+		want             string
 	}{
 		{
 			name:     "Simple node name",
@@ -682,11 +693,23 @@ func TestGetDaemonSetPodHostname(t *testing.T) {
 			nodeName: "node-0.abc123.region.azure.internal-",
 			want:     "node-0",
 		},
+		{
+			name:             "Hostname override takes precedence over node name",
+			nodeName:         "node-1.example.com",
+			hostnameOverride: "custom-hostname",
+			want:             "custom-hostname",
+		},
+		{
+			name:             "Empty hostname override falls back to node name",
+			nodeName:         "node-1",
+			hostnameOverride: "",
+			want:             "node-1",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getDaemonSetPodHostname(tt.nodeName); got != tt.want {
-				t.Errorf("getDaemonSetPodHostname() = %q, want %q", got, tt.want)
+			if got := GetDaemonSetPodHostname(tt.nodeName, tt.hostnameOverride); got != tt.want {
+				t.Errorf("GetDaemonSetPodHostname() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -727,7 +750,7 @@ func TestIsStorageMatch(t *testing.T) {
 			name: "Match (Daemonset)",
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
-				pod:     NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", ""),
+				pod:     NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "", ""),
 			},
 			want: true,
 		},
@@ -735,7 +758,7 @@ func TestIsStorageMatch(t *testing.T) {
 			name: "Not Match (Daemonset)",
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
-				pod:     NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("bar", ""), controller, "node-1", ""),
+				pod:     NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("bar", ""), controller, "node-1", "", ""),
 			},
 			want: false,
 		},
@@ -744,7 +767,7 @@ func TestIsStorageMatch(t *testing.T) {
 			args: args{
 				nodeset: newNodeSetDaemonset("foo", ""),
 				pod: func() *corev1.Pod {
-					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "")
+					pod := NewNodeSetDaemonSetPod(fake.NewFakeClient(), newNodeSetDaemonset("foo", ""), controller, "node-1", "", "")
 					pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "node-2"
 					return pod
 				}(),

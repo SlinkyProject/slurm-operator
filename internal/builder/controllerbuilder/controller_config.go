@@ -169,7 +169,7 @@ func buildSlurmConf(
 ) string {
 	mergeConfig := map[string][]string{
 		"SlurmctldParameters": func() []string {
-			params := []string{"enable_configless"}
+			params := []string{"enable_configless", "reconfig_on_restart"}
 			if cgroupEnabled {
 				params = append(params, "enable_stepmgr")
 			}

@@ -24,15 +24,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - node
-  - pods/binding
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - nodes
   verbs:
   - get

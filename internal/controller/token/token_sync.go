@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -20,20 +19,10 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	jwt "github.com/golang-jwt/jwt/v5"
 )
-
-// Reasons for Token events
-const (
-	SyncSucceededReason = "SyncSucceeded"
-	SyncFailedReason    = "SyncFailed"
-)
-
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, token *slinkyv1beta1.Token) error
-}
 
 // Sync implements control logic for synchronizing a Token.
 func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error {
@@ -65,10 +54,10 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 		}
 	}
 
-	syncSteps := []SyncStep{
+	steps := []syncsteps.Step[*slinkyv1beta1.Token]{
 		{
 			Name: "Secret",
-			Sync: func(ctx context.Context, token *slinkyv1beta1.Token) error {
+			SyncFn: func(ctx context.Context, token *slinkyv1beta1.Token) error {
 				object, err := r.builder.BuildTokenSecret(token)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -81,7 +70,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 		},
 		{
 			Name: "Refresh",
-			Sync: func(ctx context.Context, token *slinkyv1beta1.Token) error {
+			SyncFn: func(ctx context.Context, token *slinkyv1beta1.Token) error {
 				if !ptr.Deref(token.Spec.Refresh, defaults.DefaultTokenRefresh) {
 					return nil
 				}
@@ -121,18 +110,13 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 		},
 	}
 
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, token); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(token, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			e := fmt.Errorf("failed %q step: %w", s.Name, err)
-			errs := []error{e}
-			if err := r.syncStatus(ctx, token); err != nil {
-				e := fmt.Errorf("failed status sync: %w", err)
-				errs = append(errs, e)
-			}
-			return utilerrors.NewAggregate(errs)
+	if err := syncsteps.Sync(ctx, r.eventRecorder, token, steps); err != nil {
+		errs := []error{err}
+		if err := r.syncStatus(ctx, token); err != nil {
+			e := fmt.Errorf("failed status syncFn: %w", err)
+			errs = append(errs, e)
 		}
+		return utilerrors.NewAggregate(errs)
 	}
 
 	return r.syncStatus(ctx, token)

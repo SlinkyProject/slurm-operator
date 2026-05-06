@@ -10,7 +10,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/set"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
@@ -131,6 +133,24 @@ func SplitActivePods(pods []*corev1.Pod, partition int) (pods1, pods2 []*corev1.
 	copy(pods2, pods[pivot:])
 
 	return pods1, pods2
+}
+
+// ExcludePods returns pods with any pod whose UID appears in exclude removed.
+func ExcludePods(pods, exclude []*corev1.Pod) []*corev1.Pod {
+	if len(exclude) == 0 {
+		return pods
+	}
+	excludeSet := make(set.Set[types.UID], len(exclude))
+	for _, p := range exclude {
+		excludeSet.Insert(p.UID)
+	}
+	result := make([]*corev1.Pod, 0, len(pods))
+	for _, p := range pods {
+		if !excludeSet.Has(p.UID) {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // PodsByCreationTimestamp sorts a list of Pods by creation timestamp, using their names as a tie breaker.

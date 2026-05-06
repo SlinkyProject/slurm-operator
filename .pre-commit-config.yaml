@@ -62,7 +62,7 @@ repos:
           - --offset=2
           - --preserve-quotes
           - --preserve_null
-        exclude: ^config/|^helm/.*/templates/
+        exclude: ^config/|^helm/.*/(files|templates)/
   - repo: https://github.com/pecigonzalo/pre-commit-shfmt
     rev: v2.2.0
     hooks:

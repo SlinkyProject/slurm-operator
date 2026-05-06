@@ -68,7 +68,7 @@ func (b *AccountingBuilder) accountingPodTemplate(accounting *slinkyv1beta1.Acco
 	ctx := context.TODO()
 	key := accounting.Key()
 
-	hashMap, err := b.getAccountingHashes(ctx, accounting)
+	hashMap, err := b.getHashes(ctx, accounting)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
@@ -204,8 +204,8 @@ const (
 	annotationSlurmdbdConfHash = slinkyv1beta1.SlinkyPrefix + "slurmdbd-conf-hash"
 )
 
-func (b *AccountingBuilder) getAccountingHashes(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
-	hashMap, err := b.getAuthHashesFromAccounting(ctx, accounting)
+func (b *AccountingBuilder) getHashes(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
+	hashMap, err := b.getAuthHashes(ctx, accounting)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (b *AccountingBuilder) getAccountingHashes(ctx context.Context, accounting 
 	return hashMap, nil
 }
 
-func (b *AccountingBuilder) getAuthHashesFromAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
+func (b *AccountingBuilder) getAuthHashes(ctx context.Context, accounting *slinkyv1beta1.Accounting) (map[string]string, error) {
 	authSlurm := &corev1.Secret{}
 	authSlurmKey := accounting.AuthSlurmKey()
 	if err := b.client.Get(ctx, authSlurmKey, authSlurm); err != nil {

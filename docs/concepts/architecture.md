@@ -129,11 +129,6 @@ The operator assumes each slurmd container is started as a
 [dynamic node][dynamic_nodes], so it can register with the controller without
 pre-defining the node in slurm.conf.
 
-When NodeSet pods are deleted, each pod’s pre-stop hook removes its node from
-the Slurm cluster (e.g. `scontrol delete nodename=...`). That avoids defunct or
-lingering node entries and keeps the controller’s node table within
-`MaxNodeCount`.
-
 ##### Dynamic Topology
 
 The operator ensures that each slurmd pod registers with the topology that

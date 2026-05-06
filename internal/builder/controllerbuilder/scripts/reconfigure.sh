@@ -26,6 +26,7 @@ function main() {
 	local newHash=""
 
 	echo "[$(date)] Start '$SLURM_DIR' polling"
+	lastHash="$(getHash)"
 	while true; do
 		newHash="$(getHash)"
 		if [ "$newHash" != "$lastHash" ]; then

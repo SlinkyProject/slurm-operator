@@ -1,6 +1,6 @@
 # slurm-operator
 
-![Version: 1.1.0-rc1](https://img.shields.io/badge/Version-1.1.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
+![Version: 1.2.0-rc1](https://img.shields.io/badge/Version-1.2.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 25.11](https://img.shields.io/badge/AppVersion-25.11-informational?style=flat-square)
 
 Slurm Operator
 
@@ -22,7 +22,7 @@ Kubernetes: `>= 1.29.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../slurm-operator-crds | slurm-operator-crds | 1.1.0-rc1 |
+| file://../slurm-operator-crds | slurm-operator-crds | 1.2.0-rc1 |
 
 ## Values
 
@@ -63,6 +63,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.slurmclientWorkers | int | `2` | Set the max concurrent workers for the SlurmClient controller. |
 | operator.tokenWorkers | int | `4` | Set the max concurrent workers for the Token controller. |
 | operator.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
+| operator.topologySpreadConstraints | list | `[]` | Topology spread constraints for pod assignment. Prefer scheduling replicas across failure domains (nodes, zones, ...) when running in HA. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/ |
 | priorityClassName | string | `""` | Set the priority class to use. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass |
 | propagatedNodeConditions | list | `[]` | List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason. Ref: https://kubernetes.io/docs/reference/node/node-status/#condition |
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
@@ -83,4 +84,5 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.serviceAccount.name | string | `""` | Set the service account to use (and create). |
 | webhook.timeoutSeconds | int | `10` | Set the timeout period for calls. |
 | webhook.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
+| webhook.topologySpreadConstraints | list | `[]` | Topology spread constraints for pod assignment. Prefer scheduling replicas across failure domains (nodes, zones, ...) when running in HA. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/ |
 

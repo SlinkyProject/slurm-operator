@@ -12,10 +12,11 @@ import (
 
 // Default values for NodeSet Spec fields when unspecified.
 const (
-	DefaultNodeSetReplicas                     int32                                   = 1
-	DefaultNodeSetWorkloadDisruptionProtection bool                                    = true
-	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType           = slinkyv1beta1.ScalingModeStatefulset
-	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+	DefaultNodeSetReplicas                     int32                                         = 1
+	DefaultNodeSetWorkloadDisruptionProtection bool                                          = true
+	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType                 = slinkyv1beta1.ScalingModeStatefulset
+	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType       = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+	DefaultNodeSetPruneSlurmNodeRecordType     slinkyv1beta1.NodeSetPruneSlurmNodeRecordType = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
 )
 
 // Default values for NodeSet Spec fields when unspecified.
@@ -57,5 +58,9 @@ func SetNodeSetDefaults(nodeset *slinkyv1beta1.NodeSet) {
 
 	if s.PersistentVolumeClaimRetentionPolicy.WhenScaled == "" {
 		s.PersistentVolumeClaimRetentionPolicy.WhenScaled = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
+	}
+
+	if s.PruneSlurmNodeRecords == "" {
+		s.PruneSlurmNodeRecords = DefaultNodeSetPruneSlurmNodeRecordType
 	}
 }

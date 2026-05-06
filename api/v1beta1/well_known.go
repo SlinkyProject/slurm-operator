@@ -39,6 +39,11 @@ const (
 	// AnnotationNodeTopologySpec indicates the Slurm dynamic topology line (e.g. "topo-switch:s2,topo-block:b2").
 	// Ref: https://slurm.schedmd.com/topology.html#dynamic_topo
 	AnnotationNodeTopologySpec = TopologyPrefix + "spec"
+
+	// AnnotationNodeHostnameOverride may be set to override the pod hostname assigned to NodeSet DaemonSet-mode
+	// pod scheduled on the node. When present, the value is used verbatim as the pod's spec.hostname
+	// (and therefore the Slurm node name) instead of the default derived from the node name.
+	AnnotationNodeHostnameOverride = NodeSetPrefix + "hostname-override"
 )
 
 // Well Known Labels

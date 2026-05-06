@@ -54,6 +54,16 @@ operator:
     # - key: key1
     #   operator: Exists
     #   effect: NoSchedule
+  # -- Topology spread constraints for pod assignment. Prefer scheduling replicas
+  # across failure domains (nodes, zones, ...) when running in HA.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+  topologySpreadConstraints: []
+    # - maxSkew: 1
+    #   topologyKey: topology.kubernetes.io/zone
+    #   whenUnsatisfiable: ScheduleAnyway
+    #   labelSelector:
+    #     matchLabels:
+    #       app.kubernetes.io/name: slurm-operator
   # -- The container resource limits and requests.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
   resources: {}
@@ -126,6 +136,16 @@ webhook:
     # - key: key1
     #   operator: Exists
     #   effect: NoSchedule
+  # -- Topology spread constraints for pod assignment. Prefer scheduling replicas
+  # across failure domains (nodes, zones, ...) when running in HA.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+  topologySpreadConstraints: []
+    # - maxSkew: 1
+    #   topologyKey: topology.kubernetes.io/zone
+    #   whenUnsatisfiable: ScheduleAnyway
+    #   labelSelector:
+    #     matchLabels:
+    #       app.kubernetes.io/name: slurm-operator-webhook
   # -- The container resource limits and requests.
   # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
   resources: {}

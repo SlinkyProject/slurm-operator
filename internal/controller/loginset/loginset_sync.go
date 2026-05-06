@@ -17,13 +17,9 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
-
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error
-}
 
 // Sync implements control logic for synchronizing a Cluster.
 func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) error {
@@ -53,10 +49,10 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		return fmt.Errorf("failed to get controller (%s): %w", controllerKey, err)
 	}
 
-	syncSteps := []SyncStep{
+	steps := []syncsteps.Step[*slinkyv1beta1.LoginSet]{
 		{
 			Name: "SSH Host Keys",
-			Sync: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
 				object, err := r.builder.BuildLoginSshHostKeys(loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build object: %w", err)
@@ -69,7 +65,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		},
 		{
 			Name: "SSH Config",
-			Sync: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
 				object, err := r.builder.BuildLoginSshConfig(loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build object: %w", err)
@@ -82,7 +78,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		},
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
 				object, err := r.builder.BuildLoginService(loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build object: %w", err)
@@ -95,7 +91,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		},
 		{
 			Name: "Deployment",
-			Sync: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
 				object, err := r.builder.BuildLogin(loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
@@ -108,18 +104,13 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		},
 	}
 
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, loginset); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(loginset, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			e := fmt.Errorf("failed %q step: %w", s.Name, err)
-			errs := []error{e}
-			if err := r.syncStatus(ctx, loginset); err != nil {
-				e := fmt.Errorf("failed status sync: %w", err)
-				errs = append(errs, e)
-			}
-			return utilerrors.NewAggregate(errs)
+	if err := syncsteps.Sync(ctx, r.eventRecorder, loginset, steps); err != nil {
+		errs := []error{err}
+		if err := r.syncStatus(ctx, loginset); err != nil {
+			e := fmt.Errorf("failed status syncFSyncFn: %w", err)
+			errs = append(errs, e)
 		}
+		return utilerrors.NewAggregate(errs)
 	}
 
 	return r.syncStatus(ctx, loginset)

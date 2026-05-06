@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -16,13 +17,9 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
-
-type SyncStep struct {
-	Name string
-	Sync func(ctx context.Context, controller *slinkyv1beta1.Controller) error
-}
 
 // Sync implements control logic for synchronizing a Controller.
 func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) error {
@@ -44,10 +41,10 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		return nil
 	}
 
-	syncSteps := []SyncStep{
+	steps := []syncsteps.Step[*slinkyv1beta1.Controller]{
 		{
 			Name: "Service",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				if controller.Spec.External {
 					return nil
 				}
@@ -63,7 +60,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "Config",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				var object *corev1.ConfigMap
 				var err error
 				if controller.Spec.External {
@@ -82,7 +79,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "StatefulSet",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				if controller.Spec.External {
 					return nil
 				}
@@ -98,13 +95,28 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 		{
 			Name: "ServiceMonitor",
-			Sync: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
 				object, err := r.builder.BuildControllerServiceMonitor(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
 				}
 
 				if !controller.Spec.Metrics.Enabled || !controller.Spec.Metrics.ServiceMonitor.Enabled {
+					// Determine GVK for ServiceMonitor
+					serviceMonitor, err := r.GroupVersionKindFor(object.DeepCopy())
+					if err != nil {
+						return err
+					}
+
+					// Determine if the ServiceMonitor Kind is installed server-side
+					if _, err = r.RESTMapper().RESTMapping(serviceMonitor.GroupKind(), serviceMonitor.Version); err != nil {
+						if meta.IsNoMatchError(err) {
+							logger.Info("skipping sync of servicemonitor for controller because GVK is not recognized", "GVK", serviceMonitor)
+							return nil
+						}
+						return err
+					}
+
 					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, controller, object); err != nil {
 						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
 					}
@@ -119,18 +131,13 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 		},
 	}
 
-	for _, s := range syncSteps {
-		if err := s.Sync(ctx, controller); err != nil {
-			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(controller, nil, corev1.EventTypeWarning, SyncFailedReason, "Sync", msg)
-			e := fmt.Errorf("failed %q step: %w", s.Name, err)
-			errs := []error{e}
-			if err := r.syncStatus(ctx, controller); err != nil {
-				e := fmt.Errorf("failed status sync: %w", err)
-				errs = append(errs, e)
-			}
-			return utilerrors.NewAggregate(errs)
+	if err := syncsteps.Sync(ctx, r.eventRecorder, controller, steps); err != nil {
+		errs := []error{err}
+		if err := r.syncStatus(ctx, controller); err != nil {
+			e := fmt.Errorf("failed status syncFn: %w", err)
+			errs = append(errs, e)
 		}
+		return utilerrors.NewAggregate(errs)
 	}
 
 	return r.syncStatus(ctx, controller)

@@ -186,6 +186,10 @@ controller:
       # requests:
       #   cpu: 1
       #   memory: 1Gi
+  # -- Indicates how reconfigure is handled when Slurm configuration changes.
+  # When true, the reconfigure sidecar will do reconfigure inplace.
+  # When false, the pod will be recreated and reconfigure done only on startup.
+  inplaceReconfigure: false
   # Reconfigure container configurations.
   reconfigure:
     # -- (string \| object) The image to use.
@@ -653,11 +657,15 @@ nodesets:
     scalingMode: StatefulSet
     # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
     replicas: 1
+    # -- Pin pods to their initially assigned Kubernetes nodes.
+    pinToNode: false
     # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
     taintKubeNodes: false
     # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
     # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
     workloadDisruptionProtection: true
+    # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
+    pruneSlurmNodeRecords: Never
     # -- How many places to pad with zeroes when constructing the pod ordinal.
     ordinalPadding: 0
     # slurmd container configurations.

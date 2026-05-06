@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
@@ -436,6 +437,73 @@ func TestSplitActivePods(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.wantPods2Names, gotPods2Names); diff != "" {
 				t.Errorf("Sorted active pod names (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestExcludePods(t *testing.T) {
+	pod := func(name, uid string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name, UID: types.UID(uid)},
+		}
+	}
+	a := pod("a", "uid-a")
+	b := pod("b", "uid-b")
+	c := pod("c", "uid-c")
+
+	tests := []struct {
+		name      string
+		pods      []*corev1.Pod
+		exclude   []*corev1.Pod
+		wantNames []string
+	}{
+		{
+			name:      "nil inputs",
+			pods:      nil,
+			exclude:   nil,
+			wantNames: []string{},
+		},
+		{
+			name:      "empty exclude returns all pods",
+			pods:      []*corev1.Pod{a, b, c},
+			exclude:   nil,
+			wantNames: []string{"a", "b", "c"},
+		},
+		{
+			name:      "exclude subset",
+			pods:      []*corev1.Pod{a, b, c},
+			exclude:   []*corev1.Pod{b},
+			wantNames: []string{"a", "c"},
+		},
+		{
+			name:      "exclude all",
+			pods:      []*corev1.Pod{a, b, c},
+			exclude:   []*corev1.Pod{a, b, c},
+			wantNames: []string{},
+		},
+		{
+			name:      "exclude pod not in pods list is a no-op",
+			pods:      []*corev1.Pod{a, b},
+			exclude:   []*corev1.Pod{c},
+			wantNames: []string{"a", "b"},
+		},
+		{
+			name:      "input order is preserved",
+			pods:      []*corev1.Pod{c, a, b},
+			exclude:   []*corev1.Pod{a},
+			wantNames: []string{"c", "b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExcludePods(tt.pods, tt.exclude)
+			gotNames := make([]string, len(got))
+			for i := range got {
+				gotNames[i] = got[i].Name
+			}
+			if diff := cmp.Diff(tt.wantNames, gotNames); diff != "" {
+				t.Errorf("ExcludePods() names (-want,+got):\n%s", diff)
 			}
 		})
 	}

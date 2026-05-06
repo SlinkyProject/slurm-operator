@@ -43,8 +43,8 @@ manifest should match snapshot:
         verbs:
           - get
           - list
-          - watch
           - patch
+          - watch
       - apiGroups:
           - ""
         resources:
@@ -67,6 +67,15 @@ manifest should match snapshot:
           - patch
           - update
           - watch
+      - apiGroups:
+          - coordination.k8s.io
+        resources:
+          - leases
+        verbs:
+          - create
+          - get
+          - patch
+          - update
       - apiGroups:
           - events.k8s.io
         resources:
@@ -139,15 +148,6 @@ manifest should match snapshot:
           - get
           - patch
           - update
-      - apiGroups:
-          - coordination.k8s.io
-        resources:
-          - leases
-        verbs:
-          - get
-          - create
-          - update
-          - patch
   3: |
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding

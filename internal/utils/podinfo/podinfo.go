@@ -11,9 +11,11 @@ import (
 )
 
 type PodInfo struct {
-	Namespace string `json:"namespace"`
-	PodName   string `json:"podName"`
-	Node      string `json:"node"`
+	Namespace   string `json:"namespace"`
+	PodName     string `json:"podName"`
+	Node        string `json:"node"`
+	NodeSetName string `json:"nodeSetName,omitempty"`
+	NodeSetUID  string `json:"nodeSetUID,omitempty"`
 }
 
 func (podInfo *PodInfo) Equal(cmp PodInfo) bool {

@@ -163,6 +163,17 @@ tests:
               matchLabels:
                 foo: bar
 
+  - it: should set pinToNode
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          pinToNode: true
+    asserts:
+      - equal:
+          path: spec.pinToNode
+          value: true
+
   - it: should not use priority class
     set:
       priorityClass:
