@@ -347,6 +347,15 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 			fmt.Sprintf("NodeSet=%v", name),
 			fmt.Sprintf("Feature=%v", name),
 		}
+		// Include Gres= from ExtraConf so that slurmctld initializes GRES
+		// correctly on the CREATE path (first-time node registration).
+		// Without this, new DYNAMIC_NORM nodes get Gres=(null) because
+		// slurmctld falls back to the NodeSet definition, which has no Gres=.
+		for _, field := range strings.Fields(nodeset.Spec.ExtraConf) {
+			if strings.HasPrefix(strings.ToLower(field), "gres=") {
+				nodesetLine = append(nodesetLine, field)
+			}
+		}
 		nodesetLineRendered := strings.Join(nodesetLine, " ")
 		conf.AddProperty(config.NewPropertyRaw(nodesetLineRendered))
 		partition := nodeset.Spec.Partition

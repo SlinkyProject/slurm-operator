@@ -452,6 +452,26 @@ func Test_buildNodeSetConf(t *testing.T) {
 			want: "",
 		},
 		{
+			name: "gres-in-extraconf",
+			nodesetList: &slinkyv1beta1.NodeSetList{
+				Items: []slinkyv1beta1.NodeSet{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: metav1.NamespaceDefault,
+							Name:      "nodeset-gpu",
+						},
+						Spec: slinkyv1beta1.NodeSetSpec{
+							ExtraConf: "Gres=gpu:h100:8",
+							Partition: slinkyv1beta1.NodeSetPartition{
+								Enabled: false,
+							},
+						},
+					},
+				},
+			},
+			want: `NodeSet=nodeset-gpu Feature=nodeset-gpu Gres=gpu:h100:8`,
+		},
+		{
 			name: "non-empty",
 			nodesetList: &slinkyv1beta1.NodeSetList{
 				Items: []slinkyv1beta1.NodeSet{
