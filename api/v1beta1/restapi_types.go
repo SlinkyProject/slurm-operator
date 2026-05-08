@@ -4,6 +4,7 @@
 package v1beta1
 
 import (
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,6 +29,11 @@ type RestApiSpec struct {
 	// +default:=1
 	Replicas *int32 `json:"replicas,omitempty"`
 
+	// podDisruptionBudget configures a PodDisruptionBudget for the slurmrestd Deployment
+	// when replicas is greater than one and enabled is true (the default).
+	// +optional
+	PodDisruptionBudget *RestApiPodDisruptionBudget `json:"podDisruptionBudget,omitempty"`
+
 	// The slurmrestd container configuration.
 	// See corev1.Container spec.
 	// Ref: https://github.com/kubernetes/api/blob/master/core/v1/types.go#L2885
@@ -43,6 +49,22 @@ type RestApiSpec struct {
 	// Service defines a template for a Kubernetes Service object.
 	// +optional
 	Service ServiceSpec `json:"service,omitzero"`
+}
+
+// RestApiPodDisruptionBudget configures voluntary disruption protection for the Rest API Deployment.
+// It embeds policy/v1 PodDisruptionBudgetSpec so all standard PDB fields are supported (MinAvailable,
+// MaxUnavailable, UnhealthyPodEvictionPolicy, etc.). The operator sets spec.selector to match the
+// Rest API Deployment pods; any selector set here is overwritten during reconcile.
+// Ref: https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/pod-disruption-budget-v1/
+type RestApiPodDisruptionBudget struct {
+	// enabled controls whether a PodDisruptionBudget is reconciled while replicas is greater than one.
+	// When false, no PodDisruptionBudget is created. When unset or true, a PDB is reconciled whenever replicas > 1.
+	// +optional
+	// +kubebuilder:default:=true
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// +optional
+	policyv1.PodDisruptionBudgetSpec `json:",inline"`
 }
 
 // RestApiStatus defines the observed state of Restapi

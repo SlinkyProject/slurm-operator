@@ -14,6 +14,9 @@ manifest should match snapshot:
       controllerRef:
         name: test-release-slurm
         namespace: test-namespace
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
       replicas: 1
       service:
         metadata: {}

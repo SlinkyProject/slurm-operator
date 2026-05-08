@@ -22,6 +22,8 @@ spec:
   controllerRef:
     name: {{ include "slurm.fullname" . }}
     namespace: {{ include "slurm.namespace" . }}
+  podDisruptionBudget:
+    {{- toYaml .Values.restapi.podDisruptionBudget | nindent 4 }}
   replicas: {{ .Values.restapi.replicas }}
   slurmrestd:
     {{- $_ := set .Values.restapi.slurmrestd "imagePullPolicy" (get .Values.restapi.slurmrestd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
