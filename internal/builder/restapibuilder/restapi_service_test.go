@@ -14,6 +14,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestBuilder_BuildRestapiService_NodePort(t *testing.T) {
+	const want int32 = 30820
+	c := fake.NewClientBuilder().
+		WithObjects(&slinkyv1beta1.Controller{
+			ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		}).
+		Build()
+	restapi := &slinkyv1beta1.RestApi{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.RestApiSpec{
+			ControllerRef: slinkyv1beta1.ObjectReference{Name: "slurm"},
+			Service: slinkyv1beta1.ServiceSpec{
+				NodePort: int(want),
+			},
+		},
+	}
+	got, err := New(c).BuildRestapiService(restapi)
+	if err != nil {
+		t.Fatalf("BuildRestapiService() error = %v", err)
+	}
+	if got.Spec.Ports[0].NodePort != want {
+		t.Errorf("Ports[0].NodePort = %d, want %d", got.Spec.Ports[0].NodePort, want)
+	}
+}
+
 func TestBuilder_BuildRestapiService(t *testing.T) {
 	type fields struct {
 		client client.Client

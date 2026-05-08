@@ -32,6 +32,7 @@ func (b *AccountingBuilder) BuildAccountingService(accounting *slinkyv1beta1.Acc
 		Protocol:   corev1.ProtocolTCP,
 		Port:       common.DefaultPort(int32(spec.Port), common.SlurmdbdPort),
 		TargetPort: intstr.FromString(labels.AccountingApp),
+		NodePort:   int32(spec.NodePort),
 	}
 	opts.Ports = append(opts.Ports, port)
 

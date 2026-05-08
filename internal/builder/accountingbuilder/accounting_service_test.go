@@ -14,6 +14,38 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestBuilder_BuildAccountingService_NodePort(t *testing.T) {
+	const want int32 = 30819
+	c := fake.NewClientBuilder().
+		WithObjects(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "mariadb"},
+			Data:       map[string][]byte{"password": []byte("mariadb-password")},
+		}).
+		Build()
+	accounting := &slinkyv1beta1.Accounting{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.AccountingSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			StorageConfig: slinkyv1beta1.StorageConfig{
+				PasswordKeyRef: corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "mariadb"},
+					Key:                  "password",
+				},
+			},
+			Service: slinkyv1beta1.ServiceSpec{
+				NodePort: int(want),
+			},
+		},
+	}
+	got, err := New(c).BuildAccountingService(accounting)
+	if err != nil {
+		t.Fatalf("BuildAccountingService() error = %v", err)
+	}
+	if got.Spec.Ports[0].NodePort != want {
+		t.Errorf("Ports[0].NodePort = %d, want %d", got.Spec.Ports[0].NodePort, want)
+	}
+}
+
 func TestBuilder_BuildAccountingService(t *testing.T) {
 	type fields struct {
 		client client.Client
