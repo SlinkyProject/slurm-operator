@@ -244,11 +244,25 @@ func (r *NodeSetReconciler) sync(
 		return err
 	}
 
+	if err := r.syncOrphanedSlurmNodes(ctx, nodeset, pods); err != nil {
+		return err
+	}
+
 	if err := r.syncNodeSet(ctx, nodeset, pods, hash); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// syncOrphanedSlurmNodes removes Slurm node registrations that have no matching pod.
+// This handles ghost entries left behind when pods terminate without running PreStop.
+func (r *NodeSetReconciler) syncOrphanedSlurmNodes(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	return r.slurmControl.DeleteOrphanedNodes(ctx, nodeset, pods)
 }
 
 // syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.

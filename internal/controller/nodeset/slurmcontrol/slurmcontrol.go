@@ -7,6 +7,7 @@ import (
 	"context"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,6 +55,8 @@ type SlurmControlInterface interface {
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 	// DeleteNode removes a Slurm node registration by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
+	// DeleteOrphanedNodes removes Slurm node registrations that have no matching pod.
+	DeleteOrphanedNodes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) error
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
@@ -621,6 +624,68 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	}
 
 	return nil
+}
+
+// DeleteOrphanedNodes implements SlurmControlInterface.
+func (r *realSlurmControl) DeleteOrphanedNodes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do DeleteOrphanedNodes()")
+		return nil
+	}
+
+	nodeList := &slurmtypes.V0044NodeList{}
+	if err := slurmClient.List(ctx, nodeList); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	podNodeNameSet := set.New[string]()
+	for _, pod := range pods {
+		podNodeNameSet.Insert(nodesetutils.GetNodeName(pod))
+	}
+
+	nodeNamePrefix := nodeNamePrefixForNodeSet(nodeset)
+
+	for _, node := range nodeList.Items {
+		nodeName := ptr.Deref(node.Name, "")
+		if nodeName == "" || !isNodeFromNodeSet(nodeName, nodeNamePrefix) {
+			continue
+		}
+		if podNodeNameSet.Has(nodeName) {
+			continue
+		}
+		logger.Info("deleting orphaned slurm node (no matching pod)",
+			"nodeName", nodeName)
+		if err := r.DeleteNode(ctx, nodeset, nodeName); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func nodeNamePrefixForNodeSet(nodeset *slinkyv1beta1.NodeSet) string {
+	if h := nodeset.Spec.Template.PodSpecWrapper.Hostname; h != "" {
+		return h
+	}
+
+	return nodeset.Name + "-"
+}
+
+func isNodeFromNodeSet(nodeName, prefix string) bool {
+	ordinal, found := strings.CutPrefix(nodeName, prefix)
+	if !found || ordinal == "" {
+		return false
+	}
+
+	_, err := strconv.Atoi(ordinal)
+
+	return err == nil
 }
 
 func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {
