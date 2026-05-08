@@ -109,6 +109,14 @@ operator:
 webhook:
   # -- Enable the webhook.
   enabled: true
+  # Pod binding webhook configurations.
+  podBinding:
+    # -- List of namespaces to include for the pod binding webhook.
+    # When set, only pod bindings in these namespaces will be intercepted.
+    # This reduces the webhook's blast radius and prevents deadlocks during
+    # cluster reboot by limiting scope to namespaces where Slurm clusters run.
+    # Example: ["slurm", "slurm-prod"]
+    includedNamespaces: []
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.
