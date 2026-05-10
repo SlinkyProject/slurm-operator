@@ -100,6 +100,7 @@ clean: ## Clean executable files.
 	rm -rf "$(LOCALBIN)"
 	rm -rf vendor/
 	rm -f cover.out cover.html
+	rm -f "$(GOVULNCHECK_REPORT)"
 	rm -f *.tgz
 	rm -f $(BAKE_METADATA_FILE)
 	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
@@ -185,6 +186,9 @@ OPERATOR_SDK_VERSION ?= v1.42.0
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= latest
+# Written by `make govulncheck`: CSV (see file header comments). CI uploads as an artifact.
+GOVULNCHECK_REPORT ?= govulncheck-vulns.csv
+
 GOLANGCI_LINT_VERSION ?= v2.11.1
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.9
@@ -372,8 +376,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: govulncheck
-govulncheck: govulncheck-bin ## Run govulncheck
-	$(GOVULNCHECK) ./...
+govulncheck: govulncheck-bin ## Write $(GOVULNCHECK_REPORT); fail if a vulnerability has fixed_version.
+	@GOVULNCHECK='$(GOVULNCHECK)' ./hack/govulncheck-report.sh -o "$(GOVULNCHECK_REPORT)"
 
 # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
 .PHONY: golangci-lint
