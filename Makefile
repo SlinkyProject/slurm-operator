@@ -100,6 +100,7 @@ clean: ## Clean executable files.
 	rm -rf bin/
 	rm -rf vendor/
 	rm -f cover.out cover.html
+	rm -f "$(GOVULNCHECK_REPORT)"
 	rm -f *.tgz
 	rm -f $(BAKE_METADATA_FILE)
 	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
@@ -153,6 +154,7 @@ GOLANGCI_LINT_VERSION ?= v2.9.0
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.9
 COSIGN_VERSION ?= v2.4.1
+GOVULNCHECK_REPORT ?= govulncheck-vulns.csv
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
@@ -307,8 +309,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: govulncheck
-govulncheck: govulncheck-bin ## Run govulncheck
-	$(GOVULNCHECK) ./...
+govulncheck: govulncheck-bin ## Write $(GOVULNCHECK_REPORT); fail if a vulnerability has fixed_version.
+	@GOVULNCHECK='$(GOVULNCHECK)' ./hack/govulncheck-report.sh -o "$(GOVULNCHECK_REPORT)"
 
 # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
 .PHONY: golangci-lint
