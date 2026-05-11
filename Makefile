@@ -62,7 +62,7 @@ version-match: version ## Check if versions are consistent.
 .PHONY: all
 all: build ## Build slurm-operator.
 
-REGISTRY ?= slinky.slurm.net
+REGISTRY ?= togethercomputer
 BUILDER ?= project-v3-builder
 
 .PHONY: build
@@ -81,7 +81,8 @@ build-chart: ## Build charts.
 push: push-images push-charts ## Push OCI packages.
 
 .PHONY: push-images
-push-images: build-images ## Push container images.
+push-images: ## Build and push container images (single buildx bake --push).
+	- $(CONTAINER_TOOL) buildx create --name $(BUILDER)
 	REGISTRY=$(REGISTRY) VERSION=$(VERSION) $(CONTAINER_TOOL) buildx bake --builder=$(BUILDER) --push
 
 .PHONY: push-charts
