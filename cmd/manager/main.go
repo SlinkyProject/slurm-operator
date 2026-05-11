@@ -18,6 +18,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -55,6 +56,7 @@ type Flags struct {
 	metricsAddr          string
 	secureMetrics        bool
 	enableHTTP2          bool
+	namespace            string
 }
 
 func parseFlags(flags *Flags) {
@@ -81,6 +83,9 @@ func parseFlags(flags *Flags) {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&flags.namespace, "namespace", "",
+		"If set, the operator only watches Slinky resources in this namespace. "+
+			"Empty (the default) watches all namespaces.")
 	flag.Parse()
 }
 
@@ -107,7 +112,9 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	leaderElectionID := "0033bda7.slinky.slurm.net"
+
+	mgrOpts := ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
 			TLSOpts:     tlsOpts,
@@ -115,9 +122,19 @@ func main() {
 		},
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
-		LeaderElectionID:              "0033bda7.slinky.slurm.net",
+		LeaderElectionID:              leaderElectionID,
 		LeaderElectionReleaseOnCancel: true,
-	})
+	}
+
+	// Restrict informers to a single namespace and give the leader-election
+	// lock a unique name so multiple operator instances can coexist on the
+	// same cluster without racing over the same CRs.
+	if flags.namespace != "" {
+		mgrOpts.Cache.DefaultNamespaces = map[string]cache.Config{flags.namespace: {}}
+		mgrOpts.LeaderElectionID = leaderElectionID + "." + flags.namespace
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), mgrOpts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
