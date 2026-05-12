@@ -1,35 +1,36 @@
-# Build and push slurm-operator container images to Docker Hub.
+# Build and push slurm-operator container images to Docker Hub (1.0 line).
 #
 # Tagging:
-#   - push to main: togethercomputer/slurm-operator:<VERSION> (VERSION from ./VERSION, no suffix)
-#   - pull_request (same-repo only): ...:<VERSION>-dev-<short_sha> ; re-runs on every PR commit
+#   - push to slurm-1.0-together-changes: togethercomputer/slurm-operator:<VERSION> (from ./VERSION, no suffix)
+#   - pull_request (same-repo only): ...:<VERSION>-dev-<short_sha>
 #
-# Required repository secrets (see together-web dockerhub-release-tag, substrate-metadata deploy):
+# GitHub only evaluates workflows that exist on the ref being pushed. This file must live on
+# slurm-1.0-together-changes (not only on main), or pushes to that branch will not run any workflow.
+#
+# Required repository secrets:
 #   - DOCKERHUB_USERNAME
 #   - DOCKERHUB_TOKEN
-# Optional (private Go modules / togethercomputer forks):
-#   - ROBOT_GITHUB_TOKEN — git insteadOf for github.com/togethercomputer/ (same pattern as substrate-metadata)
-#
-# Fork PRs: build runs; push and Docker Hub login are skipped (no secrets on fork workflows).
-# CI avoids double image builds: no-push uses `make build` once; push uses `make build-chart` then a single `make push-images` (one bake --push).
+# Optional:
+#   - ROBOT_GITHUB_TOKEN
 
-name: Container images
+name: Container images v1.0
 
 on:
   pull_request:
     branches:
-      - main
+      - slurm-1.0-together-changes
   push:
     branches:
-      - main
+      - slurm-1.0-together-changes
   workflow_dispatch:
-
-concurrency:
-  group: container-images-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
 
 env:
   REGISTRY: togethercomputer
+  RELEASE_BRANCH: slurm-1.0-together-changes
+
+concurrency:
+  group: container-images-1.0-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   build-and-push:
@@ -40,7 +41,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # PRs: use the tip of the PR branch so the image tag matches the commit under review.
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
@@ -60,13 +60,15 @@ jobs:
 
       - name: Whether to push to Docker Hub
         id: should-push
+        env:
+          RELEASE_REF: refs/heads/${{ env.RELEASE_BRANCH }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "${RELEASE_REF}" ]; then
             echo "push=true" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "pull_request" ] && \
                [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
             echo "push=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.ref }}" = "${RELEASE_REF}" ]; then
             echo "push=true" >> "$GITHUB_OUTPUT"
           else
             echo "push=false" >> "$GITHUB_OUTPUT"
@@ -101,7 +103,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Push path: one bake (--push) only. Non-push: make build = build-images + build-chart (single bake).
       - name: Build (images + charts, no registry push)
         if: steps.should-push.outputs.push != 'true'
         run: make build VERSION="${{ steps.image-version.outputs.version }}"
