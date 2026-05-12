@@ -16,7 +16,10 @@ import (
 )
 
 func (b *LoginBuilder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (*corev1.Secret, error) {
-	keyPairRsa, err := crypto.NewKeyPair(crypto.WithType(crypto.KeyPairRsa))
+	keyPairRsa, err := crypto.NewKeyPair(
+		crypto.WithType(crypto.KeyPairRsa),
+		crypto.WithRsaLength(crypto.DefaultRsaBitLength),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create RSA key pair: %w", err)
 	}
