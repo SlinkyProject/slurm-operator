@@ -12,6 +12,15 @@ tests:
   - it: manifest should match snapshot
     asserts:
       - matchSnapshot: {}
+  - it: should add nodeSelector
+    set:
+      webhook:
+        nodeSelector:
+          kubernetes.io/os: linux
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["kubernetes.io/os"]
+          value: linux
   - it: should add affinity
     set:
       webhook:

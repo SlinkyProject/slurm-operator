@@ -45,6 +45,10 @@ operator:
     create: true
     # -- Set the service account to use (and create).
     name: ""
+  # -- Node label selector for pod assignment.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+    # kubernetes.io/os: linux
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
@@ -127,6 +131,10 @@ webhook:
     name: ""
   # -- Set the timeout period for calls.
   timeoutSeconds: 10
+  # -- Node label selector for pod assignment.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+    # kubernetes.io/os: linux
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
