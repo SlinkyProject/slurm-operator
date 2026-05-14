@@ -67,9 +67,14 @@ type KeyPair struct {
 	ellipticCurve elliptic.Curve
 }
 
+// DefaultRsaBitLength is the default RSA key length used when callers do
+// not pass WithRsaLength. 4096 bits provides a comfortable security
+// margin for SSH host keys well beyond NIST SP 800-57's 2030 horizon.
+const DefaultRsaBitLength = 4096
+
 func NewKeyPair(opts ...Option) (*KeyPair, error) {
 	o := &KeyPair{
-		bitLength:     1024,
+		bitLength:     DefaultRsaBitLength,
 		ellipticCurve: elliptic.P256(),
 		keyType:       KeyPairEd25519,
 	}
