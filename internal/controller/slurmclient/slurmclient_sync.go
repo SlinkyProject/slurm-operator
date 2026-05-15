@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,6 +21,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/restapibuilder"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 )
 
@@ -114,6 +116,11 @@ func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller
 		return "", nil
 	}
 
+	if len(restapiList.Items) > 1 {
+		logger.Info("Multiple RestApis bound to Controller, selecting oldest", "restApis", len(restapiList.Items))
+	}
+
+	sort.Sort(utils.RestapisByCreationTimestamp(restapiList.Items))
 	server := fmt.Sprintf("http://%s:%d", restapiList.Items[0].ServiceFQDNShort(), builder.SlurmrestdPort)
 	if val := os.Getenv("DEBUG"); val == "1" {
 		logger.Info("overriding restapi URL with localhost")
