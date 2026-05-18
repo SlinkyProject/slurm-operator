@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test notes
+templates:
+  - templates/NOTES.txt
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should render controller and restapi sections with default values
+    asserts:
+      - matchRegexRaw:
+          pattern: "The Slurm controller service:"
+      - matchRegexRaw:
+          pattern: "curl the Slurm restapi service:"
+  - it: should suppress controller and restapi sections when service.spec.type is None
+    set:
+      controller:
+        service:
+          spec:
+            type: None
+      restapi:
+        service:
+          spec:
+            type: None
+    asserts:
+      - notMatchRegexRaw:
+          pattern: "The Slurm controller service:"
+      - notMatchRegexRaw:
+          pattern: "curl the Slurm restapi service:"
