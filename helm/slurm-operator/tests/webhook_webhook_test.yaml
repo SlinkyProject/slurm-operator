@@ -80,7 +80,7 @@ tests:
           value: podsbinding-v1.kb.io
       - equal:
           path: webhooks[0].failurePolicy
-          value: Fail
+          value: Ignore
       - equal:
           path: webhooks[0].timeoutSeconds
           value: 10
@@ -156,3 +156,75 @@ tests:
       - equal:
           path: kind
           value: ValidatingWebhookConfiguration
+
+  - it: should apply default failurePolicy and matchPolicy to validating and mutating webhooks
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].failurePolicy
+          value: Fail
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].matchPolicy
+          value: Equivalent
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].failurePolicy
+          value: Ignore
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].matchPolicy
+          value: Equivalent
+
+  - it: should honor overridden validating and mutating failurePolicy and matchPolicy values
+    set:
+      webhook:
+        enabled: true
+        validating:
+          failurePolicy: Ignore
+          matchPolicy: Exact
+        mutating:
+          failurePolicy: Fail
+          matchPolicy: Exact
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].failurePolicy
+          value: Ignore
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].matchPolicy
+          value: Exact
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].failurePolicy
+          value: Fail
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].matchPolicy
+          value: Exact
