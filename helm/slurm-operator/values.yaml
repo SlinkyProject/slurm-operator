@@ -127,6 +127,17 @@ webhook:
     name: ""
   # -- Set the timeout period for calls.
   timeoutSeconds: 10
+  # -- Action taken when the admission webhook is unreachable or returns an error.
+  # Applied to every webhook entry in the generated ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+  # Default is "Ignore" so that an unavailable webhook (e.g. during rollout, eviction, or node drain) does
+  # not block unrelated cluster operations such as pod scheduling via the pods/binding mutating webhook.
+  # Set to "Fail" to require strict enforcement at the cost of cluster availability when the webhook is down.
+  # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+  failurePolicy: Ignore
+  # -- How the rules listed in the webhook are matched against incoming requests.
+  # Applied to every webhook entry in the generated ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+  # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy
+  matchPolicy: Equivalent
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}

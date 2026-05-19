@@ -64,8 +64,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-accounting
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -98,8 +98,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-controller
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -132,8 +132,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-loginset
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -166,8 +166,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-nodeset
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -200,8 +200,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-restapi
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -234,8 +234,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-token
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
@@ -273,8 +273,8 @@ webhooks:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /mutate--v1-binding
-    failurePolicy: Fail
-    matchPolicy: Equivalent
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
     rules:
       - apiGroups:
           - ""

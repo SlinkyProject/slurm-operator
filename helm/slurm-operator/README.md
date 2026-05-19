@@ -68,11 +68,13 @@ Kubernetes: `>= 1.29.0-0`
 | propagatedNodeConditions | list | `[]` | List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason. Ref: https://kubernetes.io/docs/reference/node/node-status/#condition |
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | webhook.enabled | bool | `true` | Enable the webhook. |
+| webhook.failurePolicy | string | `"Ignore"` | Action taken when the admission webhook is unreachable or returns an error. Applied to every webhook entry in the generated ValidatingWebhookConfiguration and MutatingWebhookConfiguration. Default is "Ignore" so that an unavailable webhook (e.g. during rollout, eviction, or node drain) does not block unrelated cluster operations such as pod scheduling via the pods/binding mutating webhook. Set to "Fail" to require strict enforcement at the cost of cluster availability when the webhook is down. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
 | webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
+| webhook.matchPolicy | string | `"Equivalent"` | How the rules listed in the webhook are matched against incoming requests. Applied to every webhook entry in the generated ValidatingWebhookConfiguration and MutatingWebhookConfiguration. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.namespaces | string | `""` | Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched. |
 | webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
