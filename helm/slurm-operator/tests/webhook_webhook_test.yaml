@@ -68,6 +68,8 @@ tests:
       webhook:
         enabled: true
         timeoutSeconds: 10
+        podBinding:
+          includedNamespaces: []
       certManager:
         enabled: false
         secretName: slurm-operator-webhook-ca
@@ -87,6 +89,36 @@ tests:
       - equal:
           path: webhooks[0].rules[0].resources[0]
           value: pods/binding
+      - notExists:
+          path: webhooks[0].objectSelector
+
+  - it: should include namespaceSelector with In operator when includedNamespaces is set
+    documentSelector:
+      path: kind
+      value: MutatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        podBinding:
+          includedNamespaces:
+            - slurm
+            - slurm-prod
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].key
+          value: kubernetes.io/metadata.name
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].operator
+          value: In
+      - contains:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].values
+          content: slurm
+      - contains:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].values
+          content: slurm-prod
 
   - it: should include cert-manager annotations when certManager is enabled
     documentSelector:

@@ -77,6 +77,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.namespaces | string | `""` | Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched. |
 | webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
 | webhook.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
+| webhook.podBinding.includedNamespaces | list | `[]` | List of namespaces to include for the pod binding webhook. When set, only pod bindings in these namespaces will be intercepted. This reduces the webhook's blast radius and prevents deadlocks during cluster reboot by limiting scope to namespaces where Slurm clusters run. Example: ["slurm", "slurm-prod"] |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.serverPort | int | `9443` | Set the port used for the webhook server |

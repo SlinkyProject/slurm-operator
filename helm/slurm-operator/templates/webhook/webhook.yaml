@@ -263,6 +263,14 @@ webhooks:
           values:
             - kube-system
             - {{ include "slurm-operator.namespace" . }}
+        {{- with .Values.webhook.podBinding.includedNamespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- range . }}
+            - {{ . }}
+            {{- end }}
+        {{- end }}
     admissionReviewVersions:
       - v1
     clientConfig:
