@@ -5,9 +5,7 @@ package slurmclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
@@ -40,15 +38,17 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	}
 	controllerKey := client.ObjectKeyFromObject(controller)
 
-	server, err := r.getRestApiServer(ctx, controller)
+	restapiList, err := r.refResolver.GetRestapisForController(ctx, controller)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			_ = r.ClientMap.Remove(controllerKey)
-			durationStore.Push(controllerKey.String(), 10*time.Second)
-			return nil
-		}
 		return err
 	}
+	if len(restapiList.Items) == 0 {
+		logger.Info("No RestApi bound to Controller, removing slurm client", "controller", controllerKey)
+		_ = r.ClientMap.Remove(controllerKey)
+		durationStore.Push(controllerKey.String(), 10*time.Second)
+		return nil
+	}
+	server := r.getRestApiServer(ctx, &restapiList.Items[0])
 
 	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, controller.AuthJwtRef(), controller.Namespace)
 	if err != nil {
@@ -106,22 +106,11 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	return nil
 }
 
-func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller *slinkyv1beta1.Controller) (string, error) {
-	logger := log.FromContext(ctx)
-
-	restapiList, err := r.refResolver.GetRestapisForController(ctx, controller)
-	if err != nil {
-		return "", err
-	}
-	if len(restapiList.Items) == 0 {
-		return "", errors.New(http.StatusText(http.StatusNotFound))
-	}
-
-	server := fmt.Sprintf("http://%s:%d", restapiList.Items[0].ServiceFQDNShort(), builder.SlurmrestdPort)
+func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, restapi *slinkyv1beta1.RestApi) string {
+	server := fmt.Sprintf("http://%s:%d", restapi.ServiceFQDNShort(), builder.SlurmrestdPort)
 	if val := os.Getenv("DEBUG"); val == "1" {
-		logger.Info("overriding restapi URL with localhost")
+		log.FromContext(ctx).Info("overriding restapi URL with localhost")
 		server = fmt.Sprintf("http://localhost:%d", builder.SlurmrestdPort)
 	}
-
-	return server, nil
+	return server
 }
