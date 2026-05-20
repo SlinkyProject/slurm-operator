@@ -127,6 +127,12 @@ webhook:
     name: ""
   # -- Set the timeout period for calls.
   timeoutSeconds: 10
+  # Cluster label selector for the podsbinding MutatingWebhook namespaceSelector.
+  clusterLabelSelector:
+    # -- Enable cluster label selector (`slinky.slurm.net/cluster Exists`) for the
+    # podsbinding MutatingWebhook namespaceSelector. When false, falls back to the
+    # original deny-list (`kubernetes.io/metadata.name NotIn [kube-system, ...]`).
+    enabled: true
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}

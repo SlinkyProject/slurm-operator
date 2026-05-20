@@ -1,0 +1,173 @@
+---
+suite: test namespace hook
+templates:
+  - cluster/namespace.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should render 4 documents (SA, ClusterRole, ClusterRoleBinding, Job)
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  - it: should not render when namespace.labels.enabled is false
+    set:
+      namespace:
+        labels:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ServiceAccount with hook annotations
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: kind
+          value: ServiceAccount
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-ns-labeler
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: should render ClusterRole with minimal permissions
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: kind
+          value: ClusterRole
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-ns-labeler
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: ""
+      - equal:
+          path: rules[0].resources[0]
+          value: namespaces
+      - equal:
+          path: rules[0].verbs[0]
+          value: get
+      - equal:
+          path: rules[0].verbs[1]
+          value: patch
+
+  - it: should render ClusterRoleBinding referencing SA and ClusterRole
+    documentIndex: 2
+    asserts:
+      - equal:
+          path: kind
+          value: ClusterRoleBinding
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - equal:
+          path: roleRef.name
+          value: test-release-slurm-ns-labeler
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+      - equal:
+          path: subjects[0].name
+          value: test-release-slurm-ns-labeler
+      - equal:
+          path: subjects[0].namespace
+          value: test-namespace
+
+  - it: should render Job with hook annotations
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: kind
+          value: Job
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-ns-labeler
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "0"
+
+  - it: should use default kubectl image
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "registry.k8s.io/kubectl:v1.30.2"
+
+  - it: should set security context
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 65532
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
+  - it: should include control-plane tolerations by default
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: node-role.kubernetes.io/control-plane
+      - equal:
+          path: spec.template.spec.tolerations[1].key
+          value: node-role.kubernetes.io/master
+
+  - it: should use command + args for kubectl patch
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: kubectl
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: patch
+      - equal:
+          path: spec.template.spec.containers[0].args[1]
+          value: namespace
+      - equal:
+          path: spec.template.spec.containers[0].args[3]
+          value: "--type=merge"
+      - equal:
+          path: spec.template.spec.containers[0].args[4]
+          value: "--patch"
+
+  - it: should use namespaceOverride when set
+    set:
+      namespaceOverride: custom-namespace
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: custom-namespace
+
+  - it: should use fullnameOverride for hook name and cluster label
+    set:
+      fullnameOverride: my-cluster
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-cluster-ns-labeler

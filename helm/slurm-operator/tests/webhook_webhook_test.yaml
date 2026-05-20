@@ -68,6 +68,8 @@ tests:
       webhook:
         enabled: true
         timeoutSeconds: 10
+        clusterLabelSelector:
+          enabled: true
       certManager:
         enabled: false
         secretName: slurm-operator-webhook-ca
@@ -87,6 +89,50 @@ tests:
       - equal:
           path: webhooks[0].rules[0].resources[0]
           value: pods/binding
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].key
+          value: kubernetes.io/metadata.name
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].operator
+          value: NotIn
+      - contains:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].values
+          content: kube-system
+      - contains:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].values
+          content: test-namespace
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].key
+          value: slinky.slurm.net/cluster
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1].operator
+          value: Exists
+
+  - it: should fall back to deny-list only when clusterLabelSelector is false
+    documentSelector:
+      path: kind
+      value: MutatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        timeoutSeconds: 10
+        clusterLabelSelector:
+          enabled: false
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].key
+          value: kubernetes.io/metadata.name
+      - equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].operator
+          value: NotIn
+      - contains:
+          path: webhooks[0].namespaceSelector.matchExpressions[0].values
+          content: kube-system
+      - notExists:
+          path: webhooks[0].namespaceSelector.matchExpressions[1]
 
   - it: should include cert-manager annotations when certManager is enabled
     documentSelector:

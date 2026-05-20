@@ -67,6 +67,7 @@ Kubernetes: `>= 1.29.0-0`
 | priorityClassName | string | `""` | Set the priority class to use. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass |
 | propagatedNodeConditions | list | `[]` | List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason. Ref: https://kubernetes.io/docs/reference/node/node-status/#condition |
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
+| webhook.clusterLabelSelector.enabled | bool | `true` | Enable cluster label selector (`slinky.slurm.net/cluster Exists`) for the podsbinding MutatingWebhook namespaceSelector. When false, falls back to the original deny-list (`kubernetes.io/metadata.name NotIn [kube-system, ...]`). |
 | webhook.enabled | bool | `true` | Enable the webhook. |
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
 | webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |

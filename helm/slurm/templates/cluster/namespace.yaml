@@ -1,0 +1,147 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- /*
+  --create-namespace and a chart-level kind: Namespace resource conflict on
+  fresh install: Helm creates the namespace first for its release Secret,
+  then the template tries to create the same namespace and gets
+  "already exists" (Helm uses create, not apply).
+  Instead, we use a pre-install/pre-upgrade hook Job that patches the
+  namespace with the required labels and Helm ownership metadata BEFORE
+  any chart resources are created. This guarantees the
+  slinky.slurm.net/cluster label exists before any pod binding webhook
+  evaluates the namespaceSelector.
+*/}}
+
+{{- if .Values.namespace.labels.enabled }}
+{{- $nsName := include "slurm.namespace" . }}
+{{- $fullName := include "slurm.fullname" . }}
+{{- $apiGroup := include "slurm.apiGroup" . }}
+{{- $hookName := printf "%s-ns-labeler" $fullName | trunc 63 | trimSuffix "-" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $hookName }}
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $hookName }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $hookName }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    {{- /* Prevent helm uninstall from cascade-deleting the entire namespace */}}
+    "helm.sh/resource-policy": keep
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $hookName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $hookName }}
+    namespace: {{ $nsName }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $hookName }}
+  namespace: {{ $nsName }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: 120
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $hookName }}
+    spec:
+      serviceAccountName: {{ $hookName }}
+      restartPolicy: Never
+      # Allow scheduling on control-plane nodes so the hook Job can run
+      # in single-node clusters where the only node carries the
+      # control-plane/master taint (e.g., kind, minikube, kubeadm single-node).
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: labeler
+          image: {{ include "format-image" .Values.namespace.hook.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - kubectl
+          args:
+            - patch
+            - namespace
+            - {{ $nsName }}
+            - --type=merge
+            - --patch
+            - |
+              {
+                "metadata": {
+                  "labels": {
+                    "{{ $apiGroup }}/cluster": "{{ $fullName }}",
+                    "app.kubernetes.io/managed-by": "Helm"
+                  },
+                  "annotations": {
+                    "meta.helm.sh/release-name": "{{ .Release.Name }}",
+                    "meta.helm.sh/release-namespace": "{{ .Release.Namespace }}"
+                  }
+                }
+              }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+{{- end }}

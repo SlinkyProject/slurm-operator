@@ -4,6 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{/*
+Define the API group
+*/}}
+{{- define "slurm.apiGroup" -}}
+{{- print "slinky.slurm.net" }}
+{{- end }}
+
+{{/*
 Define sssd.conf secret name
 */}}
 {{- define "slurm.sssdConf.name" -}}

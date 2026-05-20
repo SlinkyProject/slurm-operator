@@ -263,6 +263,10 @@ webhooks:
           values:
             - kube-system
             - {{ include "slurm-operator.namespace" . }}
+        {{- if .Values.webhook.clusterLabelSelector.enabled }}
+        - key: {{ include "slurm-operator.apiGroup" . }}/cluster
+          operator: Exists
+        {{- end }}{{- /* if .Values.webhook.clusterLabelSelector.enabled */}}
     admissionReviewVersions:
       - v1
     clientConfig:

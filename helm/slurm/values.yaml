@@ -9,6 +9,20 @@ fullnameOverride: null
 # -- Overrides the namespace of the release.
 namespaceOverride: null
 
+# Configure the namespace used by the Slurm cluster.
+namespace:
+  # Namespace label injection for the pod binding webhook namespaceSelector.
+  labels:
+    # -- Labels the namespace with `slinky.slurm.net/cluster` when true.
+    # Required for the pod binding webhook namespaceSelector.
+    enabled: true
+  # Pre-install/pre-upgrade hook that labels the namespace for the pod binding webhook.
+  hook:
+    # -- (string | object) The image to use for the namespace labeler hook job.
+    image:
+      repository: registry.k8s.io/kubectl
+      tag: "v1.30.2"
+
 # -- Toggle ASCII art in Helm installation notes.
 asciiArt: true
 
