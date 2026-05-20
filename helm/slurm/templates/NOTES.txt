@@ -63,7 +63,7 @@ ssh via the Slurm login ({{ $name }}) service:
 {{- end }}{{- /* $loginset.enabled */}}
 {{- end }}{{- /* range $key, $loginset := $.Values.loginsets */}}
 
-{{- if ne (.Values.controller | dig "service" "spec" "type" "None" | lower) ("None" | lower) }}
+{{- if ne (.Values.controller | dig "service" "spec" "type" "" | lower) ("None" | lower) }}
 
 The Slurm controller service:
   {{- if eq (.Values.controller | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) }}
@@ -78,9 +78,9 @@ The Slurm controller service:
 Learn more about slurmctld:
   - Overview: https://slurm.schedmd.com/slurmctld.html
   - Configless: https://slurm.schedmd.com/configless_slurm.html
-{{- end }}{{- /* if ne (.Values.controller | dig "service" "spec" "type" "None" | lower) ("None" | lower) */}}
+{{- end }}{{- /* if ne (.Values.controller | dig "service" "spec" "type" "" | lower) ("None" | lower) */}}
 
-{{- if ne (.Values.restapi | dig "service" "spec" "type" "None" | lower) ("None" | lower) }}
+{{- if ne (.Values.restapi | dig "service" "spec" "type" "" | lower) ("None" | lower) }}
 
 curl the Slurm restapi service:
   {{- if eq (.Values.restapi | dig "service" "spec" "type" "" | lower) ("LoadBalancer" | lower) }}
@@ -96,7 +96,7 @@ Learn more about slurmrestd:
   - Overview: https://slurm.schedmd.com/rest.html
   - Quickstart: https://slurm.schedmd.com/rest_quickstart.html
   - Documentation: https://slurm.schedmd.com/rest_api.html
-{{- end }}{{- /* if ne (.Values.restapi | dig "service" "spec" "type" "None" | lower) ("None" | lower) */}}
+{{- end }}{{- /* if ne (.Values.restapi | dig "service" "spec" "type" "" | lower) ("None" | lower) */}}
 
 Learn more about Slurm:
   - Overview: https://slurm.schedmd.com/overview.html
