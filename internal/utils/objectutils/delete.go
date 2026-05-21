@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -60,10 +61,10 @@ func DeleteObject(c client.Client, ctx context.Context, eventRecorder events.Eve
 
 	key := client.ObjectKeyFromObject(newObj)
 	if err := c.Get(ctx, key, oldObj); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("error getting %s: %w", key, err)
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			return nil
 		}
-		return nil
+		return fmt.Errorf("error getting %s: %w", key, err)
 	}
 
 	// If the object is being deleted, do not update it
