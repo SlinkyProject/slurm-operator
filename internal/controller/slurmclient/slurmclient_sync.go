@@ -5,9 +5,7 @@ package slurmclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
@@ -42,12 +40,11 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 
 	server, err := r.getRestApiServer(ctx, controller)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			_ = r.ClientMap.Remove(controllerKey)
-			durationStore.Push(controllerKey.String(), 10*time.Second)
-			return nil
-		}
 		return err
+	}
+	if server == "" {
+		_ = r.ClientMap.Remove(controllerKey)
+		return nil
 	}
 
 	signingKey, err := r.refResolver.GetSecretKeyRef(ctx, controller.AuthJwtRef(), controller.Namespace)
@@ -114,7 +111,7 @@ func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller
 		return "", err
 	}
 	if len(restapiList.Items) == 0 {
-		return "", errors.New(http.StatusText(http.StatusNotFound))
+		return "", nil
 	}
 
 	server := fmt.Sprintf("http://%s:%d", restapiList.Items[0].ServiceFQDNShort(), builder.SlurmrestdPort)
