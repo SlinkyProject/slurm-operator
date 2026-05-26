@@ -11,6 +11,7 @@
     - [Namespace-Scoped Watching](#namespace-scoped-watching)
     - [With CRDs As Subchart](#with-crds-as-subchart)
     - [Without cert-manager](#without-cert-manager)
+    - [With an Externally-Managed Webhook Certificate](#with-an-externally-managed-webhook-certificate)
   - [Slurm Cluster](#slurm-cluster)
     - [Controller Persistence](#controller-persistence)
     - [With Accounting](#with-accounting)
@@ -97,6 +98,142 @@ helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
   --set 'certManager.enabled=false' \
   --namespace=slinky --create-namespace
 ```
+
+> [!NOTE]
+> Without cert-manager, the chart generates a self-signed CA and serving
+> certificate via Helm's `genCA` / `genSignedCert` functions at render time.
+> The cert has no in-cluster rotation: every `helm upgrade` produces a new
+> CA + leaf and rewrites both the Secret and the webhook's `caBundle`,
+> which causes Secret churn on each release and a brief window where
+> in-flight admission requests may fail until the apiserver re-reads the
+> updated `caBundle`. For long-lived clusters prefer cert-manager or
+> `externalCertInjection`.
+
+### With an Externally-Managed Webhook Certificate
+
+If your organization issues TLS certificates from its own PKI (HashiCorp
+Vault PKI, AWS Private CA, an internal CA, [external-secrets], etc.), you
+can supply the webhook serving certificate as a pre-existing
+`kubernetes.io/tls` Secret. The chart will neither generate a certificate
+nor render any cert-manager resources, and rotation becomes the
+responsibility of your PKI tooling.
+
+Create the Secret in the release namespace before installing the chart. It
+must contain `tls.crt`, `tls.key`, and `ca.crt`, and the certificate's SANs
+must include both `<webhook-service>.<namespace>` and
+`<webhook-service>.<namespace>.svc` (default service name:
+`slurm-operator-webhook`).
+
+```sh
+kubectl create namespace slinky
+kubectl create secret tls slurm-operator-webhook-ca \
+  --namespace=slinky \
+  --cert=tls.crt --key=tls.key
+kubectl patch secret slurm-operator-webhook-ca \
+  --namespace=slinky \
+  --type=merge \
+  -p "{\"data\":{\"ca.crt\":\"$(base64 < ca.crt | tr -d '\n')\"}}"
+```
+
+Then install the chart with `certManager.enabled=false` and
+`externalCertInjection.enabled=true`:
+
+```sh
+helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
+  --set 'certManager.enabled=false' \
+  --set 'externalCertInjection.enabled=true' \
+  --set 'externalCertInjection.secretName=slurm-operator-webhook-ca' \
+  --namespace=slinky --create-namespace
+```
+
+The chart reads `ca.crt` from the Secret at install/upgrade time via Helm
+`lookup` and inlines it into every webhook's `clientConfig.caBundle`. When
+you rotate the certificate, run `helm upgrade` to refresh the `caBundle`.
+
+> [!WARNING]
+> `certManager.enabled=true` and `externalCertInjection.enabled=true` are
+> mutually exclusive (both would manage the same Secret). The chart will
+> fail at template time if you set both.
+
+> [!IMPORTANT]
+> `helm template` and `helm install --dry-run=client` cannot contact the
+> Kubernetes API, so `lookup` returns empty and the chart fails with
+> "Secret … was not found" even when the Secret exists. Use
+> `helm install --dry-run=server` to exercise the lookup. For GitOps
+> workflows that rely on `helm template` for diffs (helm-diff, ArgoCD,
+> Flux), use the webhook annotation pass-through described below instead.
+
+> [!NOTE]
+> When migrating from `certManager.enabled=true`, give the BYO Secret a
+> name distinct from the chart-managed one (`certManager.secretName`,
+> default `slurm-operator-webhook-ca`). Order of operations:
+>
+> 1. Create the BYO Secret under the new name in the release namespace.
+> 2. `helm upgrade` with `certManager.enabled=false`,
+>    `externalCertInjection.enabled=true`, and the new `secretName`.
+>    The webhook Pod rolls; expect a brief admission gap (seconds)
+>    while the new pod becomes ready — for webhooks with
+>    `failurePolicy: Fail` this means matched API writes are blocked
+>    during that window.
+> 3. After the rollout completes and the webhook is healthy, delete the
+>    old cert-manager Secret.
+>
+> Reusing the cert-manager Secret name is supported but risky: if the BYO
+> Secret has not yet been created on a fresh install, the Pod silently
+> mounts the stale cert-manager Secret. The chart cannot detect this; the
+> distinct-name workflow above avoids the race entirely.
+
+If you would rather have cert-manager's [cainjector] populate `caBundle`
+automatically from a Secret your PKI keeps refreshed (so `helm upgrade` is
+not needed for rotation), combine `externalCertInjection` with the webhook
+annotation pass-through. `externalCertInjection` makes the webhook pod
+mount the BYO Secret; the annotations make cainjector keep `caBundle` in
+sync with the same Secret's `ca.crt`.
+
+> [!IMPORTANT]
+> For cainjector to read a `ca.crt` from a `Secret` (the
+> `cert-manager.io/inject-ca-from-secret` annotation), the Secret MUST
+> carry the annotation `cert-manager.io/allow-direct-injection: "true"`.
+> Without it, cainjector silently refuses to inject and the chart-rendered
+> `caBundle` becomes the only source of truth. Add the annotation to your
+> BYO Secret (either at create time or via `kubectl annotate`) before
+> installing the chart.
+
+```sh
+kubectl create namespace slinky
+kubectl create secret tls slurm-operator-webhook-byo \
+  --namespace=slinky \
+  --cert=tls.crt --key=tls.key
+kubectl patch secret slurm-operator-webhook-byo \
+  --namespace=slinky \
+  --type=merge \
+  -p "{\"data\":{\"ca.crt\":\"$(base64 < ca.crt | tr -d '\n')\"}}"
+kubectl annotate secret slurm-operator-webhook-byo \
+  --namespace=slinky \
+  cert-manager.io/allow-direct-injection=true
+
+helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
+  --set 'certManager.enabled=false' \
+  --set 'externalCertInjection.enabled=true' \
+  --set 'externalCertInjection.secretName=slurm-operator-webhook-byo' \
+  --set 'webhook.validatingAnnotations.cert-manager\.io/inject-ca-from-secret=slinky/slurm-operator-webhook-byo' \
+  --set 'webhook.mutatingAnnotations.cert-manager\.io/inject-ca-from-secret=slinky/slurm-operator-webhook-byo' \
+  --namespace=slinky --create-namespace
+```
+
+This requires cert-manager (specifically `cainjector`) to be running in
+the cluster, but the chart still does not manage the certificate itself.
+The chart-rendered `caBundle` (read from the Secret via `lookup` at
+install time) and the cainjector-written `caBundle` will be identical on
+install; on rotation, cainjector keeps `caBundle` correct without a
+`helm upgrade`.
+
+> [!IMPORTANT]
+> Do not omit `externalCertInjection.enabled=true` and rely on the
+> annotations alone. Without it, the chart falls back to the self-signed
+> `genCA` mode and the webhook pod serves a chart-generated certificate
+> whose CA your PKI Secret does not match — the user's PKI is silently
+> ignored regardless of the cainjector annotation.
 
 ## Slurm Cluster
 
@@ -535,11 +672,13 @@ crw-rw-rw- 1 root root 509, 1 Apr 20 17:08 /dev/nvidia-caps-imex-channels/channe
 <!-- Links -->
 
 [autodetect]: https://slurm.schedmd.com/gres.conf.html#OPT_AutoDetect
+[cainjector]: https://cert-manager.io/docs/concepts/ca-injector/
 [cert-manager]: https://cert-manager.io/docs/installation/helm/
 [default-storageclass]: https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
 [device-plugins]: https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/#using-device-plugins
 [dra]: https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/
 [dra-driver-nvidia-gpu]: https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu
+[external-secrets]: https://external-secrets.io/
 [gres]: https://slurm.schedmd.com/gres.html
 [grestypes]: https://slurm.schedmd.com/slurm.conf.html#OPT_GresTypes
 [imex]: https://docs.nvidia.com/multi-node-nvlink-systems/imex-guide/overview.html

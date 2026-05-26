@@ -3,14 +3,18 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
+{{- include "slurm-operator.webhook.validateModes" . -}}
 {{- if .Values.webhook.enabled }}
-{{- $certNamespacedName := printf "%s/%s" (include "slurm-operator.namespace" .) .Values.certManager.secretName -}}
+{{- $caBundle := "" -}}
+{{- if .Values.externalCertInjection.enabled -}}
+{{- $caBundle = include "slurm-operator.webhook.externalCABundle" . -}}
+{{- else if not .Values.certManager.enabled -}}
 {{- $durationDays := int 3650 -}}
 {{- $ca := genCA .Values.certManager.secretName $durationDays -}}
-{{- if not .Values.certManager.enabled }}
 {{- $cn := (include "slurm-operator.webhook.name" .) -}}
 {{- $dnsList := list (printf "%s.%s" (include "slurm-operator.webhook.name" .) (include "slurm-operator.namespace" .)) (printf "%s.%s.svc" (include "slurm-operator.webhook.name" .) (include "slurm-operator.namespace" .)) -}}
 {{- $cert := genSignedCert $cn nil $dnsList $durationDays $ca -}}
+{{- $caBundle = $ca.Cert | b64enc -}}
 ---
 apiVersion: v1
 kind: Secret
@@ -24,17 +28,16 @@ data:
   tls.crt: {{ $cert.Cert | b64enc | quote }}
   tls.key: {{ $cert.Key | b64enc | quote }}
   ca.crt: {{ $ca.Cert | b64enc | quote }}
-{{- end }}{{- /* if not .Values.certManager.enabled */}}
+{{- end }}{{- /* mode selection */}}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ include "slurm-operator.webhook.name" . }}
-  {{- if .Values.certManager.enabled }}
+  {{- with include "slurm-operator.webhook.validatingAnnotations" . }}
   annotations:
-    certmanager.k8s.io/inject-ca-from: {{ $certNamespacedName | quote }}
-    cert-manager.io/inject-ca-from: {{ $certNamespacedName | quote }}
-  {{- end }}{{- /* if .Values.certManager.enabled */}}
+    {{- . | nindent 4 }}
+  {{- end }}{{- /* with include "slurm-operator.webhook.validatingAnnotations" . */}}
   labels:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 webhooks:
@@ -53,9 +56,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -87,9 +90,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -121,9 +124,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -155,9 +158,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -189,9 +192,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -223,9 +226,9 @@ webhooks:
           - UPDATE
         scope: Namespaced
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
@@ -248,11 +251,10 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: {{ include "slurm-operator.webhook.name" . }}
-  {{- if .Values.certManager.enabled }}
+  {{- with include "slurm-operator.webhook.mutatingAnnotations" . }}
   annotations:
-    certmanager.k8s.io/inject-ca-from: {{ $certNamespacedName | quote }}
-    cert-manager.io/inject-ca-from: {{ $certNamespacedName | quote }}
-  {{- end }}{{- /* if .Values.certManager.enabled */}}
+    {{- . | nindent 4 }}
+  {{- end }}{{- /* with include "slurm-operator.webhook.mutatingAnnotations" . */}}
   labels:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 webhooks:
@@ -262,9 +264,9 @@ webhooks:
     admissionReviewVersions:
       - v1
     clientConfig:
-      {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
-      {{- end }}{{- /* if not .Values.certManager.enabled */}}
+      {{- with $caBundle }}
+      caBundle: {{ . | quote }}
+      {{- end }}{{- /* with $caBundle */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
         name: {{ include "slurm-operator.webhook.name" . }}
