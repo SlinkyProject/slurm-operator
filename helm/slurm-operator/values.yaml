@@ -259,6 +259,12 @@ webhook:
   # -- Comma-separated list of namespaces the webhook will watch.
   # If empty, all namespaces are watched.
   namespaces: ""
+  # -- Extra annotations on the ValidatingWebhookConfiguration. Merged
+  # with chart-managed annotations; user keys win on collision.
+  validatingAnnotations: {}
+  # -- Extra annotations on the MutatingWebhookConfiguration. Merged
+  # with chart-managed annotations; user keys win on collision.
+  mutatingAnnotations: {}
 
 #
 # Cert-Manager certificate configurations.
@@ -271,6 +277,17 @@ certManager:
   duration: 43800h0m0s # 5 year
   # -- Certificate renewal time. Should be before the expiration.
   renewBefore: 8760h0m0s # 1 year
+
+#
+# External webhook certificate configurations.
+externalCertInjection:
+  # -- Mount a pre-existing TLS Secret instead of provisioning one.
+  enabled: false
+  # -- Name of a pre-existing kubernetes.io/tls Secret containing
+  # `tls.crt`, `tls.key`, and `ca.crt`. Must be set explicitly when
+  # `enabled` is true; intentionally has no default to avoid silently
+  # reusing the chart-managed Secret name during migrations.
+  secretName: ""
 
 # -- List of Kubernetes Node Conditions, by type, to propagate to the Slurm node drain reason.
 # Ref: https://kubernetes.io/docs/reference/node/node-status/#condition

@@ -440,3 +440,285 @@ tests:
           value:
             - name: rbac
               expression: 'request.resource.group != "rbac.authorization.k8s.io"'
+
+  - it: should include cert-manager annotations when certManager is enabled
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: true
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - exists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+
+  - it: should pass through validatingAnnotations
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        validatingAnnotations:
+          cert-manager.io/inject-ca-from-secret: vault-pki/webhook-ca
+          custom.example.com/owner: platform-team
+      certManager:
+        enabled: false
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: vault-pki/webhook-ca
+      - equal:
+          path: metadata.annotations["custom.example.com/owner"]
+          value: platform-team
+
+  - it: should pass through mutatingAnnotations
+    documentSelector:
+      path: kind
+      value: MutatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        podsBinding: true
+        mutatingAnnotations:
+          cert-manager.io/inject-ca-from-secret: vault-pki/webhook-ca
+      certManager:
+        enabled: false
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: vault-pki/webhook-ca
+
+  - it: should let user annotations override chart-managed cert-manager annotations
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        validatingAnnotations:
+          cert-manager.io/inject-ca-from: custom-ns/custom-cert
+      certManager:
+        enabled: true
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: custom-ns/custom-cert
+
+  - it: should omit annotations block when there are none
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+    asserts:
+      - notExists:
+          path: metadata.annotations
+
+  - it: should tolerate validatingAnnotations set to null
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        validatingAnnotations: null
+      certManager:
+        enabled: true
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - exists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+
+  - it: should tolerate mutatingAnnotations set to null
+    documentSelector:
+      path: kind
+      value: MutatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+        podsBinding: true
+        mutatingAnnotations: null
+      certManager:
+        enabled: true
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - exists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+
+  - it: should fail when both certManager and externalCertInjection are enabled
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: true
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    asserts:
+      - failedTemplate:
+          errorPattern: mutually exclusive
+
+  - it: should fail when externalCertInjection Secret is missing
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    asserts:
+      - failedTemplate:
+          errorPattern: was not found
+
+  - it: should fail when externalCertInjection.secretName is empty
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: externalCertInjection\.secretName is empty
+
+  - it: should inline caBundle from external Secret when externalCertInjection is enabled
+    documentSelector:
+      path: kind
+      value: ValidatingWebhookConfiguration
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    kubernetesProvider:
+      scheme:
+        v1/Secret:
+          gvr:
+            version: v1
+            resource: secrets
+          namespaced: true
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: my-byo-cert
+            namespace: test-namespace
+          type: kubernetes.io/tls
+          data:
+            tls.crt: dGxzLWNydA== # "tls-crt"
+            tls.key: dGxzLWtleQ== # "tls-key"
+            ca.crt: Y2EtY3J0 # "ca-crt"
+    asserts:
+      - notExists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+      - equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: Y2EtY3J0
+
+  - it: should not render TLS secret when externalCertInjection is enabled
+    documentIndex: 0
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    kubernetesProvider:
+      scheme:
+        v1/Secret:
+          gvr:
+            version: v1
+            resource: secrets
+          namespaced: true
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: my-byo-cert
+            namespace: test-namespace
+          type: kubernetes.io/tls
+          data:
+            tls.crt: dGxzLWNydA==
+            tls.key: dGxzLWtleQ==
+            ca.crt: Y2EtY3J0
+    asserts:
+      - equal:
+          path: kind
+          value: ValidatingWebhookConfiguration
+
+  - it: should fail when externalCertInjection Secret is not kubernetes.io/tls
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    kubernetesProvider:
+      scheme:
+        v1/Secret:
+          gvr:
+            version: v1
+            resource: secrets
+          namespaced: true
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: my-byo-cert
+            namespace: test-namespace
+          type: Opaque
+          data:
+            tls.crt: dGxzLWNydA==
+            tls.key: dGxzLWtleQ==
+            ca.crt: Y2EtY3J0
+    asserts:
+      - failedTemplate:
+          errorPattern: must be of type kubernetes\.io/tls
+
+  - it: should fail when externalCertInjection Secret is missing tls.key
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    kubernetesProvider:
+      scheme:
+        v1/Secret:
+          gvr:
+            version: v1
+            resource: secrets
+          namespaced: true
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: my-byo-cert
+            namespace: test-namespace
+          type: kubernetes.io/tls
+          data:
+            tls.crt: dGxzLWNydA==
+            ca.crt: Y2EtY3J0
+    asserts:
+      - failedTemplate:
+          errorPattern: is missing the "tls\.key" key
