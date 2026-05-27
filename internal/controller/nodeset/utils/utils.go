@@ -228,13 +228,28 @@ func updateNodeSetPodAntiAffinity(affinity *corev1.Affinity) *corev1.Affinity {
 	return affinity
 }
 
-// IsPodFromNodeSet returns if the name schema matches
+// IsPodFromNodeSet returns true if pod is controlled by nodeset, or if pod is an
+// orphan that matches nodeset's pod identity schema based on the nodeset's scaling mode.
 func IsPodFromNodeSet(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
-	found, err := regexp.MatchString(fmt.Sprintf("^%s-", nodeset.Name), pod.Name)
-	if err != nil {
+	if nodeset.Namespace != pod.Namespace {
 		return false
 	}
-	return found
+
+	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
+		return controllerRef.APIVersion == slinkyv1beta1.NodeSetAPIVersion &&
+			controllerRef.Kind == slinkyv1beta1.NodeSetKind &&
+			controllerRef.Name == nodeset.Name &&
+			controllerRef.UID == nodeset.UID
+	}
+
+	// StatefulSet orphan pods are identified by their parent name.
+	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		parent, ordinal := GetParentNameAndOrdinal(pod)
+		return ordinal >= 0 && parent == nodeset.Name
+	}
+
+	// DaemonSet orphan pods are identified by their GenerateName prefix.
+	return strings.TrimSuffix(pod.GenerateName, "-") == nodeset.Name
 }
 
 // GetOrdinal gets pod's ordinal. If pod has no ordinal, -1 is returned.
