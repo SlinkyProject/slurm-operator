@@ -51,16 +51,6 @@ spec:
           labelSelector:
             matchLabels:
               {{- include "slurm.login.selectorLabels" . | nindent 12 }}
-      initContainers:
-      - name: fix-perms
-        image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
-        command: ["sh", "-c", "set -e && cp /mnt/slurm/* /etc/slurm/ && chmod 644 /etc/slurm/*.conf && chmod 600 /etc/slurm/*.key && chown -R root:root /etc/slurm/"]
-        volumeMounts:
-        - name: slurm-config-projected
-          mountPath: /mnt/slurm
-          readOnly: true
-        - name: slurm-config
-          mountPath: /etc/slurm
       containers:
       - name: login
         image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"
@@ -103,18 +93,12 @@ spec:
           {{- end }}
         {{- end }}
       volumes:
-      - name: slurm-config
-        emptyDir: {}
-      - name: slurm-config-projected  # TCL-4402: projected volume, copied by initContainer with split permissions
+      - name: slurm-config 
         projected:
           defaultMode: 0600
           sources:
-          - configMap:
-              name: {{ include "slurm.fullname" . }}-config
           - secret:
               name: {{ include "slurm.fullname" . }}-auth-slurm
-          - secret:
-              name: {{ include "slurm.fullname" . }}-auth-jwths256
       {{- if .Values.login.sharedMemorySize }}
       - name: dshm
         emptyDir:
