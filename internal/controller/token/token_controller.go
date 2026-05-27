@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -33,7 +34,7 @@ const (
 )
 
 func init() {
-	flag.IntVar(&maxConcurrentReconciles, "token-workers", maxConcurrentReconciles, "Max concurrent workers for Restapi controller.")
+	flag.IntVar(&maxConcurrentReconciles, "token-workers", maxConcurrentReconciles, "Max concurrent workers for Token controller.")
 }
 
 var (
@@ -98,6 +99,9 @@ func (r *TokenReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&slinkyv1beta1.Token{}).
 		Owns(&corev1.Secret{}).
+		WithOptions(controller.Options{
+			MaxConcurrentReconciles: maxConcurrentReconciles,
+		}).
 		Complete(r)
 }
 
