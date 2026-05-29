@@ -78,6 +78,54 @@ tests:
           path: webhooks[0].timeoutSeconds
           value: 30
 
+  - it: should scope webhooks to configured namespaces
+    values:
+      - values/webhook_namespaces.yaml
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector.matchExpressions[0]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: In
+            values:
+              - slurm
+              - compute
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector.matchExpressions[1]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: In
+            values:
+              - slurm
+              - compute
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+              - test-namespace
+
   - it: should inject caBundle and render TLS secret when certManager is disabled
     set:
       certManager:

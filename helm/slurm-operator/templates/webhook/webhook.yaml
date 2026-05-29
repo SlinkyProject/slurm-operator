@@ -41,6 +41,13 @@ webhooks:
   - name: accounting-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -75,6 +82,13 @@ webhooks:
   - name: controller-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -109,6 +123,13 @@ webhooks:
   - name: loginset-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -143,6 +164,13 @@ webhooks:
   - name: nodeset-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -177,6 +205,13 @@ webhooks:
   - name: restapi-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -211,6 +246,13 @@ webhooks:
   - name: token-v1beta1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:
@@ -258,6 +300,13 @@ webhooks:
   - name: podsbinding-v1.kb.io
     namespaceSelector:
       matchExpressions:
+        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
+        {{- if .Values.webhook.namespaces }}
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            {{- $namespaceList | toYaml | nindent 12 }}
+        {{- end }}
         - key: kubernetes.io/metadata.name
           operator: NotIn
           values:

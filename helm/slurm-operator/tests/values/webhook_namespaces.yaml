@@ -1,0 +1,3 @@
+---
+webhook:
+  namespaces: slurm,compute
