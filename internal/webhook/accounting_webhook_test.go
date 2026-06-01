@@ -43,6 +43,15 @@ var _ = Describe("Accounting Webhook", func() {
 			_, err := accountingWebhook.ValidateCreate(ctx, newAccounting)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("Should warn if external IPs are set", func() {
+			newAccounting := testutils.NewAccounting("test-accounting", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, corev1.SecretKeySelector{})
+			newAccounting.Spec.Service.ServiceSpecWrapper.ExternalIPs = []string{"169.254.169.254"}
+
+			warnings, err := accountingWebhook.ValidateCreate(ctx, newAccounting)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(ContainElement("ExternalIPs may not be set for accounting service"))
+		})
 	})
 
 	Context("When deleting Accounting with Validating Webhook", func() {

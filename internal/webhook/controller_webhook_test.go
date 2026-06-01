@@ -21,6 +21,15 @@ var _ = Describe("Controller Webhook", func() {
 			_, err := controllerWebhook.ValidateCreate(ctx, controller)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("Should warn if external IPs are set", func(ctx SpecContext) {
+			controller := testutils.NewController("clustername", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			controller.Spec.Service.ServiceSpecWrapper.ExternalIPs = []string{"169.254.169.254"}
+
+			warnings, err := controllerWebhook.ValidateCreate(ctx, controller)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(ContainElement("ExternalIPs may not be set for controller service"))
+		})
 	})
 
 	Context("When Updating a Controller with Validating Webhook", func() {

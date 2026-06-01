@@ -98,6 +98,53 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with external IPs",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+						Service: slinkyv1beta1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1beta1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ExternalIPs: []string{"169.254.169.254"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "login",
+							Protocol:   "TCP",
+							Port:       22,
+							TargetPort: intstr.FromString("login"),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "login",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

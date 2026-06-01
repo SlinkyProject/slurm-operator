@@ -5,7 +5,9 @@ package webhook
 
 import (
 	"context"
+	"errors"
 
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,14 +41,18 @@ var _ admission.Validator[*slinkyv1beta1.LoginSet] = &LoginSetWebhook{}
 func (r *LoginSetWebhook) ValidateCreate(ctx context.Context, loginset *slinkyv1beta1.LoginSet) (admission.Warnings, error) {
 	loginsetlog.Info("validate create", "loginset", klog.KObj(loginset))
 
-	return nil, nil
+	warns, errs := r.validateLoginSet(loginset)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *LoginSetWebhook) ValidateUpdate(ctx context.Context, oldLoginset, newLoginset *slinkyv1beta1.LoginSet) (admission.Warnings, error) {
 	loginsetlog.Info("validate update", "newLoginset", klog.KObj(newLoginset))
 
-	return nil, nil
+	warns, errs := r.validateLoginSet(newLoginset)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -54,4 +60,24 @@ func (r *LoginSetWebhook) ValidateDelete(ctx context.Context, loginset *slinkyv1
 	loginsetlog.Info("validate delete", "loginset", klog.KObj(loginset))
 
 	return nil, nil
+}
+
+func (r *LoginSetWebhook) validateLoginSet(loginset *slinkyv1beta1.LoginSet) (admission.Warnings, []error) {
+	var warns admission.Warnings
+	var errs []error
+
+	if loginset.Spec.ControllerRef.Name == "" {
+		errs = append(errs, errors.New("controllerRef.name must not be empty"))
+	}
+
+	if loginset.Spec.SssdConfRef.Name == "" {
+		errs = append(errs, errors.New("sssdConfRef.name must not be empty"))
+	}
+
+	// Prevent MitM via CVE-2020-8554
+	if loginset.Spec.Service.ServiceSpecWrapper.ExternalIPs != nil {
+		warns = append(warns, "ExternalIPs may not be set for loginset service")
+	}
+
+	return warns, errs
 }

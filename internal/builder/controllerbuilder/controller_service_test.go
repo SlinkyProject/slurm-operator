@@ -82,6 +82,45 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with external IPs",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.ControllerSpec{
+						JwtKeyRef: &corev1.SecretKeySelector{},
+						Service: slinkyv1beta1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1beta1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ExternalIPs: []string{"169.254.169.254"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "slurmctld",
+							Protocol:   "TCP",
+							Port:       6817,
+							TargetPort: intstr.FromString("slurmctld"),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "slurmctld",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

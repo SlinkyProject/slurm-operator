@@ -116,6 +116,62 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with external IPs",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "mariadb",
+						},
+						Data: map[string][]byte{
+							"password": []byte("mariadb-password"),
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.AccountingSpec{
+						JwtKeyRef: &corev1.SecretKeySelector{},
+						StorageConfig: slinkyv1beta1.StorageConfig{
+							PasswordKeyRef: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "mariadb",
+								},
+								Key: "password",
+							},
+						},
+						Service: slinkyv1beta1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1beta1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ExternalIPs: []string{"169.254.169.254"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "slurmdbd",
+							Protocol:   "TCP",
+							Port:       6819,
+							TargetPort: intstr.FromString("slurmdbd"),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "slurmdbd",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
