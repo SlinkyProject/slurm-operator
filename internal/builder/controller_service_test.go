@@ -9,6 +9,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -37,6 +38,45 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
+					},
+				},
+			},
+		},
+		{
+			name: "with external IPs",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.ControllerSpec{
+						JwtHs256KeyRef: corev1.SecretKeySelector{},
+						Service: slinkyv1beta1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1beta1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ExternalIPs: []string{"169.254.169.254"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "slurmctld",
+							Protocol:   "TCP",
+							Port:       6817,
+							TargetPort: intstr.FromString("slurmctld"),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "slurmctld",
 					},
 				},
 			},

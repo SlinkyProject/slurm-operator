@@ -44,7 +44,9 @@ func (r *AccountingSetWebhook) ValidateCreate(ctx context.Context, obj runtime.O
 	accounting := obj.(*slinkyv1beta1.Accounting)
 	accountinglog.Info("validate create", "accounting", klog.KObj(accounting))
 
-	return nil, nil
+	warns, errs := r.validateAccounting(accounting)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -53,7 +55,7 @@ func (r *AccountingSetWebhook) ValidateUpdate(ctx context.Context, oldObj runtim
 	_ = oldObj.(*slinkyv1beta1.Accounting)
 	accountinglog.Info("validate update", "newAccounting", klog.KObj(newAccounting))
 
-	warns, errs := validateAccounting(newAccounting)
+	warns, errs := r.validateAccounting(newAccounting)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
@@ -66,9 +68,14 @@ func (r *AccountingSetWebhook) ValidateDelete(ctx context.Context, obj runtime.O
 	return nil, nil
 }
 
-func validateAccounting(obj *slinkyv1beta1.Accounting) (admission.Warnings, []error) {
+func (r *AccountingSetWebhook) validateAccounting(accounting *slinkyv1beta1.Accounting) (admission.Warnings, []error) {
 	var warns admission.Warnings
 	var errs []error
+
+	// Prevent MitM via CVE-2020-8554
+	if accounting.Spec.Service.ServiceSpecWrapper.ExternalIPs != nil {
+		warns = append(warns, "ExternalIPs may not be set for accounting service")
+	}
 
 	return warns, errs
 }

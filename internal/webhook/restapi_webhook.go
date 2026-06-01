@@ -44,7 +44,7 @@ func (r *RestapiWebhook) ValidateCreate(ctx context.Context, obj runtime.Object)
 	restapi := obj.(*slinkyv1beta1.RestApi)
 	restapilog.Info("validate create", "restapi", klog.KObj(restapi))
 
-	warns, errs := validateRestapi(restapi)
+	warns, errs := r.validateRestapi(restapi)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
@@ -55,7 +55,7 @@ func (r *RestapiWebhook) ValidateUpdate(ctx context.Context, oldObj runtime.Obje
 	_ = oldObj.(*slinkyv1beta1.RestApi)
 	restapilog.Info("validate update", "newRestapi", klog.KObj(newRestapi))
 
-	warns, errs := validateRestapi(newRestapi)
+	warns, errs := r.validateRestapi(newRestapi)
 
 	return warns, utilerrors.NewAggregate(errs)
 }
@@ -68,9 +68,14 @@ func (r *RestapiWebhook) ValidateDelete(ctx context.Context, obj runtime.Object)
 	return nil, nil
 }
 
-func validateRestapi(obj *slinkyv1beta1.RestApi) (admission.Warnings, []error) {
+func (r *RestapiWebhook) validateRestapi(restapi *slinkyv1beta1.RestApi) (admission.Warnings, []error) {
 	var warns admission.Warnings
 	var errs []error
+
+	// Prevent MitM via CVE-2020-8554
+	if restapi.Spec.Service.ServiceSpecWrapper.ExternalIPs != nil {
+		warns = append(warns, "ExternalIPs may not be set for restapi services")
+	}
 
 	return warns, errs
 }
