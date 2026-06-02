@@ -17,142 +17,155 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: should render ValidatingWebhookConfiguration with correct webhooks
-    documentSelector:
-      path: kind
-      value: ValidatingWebhookConfiguration
+  - it: default manifest should match snapshot
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should honor overridden validating and mutating failurePolicy and matchPolicy values
     set:
       webhook:
         enabled: true
-        timeoutSeconds: 10
+        validating:
+          failurePolicy: Ignore
+          matchPolicy: Exact
+        mutating:
+          failurePolicy: Fail
+          matchPolicy: Exact
       certManager:
         enabled: false
         secretName: slurm-operator-webhook-ca
     asserts:
-      - equal:
-          path: metadata.name
-          value: slurm-operator-webhook
-      - equal:
-          path: webhooks[0].name
-          value: accounting-v1beta1.kb.io
-      - equal:
-          path: webhooks[0].failurePolicy
-          value: Fail
-      - equal:
-          path: webhooks[0].timeoutSeconds
-          value: 10
-      - equal:
-          path: webhooks[0].sideEffects
-          value: None
-      - equal:
-          path: webhooks[1].name
-          value: controller-v1beta1.kb.io
-      - equal:
-          path: webhooks[2].name
-          value: loginset-v1beta1.kb.io
-      - equal:
-          path: webhooks[3].name
-          value: nodeset-v1beta1.kb.io
-      - equal:
-          path: webhooks[4].name
-          value: restapi-v1beta1.kb.io
-      - equal:
-          path: webhooks[5].name
-          value: token-v1beta1.kb.io
-
-  - it: should render MutatingWebhookConfiguration for pods/binding
-    documentSelector:
-      path: kind
-      value: MutatingWebhookConfiguration
-    set:
-      webhook:
-        enabled: true
-        timeoutSeconds: 10
-      certManager:
-        enabled: false
-        secretName: slurm-operator-webhook-ca
-    asserts:
-      - equal:
-          path: metadata.name
-          value: slurm-operator-webhook
-      - equal:
-          path: webhooks[0].name
-          value: podsbinding-v1.kb.io
-      - equal:
-          path: webhooks[0].failurePolicy
-          value: Fail
-      - equal:
-          path: webhooks[0].timeoutSeconds
-          value: 10
-      - equal:
-          path: webhooks[0].rules[0].resources[0]
-          value: pods/binding
-
-  - it: should include cert-manager annotations when certManager is enabled
-    documentSelector:
-      path: kind
-      value: ValidatingWebhookConfiguration
-    set:
-      webhook:
-        enabled: true
-      certManager:
-        enabled: true
-        secretName: slurm-operator-webhook-ca
-    asserts:
-      - exists:
-          path: metadata.annotations["cert-manager.io/inject-ca-from"]
-
-  - it: should include caBundle when certManager is disabled
-    documentSelector:
-      path: kind
-      value: ValidatingWebhookConfiguration
-    set:
-      webhook:
-        enabled: true
-      certManager:
-        enabled: false
-        secretName: slurm-operator-webhook-ca
-    asserts:
-      - exists:
-          path: webhooks[0].clientConfig.caBundle
-
-  - it: should render TLS secret when certManager is disabled
-    documentIndex: 0
-    set:
-      webhook:
-        enabled: true
-      certManager:
-        enabled: false
-        secretName: slurm-operator-webhook-ca
-    asserts:
-      - equal:
-          path: kind
-          value: Secret
-      - equal:
-          path: type
-          value: kubernetes.io/tls
-      - equal:
-          path: metadata.name
-          value: slurm-operator-webhook-ca
-      - equal:
-          path: metadata.namespace
-          value: test-namespace
-      - exists:
-          path: data["tls.crt"]
-      - exists:
-          path: data["tls.key"]
-      - exists:
-          path: data["ca.crt"]
-
-  - it: should not render TLS secret when certManager is enabled
-    documentIndex: 0
-    set:
-      webhook:
-        enabled: true
-      certManager:
-        enabled: true
-        secretName: slurm-operator-webhook-ca
-    asserts:
-      - equal:
+      - documentSelector:
           path: kind
           value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].failurePolicy
+          value: Ignore
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].matchPolicy
+          value: Exact
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].failurePolicy
+          value: Fail
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].matchPolicy
+          value: Exact
+
+  - it: should honor overridden timeoutSeconds
+    set:
+      webhook:
+        timeoutSeconds: 30
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].timeoutSeconds
+          value: 30
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].timeoutSeconds
+          value: 30
+
+  - it: should scope webhooks to configured namespaces
+    values:
+      - values/webhook_namespaces.yaml
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector.matchExpressions[0]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: In
+            values:
+              - slurm
+              - compute
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector.matchExpressions[1]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[0]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: In
+            values:
+              - slurm
+              - compute
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector.matchExpressions[1]
+          value:
+            key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+              - test-namespace
+
+  - it: should inject caBundle and render TLS secret when certManager is disabled
+    set:
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        exists:
+          path: webhooks[0].clientConfig.caBundle
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        exists:
+          path: webhooks[0].clientConfig.caBundle
+      - documentSelector:
+          path: kind
+          value: Secret
+        equal:
+          path: type
+          value: kubernetes.io/tls
+      - documentSelector:
+          path: kind
+          value: Secret
+        equal:
+          path: metadata.name
+          value: slurm-operator-webhook-ca
+      - documentSelector:
+          path: kind
+          value: Secret
+        exists:
+          path: data["tls.crt"]
+      - documentSelector:
+          path: kind
+          value: Secret
+        exists:
+          path: data["tls.key"]
+      - documentSelector:
+          path: kind
+          value: Secret
+        exists:
+          path: data["ca.crt"]

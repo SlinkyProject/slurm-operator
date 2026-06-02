@@ -90,6 +90,9 @@ operator:
   metricsPort: 8080
   # -- Enable leader election for slurm-operator
   leaderElection: true
+  # -- Comma-separated list of namespaces the operator will watch.
+  # If empty, all namespaces are watched.
+  namespaces: ""
 
 
 # Webhook configurations.
@@ -114,6 +117,26 @@ webhook:
     name: ""
   # -- Set the timeout period for calls.
   timeoutSeconds: 10
+  # -- Node label selector for pod assignment.
+  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+  nodeSelector: {}
+    # kubernetes.io/os: linux
+  # Validating webhook configuration.
+  validating:
+    # -- Action taken when the validating admission webhook is unreachable or returns an error.
+    # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+    failurePolicy: Fail
+    # -- How the rules listed in the validating webhook are matched against incoming requests.
+    # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy
+    matchPolicy: Equivalent
+  # Mutating webhook configuration.
+  mutating:
+    # -- Action taken when the mutating admission webhook is unreachable or returns an error.
+    # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy
+    failurePolicy: Ignore
+    # -- How the rules listed in the mutating webhook are matched against incoming requests.
+    # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy
+    matchPolicy: Equivalent
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}
@@ -147,6 +170,9 @@ webhook:
   metricsPort: 0
   # -- Enable leader election for slurm-operator-webhook
   leaderElection: true
+  # -- Comma-separated list of namespaces the webhook will watch.
+  # If empty, all namespaces are watched.
+  namespaces: ""
 
 #
 # Cert-Manager certificate configurations.

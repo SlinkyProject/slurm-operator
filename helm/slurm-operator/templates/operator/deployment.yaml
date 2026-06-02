@@ -76,6 +76,10 @@ spec:
             {{- end }}{{- /* if .Values.operator.leaderElection */}}
             - --leader-elect-namespace
             - {{ include "slurm-operator.namespace" . }}
+            {{- with .Values.operator.namespaces }}
+            - --namespaces
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.operator.namespaces */}}
           livenessProbe:
             httpGet:
               path: /healthz

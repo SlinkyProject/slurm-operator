@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -18,6 +19,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -55,6 +57,7 @@ type Flags struct {
 	metricsAddr             string
 	secureMetrics           bool
 	enableHTTP2             bool
+	namespaces              string
 }
 
 func parseFlags(flags *Flags) {
@@ -87,6 +90,8 @@ func parseFlags(flags *Flags) {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&flags.namespaces, "namespaces", "",
+		"Comma-separated list of namespaces the controller will watch. If empty, all namespaces are watched.")
 	flag.Parse()
 }
 
@@ -116,11 +121,26 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
+	var defaultNamespaces map[string]cache.Config
+	if flags.namespaces != "" {
+		defaultNamespaces = make(map[string]cache.Config)
+		for ns := range strings.SplitSeq(flags.namespaces, ",") {
+			ns = strings.TrimSpace(ns)
+			if ns != "" {
+				defaultNamespaces[ns] = cache.Config{}
+			}
+		}
+		setupLog.Info("watching namespaces", "namespaces", flags.namespaces)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
 			TLSOpts:     tlsOpts,
 			BindAddress: flags.metricsAddr,
+		},
+		Cache: cache.Options{
+			DefaultNamespaces: defaultNamespaces,
 		},
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
