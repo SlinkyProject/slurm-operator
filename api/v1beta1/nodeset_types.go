@@ -370,6 +370,16 @@ type NodeSetStatus struct {
 	// +nullable
 	OrdinalToNode map[string]string `json:"ordinalToNode,omitempty"`
 
+	// ConfigHashes records the most recently observed checksum for each mounted
+	// Secret/ConfigMap tracked when the NodeSet opts in via the
+	// "slinky.slurm.net/reload-on-change" annotation. Keys are the per-resource
+	// config-hash annotation keys; values are the corresponding checksums. The
+	// controller compares freshly computed checksums against this map to detect
+	// content changes and emit a ConfigHashChanged event.
+	// +optional
+	// +nullable
+	ConfigHashes map[string]string `json:"configHashes,omitempty"`
+
 	// Add Selector to status for HPA support in the scale subresource.
 	Selector string `json:"selector"`
 }

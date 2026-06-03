@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/indexes"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -103,4 +104,7 @@ func (e *SecretEventHandler) enqueueRequest(
 			}
 		}
 	}
+
+	// Additionally enqueue opted-in NodeSets that mount this Secret directly.
+	enqueueNodeSetsForConfigRef(ctx, e.Reader, q, secret.GetNamespace(), indexes.SecretRefPrefix+secret.GetName())
 }

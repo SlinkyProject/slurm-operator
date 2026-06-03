@@ -448,3 +448,12 @@ test: envtest ## Run tests.
 .PHONY: test-e2e
 test-e2e:
 	go test -v -timeout 30m ./test/e2e
+
+# Live-cluster verification of the NodeSet config-change rollout feature. Runs
+# against the cluster the current kubeconfig points at (an operator built from
+# this branch must already be deployed). Override the defaults via env vars,
+# e.g. CONFIG_ROLLOUT_NAMESPACE, CONFIG_ROLLOUT_NODESET, CONFIG_ROLLOUT_TARGET,
+# CONFIG_ROLLOUT_WAIT.
+.PHONY: test-config-rollout
+test-config-rollout:
+	go test -tags configrollout -v -count=1 -timeout 5m ./test/configrollout
