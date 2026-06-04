@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -223,31 +222,29 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 ) error {
 	logger := log.FromContext(ctx)
 	for _, pod := range pods {
-		toUpdate := pod.DeepCopy()
-
-		podConditions := nodeStatus.NodeStates[nodesetutils.GetNodeName(toUpdate)]
-
-		// Strip all existing SlurmNodeState conditions; they are re-applied
-		// from the current Slurm state by the UpdatePodCondition loop below.
-		var filteredConditions []corev1.PodCondition
-		for _, condition := range toUpdate.Status.Conditions {
-			if !strings.HasPrefix(string(condition.Type), slurmconditions.StatePrefix) {
-				filteredConditions = append(filteredConditions, condition)
+		mutateFn := func(pod *corev1.Pod) error {
+			// Strip all existing SlurmNodeState conditions; they are re-applied
+			// from the current Slurm state by the UpdatePodCondition loop below.
+			var filteredConditions []corev1.PodCondition
+			for _, condition := range pod.Status.Conditions {
+				if !strings.HasPrefix(string(condition.Type), slurmconditions.StatePrefix) {
+					filteredConditions = append(filteredConditions, condition)
+				}
 			}
-		}
-		toUpdate.Status.Conditions = filteredConditions
+			pod.Status.Conditions = filteredConditions
 
-		// Add current Slurm node base and flag states
-		for _, cond := range podConditions {
-			podutil.UpdatePodCondition(&toUpdate.Status, &cond)
-		}
-		err := r.Status().Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+			// Add current Slurm node base and flag states
+			podConditions := nodeStatus.NodeStates[nodesetutils.GetNodeName(pod)]
+			for _, cond := range podConditions {
+				podutil.UpdatePodCondition(&pod.Status, &cond)
 			}
-			logger.Error(err, "Error patching pod condition", "pod", klog.KObj(toUpdate))
-			return err
+			return nil
+		}
+		if err := objectutils.StatusPatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "Error patching pod condition", "pod", klog.KObj(pod))
+				return err
+			}
 		}
 	}
 	return nil
