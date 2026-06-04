@@ -630,3 +630,53 @@ func TestPatchObject_Pod(t *testing.T) {
 		t.Errorf("returned pod labels %v != stored %v", pod.Labels, stored.Labels)
 	}
 }
+
+func TestStatusPatchObject_Pod(t *testing.T) {
+	ctx := context.Background()
+	key := client.ObjectKey{Namespace: "default", Name: "test-pod"}
+	existing := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+			Labels: map[string]string{
+				"app": "before",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{Name: "c", Image: "nginx:1.25"},
+			},
+		},
+		Status: corev1.PodStatus{
+			ObservedGeneration: 1,
+		},
+	}
+	c := fake.NewClientBuilder().WithObjects(existing).Build()
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+		},
+	}
+
+	err := StatusPatchObject(c, ctx, pod, func(pod *corev1.Pod) error {
+		pod.Status.ObservedGeneration = 2
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("StatusPatchObject() error = %v", err)
+	}
+
+	if pod.Status.ObservedGeneration != 2 {
+		t.Errorf("pod.Status.ObservedGeneration after StatusPatchObject = %v, want 2", pod.Status.ObservedGeneration)
+	}
+
+	stored := &corev1.Pod{}
+	if err := c.Get(ctx, key, stored); err != nil {
+		t.Fatalf("Get() after patch: %v", err)
+	}
+	if stored.Status.ObservedGeneration != 2 {
+		t.Errorf("stored.Status.ObservedGeneration after StatusPatchObject = %v, want 2", stored.Status.ObservedGeneration)
+	}
+}
