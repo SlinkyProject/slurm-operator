@@ -72,5 +72,10 @@ func validateLoginSet(obj *slinkyv1beta1.LoginSet) (admission.Warnings, []error)
 	var warns admission.Warnings
 	var errs []error
 
+	// Prevent MitM via CVE-2020-8554
+	if obj.Spec.Service.ServiceSpecWrapper.ExternalIPs != nil {
+		warns = append(warns, "ExternalIPs may not be set for loginset service")
+	}
+
 	return warns, errs
 }

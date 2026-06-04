@@ -31,6 +31,9 @@ func (b *Builder) BuildService(opts ServiceOpts, owner metav1.Object) (*corev1.S
 		}
 	}
 
+	// Prevent MitM via CVE-2020-8554
+	opts.ExternalIPs = nil
+
 	objectMeta := metadata.NewBuilder(opts.Key).
 		WithMetadata(opts.Metadata).
 		Build()
