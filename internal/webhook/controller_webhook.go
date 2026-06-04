@@ -139,5 +139,10 @@ func (r *ControllerWebhook) validateController(ctx context.Context, controller *
 		}
 	}
 
+	// Prevent MitM via CVE-2020-8554
+	if controller.Spec.Service.ServiceSpecWrapper.ExternalIPs != nil {
+		warns = append(warns, "ExternalIPs may not be set for controller service")
+	}
+
 	return warns, errs
 }

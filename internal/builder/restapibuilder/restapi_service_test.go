@@ -98,6 +98,53 @@ func TestBuilder_BuildRestapiService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with external IPs",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: slinkyv1beta1.ObjectReference{
+							Name: "slurm",
+						},
+						Service: slinkyv1beta1.ServiceSpec{
+							ServiceSpecWrapper: slinkyv1beta1.ServiceSpecWrapper{
+								ServiceSpec: corev1.ServiceSpec{
+									ExternalIPs: []string{"169.254.169.254"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "slurmrestd",
+							Protocol:   "TCP",
+							Port:       6820,
+							TargetPort: intstr.FromString("slurmrestd"),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "slurmrestd",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -41,6 +41,13 @@ var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
 
+var accountingWebhook AccountingSetWebhook
+var controllerWebhook ControllerWebhook
+var loginSetWebhook LoginSetWebhook
+var nodeSetWebhook NodeSetWebhook
+var restapiWebhook RestapiWebhook
+var tokenWebhook TokenWebhook
+
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
@@ -99,29 +106,30 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&AccountingSetWebhook{}).SetupWebhookWithManager(mgr)
+	err = (&accountingWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&ControllerWebhook{
+	controllerWebhook = ControllerWebhook{
 		Client: mgr.GetClient(),
-	}).SetupWebhookWithManager(mgr)
+	}
+	err = (&controllerWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&LoginSetWebhook{}).SetupWebhookWithManager(mgr)
+	err = (&loginSetWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = (&NodeSetWebhook{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = (&RestapiWebhook{}).SetupWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = (&TokenWebhook{}).SetupWebhookWithManager(mgr)
+	err = (&nodeSetWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = (&PodBindingWebhook{
 		Client: mgr.GetClient(),
 	}).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = (&restapiWebhook).SetupWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = (&tokenWebhook).SetupWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:webhook
