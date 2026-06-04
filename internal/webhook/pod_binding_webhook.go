@@ -18,6 +18,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type PodBindingWebhook struct {
@@ -66,10 +67,14 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 	}
 
 	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
-
-	toUpdate := pod.DeepCopy()
-	toUpdate.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
-	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+	mutateFn := func(pod *corev1.Pod) error {
+		pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
+		return nil
+	}
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		bindinglog.Error(err, "failed to patch pod annotations", "pod", klog.KObj(pod))
 		return err
 	}

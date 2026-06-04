@@ -21,7 +21,7 @@ import (
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -34,7 +34,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
@@ -240,34 +239,37 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 ) error {
 	logger := log.FromContext(ctx)
 	for _, pod := range pods {
-		toUpdate := pod.DeepCopy()
-
-		podConditions := nodeStatus.NodeStates[nodesetutils.GetSlurmNodeName(toUpdate)]
-
-		// Strip all existing SlurmNodeState conditions; they are re-applied
-		// from the current Slurm state by the UpdatePodCondition loop below.
-		var filteredConditions []corev1.PodCondition
-		for _, condition := range toUpdate.Status.Conditions {
-			if !strings.HasPrefix(string(condition.Type), slurmconditions.StatePrefix) {
-				filteredConditions = append(filteredConditions, condition)
-			}
+		mutateFn := func(pod *corev1.Pod) error {
+			slurmCond := nodeStatus.NodeStates[nodesetutils.GetSlurmNodeName(pod)]
+			applySlurmPodConditions(&pod.Status, slurmCond)
+			return nil
 		}
-		toUpdate.Status.Conditions = filteredConditions
-
-		// Add current Slurm node base and flag states
-		for _, cond := range podConditions {
-			podutil.UpdatePodCondition(&toUpdate.Status, &cond)
-		}
-		err := r.Status().Patch(ctx, toUpdate, client.StrategicMergeFrom(pod))
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+		if err := objectutils.StatusPatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "Error patching pod condition", "pod", klog.KObj(pod))
+				return err
 			}
-			logger.Error(err, "Error patching pod condition", "pod", klog.KObj(toUpdate))
-			return err
 		}
 	}
 	return nil
+}
+
+func applySlurmPodConditions(status *corev1.PodStatus, desired []corev1.PodCondition) {
+	desiredTypes := make(set.Set[corev1.PodConditionType], len(desired))
+	for _, cond := range desired {
+		desiredTypes.Insert(cond.Type)
+		podutil.UpdatePodCondition(status, &cond)
+	}
+	filtered := status.Conditions[:0]
+	for _, c := range status.Conditions {
+		if strings.HasPrefix(string(c.Type), slurmconditions.StatePrefix) {
+			if !desiredTypes.Has(c.Type) {
+				continue // drop stale Slurm condition
+			}
+		}
+		filtered = append(filtered, c)
+	}
+	status.Conditions = filtered
 }
 
 // updateNodeSetStatus handles updating the NodeSet status on the Kubernetes API.
@@ -309,30 +311,21 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 
 	syncPodPDBLabelsFn := func(i int) error {
 		pod := pods[i]
-
-		// Refresh Pod to get current Pod Conditions
-		podKey := client.ObjectKeyFromObject(pod)
-		if err := r.Get(ctx, podKey, pod); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
+		mutateFn := func(pod *corev1.Pod) error {
+			podProtect := slurmconditions.IsNodeBusy(&pod.Status)
+			logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
+			if podProtect && ptr.Deref(nodeset.Spec.WorkloadDisruptionProtection, defaults.DefaultNodeSetWorkloadDisruptionProtection) {
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodProtect] = "true"
+			} else {
+				delete(pod.Labels, slinkyv1beta1.LabelNodeSetPodProtect)
 			}
-			return err
+			return nil
 		}
-
-		podProtect := slurmconditions.IsNodeBusy(&pod.Status)
-		logger.V(1).Info("Pending Pod Label update", "pod", klog.KObj(pod), "podProtect", podProtect)
-		toUpdate := pod.DeepCopy()
-
-		if podProtect && ptr.Deref(nodeset.Spec.WorkloadDisruptionProtection, defaults.DefaultNodeSetWorkloadDisruptionProtection) {
-			podLabel := labels.NewBuilder().WithPodProtect().Build()
-			toUpdate.Labels = structutils.MergeMaps(toUpdate.Labels, podLabel)
-		} else {
-			delete(toUpdate.Labels, slinkyv1beta1.LabelNodeSetPodProtect)
-		}
-
-		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-			logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(toUpdate))
-			return err
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+			if !apierrors.IsNotFound(err) {
+				logger.Error(err, "failed to patch pod labels for PDB", "pod", klog.KObj(pod))
+				return err
+			}
 		}
 		return nil
 	}
