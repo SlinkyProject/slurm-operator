@@ -16,8 +16,7 @@ import (
 func (b *Builder) BuildTokenSecret(token *slinkyv1beta1.Token) (*corev1.Secret, error) {
 	ctx := context.TODO()
 
-	jwtHs256Ref := token.JwtHs256Ref()
-	signingKey, err := b.refResolver.GetSecretKeyRef(ctx, &jwtHs256Ref.SecretKeySelector, jwtHs256Ref.Namespace)
+	signingKey, err := b.refResolver.GetSecretKeyRef(ctx, token.JwtHs256Ref(), token.Namespace)
 	if err != nil {
 		return nil, err
 	}

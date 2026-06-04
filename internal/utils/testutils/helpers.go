@@ -266,13 +266,11 @@ func NewToken(name string, jwtHs256KeySecret *corev1.Secret) *slinkyv1beta1.Toke
 		},
 		Spec: slinkyv1beta1.TokenSpec{
 			Username: "slurm",
-			JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
-				SecretKeySelector: corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: jwtHs256KeySecret.Name,
-					},
-					Key: "jwt_hs256.key",
+			JwtHs256KeyRef: corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: jwtHs256KeySecret.Name,
 				},
+				Key: "jwt_hs256.key",
 			},
 		},
 	}

@@ -21,7 +21,7 @@ var (
 type TokenSpec struct {
 	// Slurm `auth/jwt` JWT HS256 key authentication.
 	// +required
-	JwtHs256KeyRef JwtSecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
+	JwtHs256KeyRef corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
 
 	// The username whom the token is created for.
 	// +required
