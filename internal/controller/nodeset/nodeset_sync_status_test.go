@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -543,6 +544,148 @@ func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_applySlurmPodConditions(t *testing.T) {
+	idleCondition := corev1.PodCondition{
+		Type:    slurmconditions.PodConditionIdle,
+		Status:  corev1.ConditionTrue,
+		Message: "",
+	}
+	drainCondition := corev1.PodCondition{
+		Type:    slurmconditions.PodConditionDrain,
+		Status:  corev1.ConditionTrue,
+		Message: "Node set to drain",
+	}
+	allocatedCondition := corev1.PodCondition{
+		Type:    slurmconditions.PodConditionAllocated,
+		Status:  corev1.ConditionTrue,
+		Message: "",
+	}
+	downCondition := corev1.PodCondition{
+		Type:    slurmconditions.PodConditionDown,
+		Status:  corev1.ConditionTrue,
+		Message: "",
+	}
+	notRespondingCondition := corev1.PodCondition{
+		Type:    slurmconditions.PodConditionNotResponding,
+		Status:  corev1.ConditionTrue,
+		Message: "",
+	}
+	podReadyCondition := corev1.PodCondition{
+		Type:   corev1.PodReady,
+		Status: corev1.ConditionTrue,
+	}
+
+	cmpOpts := cmp.Options{
+		cmpopts.SortSlices(func(a, b corev1.PodCondition) bool {
+			return a.Type < b.Type
+		}),
+		cmpopts.IgnoreFields(corev1.PodCondition{}, "LastTransitionTime", "LastProbeTime", "Reason"),
+	}
+
+	tests := []struct {
+		name             string
+		initial          []corev1.PodCondition
+		desired          []corev1.PodCondition
+		wantSlurm        []corev1.PodCondition
+		wantNonSlurm     []corev1.PodCondition
+		wantNonSlurmOnly bool
+	}{
+		{
+			name:      "adds desired conditions to empty status",
+			initial:   nil,
+			desired:   []corev1.PodCondition{idleCondition},
+			wantSlurm: []corev1.PodCondition{idleCondition},
+		},
+		{
+			name:      "replaces stale slurm conditions",
+			initial:   []corev1.PodCondition{allocatedCondition},
+			desired:   []corev1.PodCondition{idleCondition, drainCondition},
+			wantSlurm: []corev1.PodCondition{idleCondition, drainCondition},
+		},
+		{
+			name:    "leaves matching slurm conditions unchanged",
+			initial: []corev1.PodCondition{downCondition, drainCondition, notRespondingCondition},
+			desired: []corev1.PodCondition{downCondition, drainCondition, notRespondingCondition},
+			wantSlurm: []corev1.PodCondition{
+				downCondition, drainCondition, notRespondingCondition,
+			},
+		},
+		{
+			name:      "removes stale slurm conditions when desired set shrinks",
+			initial:   []corev1.PodCondition{downCondition, drainCondition, notRespondingCondition},
+			desired:   []corev1.PodCondition{idleCondition},
+			wantSlurm: []corev1.PodCondition{idleCondition},
+		},
+		{
+			name:      "empty desired removes all slurm conditions",
+			initial:   []corev1.PodCondition{idleCondition, drainCondition},
+			desired:   nil,
+			wantSlurm: nil,
+		},
+		{
+			name:             "preserves non-slurm conditions",
+			initial:          []corev1.PodCondition{podReadyCondition, idleCondition},
+			desired:          []corev1.PodCondition{idleCondition, drainCondition},
+			wantSlurm:        []corev1.PodCondition{idleCondition, drainCondition},
+			wantNonSlurm:     []corev1.PodCondition{podReadyCondition},
+			wantNonSlurmOnly: true,
+		},
+		{
+			name: "updates existing slurm condition fields",
+			initial: []corev1.PodCondition{
+				{
+					Type:    slurmconditions.PodConditionDrain,
+					Status:  corev1.ConditionTrue,
+					Message: "old message",
+				},
+			},
+			desired:   []corev1.PodCondition{drainCondition},
+			wantSlurm: []corev1.PodCondition{drainCondition},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := &corev1.PodStatus{
+				Conditions: append([]corev1.PodCondition(nil), tt.initial...),
+			}
+			applySlurmPodConditions(status, tt.desired)
+
+			gotSlurm := slurmPodConditions(status)
+			if diff := cmp.Diff(tt.wantSlurm, gotSlurm, cmpOpts); diff != "" {
+				t.Errorf("unexpected slurm conditions (-want,+got):\n%s", diff)
+			}
+
+			if tt.wantNonSlurmOnly {
+				gotNonSlurm := nonSlurmPodConditions(status)
+				if diff := cmp.Diff(tt.wantNonSlurm, gotNonSlurm, cmpOpts); diff != "" {
+					t.Errorf("unexpected non-slurm conditions (-want,+got):\n%s", diff)
+				}
+			}
+		})
+	}
+}
+
+func slurmPodConditions(status *corev1.PodStatus) []corev1.PodCondition {
+	var out []corev1.PodCondition
+	for _, c := range status.Conditions {
+		if strings.HasPrefix(string(c.Type), slurmconditions.StatePrefix) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func nonSlurmPodConditions(status *corev1.PodStatus) []corev1.PodCondition {
+	var out []corev1.PodCondition
+	for _, c := range status.Conditions {
+		if !strings.HasPrefix(string(c.Type), slurmconditions.StatePrefix) {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
