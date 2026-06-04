@@ -286,6 +286,12 @@ func PatchObject[T client.Object](c client.Client, ctx context.Context, obj T, m
 		return err
 	}
 	patch := client.MergeFrom(baseline)
+	data, err := patch.Data(obj)
+	if err != nil {
+		return err
+	} else if string(data) == "{}" {
+		return nil
+	}
 	if err := c.Patch(ctx, obj, patch); err != nil {
 		return fmt.Errorf("failed to patch %s: %w", key, err)
 	}
