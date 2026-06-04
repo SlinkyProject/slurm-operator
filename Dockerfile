@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ################################################################################
-FROM --platform=${BUILDPLATFORM} golang:1.26.3 AS builder
+ARG BUILDPLATFORM
+
+FROM --platform=${BUILDPLATFORM} golang:1.26 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
