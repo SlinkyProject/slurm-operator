@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -223,21 +224,8 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 	logger := log.FromContext(ctx)
 	for _, pod := range pods {
 		mutateFn := func(pod *corev1.Pod) error {
-			// Strip all existing SlurmNodeState conditions; they are re-applied
-			// from the current Slurm state by the UpdatePodCondition loop below.
-			var filteredConditions []corev1.PodCondition
-			for _, condition := range pod.Status.Conditions {
-				if !strings.HasPrefix(string(condition.Type), slurmconditions.StatePrefix) {
-					filteredConditions = append(filteredConditions, condition)
-				}
-			}
-			pod.Status.Conditions = filteredConditions
-
-			// Add current Slurm node base and flag states
-			podConditions := nodeStatus.NodeStates[nodesetutils.GetNodeName(pod)]
-			for _, cond := range podConditions {
-				podutil.UpdatePodCondition(&pod.Status, &cond)
-			}
+			slurmCond := nodeStatus.NodeStates[nodesetutils.GetNodeName(pod)]
+			applySlurmPodConditions(&pod.Status, slurmCond)
 			return nil
 		}
 		if err := objectutils.StatusPatchObject(r.Client, ctx, pod, mutateFn); err != nil {
@@ -248,6 +236,24 @@ func (r *NodeSetReconciler) updateNodeSetPodConditions(
 		}
 	}
 	return nil
+}
+
+func applySlurmPodConditions(status *corev1.PodStatus, desired []corev1.PodCondition) {
+	desiredTypes := make(set.Set[corev1.PodConditionType], len(desired))
+	for _, cond := range desired {
+		desiredTypes.Insert(cond.Type)
+		podutil.UpdatePodCondition(status, &cond)
+	}
+	filtered := status.Conditions[:0]
+	for _, c := range status.Conditions {
+		if strings.HasPrefix(string(c.Type), slurmconditions.StatePrefix) {
+			if !desiredTypes.Has(c.Type) {
+				continue // drop stale Slurm condition
+			}
+		}
+		filtered = append(filtered, c)
+	}
+	status.Conditions = filtered
 }
 
 // updateNodeSetStatus handles updating the NodeSet status on the Kubernetes API.
