@@ -15,7 +15,11 @@ SPDX-License-Identifier: Apache-2.0
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
 
 {{- /* ================= BEGIN GKE A3 MEGA INJECTION ================= */ -}}
-{{- if and ($.Values.vendor.google | dig "a3mega" "enabled" false) (has $key ($.Values.vendor.google | dig "a3mega" "targetNodeSets" list)) }}
+{{- if has $key ($.Values.vendor.google | dig "a3mega" "targetNodeSets" list) }}
+  {{- $networks := $.Values.vendor.google | dig "a3mega" "networks" list -}}
+  {{- if ne (len $networks) 9 -}}
+    {{- fail (printf "Google Cloud GKE A3 Mega requires exactly 9 networks, but %d were specified." (len $networks)) -}}
+  {{- end -}}
 
   {{- /* Inject Annotations */ -}}
   {{- $a3Annotations := tpl ($.Files.Get "_vendor/google/a3mega/annotations.yaml") $ | fromYaml -}}

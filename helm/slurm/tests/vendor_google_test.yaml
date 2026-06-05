@@ -15,7 +15,7 @@ tests:
       vendor:
         google:
           a3mega:
-            enabled: false
+            targetNodeSets: []
       nodesets:
         slinky:
           enabled: true
@@ -40,10 +40,9 @@ tests:
       vendor:
         google:
           a3mega:
-            enabled: true
             targetNodeSets: ["slinky"]
             nodePool: "a3-mega-nodepool"
-            networks: ["default", "vpc1", "vpc2"]
+            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
       nodesets:
         slinky:
           enabled: true
@@ -72,7 +71,13 @@ tests:
             [
               {"interfaceName":"eth0","network":"default"},
               {"interfaceName":"eth1","network":"vpc1"},
-              {"interfaceName":"eth2","network":"vpc2"}
+              {"interfaceName":"eth2","network":"vpc2"},
+              {"interfaceName":"eth3","network":"vpc3"},
+              {"interfaceName":"eth4","network":"vpc4"},
+              {"interfaceName":"eth5","network":"vpc5"},
+              {"interfaceName":"eth6","network":"vpc6"},
+              {"interfaceName":"eth7","network":"vpc7"},
+              {"interfaceName":"eth8","network":"vpc8"}
             ]
       # sidecar container tcpxo-daemon
       - contains:

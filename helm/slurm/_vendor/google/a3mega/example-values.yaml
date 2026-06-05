@@ -4,7 +4,6 @@
 vendor:
   google:
     a3mega:
-      enabled: true
       targetNodeSets:
         - a3-mega-nodes
       nodePool: "a3-mega-nodepool"
