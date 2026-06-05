@@ -73,7 +73,7 @@ func (e *NodesetEventHandler) enqueueRequest(ctx context.Context, obj client.Obj
 		return
 	}
 
-	controller, err := e.refResolver.GetController(ctx, nodeset.Spec.ControllerRef)
+	controller, err := e.refResolver.GetController(ctx, nodeset.Spec.ControllerRef, nodeset.Namespace)
 	if err != nil {
 		return
 	}

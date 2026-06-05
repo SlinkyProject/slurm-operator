@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,7 +54,7 @@ func Test_RestApiEventHandler_Create(t *testing.T) {
 								Name: "slurm",
 							},
 							Spec: slinkyv1beta1.RestApiSpec{
-								ControllerRef: slinkyv1beta1.ObjectReference{
+								ControllerRef: corev1.LocalObjectReference{
 									Name: "slurm",
 								},
 							},
@@ -74,7 +75,7 @@ func Test_RestApiEventHandler_Create(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -133,7 +134,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 								Name: "slurm",
 							},
 							Spec: slinkyv1beta1.RestApiSpec{
-								ControllerRef: slinkyv1beta1.ObjectReference{
+								ControllerRef: corev1.LocalObjectReference{
 									Name: "slurm",
 								},
 							},
@@ -154,7 +155,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -164,7 +165,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -200,7 +201,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "new-slurm",
 							},
 						},
@@ -210,7 +211,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "old-slurm",
 							},
 						},
@@ -269,7 +270,7 @@ func Test_RestApiEventHandler_Delete(t *testing.T) {
 								Name: "slurm",
 							},
 							Spec: slinkyv1beta1.RestApiSpec{
-								ControllerRef: slinkyv1beta1.ObjectReference{
+								ControllerRef: corev1.LocalObjectReference{
 									Name: "slurm",
 								},
 							},
@@ -290,7 +291,7 @@ func Test_RestApiEventHandler_Delete(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},

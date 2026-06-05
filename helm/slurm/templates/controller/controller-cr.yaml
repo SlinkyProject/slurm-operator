@@ -22,7 +22,6 @@ spec:
   {{- if .Values.accounting.enabled }}
   accountingRef:
     name: {{ include "slurm.fullname" . }}
-    namespace: {{ include "slurm.namespace" . }}
   {{- end }}{{- /* if .Values.accounting.enabled */}}
   slurmKeyRef:
     name: {{ include "slurm.authSlurmRef.name" . }}

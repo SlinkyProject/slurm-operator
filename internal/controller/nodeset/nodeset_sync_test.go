@@ -77,9 +77,8 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			Name:      name,
 		},
 		Spec: slinkyv1beta1.NodeSetSpec{
-			ControllerRef: slinkyv1beta1.ObjectReference{
-				Namespace: corev1.NamespaceDefault,
-				Name:      controllerName,
+			ControllerRef: corev1.LocalObjectReference{
+				Name: controllerName,
 			},
 			Replicas:    ptr.To(replicas),
 			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
@@ -1289,7 +1288,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			}
 			// Check Slurm Node State
 			gotSlurmNode := &slurmtypes.V0044Node{}
-			sc := r.ClientMap.Get(tt.args.nodeset.Spec.ControllerRef.NamespacedName())
+			mapKey := types.NamespacedName{
+				Namespace: nodeset.Namespace,
+				Name:      nodeset.Spec.ControllerRef.Name,
+			}
+			sc := r.ClientMap.Get(mapKey)
 			if sc == nil {
 				t.Error("ClientMap.Get() is nil")
 			}
@@ -1536,7 +1539,11 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 			}
 			// Check Slurm Node State
 			gotSlurmNode := &slurmtypes.V0044Node{}
-			sc := r.ClientMap.Get(tt.args.nodeset.Spec.ControllerRef.NamespacedName())
+			mapKey := types.NamespacedName{
+				Namespace: nodeset.Namespace,
+				Name:      nodeset.Spec.ControllerRef.Name,
+			}
+			sc := r.ClientMap.Get(mapKey)
 			if sc == nil {
 				t.Error("ClientMap.Get() is nil")
 			}
@@ -2616,7 +2623,12 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 				if !apiequality.Semantic.DeepEqual(checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], topologySpec) {
 					t.Errorf("pod and node topology are incongruent: node = '%v' ; pod = '%v'", topologySpec, checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec])
 				}
-				sclient := tt.clientMap.Get(tt.nodeset.Spec.ControllerRef.NamespacedName())
+
+				mapKey := types.NamespacedName{
+					Namespace: nodeset.Namespace,
+					Name:      nodeset.Spec.ControllerRef.Name,
+				}
+				sclient := tt.clientMap.Get(mapKey)
 				if sclient == nil {
 					continue
 				}

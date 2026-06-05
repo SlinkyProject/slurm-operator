@@ -8,6 +8,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +48,7 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 			c:    fake.NewFakeClient(),
 			nodeset: &slinkyv1beta1.NodeSet{
 				Spec: slinkyv1beta1.NodeSetSpec{
-					ControllerRef: slinkyv1beta1.ObjectReference{
+					ControllerRef: corev1.LocalObjectReference{
 						Name: "slurm",
 					},
 				},

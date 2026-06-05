@@ -129,9 +129,8 @@ func newPVC(name string) corev1.PersistentVolumeClaim {
 func newNodeSetWithControllerRef(name, controllerName string, uid types.UID) *slinkyv1beta1.NodeSet {
 	ns := newNodeSet(name)
 	ns.UID = uid
-	ns.Spec.ControllerRef = slinkyv1beta1.ObjectReference{
-		Namespace: corev1.NamespaceDefault,
-		Name:      controllerName,
+	ns.Spec.ControllerRef = corev1.LocalObjectReference{
+		Name: controllerName,
 	}
 	return ns
 }

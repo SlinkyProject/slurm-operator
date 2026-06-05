@@ -13,7 +13,6 @@ manifest should match snapshot:
     spec:
       controllerRef:
         name: test-release-slurm
-        namespace: test-namespace
       initconf:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent

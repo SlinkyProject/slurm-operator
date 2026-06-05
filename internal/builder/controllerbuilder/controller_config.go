@@ -34,7 +34,7 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 	var accounting *slinkyv1beta1.Accounting
 	if controller.Spec.AccountingRef != nil {
 		var err error
-		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef, controller.Namespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return nil, err
@@ -384,7 +384,7 @@ func (b *ControllerBuilder) BuildControllerConfigExternal(controller *slinkyv1be
 	var accounting *slinkyv1beta1.Accounting
 	if controller.Spec.AccountingRef != nil {
 		var err error
-		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef, controller.Namespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return nil, err

@@ -47,7 +47,7 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 						Name: "slurm-foo",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 					},
@@ -71,7 +71,7 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Service: slinkyv1beta1.ServiceSpec{
@@ -115,7 +115,7 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Service: slinkyv1beta1.ServiceSpec{

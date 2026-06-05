@@ -39,7 +39,7 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 						Namespace: "slinky",
 					},
 					Spec: slinkyv1beta1.NodeSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 					},

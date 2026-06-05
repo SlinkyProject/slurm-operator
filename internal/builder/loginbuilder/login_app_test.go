@@ -46,7 +46,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 					},
@@ -70,7 +70,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Login: slinkyv1beta1.ContainerWrapper{
