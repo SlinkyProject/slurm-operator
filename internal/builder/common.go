@@ -233,3 +233,12 @@ func (b *Builder) initconfContainer(container slinkyv1beta1.ContainerWrapper) co
 
 	return b.BuildContainer(opts)
 }
+
+// GetSlurmNodeSetName returns the Slurm NodeSet name.
+func GetSlurmNodeSetName(nodeset *slinkyv1beta1.NodeSet) string {
+	spec := nodeset.Spec.Template.PodSpecWrapper
+	if spec.Hostname != "" {
+		return strings.Trim(spec.Hostname, "-")
+	}
+	return nodeset.Name
+}
