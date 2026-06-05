@@ -109,6 +109,7 @@ type NodeSetPartition struct {
 	// Config is added to the NodeSet's partition line.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
 	// +optional
+	// +kubebuilder:validation:Pattern:="^[^\\n]+$"
 	Config string `json:"config,omitzero"`
 }
 
