@@ -244,7 +244,9 @@ func JwksConfigProjection(configMap *corev1.ConfigMapKeySelector, path string) c
 func GetSlurmNodeSetName(nodeset *slinkyv1beta1.NodeSet) string {
 	spec := nodeset.Spec.Template.PodSpecWrapper
 	if spec.Hostname != "" {
-		return strings.Trim(spec.Hostname, "-")
+		parts := strings.Fields(spec.Hostname)
+		before, _, _ := strings.Cut(parts[0], " ")
+		return strings.Trim(before, "-")
 	}
 	return nodeset.Name
 }
