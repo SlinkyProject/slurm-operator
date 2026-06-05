@@ -40,7 +40,6 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
-    namespace: {{ include "slurm.namespace" $ }}
   {{- if (include "slurm.worker.extraConf" $nodeset) }}
   extraConf: {{ include "slurm.worker.extraConf" $nodeset }}
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}

@@ -69,12 +69,12 @@ func (b *Builder) restapiPodTemplate(restapi *slinkyv1beta1.RestApi) (corev1.Pod
 	ctx := context.TODO()
 	key := restapi.Key()
 
-	controller, err := b.refResolver.GetController(ctx, restapi.Spec.ControllerRef)
+	controller, err := b.refResolver.GetController(ctx, restapi.Spec.ControllerRef, restapi.Namespace)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, slinkyv1beta1.ObjectReference{})
+	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, corev1.LocalObjectReference{})
 
 	objectMeta := metadata.NewBuilder(key).
 		WithMetadata(restapi.Spec.Template.PodMetadata).

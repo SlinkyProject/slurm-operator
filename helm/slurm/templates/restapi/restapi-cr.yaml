@@ -20,7 +20,6 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" . }}
-    namespace: {{ include "slurm.namespace" . }}
   replicas: {{ .Values.restapi.replicas }}
   slurmrestd:
     {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}

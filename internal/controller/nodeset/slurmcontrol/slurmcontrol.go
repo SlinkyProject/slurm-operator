@@ -13,6 +13,7 @@ import (
 	"github.com/puttsk/hostlist"
 
 	corev1 "k8s.io/api/core/v1"
+	ktypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -578,7 +579,11 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 }
 
 func (r *realSlurmControl) lookupClient(nodeset *slinkyv1beta1.NodeSet) slurmclient.Client {
-	return r.clientMap.Get(nodeset.Spec.ControllerRef.NamespacedName())
+	key := ktypes.NamespacedName{
+		Namespace: nodeset.Namespace,
+		Name:      nodeset.Spec.ControllerRef.Name,
+	}
+	return r.clientMap.Get(key)
 }
 
 var _ SlurmControlInterface = &realSlurmControl{}

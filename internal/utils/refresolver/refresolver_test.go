@@ -31,8 +31,9 @@ func TestRefResolver_GetController(t *testing.T) {
 		reader client.Reader
 	}
 	type args struct {
-		ctx context.Context
-		ref slinkyv1beta1.ObjectReference
+		ctx       context.Context
+		ref       corev1.LocalObjectReference
+		namespace string
 	}
 	tests := []struct {
 		name    string
@@ -50,10 +51,10 @@ func TestRefResolver_GetController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1beta1.ObjectReference{
-					Name:      "slurm",
-					Namespace: metav1.NamespaceDefault,
+				ref: corev1.LocalObjectReference{
+					Name: "slurm",
 				},
+				namespace: metav1.NamespaceDefault,
 			},
 			wantErr: true,
 		},
@@ -72,10 +73,10 @@ func TestRefResolver_GetController(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1beta1.ObjectReference{
-					Name:      "slurm",
-					Namespace: metav1.NamespaceDefault,
+				ref: corev1.LocalObjectReference{
+					Name: "slurm",
 				},
+				namespace: metav1.NamespaceDefault,
 			},
 			want: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
@@ -88,7 +89,7 @@ func TestRefResolver_GetController(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
-			got, err := r.GetController(tt.args.ctx, tt.args.ref)
+			got, err := r.GetController(tt.args.ctx, tt.args.ref, tt.args.namespace)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetController() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -105,8 +106,9 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		reader client.Reader
 	}
 	type args struct {
-		ctx context.Context
-		ref slinkyv1beta1.ObjectReference
+		ctx       context.Context
+		ref       corev1.LocalObjectReference
+		namespace string
 	}
 	tests := []struct {
 		name    string
@@ -124,10 +126,10 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1beta1.ObjectReference{
-					Name:      "slurm",
-					Namespace: metav1.NamespaceDefault,
+				ref: corev1.LocalObjectReference{
+					Name: "slurm",
 				},
+				namespace: metav1.NamespaceDefault,
 			},
 			wantErr: true,
 		},
@@ -146,10 +148,10 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				ref: slinkyv1beta1.ObjectReference{
-					Name:      "slurm",
-					Namespace: metav1.NamespaceDefault,
+				ref: corev1.LocalObjectReference{
+					Name: "slurm",
 				},
+				namespace: metav1.NamespaceDefault,
 			},
 			want: &slinkyv1beta1.Accounting{
 				ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +164,7 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
-			got, err := r.GetAccounting(tt.args.ctx, tt.args.ref)
+			got, err := r.GetAccounting(tt.args.ctx, tt.args.ref, tt.args.namespace)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RefResolver.GetAccounting() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -218,9 +220,8 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.NodeSetSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm",
 							},
 						},
 					}).
@@ -230,9 +231,8 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.NodeSetSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm1",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm1",
 							},
 						},
 					}).
@@ -309,9 +309,8 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.LoginSetSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm",
 							},
 						},
 					}).
@@ -321,9 +320,8 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.LoginSetSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm1",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm1",
 							},
 						},
 					}).
@@ -400,9 +398,8 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm",
 							},
 						},
 					}).
@@ -412,9 +409,8 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.RestApiSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm1",
-								Namespace: metav1.NamespaceDefault,
+							ControllerRef: corev1.LocalObjectReference{
+								Name: "slurm1",
 							},
 						},
 					}).
@@ -491,9 +487,8 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm",
-								Namespace: metav1.NamespaceDefault,
+							AccountingRef: &corev1.LocalObjectReference{
+								Name: "slurm",
 							},
 						},
 					}).
@@ -503,9 +498,8 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 							Namespace: metav1.NamespaceDefault,
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: slinkyv1beta1.ObjectReference{
-								Name:      "slurm1",
-								Namespace: metav1.NamespaceDefault,
+							AccountingRef: &corev1.LocalObjectReference{
+								Name: "slurm1",
 							},
 						},
 					}).

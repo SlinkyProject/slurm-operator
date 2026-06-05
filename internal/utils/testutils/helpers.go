@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
@@ -17,17 +16,12 @@ import (
 const Timeout = 30 * time.Second
 const Interval = 2 * time.Second
 
-func NewObjectRef(obj client.Object) slinkyv1beta1.ObjectReference {
-	return slinkyv1beta1.ObjectReference{
-		Name:      obj.GetName(),
-		Namespace: obj.GetNamespace(),
-	}
-}
-
-func NewController(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySelector, accounting *slinkyv1beta1.Accounting) *slinkyv1beta1.Controller {
-	accountingRef := slinkyv1beta1.ObjectReference{}
+func NewController(name string, slurmKeyRef, jwtKeyRef corev1.SecretKeySelector, accounting *slinkyv1beta1.Accounting) *slinkyv1beta1.Controller {
+	var accountingRef *corev1.LocalObjectReference
 	if accounting != nil {
-		accountingRef = NewObjectRef(accounting)
+		accountingRef = new(corev1.LocalObjectReference{
+			Name: accounting.Name,
+		})
 	}
 	return &slinkyv1beta1.Controller{
 		TypeMeta: metav1.TypeMeta{
@@ -40,7 +34,7 @@ func NewController(name string, slurmKeyRef, jwtHs256KeyRef corev1.SecretKeySele
 		},
 		Spec: slinkyv1beta1.ControllerSpec{
 			SlurmKeyRef:    slurmKeyRef,
-			JwtHs256KeyRef: jwtHs256KeyRef,
+			JwtHs256KeyRef: jwtKeyRef,
 			AccountingRef:  accountingRef,
 			Slurmctld: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
@@ -151,9 +145,11 @@ func NewPasswordSecret(ref corev1.SecretKeySelector) *corev1.Secret {
 }
 
 func NewNodeset(name string, controller *slinkyv1beta1.Controller, replicas int32) *slinkyv1beta1.NodeSet {
-	controllerRef := slinkyv1beta1.ObjectReference{}
+	var controllerRef corev1.LocalObjectReference
 	if controller != nil {
-		controllerRef = NewObjectRef(controller)
+		controllerRef = corev1.LocalObjectReference{
+			Name: controller.Name,
+		}
 	}
 	return &slinkyv1beta1.NodeSet{
 		TypeMeta: metav1.TypeMeta{
@@ -177,9 +173,11 @@ func NewNodeset(name string, controller *slinkyv1beta1.Controller, replicas int3
 }
 
 func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef corev1.SecretKeySelector) *slinkyv1beta1.LoginSet {
-	controllerRef := slinkyv1beta1.ObjectReference{}
+	var controllerRef corev1.LocalObjectReference
 	if controller != nil {
-		controllerRef = NewObjectRef(controller)
+		controllerRef = corev1.LocalObjectReference{
+			Name: controller.Name,
+		}
 	}
 	return &slinkyv1beta1.LoginSet{
 		TypeMeta: metav1.TypeMeta{
@@ -230,9 +228,11 @@ func NewSssdConfSecret(ref corev1.SecretKeySelector) *corev1.Secret {
 }
 
 func NewRestapi(name string, controller *slinkyv1beta1.Controller) *slinkyv1beta1.RestApi {
-	controllerRef := slinkyv1beta1.ObjectReference{}
+	var controllerRef corev1.LocalObjectReference
 	if controller != nil {
-		controllerRef = NewObjectRef(controller)
+		controllerRef = corev1.LocalObjectReference{
+			Name: controller.Name,
+		}
 	}
 	return &slinkyv1beta1.RestApi{
 		TypeMeta: metav1.TypeMeta{

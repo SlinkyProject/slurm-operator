@@ -4,57 +4,13 @@
 package testutils
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func TestNewObjectRef(t *testing.T) {
-	type args struct {
-		obj client.Object
-	}
-	tests := []struct {
-		name string
-		args args
-		want slinkyv1beta1.ObjectReference
-	}{
-		{
-			name: "empty",
-			args: args{
-				obj: &corev1.Pod{},
-			},
-			want: slinkyv1beta1.ObjectReference{},
-		},
-		{
-			name: "named",
-			args: args{
-				obj: &corev1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: corev1.NamespaceDefault,
-					},
-				},
-			},
-			want: slinkyv1beta1.ObjectReference{
-				Namespace: corev1.NamespaceDefault,
-				Name:      "foo",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewObjectRef(tt.args.obj); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewObjectRef() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestNewController(t *testing.T) {
 	type args struct {
@@ -92,7 +48,7 @@ func TestNewController(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
+			case !strings.Contains(got.Name, tt.args.name):
 				t.Error("name does not match")
 			}
 		})
@@ -145,7 +101,7 @@ func TestNewSlurmKeySecret(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
+			case !strings.Contains(got.Name, tt.args.ref.Name):
 				t.Error("name does not match")
 			}
 		})
@@ -198,7 +154,7 @@ func TestNewJwtHs256KeySecret(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
+			case !strings.Contains(got.Name, tt.args.ref.Name):
 				t.Error("name does not match")
 			}
 		})
@@ -231,7 +187,7 @@ func TestNewAccounting(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
+			case !strings.Contains(got.Name, tt.args.name):
 				t.Error("name does not match")
 			}
 		})
@@ -284,7 +240,7 @@ func TestNewPasswordSecret(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
+			case !strings.Contains(got.Name, tt.args.ref.Name):
 				t.Error("name does not match")
 			}
 		})
@@ -316,7 +272,7 @@ func TestNewNodeset(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
+			case !strings.Contains(got.Name, tt.args.name):
 				t.Error("name does not match")
 			case ptr.Deref(got.Spec.Replicas, 0) != tt.args.replicas:
 				t.Errorf("replicas do not match: got = %v, want = %v", ptr.Deref(got.Spec.Replicas, 0), tt.args.replicas)
@@ -350,7 +306,7 @@ func TestNewLoginset(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
+			case !strings.Contains(got.Name, tt.args.name):
 				t.Error("name does not match")
 			}
 		})
@@ -403,7 +359,7 @@ func TestNewSssdConfSecret(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.ref.Name):
+			case !strings.Contains(got.Name, tt.args.ref.Name):
 				t.Error("name does not match")
 			}
 		})
@@ -433,7 +389,7 @@ func TestNewRestapi(t *testing.T) {
 			switch {
 			case got == nil:
 				t.Error("returned object was nil")
-			case !strings.Contains(NewObjectRef(got).Name, tt.args.name):
+			case !strings.Contains(got.Name, tt.args.name):
 				t.Error("name does not match")
 			}
 		})

@@ -42,7 +42,7 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 						Name: "slurm-foo",
 					},
 					Spec: slinkyv1beta1.NodeSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						ExtraConf: strings.Join([]string{
