@@ -328,6 +328,18 @@ controller:
 restapi:
   # -- Number of replicas to deploy.
   replicas: 1
+  # Pod disruption budget for the slurmrestd pods.
+  # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  pdb:
+    # -- Enable PodDisruptionBudget.
+    enabled: false
+    # -- Minimum number of pods that must still be available after eviction.
+    # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
+    minAvailable: 1
+    # -- (int \| string) Maximum number of pods that can be unavailable after eviction.
+    # Can be an absolute number (ex: 1) or a percentage (ex: 25%).
+    # Takes precedence over `minAvailable` when set.
+    maxUnavailable: null
   # slurmrestd container configurations.
   slurmrestd:
     # -- (string \| object) The image to use.
