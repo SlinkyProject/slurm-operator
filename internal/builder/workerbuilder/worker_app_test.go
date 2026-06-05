@@ -5,6 +5,7 @@ package workerbuilder
 
 import (
 	_ "embed"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -346,6 +347,187 @@ func TestWorkerBuilder_getResourceLimits(t *testing.T) {
 
 			require.Equal(t, tt.want.cpu, cpu)
 			require.Equal(t, tt.want.memory, memory)
+		})
+	}
+}
+
+func TestParseExtraConf(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		want    map[string][]string
+		wantErr bool
+	}{
+		{name: "empty", input: "", want: map[string][]string{}},
+		{name: "single", input: "Weight=10", want: map[string][]string{"Weight": {"10"}}},
+		{name: "multiple keys", input: "Feature=a Weight=10", want: map[string][]string{"Feature": {"a"}, "Weight": {"10"}}},
+		{name: "csv value splits", input: "Features=a,b,c", want: map[string][]string{"Features": {"a", "b", "c"}}},
+		{name: "case normalised", input: "feature=a", want: map[string][]string{"Feature": {"a"}}},
+		{name: "repeated and surrounding whitespace tolerated", input: "  Weight=5  Feature=a ", want: map[string][]string{"Weight": {"5"}, "Feature": {"a"}}},
+		{name: "missing equals", input: "Weight10", wantErr: true},
+		{name: "missing equals among valid", input: "Weight=5 nope Feature=a", wantErr: true},
+		{name: "Feature and Features stay distinct keys", input: "Feature=a Features=b", want: map[string][]string{"Feature": {"a"}, "Features": {"b"}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseExtraConf(tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ParseExtraConf() err = %v, wantErr = %v", err, tc.wantErr)
+			}
+			if tc.wantErr {
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("ParseExtraConf() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBaselineFeatures(t *testing.T) {
+	cases := []struct {
+		name      string
+		nodesetFn func() *slinkyv1beta1.NodeSet
+		want      []string
+	}{
+		{
+			name: "name only",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{ObjectMeta: metav1.ObjectMeta{Name: "gpu"}}
+			},
+			want: []string{"gpu"},
+		},
+		{
+			name: "single Feature=",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+					Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Feature=a100"},
+				}
+			},
+			want: []string{"a100", "gpu"},
+		},
+		{
+			name: "Features= CSV",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+					Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Features=a100,nvlink"},
+				}
+			},
+			want: []string{"a100", "gpu", "nvlink"},
+		},
+		{
+			name: "multiple Feature= entries merged and deduped",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+					Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Feature=a100 Feature=nvlink Features=a100"},
+				}
+			},
+			want: []string{"a100", "gpu", "nvlink"},
+		},
+		{
+			name: "hostname override replaces nodeset name",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+					Spec: slinkyv1beta1.NodeSetSpec{
+						Template: slinkyv1beta1.PodTemplate{
+							PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
+								PodSpec: corev1.PodSpec{Hostname: "gpu-x"},
+							},
+						},
+					},
+				}
+			},
+			want: []string{"gpu-x"},
+		},
+		{
+			name: "malformed ExtraConf falls back to bare baseline",
+			nodesetFn: func() *slinkyv1beta1.NodeSet {
+				return &slinkyv1beta1.NodeSet{
+					ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+					Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "bad"},
+				}
+			},
+			want: []string{"gpu"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := baselineFeatures(tc.nodesetFn())
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("baselineFeatures() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSlurmdConfArgs(t *testing.T) {
+	cases := []struct {
+		name    string
+		nodeset *slinkyv1beta1.NodeSet
+		want    []string
+	}{
+		{
+			name:    "name only",
+			nodeset: &slinkyv1beta1.NodeSet{ObjectMeta: metav1.ObjectMeta{Name: "gpu"}},
+			want:    []string{"--conf", `'Features=gpu Topology='"$SLINKY_TOPOLOGY"''`},
+		},
+		{
+			name: "feature and non-feature keys",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Weight=10 feature=a"},
+			},
+			want: []string{"--conf", `'Features=a,gpu Topology='"$SLINKY_TOPOLOGY"' Weight=10'`},
+		},
+		{
+			name: "clobber topology key",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Topology=switch-topo:s1"},
+			},
+			want: []string{"--conf", `'Features=gpu Topology=switch-topo:s1'`},
+		},
+		{
+			name: "Features CSV sorted and merged with name",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Features=z,a"},
+			},
+			want: []string{"--conf", `'Features=a,gpu,z Topology='"$SLINKY_TOPOLOGY"''`},
+		},
+		{
+			name: "hostname override is the feature name",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					Template: slinkyv1beta1.PodTemplate{
+						PodSpecWrapper: slinkyv1beta1.PodSpecWrapper{
+							PodSpec: corev1.PodSpec{Hostname: "foo-"},
+						},
+					},
+				},
+			},
+			want: []string{"--conf", `'Features=foo Topology='"$SLINKY_TOPOLOGY"''`},
+		},
+		{
+			name: "malformed ExtraConf degrades to baseline instead of panicking",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
+				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Weight10 Feature=a"},
+			},
+			want: []string{"--conf", `'Features=gpu Topology='"$SLINKY_TOPOLOGY"''`},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := slurmdConfArgs(tc.nodeset)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("slurmdConfArgs() = %v, want %v", got, tc.want)
+			}
 		})
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/workerbuilder"
 )
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets,verbs=delete;create;update
@@ -108,6 +109,10 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		for _, msg := range apivalidation.NameIsDNSSubdomain(hostname, true) {
 			errs = append(errs, fmt.Errorf("template.spec.hostname: %s", msg))
 		}
+	}
+
+	if _, err := workerbuilder.ParseExtraConf(nodeset.Spec.ExtraConf); err != nil {
+		errs = append(errs, fmt.Errorf("invalid extraConf: %w", err))
 	}
 
 	return warns, errs

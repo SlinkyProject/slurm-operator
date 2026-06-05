@@ -4,6 +4,7 @@
 package structutils
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -84,6 +85,28 @@ func TestDereferenceList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, DereferenceList(tt.args.items))
+		})
+	}
+}
+
+func TestSortedDedup(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{name: "empty", in: []string{}, want: []string{}},
+		{name: "sorts", in: []string{"c", "a", "b"}, want: []string{"a", "b", "c"}},
+		{name: "dedups", in: []string{"a", "a", "b"}, want: []string{"a", "b"}},
+		{name: "trims whitespace", in: []string{" a ", "b\t"}, want: []string{"a", "b"}},
+		{name: "drops empty and whitespace-only entries", in: []string{"a", "", "  "}, want: []string{"a"}},
+		{name: "combined sort dedup trim", in: []string{" b ", "a", "b", ""}, want: []string{"a", "b"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SortedDedup(tt.in); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SortedDedup() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

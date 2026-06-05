@@ -283,49 +283,69 @@ func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Contro
 	return args
 }
 
-func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
-	extraConf := []string{}
-	if nodeset.Spec.ExtraConf != "" {
-		extraConf = strings.Split(nodeset.Spec.ExtraConf, " ")
-	}
-
-	name := common.GetSlurmNodeSetName(nodeset)
-	confMap := map[string]string{
-		"Features": name,
-		"Topology": "'\"$SLINKY_TOPOLOGY\"'",
-	}
-	for _, item := range extraConf {
+// ParseExtraConf parses a NodeSet's Spec.ExtraConf into a map of normalized keys
+// to their values. The expected shape is space-separated Key=Value pairs; each
+// value can be a comma-separated list (e.g. Features=a,b,c). Keys are title-cased
+// so "feature=a" and "Feature=a" both produce key "Feature".
+//
+// Tokens are split on whitespace, so leading, trailing, and repeated whitespace
+// are tolerated; any token without '=' returns an error. Exported so the NodeSet
+// validation webhook can reject malformed input with the same parser the worker
+// builder uses, keeping the accepted set identical at admission and at build time.
+func ParseExtraConf(extraConf string) (map[string][]string, error) {
+	out := make(map[string][]string, 10)
+	for item := range strings.FieldsSeq(extraConf) {
 		pair := strings.SplitN(item, "=", 2)
-		key := cases.Title(language.English).String(pair[0])
 		if len(pair) != 2 {
-			panic(fmt.Sprintf("malformed --conf item: %v", item))
+			return nil, fmt.Errorf("malformed --conf item %q: expected Key=Value", item)
 		}
-		val := pair[1]
-		if key == "Features" || key == "Feature" {
-			// Slurm treats trailing 's' as optional. We have to
-			// specially handle 'Feature(s)' because we require at
-			// least one feature but the user can request additional.
-			key = "Features"
-		}
-		if ret, ok := confMap[key]; !ok {
-			confMap[key] = val
-		} else {
-			confMap[key] = ret + fmt.Sprintf(",%s", val)
+		key := cases.Title(language.English).String(pair[0])
+		out[key] = append(out[key], strings.Split(pair[1], ",")...)
+	}
+	return out, nil
+}
+
+func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
+	confMap := map[string]string{
+		"Features": strings.Join(baselineFeatures(nodeset), ","),
+		"Topology": `'"$SLINKY_TOPOLOGY"'`,
+	}
+
+	// The NodeSet webhook validates ExtraConf at admission, but it is a separate,
+	// optional deployment, so the manager cannot assume it ran. On a parse error,
+	// degrade to the baseline (matching baselineFeatures) instead of failing the
+	// NodeSet's reconcile.
+	if conf, err := ParseExtraConf(nodeset.Spec.ExtraConf); err == nil {
+		for key, vals := range conf {
+			if key == "Feature" || key == "Features" {
+				continue
+			}
+			confMap[key] = strings.Join(vals, ",")
 		}
 	}
 
-	confList := []string{}
+	confList := make([]string, 0, len(confMap))
 	for key, val := range confMap {
 		confList = append(confList, fmt.Sprintf("%s=%s", key, val))
 	}
 	sort.Strings(confList)
+	return []string{"--conf", fmt.Sprintf("'%s'", strings.Join(confList, " "))}
+}
 
-	args := []string{
-		"--conf",
-		fmt.Sprintf("'%s'", strings.Join(confList, " ")),
+// baselineFeatures returns the sorted, de-duplicated list of Slurm features baked
+// into slurmd at registration via --conf: the NodeSet name (or hostname override)
+// plus any Feature=/Features= entries from Spec.ExtraConf.
+//
+// A ParseExtraConf error falls back to the bare baseline (just the name) rather
+// than failing, so malformed ExtraConf does not wedge slurmdConfArgs; the NodeSet
+// webhook rejects such input at admission when it is enabled.
+func baselineFeatures(nodeset *slinkyv1beta1.NodeSet) []string {
+	raw := []string{common.GetSlurmNodeSetName(nodeset)}
+	if conf, err := ParseExtraConf(nodeset.Spec.ExtraConf); err == nil {
+		raw = append(raw, conf["Feature"]...)
+		raw = append(raw, conf["Features"]...)
 	}
-
-	return args
+	return structutils.SortedDedup(raw)
 }
 
 func (b *WorkerBuilder) getWorkerHashes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (map[string]string, error) {
