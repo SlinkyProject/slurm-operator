@@ -76,7 +76,7 @@ func (e *SecretEventHandler) enqueueRequest(
 	secretKey := client.ObjectKeyFromObject(secret)
 
 	controllerList := &slinkyv1beta1.ControllerList{}
-	if err := e.List(ctx, controllerList); err != nil {
+	if err := e.List(ctx, controllerList, client.InNamespace(secret.Namespace)); err != nil {
 		logger.Error(err, "failed to list controller CRs")
 	}
 
