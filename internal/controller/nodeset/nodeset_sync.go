@@ -407,30 +407,26 @@ func (r *NodeSetReconciler) syncTaint(
 
 	syncTaintFn := func(i int) error {
 		node := kubeNodeList.Items[i]
-		var toUpdate *corev1.Node
-		var updated bool
-		var err error
 
-		// Taint the node if it has a NodeSet pod that is not terminating
-		if nodeSetWithPod.Has(node.Name) {
-			toUpdate, updated, err = taints.AddOrUpdateTaint(&node, &slurmtaints.TaintNodeWorker)
-			if err != nil {
-				return err
+		mutateFn := func(node *corev1.Node) error {
+			// Taint the node if it has a NodeSet pod that is not terminating
+			if nodeSetWithPod.Has(node.Name) {
+				mutNode, _, err := taints.AddOrUpdateTaint(node, &slurmtaints.TaintNodeWorker)
+				if err != nil {
+					return err
+				}
+				*node = *mutNode
+			} else {
+				// Remove the taint from nodes that don't have NodeSet pods
+				mutNode, _, err := taints.RemoveTaint(node, &slurmtaints.TaintNodeWorker)
+				if err != nil {
+					return err
+				}
+				*node = *mutNode
 			}
-		} else {
-			// Remove the taint from nodes that don't have NodeSet pods
-			toUpdate, updated, err = taints.RemoveTaint(&node, &slurmtaints.TaintNodeWorker)
-			if err != nil {
-				return err
-			}
-		}
-
-		if !updated {
 			return nil
 		}
-
-		patch := client.StrategicMergeFrom(&node)
-		if err := r.Patch(ctx, toUpdate, patch); err != nil {
+		if err := objectutils.PatchObject(r.Client, ctx, &node, mutateFn); err != nil {
 			return err
 		}
 
@@ -459,13 +455,15 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 		slurmNodeName := nodesetutils.GetNodeName(pod)
 		deadline := nodeDeadlines.Peek(slurmNodeName)
 
-		toUpdate := pod.DeepCopy()
-		if deadline.IsZero() {
-			delete(toUpdate.Annotations, slinkyv1beta1.AnnotationPodDeadline)
-		} else {
-			toUpdate.Annotations[slinkyv1beta1.AnnotationPodDeadline] = deadline.Format(time.RFC3339)
+		mutateFn := func(pod *corev1.Pod) error {
+			if deadline.IsZero() {
+				delete(pod.Annotations, slinkyv1beta1.AnnotationPodDeadline)
+			} else {
+				pod.Annotations[slinkyv1beta1.AnnotationPodDeadline] = deadline.Format(time.RFC3339)
+			}
+			return nil
 		}
-		if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
@@ -865,16 +863,15 @@ func (r *NodeSetReconciler) makePodCordon(
 		return nil
 	}
 
-	toUpdate := pod.DeepCopy()
-	logger.Info("Cordon Pod, pending deletion", "Pod", klog.KObj(toUpdate))
-	if toUpdate.Annotations == nil {
-		toUpdate.Annotations = make(map[string]string)
+	logger.Info("Cordon Pod, pending deletion", "Pod", klog.KObj(pod))
+	mutateFn := func(pod *corev1.Pod) error {
+		if pod.Annotations == nil {
+			pod.Annotations = make(map[string]string)
+		}
+		pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+		return nil
 	}
-	toUpdate.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
-	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-		return err
-	}
-	if err := r.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
 		return err
 	}
 
@@ -938,13 +935,12 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 		return nil
 	}
 
-	toUpdate := pod.DeepCopy()
-	logger.Info("Uncordon Pod", "Pod", klog.KObj(toUpdate))
-	delete(toUpdate.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	if err := r.Patch(ctx, toUpdate, client.StrategicMergeFrom(pod)); err != nil {
-		return err
+	logger.Info("Uncordon Pod", "Pod", klog.KObj(pod))
+	mutateFn := func(pod *corev1.Pod) error {
+		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordon)
+		return nil
 	}
-	if err := r.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
 		return err
 	}
 
