@@ -62,8 +62,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 				if err != nil {
 					return err
 				}
-				jwtHs256Ref := token.JwtHs256Ref()
-				signingKey, err := r.refResolver.GetSecretKeyRef(ctx, &jwtHs256Ref.SecretKeySelector, jwtHs256Ref.Namespace)
+				signingKey, err := r.refResolver.GetSecretKeyRef(ctx, token.JwtHs256Ref(), token.Namespace)
 				if err != nil {
 					return err
 				}

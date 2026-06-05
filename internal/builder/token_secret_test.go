@@ -50,13 +50,11 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 					},
 					Spec: slinkyv1beta1.TokenSpec{
 						Username: "foo",
-						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
-							SecretKeySelector: corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "slurm-jwths256key",
-								},
-								Key: "jwt_hs256.key",
+						JwtHs256KeyRef: corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "slurm-jwths256key",
 							},
+							Key: "jwt_hs256.key",
 						},
 					},
 				},
@@ -74,13 +72,11 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 					},
 					Spec: slinkyv1beta1.TokenSpec{
 						Username: "foo",
-						JwtHs256KeyRef: slinkyv1beta1.JwtSecretKeySelector{
-							SecretKeySelector: corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "slurm-jwths256key",
-								},
-								Key: "jwt_hs256.key",
+						JwtHs256KeyRef: corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "slurm-jwths256key",
 							},
+							Key: "jwt_hs256.key",
 						},
 					},
 				},
