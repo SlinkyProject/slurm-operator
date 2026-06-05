@@ -823,6 +823,27 @@ vendor:
       jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
       # -- Script execution priority (lower numbers run first)
       scriptPriority: "90"
+  # Google Cloud
+  google:
+    a3mega:
+      # -- Enable Google Cloud A3 Mega node topology optimizations.
+      enabled: false
+      # -- Target NodeSet names to apply optimizations to.
+      targetNodeSets: []
+      # -- GKE Node Pool name that hosts the A3 Mega instances. If set, GKE Node Selector is applied.
+      nodePool: ""
+      # -- VPC networks for GPUDirect-TCPXO.
+      networks:
+        - default
+        - vpc1
+        - vpc2
+        - vpc3
+        - vpc4
+        - vpc5
+        - vpc6
+        - vpc7
+        - vpc8
+
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.

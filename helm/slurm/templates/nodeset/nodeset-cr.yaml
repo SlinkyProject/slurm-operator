@@ -13,6 +13,54 @@ SPDX-License-Identifier: Apache-2.0
 {{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
+
+{{- /* ================= BEGIN GKE A3 MEGA INJECTION ================= */ -}}
+{{- if and ($.Values.vendor.google | dig "a3mega" "enabled" false) (has $key ($.Values.vendor.google | dig "a3mega" "targetNodeSets" list)) }}
+
+  {{- /* Inject Annotations */ -}}
+  {{- $a3Annotations := tpl ($.Files.Get "_vendor/google/a3mega/annotations.yaml") $ | fromYaml -}}
+  {{- $_ := set $metadata "annotations" (merge (get $metadata "annotations" | default dict) $a3Annotations) -}}
+
+  {{- /* Inject NodeSelector for node pool */ -}}
+  {{- if $.Values.vendor.google.a3mega.nodePool }}
+    {{- $nodeSelector := $podSpec.nodeSelector | default dict -}}
+    {{- $_ := set $nodeSelector "cloud.google.com/gke-nodepool" $.Values.vendor.google.a3mega.nodePool -}}
+    {{- $_ := set $podSpec "nodeSelector" $nodeSelector -}}
+  {{- end }}
+
+  {{- /* Inject slurmd resources limits/requests for 8 GPUs automatically */ -}}
+  {{- $resources := $nodeset.slurmd.resources | default dict -}}
+  {{- $limits := $resources.limits | default dict -}}
+  {{- $requests := $resources.requests | default dict -}}
+  {{- $_ := set $limits "nvidia.com/gpu" 8 -}}
+  {{- $_ := set $requests "nvidia.com/gpu" 8 -}}
+  {{- $_ := set $resources "limits" $limits -}}
+  {{- $_ := set $resources "requests" $requests -}}
+  {{- $_ := set $nodeset.slurmd "resources" $resources -}}
+
+  {{- /* Inject tcpxo-daemon sidecar container */ -}}
+  {{- $containers := $podSpec.containers | default list -}}
+  {{- $a3Containers := tpl ($.Files.Get "_vendor/google/a3mega/containers.yaml") $ | fromYamlArray -}}
+  {{- $_ := set $podSpec "containers" (concat $containers $a3Containers) -}}
+
+  {{- /* Inject Host and EmptyDir Volumes */ -}}
+  {{- $volumes := $podSpec.volumes | default list -}}
+  {{- $a3Volumes := tpl ($.Files.Get "_vendor/google/a3mega/volumes.yaml") $ | fromYamlArray -}}
+  {{- $_ := set $podSpec "volumes" (concat $volumes $a3Volumes) -}}
+
+  {{- /* Inject slurmd volume mounts */ -}}
+  {{- $slurmdVolumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+  {{- $a3SlurmdVolumeMounts := tpl ($.Files.Get "_vendor/google/a3mega/slurmdVolumeMounts.yaml") $ | fromYamlArray -}}
+  {{- $_ := set $nodeset.slurmd "volumeMounts" (concat $slurmdVolumeMounts $a3SlurmdVolumeMounts) -}}
+
+  {{- /* Inject slurmd environment variables */ -}}
+  {{- $slurmdEnv := $nodeset.slurmd.env | default list -}}
+  {{- $a3SlurmdEnv := tpl ($.Files.Get "_vendor/google/a3mega/slurmdEnv.yaml") $ | fromYamlArray -}}
+  {{- $_ := set $nodeset.slurmd "env" (concat $slurmdEnv $a3SlurmdEnv) -}}
+
+{{- end }}
+{{- /* ================= END GKE A3 MEGA INJECTION ================= */ -}}
+
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
 {{- $slurmdEnv := $nodeset.slurmd.env | default list -}}
 {{- $_ := set $nodeset.slurmd "env" $slurmdEnv -}}
