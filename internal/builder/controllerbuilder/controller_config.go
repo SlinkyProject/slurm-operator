@@ -325,11 +325,7 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 		conf.AddProperty(config.NewPropertyRaw("### COMPUTE & PARTITION ###"))
 	}
 	for _, nodeset := range nodesetList.Items {
-		name := nodeset.Name
-		template := nodeset.Spec.Template.PodSpecWrapper
-		if template.Hostname != "" {
-			name = strings.Trim(template.Hostname, "-")
-		}
+		name := common.GetSlurmNodeSetName(&nodeset)
 		nodesetLine := []string{
 			fmt.Sprintf("NodeSet=%v", name),
 			fmt.Sprintf("Feature=%v", name),
