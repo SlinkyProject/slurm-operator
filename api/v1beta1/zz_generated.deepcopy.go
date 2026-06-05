@@ -982,12 +982,12 @@ func (in *TokenSpec) DeepCopyInto(out *TokenSpec) {
 	*out = *in
 	if in.JwtHs256KeyRef != nil {
 		in, out := &in.JwtHs256KeyRef, &out.JwtHs256KeyRef
-		*out = new(JwtSecretKeySelector)
+		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.JwtKeyRef != nil {
 		in, out := &in.JwtKeyRef, &out.JwtKeyRef
-		*out = new(JwtSecretKeySelector)
+		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Lifetime != nil {

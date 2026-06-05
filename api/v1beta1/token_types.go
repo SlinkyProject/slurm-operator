@@ -24,11 +24,11 @@ type TokenSpec struct {
 	// +optional
 	//
 	// Deprecated: use JwtKeyRef instead.
-	JwtHs256KeyRef *JwtSecretKeySelector `json:"jwtHs256KeyRef,omitzero"`
+	JwtHs256KeyRef *corev1.SecretKeySelector `json:"jwtHs256KeyRef,omitempty"`
 
 	// Slurm `auth/jwt` JWT key authentication.
 	// +optional
-	JwtKeyRef *JwtSecretKeySelector `json:"jwtKeyRef,omitzero"`
+	JwtKeyRef *corev1.SecretKeySelector `json:"jwtKeyRef,omitempty"`
 
 	// The username whom the token is created for.
 	// +required
