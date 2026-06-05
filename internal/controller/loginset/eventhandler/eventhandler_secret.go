@@ -105,7 +105,7 @@ func (e *SecretEventHandler) enqueueRequest(
 	}
 
 	loginsetList := &slinkyv1beta1.LoginSetList{}
-	if err := e.List(ctx, loginsetList); err != nil {
+	if err := e.List(ctx, loginsetList, client.InNamespace(secret.Namespace)); err != nil {
 		logger.Error(err, "failed to list LoginSet CRs")
 		return
 	}
