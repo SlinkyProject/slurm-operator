@@ -565,7 +565,6 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 	}
 
 	nodesetTaint := newNodeSet("bar", controller.Name, 2)
-	nodesetTaint.Spec.TaintKubeNodes = true
 	nodesetTaint.UID = "2345"
 	podTaint := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodesetTaint, controller, 0, "")
 	podTaint.Spec.NodeName = "node1"
@@ -640,7 +639,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 			wantTaint: false,
 		},
 		{
-			name: "Taints applied for NodeSet with TaintKubeNodes: true",
+			name: "No taints applied for NodeSet with TaintKubeNodes: true",
 			fields: fields{
 				Client: fake.NewFakeClient(
 					nodesetTaint.DeepCopy(),
@@ -668,7 +667,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				node:    &node,
 			},
 			wantErr:   false,
-			wantTaint: true,
+			wantTaint: false,
 		},
 		{
 			name: "Taints removed from Node with no NodeSet pods",
@@ -700,7 +699,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 			wantTaint: false,
 		},
 		{
-			name: "Taints applied to Node with NodeSet pods with both TaintKubeNodes: true and TaintKubeNodes: false",
+			name: "Taints not applied to Node with NodeSet pods with both TaintKubeNodes: true and TaintKubeNodes: false",
 			fields: fields{
 				Client: fake.NewFakeClient(
 					nodesetNoTaint.DeepCopy(),
@@ -728,7 +727,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				node: &node,
 			},
 			wantErr:   false,
-			wantTaint: true,
+			wantTaint: false,
 		},
 	}
 	for _, tt := range tests {
