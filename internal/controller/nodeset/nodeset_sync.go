@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
@@ -366,7 +365,7 @@ func (r *NodeSetReconciler) syncCordon(
 	return nil
 }
 
-// syncTaint ensures that a NoExecute taint is applied to all nodes running NodeSets
+// syncTaint ensures that a NoExecute taint is not applied to nodes running NodeSets
 func (r *NodeSetReconciler) syncTaint(
 	ctx context.Context,
 ) error {
@@ -376,54 +375,16 @@ func (r *NodeSetReconciler) syncTaint(
 		return err
 	}
 
-	// Build a list NodeSets and NodeSet UIDs
-	nodesetList := &slinkyv1beta1.NodeSetList{}
-	if err := r.List(ctx, nodesetList); err != nil {
-		return err
-	}
-	nodesetUIDs := sets.New[types.UID]()
-	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.TaintKubeNodes {
-			nodesetUIDs.Insert(nodeset.UID)
-		}
-	}
-
-	// Build a list of Pods
-	podList := &corev1.PodList{}
-	if err := r.List(ctx, podList); err != nil {
-		return err
-	}
-
-	// Build a set of Kube Nodes that have NodeSet pods that are not terminating
-	// Use GetControllerOf on the pod
-	nodeSetWithPod := sets.New[string]()
-	for _, pod := range podList.Items {
-		owner := metav1.GetControllerOf(&pod)
-		if owner == nil || !nodesetUIDs.Has(owner.UID) || !podutils.IsRunning(&pod) || podutils.IsTerminating(&pod) {
-			continue
-		}
-		nodeSetWithPod.Insert(pod.Spec.NodeName)
-	}
-
 	syncTaintFn := func(i int) error {
 		node := kubeNodeList.Items[i]
 
 		mutateFn := func(node *corev1.Node) error {
-			// Taint the node if it has a NodeSet pod that is not terminating
-			if nodeSetWithPod.Has(node.Name) {
-				mutNode, _, err := taints.AddOrUpdateTaint(node, &slurmtaints.TaintNodeWorker)
-				if err != nil {
-					return err
-				}
-				*node = *mutNode
-			} else {
-				// Remove the taint from nodes that don't have NodeSet pods
-				mutNode, _, err := taints.RemoveTaint(node, &slurmtaints.TaintNodeWorker)
-				if err != nil {
-					return err
-				}
-				*node = *mutNode
+			// Remove the taint from all nodes
+			mutNode, _, err := taints.RemoveTaint(node, &slurmtaints.TaintNodeWorker)
+			if err != nil {
+				return err
 			}
+			*node = *mutNode
 			return nil
 		}
 		if err := objectutils.PatchObject(r.Client, ctx, &node, mutateFn); err != nil {
