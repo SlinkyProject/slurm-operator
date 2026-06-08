@@ -4,7 +4,6 @@
 package webhook
 
 import (
-	"github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,18 +30,14 @@ var _ = Describe("Token Webhook", func() {
 					Name: "token",
 				},
 			})
-			oldToken.Spec.JwtKeyRef = &v1beta1.JwtSecretKeySelector{
-				SecretKeySelector: testutils.NewJwtKeyRef("test"),
-			}
+			oldToken.Spec.JwtKeyRef = new(testutils.NewJwtKeyRef("test"))
 
 			newToken := testutils.NewToken("token", &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "token",
 				},
 			})
-			newToken.Spec.JwtKeyRef = &v1beta1.JwtSecretKeySelector{
-				SecretKeySelector: testutils.NewJwtKeyRef("test2"),
-			}
+			newToken.Spec.JwtKeyRef = new(testutils.NewJwtKeyRef("tes2"))
 
 			_, err := tokenWebhook.ValidateUpdate(ctx, oldToken, newToken)
 			Expect(err).To(HaveOccurred())
@@ -54,18 +49,14 @@ var _ = Describe("Token Webhook", func() {
 					Name: "token",
 				},
 			})
-			oldToken.Spec.JwtKeyRef = &v1beta1.JwtSecretKeySelector{
-				SecretKeySelector: testutils.NewJwtKeyRef("test"),
-			}
+			oldToken.Spec.JwtKeyRef = new(testutils.NewJwtKeyRef("test"))
 
 			newToken := testutils.NewToken("token", &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "token",
 				},
 			})
-			newToken.Spec.JwtKeyRef = &v1beta1.JwtSecretKeySelector{
-				SecretKeySelector: testutils.NewJwtKeyRef("test"),
-			}
+			newToken.Spec.JwtKeyRef = new(testutils.NewJwtKeyRef("test"))
 
 			_, err := tokenWebhook.ValidateUpdate(ctx, oldToken, newToken)
 			Expect(err).NotTo(HaveOccurred())
