@@ -47,9 +47,53 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 						Name: "slurm-foo",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
+					},
+				},
+			},
+		},
+		{
+			name: "with nodeport",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+						Service: slinkyv1beta1.ServiceSpec{
+							NodePort: 32222,
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "login",
+							Protocol:   "TCP",
+							Port:       22,
+							TargetPort: intstr.FromString("login"),
+							NodePort:   32222,
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "slurm",
+						"app.kubernetes.io/name":     "login",
 					},
 				},
 			},
@@ -71,7 +115,7 @@ func TestBuilder_BuildLoginService(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Service: slinkyv1beta1.ServiceSpec{

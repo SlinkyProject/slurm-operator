@@ -97,10 +97,7 @@ func (e *SecretEventHandler) enqueueRequest(
 		}
 
 		for _, loginset := range loginsetList.Items {
-			key := client.ObjectKeyFromObject(&controller)
-			if loginset.Spec.ControllerRef.IsMatch(key) {
-				objectutils.EnqueueRequest(q, &loginset)
-			}
+			objectutils.EnqueueRequest(q, &loginset)
 		}
 	}
 }

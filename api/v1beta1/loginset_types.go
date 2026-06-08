@@ -21,7 +21,7 @@ var (
 type LoginSetSpec struct {
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
-	ControllerRef ObjectReference `json:"controllerRef"`
+	ControllerRef corev1.LocalObjectReference `json:"controllerRef"`
 
 	// replicas is the desired number of replicas of the given Template.
 	// These are replicas in the sense that they are instantiations of the

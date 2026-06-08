@@ -566,7 +566,10 @@ func (r *NodeSetReconciler) newNodeSetPod(
 	revisionHash string,
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
-	key := nodeset.Spec.ControllerRef.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: nodeset.Namespace,
+		Name:      nodeset.Spec.ControllerRef.Name,
+	}
 	if err := r.Get(ctx, key, controller); err != nil {
 		return nil, err
 	}

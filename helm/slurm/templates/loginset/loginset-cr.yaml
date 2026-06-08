@@ -24,7 +24,6 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
-    namespace: {{ include "slurm.namespace" $ }}
   {{- with $loginset.extraSshdConfig }}
   extraSshdConfig: |
     {{- . | nindent 4 }}

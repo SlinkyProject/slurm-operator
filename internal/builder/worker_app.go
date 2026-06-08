@@ -193,7 +193,7 @@ func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
 		extraConf = strings.Split(nodeset.Spec.ExtraConf, " ")
 	}
 
-	name := nodeset.Name
+	name := GetSlurmNodeSetName(nodeset)
 	template := nodeset.Spec.Template.PodSpecWrapper
 	if template.Hostname != "" {
 		name = strings.Trim(template.Hostname, "-")

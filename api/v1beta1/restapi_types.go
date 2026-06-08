@@ -4,6 +4,7 @@
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,7 +21,7 @@ var (
 type RestApiSpec struct {
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
-	ControllerRef ObjectReference `json:"controllerRef"`
+	ControllerRef corev1.LocalObjectReference `json:"controllerRef"`
 
 	// replicas is the desired number of replicas.
 	// If unspecified, defaults to 1.

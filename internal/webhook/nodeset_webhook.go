@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -98,6 +99,13 @@ func validateNodeSet(obj *slinkyv1beta1.NodeSet) (admission.Warnings, []error) {
 		default:
 			errs = append(errs, fmt.Errorf("`NodeSet.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled` is not valid. Got: %v. Expected of: %s; %s",
 				obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType))
+		}
+	}
+
+	hostname := obj.Spec.Template.PodSpecWrapper.Hostname
+	if hostname != "" {
+		for _, msg := range apivalidation.NameIsDNSSubdomain(hostname, true) {
+			errs = append(errs, fmt.Errorf("template.spec.hostname: %s", msg))
 		}
 	}
 
