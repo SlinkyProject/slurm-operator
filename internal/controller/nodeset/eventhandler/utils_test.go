@@ -31,9 +31,8 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			Name:      name,
 		},
 		Spec: slinkyv1beta1.NodeSetSpec{
-			ControllerRef: slinkyv1beta1.ObjectReference{
-				Namespace: corev1.NamespaceDefault,
-				Name:      controllerName,
+			ControllerRef: corev1.LocalObjectReference{
+				Name: controllerName,
 			},
 			Replicas: ptr.To(replicas),
 			Template: slinkyv1beta1.PodTemplate{

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,7 +53,7 @@ func Test_AccountingEventHandler_Create(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: &slinkyv1beta1.ObjectReference{
+							AccountingRef: &corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -120,7 +121,7 @@ func Test_AccountingEventHandler_Update(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: &slinkyv1beta1.ObjectReference{
+							AccountingRef: &corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},
@@ -193,7 +194,7 @@ func Test_AccountingEventHandler_Delete(t *testing.T) {
 							Name: "slurm",
 						},
 						Spec: slinkyv1beta1.ControllerSpec{
-							AccountingRef: &slinkyv1beta1.ObjectReference{
+							AccountingRef: &corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 						},

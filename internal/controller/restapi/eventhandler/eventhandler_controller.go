@@ -159,10 +159,7 @@ func (e *secretEventHandler) enqueueRequest(
 		}
 
 		for _, restapi := range restapiList.Items {
-			key := client.ObjectKeyFromObject(&controller)
-			if restapi.Spec.ControllerRef.IsMatch(key) {
-				objectutils.EnqueueRequest(q, &restapi)
-			}
+			objectutils.EnqueueRequest(q, &restapi)
 		}
 	}
 }

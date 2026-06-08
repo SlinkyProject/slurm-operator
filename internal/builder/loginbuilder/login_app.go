@@ -109,7 +109,7 @@ func (b *LoginBuilder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev
 	ctx := context.TODO()
 	key := loginset.Key()
 
-	controller, err := b.refResolver.GetController(ctx, loginset.Spec.ControllerRef)
+	controller, err := b.refResolver.GetController(ctx, loginset.Spec.ControllerRef, loginset.Namespace)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}

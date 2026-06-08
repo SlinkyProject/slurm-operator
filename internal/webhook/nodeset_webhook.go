@@ -5,7 +5,10 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -36,14 +39,18 @@ var _ admission.Validator[*slinkyv1beta1.NodeSet] = &NodeSetWebhook{}
 func (r *NodeSetWebhook) ValidateCreate(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (admission.Warnings, error) {
 	nodesetlog.Info("validate create", "nodeset", klog.KObj(nodeset))
 
-	return nil, nil
+	warns, errs := r.validateNodeSet(nodeset)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *NodeSetWebhook) ValidateUpdate(ctx context.Context, oldNodeSet, newNodeSet *slinkyv1beta1.NodeSet) (admission.Warnings, error) {
 	nodesetlog.Info("validate update", "newNodeSet", klog.KObj(newNodeSet))
 
-	return nil, nil
+	warns, errs := r.validateNodeSet(newNodeSet)
+
+	return warns, utilerrors.NewAggregate(errs)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -51,4 +58,18 @@ func (r *NodeSetWebhook) ValidateDelete(ctx context.Context, nodeset *slinkyv1be
 	nodesetlog.Info("validate delete", "nodeset", klog.KObj(nodeset))
 
 	return nil, nil
+}
+
+func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admission.Warnings, []error) {
+	var warns admission.Warnings
+	var errs []error
+
+	hostname := nodeset.Spec.Template.PodSpecWrapper.Hostname
+	if hostname != "" {
+		for _, msg := range apivalidation.NameIsDNSSubdomain(hostname, true) {
+			errs = append(errs, fmt.Errorf("template.spec.hostname: %s", msg))
+		}
+	}
+
+	return warns, errs
 }
