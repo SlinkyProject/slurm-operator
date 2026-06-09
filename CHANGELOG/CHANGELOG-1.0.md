@@ -1,3 +1,37 @@
+## v1.0.4
+
+### Added
+
+- Use cosign to sign image artifacts.
+
+### Fixed
+
+- Fixed token-controller not passing --token-workers when initializing the
+  controller.
+- GO-2026-5005 GO-2026-5006 GO-2026-5013 GO-2026-5014 GO-2026-5015 GO-2026-5016
+  GO-2026-5017 GO-2026-5018 GO-2026-5019 GO-2026-5020 GO-2026-5021 GO-2026-5023
+  GO-2026-5024 GO-2026-5025 GO-2026-5026 GO-2026-5027 GO-2026-5028 GO-2026-5029
+  GO-2026-5030 GO-2026-5033.
+- GO-2026-5037 GO-2026-5038 GO-2026-5039.
+- Prevent modification of ServiceSpec.externalIP for accountings, controllers,
+  loginsets, and restapis.
+- Prevent Token from being able to reference a JWT key secret outside of its
+  namespace.
+- Fixed cases where a Patch request was issued with an empty patch, causing
+  needless interactions.
+- Fixed cases where a Status Patch request was issued with an empty patch,
+  causing needless interactions.
+- Update Slurm conditions on pods such that status patch thrashing does not
+  occur.
+- Reduce object patch skew by using in memory object to generate patch from.
+- Force disablement of TaintKubeNodes feature for NodeSets.
+- Fixed cases where CRs could reference and use other CRs in other namespaces.
+- Fixed cases where the NodeSet partition config string could be used inject
+  arbitrary slurm.conf lines, circumventing the intention of the partition
+  config field.
+- Fixed exploit where pod hostname could be used to write arbitrary slurm.conf
+  lines.
+
 ## v1.0.3
 
 ### Fixed
