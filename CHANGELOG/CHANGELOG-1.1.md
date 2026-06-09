@@ -1,3 +1,55 @@
+## v1.1.1
+
+### Added
+
+- Use cosign to sign image artifacts.
+- Generate an SBOM that is included in OCI artifacts.
+- Add `--namespaces` flag to both the operator and exposed via the Helm Chart.
+- Added namespace scoped watching to webhook.
+
+### Fixed
+
+- Fix LoginSet deletion by skipping reconciliation when DeletionTimestamp is
+  set.
+- Implemented early exit for accounting, controller, and restapi controllers.
+- Fixed DaemonSet scale-down where condemned pods were simultaneously
+  uncordoned, preventing deletion.
+- Update spdystream to resolve CVE-2026-35469.
+- Update helm to resolve CVE-2026-35206.
+- Fixed Helm logic that caused dcgm.enabled=false to enable dcgm.
+- Skip ServiceMonitor deletion when v1.ServiceMonitor is not installed.
+- Adds slurm-operator prefix to slurmd container preStop hook.
+- Fixed token-controller not passing --token-workers when initializing the
+  controller.
+- Fixed display of controller and restapi connection info in Helm charting.
+- Fix corner case in IsPodFromNodeSet to guard against future callers using the
+  function without additional checking.
+- Honor service.nodePort on Accountings, Controllers, and RestAPI CRs.
+- Adds a Watch on RestAPIs to the SlurmClient Controller.
+- Delete SlurmClient when RestAPI not found.
+- Implemented deterministic RestAPI selection for SlurmClient reconciliation.
+- Exposes webhook failurePolicy and matchPolicy for both validating and mutating
+  webhooks.
+- GO-2026-5037 GO-2026-5038 GO-2026-5039.
+- Prevent modification of ServiceSpec.externalIP for accountings, controllers,
+  loginsets, and restapis.
+- Fixed cases where a Patch request was issued with an empty patch, causing
+  needless interactions.
+- Fixed cases where a Status Patch request was issued with an empty patch,
+  causing needless interactions.
+- Update Slurm conditions on pods such that status patch thrashing does not
+  occur.
+- Reduce object patch skew by using in memory object to generate patch from.
+- Prevent Token from being able to reference a JWT key secret outside of its
+  namespace.
+- Fixed cases where CRs could reference and use other CRs in other namespaces.
+- Fixed cases where the NodeSet partition config string could be used inject
+  arbitrary slurm.conf lines, circumventing the intention of the partition
+  config field.
+- Fixed exploit where pod hostname could be used to write arbitrary slurm.conf
+  lines.
+- Force disablement of TaintKubeNodes feature for NodeSets.
+
 ## v1.1.0
 
 ### Fixed
