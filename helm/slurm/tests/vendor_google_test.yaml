@@ -2,6 +2,8 @@
 suite: test vendor google gke
 templates:
   - nodeset/nodeset-cr.yaml
+  - controller/config-configmap.yaml
+  - controller/controller-cr.yaml
 release:
   name: test-release
   namespace: test-namespace
@@ -149,4 +151,81 @@ tests:
           content:
             name: NCCL_FASTRAK_LLCM_DEVICE_DIRECTORY
             value: /dev/aperture_devices
+      # Automatic extraConfMap Gres injection
+      - equal:
+          path: spec.extraConf
+          value: "Gres=gpu:nvidia_h100_80gb_hbm3:8"
+
+  - it: should inject AutoDetect=nvidia in gres.conf when A3 Mega is enabled
+    template: controller/config-configmap.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            targetNodeSets: ["slinky"]
+            nodePool: "a3-mega-nodepool"
+            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-config-extra
+      - equal:
+          path: data["gres.conf"]
+          value: "AutoDetect=nvidia\n"
+
+  - it: should not override gres.conf if already provided in configFiles when A3 Mega is enabled
+    template: controller/config-configmap.yaml
+    set:
+      configFiles:
+        gres.conf: |
+          AutoDetect=off
+      vendor:
+        google:
+          a3mega:
+            targetNodeSets: ["slinky"]
+            nodePool: "a3-mega-nodepool"
+            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: data["gres.conf"]
+          value: "AutoDetect=off\n"
+
+  - it: should include configFileRefs in controller spec when A3 Mega is enabled
+    template: controller/controller-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            targetNodeSets: ["slinky"]
+            nodePool: "a3-mega-nodepool"
+            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - equal:
+          path: spec.configFileRefs[0].name
+          value: test-release-slurm-config-extra
 

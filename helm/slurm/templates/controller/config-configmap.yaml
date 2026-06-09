@@ -3,7 +3,8 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- if .Values.configFiles -}}
+{{- $hasA3mega := gt (len (.Values.vendor.google | dig "a3mega" "targetNodeSets" list)) 0 -}}
+{{- if or .Values.configFiles $hasA3mega -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,4 +17,8 @@ data:
   {{ $key -}}: |
     {{- $content | nindent 4 }}
   {{- end }}{{- /* range $key, $content := .Values.configFiles */}}
-{{- end }}{{- /* if .Values.configFiles */}}
+  {{- if and $hasA3mega (not (hasKey (.Values.configFiles | default dict) "gres.conf")) }}
+  gres.conf: |
+    AutoDetect=nvidia
+  {{- end }}
+{{- end }}{{- /* if or .Values.configFiles $hasA3mega */}}

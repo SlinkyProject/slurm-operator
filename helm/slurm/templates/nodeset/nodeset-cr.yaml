@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
     {{- $_ := set $podSpec "nodeSelector" $nodeSelector -}}
   {{- end }}
 
-  {{- /* Inject slurmd resources limits/requests for 8 GPUs automatically */ -}}
+  {{- /* Inject slurmd resources limits/requests automatically */ -}}
   {{- $resources := $nodeset.slurmd.resources | default dict -}}
   {{- $limits := $resources.limits | default dict -}}
   {{- $requests := $resources.requests | default dict -}}
@@ -41,6 +41,13 @@ SPDX-License-Identifier: Apache-2.0
   {{- $_ := set $resources "limits" $limits -}}
   {{- $_ := set $resources "requests" $requests -}}
   {{- $_ := set $nodeset.slurmd "resources" $resources -}}
+
+  {{- /* Inject extraConfMap with Gres */ -}}
+  {{- $extraConfMap := $nodeset.extraConfMap | default dict -}}
+  {{- if not (hasKey $extraConfMap "Gres") -}}
+    {{- $_ := set $extraConfMap "Gres" "gpu:nvidia_h100_80gb_hbm3:8" -}}
+    {{- $_ := set $nodeset "extraConfMap" $extraConfMap -}}
+  {{- end -}}
 
   {{- /* Inject tcpxo-daemon sidecar container */ -}}
   {{- $containers := $podSpec.containers | default list -}}

@@ -27,7 +27,7 @@ spec:
   slurmKeyRef:
     name: {{ include "slurm.authSlurmRef.name" . }}
     key: {{ include "slurm.authSlurmRef.key" . }}
-  jwtKeyRef:
+  jwtHs256KeyRef:
     name: {{ include "slurm.authJwtRef.name" . }}
     key: {{ include "slurm.authJwtRef.key" . }}
   {{- if .Values.jwksKeys.enabled }}
@@ -49,10 +49,11 @@ spec:
   extraConf: |-
     {{- include "slurm.controller.extraConf" . | nindent 4 }}
   {{- end }}{{- /* if (include "slurm.controller.extraConf" .) */}}
-  {{- with .Values.configFiles }}
+  {{- $hasA3mega := gt (len (.Values.vendor.google | dig "a3mega" "targetNodeSets" list)) 0 -}}
+  {{- if or .Values.configFiles $hasA3mega }}
   configFileRefs:
     - name: {{ include "slurm.controller.configName" $ }}
-  {{- end }}{{- /* with .Values.configFiles */}}
+  {{- end }}
   prologScriptRefs:
     {{- with .Values.prologScripts }}
     - name: {{ include "slurm.controller.prologName" $ }}
