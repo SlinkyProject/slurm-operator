@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
@@ -34,12 +36,9 @@ func parseFlagsForTest(t *testing.T, args []string) Flags {
 
 func Test_parseFlags(t *testing.T) {
 	flags := parseFlagsForTest(t, []string{"test", "--health-addr", "8080", "--leader-elect", "true"})
-	if flags.probeAddr != "8080" {
-		t.Errorf("Test_parseFlags() probeAddr = %v, want %v", flags.probeAddr, "8080")
-	}
-	if !flags.enableLeaderElection {
-		t.Errorf("Test_parseFlags() server = %v, want %v", flags.enableLeaderElection, true)
-	}
+
+	require.Equal(t, "8080", flags.probeAddr)
+	require.True(t, flags.enableLeaderElection)
 }
 
 func Test_parseFlags_namespaces(t *testing.T) {
@@ -67,9 +66,7 @@ func Test_parseFlags_namespaces(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			flags := parseFlagsForTest(t, tt.args)
-			if flags.namespaces != tt.want {
-				t.Errorf("parseFlags() namespaces = %v, want %v", flags.namespaces, tt.want)
-			}
+			require.Equal(t, tt.want, flags.namespaces)
 		})
 	}
 }
@@ -83,15 +80,9 @@ func Test_parseFlags_profile(t *testing.T) {
 		"--leader-elect",
 	})
 
-	if !flags.profile {
-		t.Errorf("parseFlags() profile = %v, want %v", flags.profile, true)
-	}
-	if flags.profileAddr != "localhost:6061" {
-		t.Errorf("parseFlags() profileAddr = %v, want %v", flags.profileAddr, "localhost:6061")
-	}
-	if !flags.enableLeaderElection {
-		t.Errorf("parseFlags() enableLeaderElection = %v, want %v", flags.enableLeaderElection, true)
-	}
+	require.True(t, flags.profile)
+	require.Equal(t, "localhost:6061", flags.profileAddr)
+	require.True(t, flags.enableLeaderElection)
 }
 
 func Test_profileAddr(t *testing.T) {
@@ -114,9 +105,7 @@ func Test_profileAddr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := profileAddr(tt.addr); got != tt.want {
-				t.Errorf("profileAddr(%q) = %q, want %q", tt.addr, got, tt.want)
-			}
+			require.Equal(t, tt.want, profileAddr(tt.addr))
 		})
 	}
 }
@@ -126,32 +115,21 @@ func Test_newProfileMux(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	resp, err := http.Get(server.URL + "/debug/pprof/")
-	if err != nil {
-		t.Fatalf("http.Get(%q) error = %v", server.URL+"/debug/pprof/", err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		if err := resp.Body.Close(); err != nil {
-			t.Errorf("Body.Close() error = %v", err)
-		}
+		require.NoError(t, resp.Body.Close())
 	})
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("GET /debug/pprof/ status = %v, want %v", resp.StatusCode, http.StatusOK)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func Test_startProfileServer_bindError(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("net.Listen() error = %v", err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() {
-		if err := listener.Close(); err != nil {
-			t.Errorf("listener.Close() error = %v", err)
-		}
+		require.NoError(t, listener.Close())
 	})
 
-	if _, err := startProfileServer(listener.Addr().String()); err == nil {
-		t.Fatalf("startProfileServer(%q) error = nil, want non-nil", listener.Addr().String())
-	}
+	_, err = startProfileServer(listener.Addr().String())
+	require.Error(t, err)
 }

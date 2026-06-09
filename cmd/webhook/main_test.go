@@ -8,19 +8,34 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-func Test_parseFlags(t *testing.T) {
-	flags := Flags{}
-	os.Args = []string{"test", "--health-addr", "8080", "--leader-elect", "true"}
+func parseFlagsForTest(t *testing.T, args []string) Flags {
+	t.Helper()
+
+	oldArgs := os.Args
+	oldCommandLine := flag.CommandLine
+	t.Cleanup(func() {
+		os.Args = oldArgs
+		flag.CommandLine = oldCommandLine
+	})
+
+	flag.CommandLine = flag.NewFlagSet(args[0], flag.ContinueOnError)
+	os.Args = args
+
+	var flags Flags
 	parseFlags(&flags)
-	if flags.probeAddr != "8080" {
-		t.Errorf("Test_parseFlags() probeAddr = %v, want %v", flags.probeAddr, "8080")
-	}
-	if !flags.enableLeaderElection {
-		t.Errorf("Test_parseFlags() server = %v, want %v", flags.enableLeaderElection, true)
-	}
+	return flags
+}
+
+func Test_parseFlags(t *testing.T) {
+	flags := parseFlagsForTest(t, []string{"test", "--health-addr", "8080", "--leader-elect", "true"})
+
+	require.Equal(t, "8080", flags.probeAddr)
+	require.True(t, flags.enableLeaderElection)
 }
 
 func Test_parseFlags_namespaces(t *testing.T) {
@@ -47,13 +62,8 @@ func Test_parseFlags_namespaces(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			flag.CommandLine = flag.NewFlagSet(tt.args[0], flag.ContinueOnError)
-			os.Args = tt.args
-			flags := Flags{}
-			parseFlags(&flags)
-			if flags.namespaces != tt.want {
-				t.Errorf("parseFlags() namespaces = %v, want %v", flags.namespaces, tt.want)
-			}
+			flags := parseFlagsForTest(t, tt.args)
+			require.Equal(t, tt.want, flags.namespaces)
 		})
 	}
 }
