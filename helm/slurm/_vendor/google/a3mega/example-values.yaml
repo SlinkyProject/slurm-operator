@@ -26,10 +26,6 @@ nodesets:
     image:
       repository: ghcr.io/slinkyproject/slurmd
       tag: 25.05-ubuntu24.04
-    resources:
-      limits:
-        nvidia.com/gpu: 8
-        memory: 1800Gi
     logfile:
       image:
         repository: docker.io/library/alpine
