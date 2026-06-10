@@ -82,6 +82,7 @@ func TestClientMap_Get(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
+
 			require.Equal(t, tt.want, c.Get(tt.args.name))
 		})
 	}
@@ -139,6 +140,7 @@ func TestClientMap_add(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
+
 			require.Equal(t, tt.want, c.add(tt.args.name, tt.args.client))
 		})
 	}
@@ -196,6 +198,7 @@ func TestClientMap_Add(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
+
 			require.Equal(t, tt.want, c.Add(tt.args.name, tt.args.client))
 		})
 	}
@@ -253,6 +256,7 @@ func TestClientMap_Has(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
+
 			require.Equal(t, tt.want, c.Has(tt.args.names...))
 		})
 	}
@@ -307,6 +311,7 @@ func TestClientMap_Remove(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
+
 			require.Equal(t, tt.want, c.Remove(tt.args.name))
 		})
 	}
