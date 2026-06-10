@@ -1063,7 +1063,7 @@ func (r *NodeSetReconciler) processCondemned(
 		nodesetKey := objectutils.KeyFunc(nodeset)
 		durationStore.Push(nodesetKey, 30*time.Second)
 		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
-		reason := fmt.Sprintf("Pod (%s) was cordoned pending termination", klog.KObj(pod))
+		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason)
 	}
 
