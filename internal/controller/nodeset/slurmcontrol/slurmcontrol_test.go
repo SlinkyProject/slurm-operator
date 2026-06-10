@@ -1187,7 +1187,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateDOWN,
 						}),
-						Reason: ptr.To(nodeReasonPrefix + " " + "foo"),
+						Reason: new(formatNodeReason("foo")),
 					},
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()

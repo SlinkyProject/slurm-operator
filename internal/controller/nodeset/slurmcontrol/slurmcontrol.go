@@ -185,7 +185,7 @@ func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slin
 	return nil
 }
 
-const nodeReasonPrefix = "slurm-operator:"
+const nodeReasonPrefix = "slurm-operator: "
 
 // MakeNodeDrain implements SlurmControlInterface.
 func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error {
@@ -210,7 +210,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 	// If the reason is not empty, prefix it with nodeReasonPrefix
 	prefixedReason := ""
 	if reason != "" {
-		prefixedReason = nodeReasonPrefix + " " + reason
+		prefixedReason = formatNodeReason(reason)
 	}
 
 	// If Slurm node is already drained and the reasons match, no need to drain it again
@@ -235,6 +235,10 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 	}
 
 	return nil
+}
+
+func formatNodeReason(reason string) string {
+	return nodeReasonPrefix + reason
 }
 
 // MakeNodeUndrain implements SlurmControlInterface.
@@ -267,7 +271,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	// If the reason is not empty, prefix it with nodeReasonPrefix
 	prefixedReason := ""
 	if reason != "" {
-		prefixedReason = nodeReasonPrefix + " " + reason
+		prefixedReason = formatNodeReason(reason)
 	}
 
 	logger.V(1).Info("make slurm node undrain",
