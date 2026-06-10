@@ -6,9 +6,9 @@ package syncsteps
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/events"
@@ -20,7 +20,7 @@ func readOneEvent(t *testing.T, rec *events.FakeRecorder) string {
 	case ev := <-rec.Events:
 		return ev
 	default:
-		t.Fatal("expected one event on channel")
+		require.Fail(t, "expected one event on channel")
 		return ""
 	}
 }
@@ -29,7 +29,7 @@ func assertNoEvents(t *testing.T, rec *events.FakeRecorder) {
 	t.Helper()
 	select {
 	case ev := <-rec.Events:
-		t.Fatalf("unexpected event: %q", ev)
+		require.Failf(t, "unexpected event", "%q", ev)
 	default:
 	}
 }
@@ -43,9 +43,7 @@ func TestSync_AllStepsSucceed_ReturnsNil(t *testing.T) {
 		{Name: "a", SyncFn: func(context.Context, *corev1.ConfigMap) error { return nil }},
 		{Name: "b", SyncFn: func(context.Context, *corev1.ConfigMap) error { return nil }},
 	}
-	if err := Sync(ctx, rec, obj, steps); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
+	require.NoError(t, Sync(ctx, rec, obj, steps))
 	assertNoEvents(t, rec)
 }
 
@@ -54,9 +52,7 @@ func TestSync_EmptySteps_ReturnsNil(t *testing.T) {
 	ctx := context.Background()
 	rec := events.NewFakeRecorder(10)
 	obj := &corev1.ConfigMap{}
-	if err := Sync(ctx, rec, obj, nil); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
+	require.NoError(t, Sync(ctx, rec, obj, nil))
 	assertNoEvents(t, rec)
 }
 
@@ -71,19 +67,12 @@ func TestSync_SingleFailure_OneEventAndWrappedError(t *testing.T) {
 		{Name: "bad", SyncFn: func(context.Context, *corev1.ConfigMap) error { return wantErr }},
 	}
 	err := Sync(ctx, rec, obj, steps)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("errors.Is aggregate leaf: %v", err)
-	}
-	if !strings.Contains(err.Error(), `failed "bad" step`) {
-		t.Fatalf("error text: %v", err)
-	}
+	require.ErrorIs(t, err, wantErr)
+	require.ErrorContains(t, err, `failed "bad" step`)
 	ev := readOneEvent(t, rec)
-	if !strings.Contains(ev, "Warning") || !strings.Contains(ev, failedReason) || !strings.Contains(ev, `Failed "bad" step`) {
-		t.Fatalf("event: %q", ev)
-	}
+	require.Contains(t, ev, "Warning")
+	require.Contains(t, ev, failedReason)
+	require.Contains(t, ev, `Failed "bad" step`)
 	assertNoEvents(t, rec)
 }
 
@@ -103,16 +92,9 @@ func TestSync_TwoFailuresWithoutStop_BothRecordedAndContinues(t *testing.T) {
 	}
 	err := Sync(ctx, rec, obj, steps)
 	var agg utilerrors.Aggregate
-	ok := errors.As(err, &agg)
-	if !ok {
-		t.Fatalf("want Aggregate, got %T", err)
-	}
-	if len(agg.Errors()) != 3 {
-		t.Fatalf("want 3 errors, got %d: %v", len(agg.Errors()), agg.Errors())
-	}
-	if !thirdRan {
-		t.Fatal("expected third step to Sync when StopOnError is false")
-	}
+	require.ErrorAs(t, err, &agg)
+	require.Len(t, agg.Errors(), 3)
+	require.True(t, thirdRan, "expected third step to Sync when StopOnError is false")
 	readOneEvent(t, rec)
 	readOneEvent(t, rec)
 	readOneEvent(t, rec)
@@ -133,17 +115,11 @@ func TestSync_StopOnError_SkipsFollowingSteps(t *testing.T) {
 		}},
 	}
 	err := Sync(ctx, rec, obj, steps)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if after {
-		t.Fatal("step after StopOnError failure should not Sync")
-	}
+	require.Error(t, err)
+	require.False(t, after, "step after StopOnError failure should not Sync")
 	var agg utilerrors.Aggregate
-	ok := errors.As(err, &agg)
-	if !ok || len(agg.Errors()) != 1 {
-		t.Fatalf("want single error in aggregate, got %v", err)
-	}
+	require.ErrorAs(t, err, &agg)
+	require.Len(t, agg.Errors(), 1)
 	readOneEvent(t, rec)
 	assertNoEvents(t, rec)
 }
@@ -156,9 +132,7 @@ func TestSync_NilRecorder_NoPanicStillAggregates(t *testing.T) {
 		{Name: "x", SyncFn: func(context.Context, *corev1.ConfigMap) error { return errors.New("oops") }},
 	}
 	err := Sync(ctx, nil, obj, steps)
-	if err == nil || !strings.Contains(err.Error(), `failed "x" step`) {
-		t.Fatalf("Sync(nil recorder): %v", err)
-	}
+	require.ErrorContains(t, err, `failed "x" step`)
 }
 
 func TestSync_FirstSucceedsSecondFails_OneError(t *testing.T) {
@@ -171,9 +145,7 @@ func TestSync_FirstSucceedsSecondFails_OneError(t *testing.T) {
 		{Name: "b", SyncFn: func(context.Context, *corev1.ConfigMap) error { return errors.New("bad") }},
 	}
 	err := Sync(ctx, rec, obj, steps)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	require.Error(t, err)
 	readOneEvent(t, rec)
 	assertNoEvents(t, rec)
 }
