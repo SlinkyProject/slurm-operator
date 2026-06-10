@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- $hasA3mega := gt (len (.Values.vendor.google | dig "a3mega" "targetNodeSets" list)) 0 -}}
+{{- $hasA3mega := gt (len (.Values.vendor.google | dig "a3mega" list)) 0 -}}
 {{- if or .Values.configFiles $hasA3mega -}}
 apiVersion: v1
 kind: ConfigMap

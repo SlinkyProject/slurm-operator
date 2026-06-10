@@ -13,8 +13,8 @@ devices.gke.io/container.tcpxo-daemon: |+
 networking.gke.io/default-interface: 'eth0'
 networking.gke.io/interfaces: |
   [
-  {{- $networkCount := len .Values.vendor.google.a3mega.networks -}}
-  {{- range $index, $network := .Values.vendor.google.a3mega.networks }}
+  {{- $networkCount := len .a3megaConfig.networks -}}
+  {{- range $index, $network := .a3megaConfig.networks }}
     {"interfaceName":"eth{{ $index }}","network":{{ $network | quote }}}{{ if ne (add $index 1) $networkCount }},{{ end }}
   {{- end }}
   ]

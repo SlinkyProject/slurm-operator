@@ -16,8 +16,7 @@ tests:
     set:
       vendor:
         google:
-          a3mega:
-            targetNodeSets: []
+          a3mega: []
       nodesets:
         slinky:
           enabled: true
@@ -42,9 +41,9 @@ tests:
       vendor:
         google:
           a3mega:
-            targetNodeSets: ["slinky"]
-            nodePool: "a3-mega-nodepool"
-            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
       nodesets:
         slinky:
           enabled: true
@@ -162,9 +161,9 @@ tests:
       vendor:
         google:
           a3mega:
-            targetNodeSets: ["slinky"]
-            nodePool: "a3-mega-nodepool"
-            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
       nodesets:
         slinky:
           enabled: true
@@ -193,9 +192,9 @@ tests:
       vendor:
         google:
           a3mega:
-            targetNodeSets: ["slinky"]
-            nodePool: "a3-mega-nodepool"
-            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
       nodesets:
         slinky:
           enabled: true
@@ -215,9 +214,9 @@ tests:
       vendor:
         google:
           a3mega:
-            targetNodeSets: ["slinky"]
-            nodePool: "a3-mega-nodepool"
-            networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
       nodesets:
         slinky:
           enabled: true

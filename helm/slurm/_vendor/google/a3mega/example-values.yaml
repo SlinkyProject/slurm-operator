@@ -4,21 +4,20 @@
 vendor:
   google:
     a3mega:
-      targetNodeSets:
-        - a3-mega-nodes
-      nodePool: "a3-mega-nodepool"
-      networks:
-        - default
-        - vpc1
-        - vpc2
-        - vpc3
-        - vpc4
-        - vpc5
-        - vpc6
-        - vpc7
-        - vpc8
+      - targetNodeSet: a3-mega-nodes
+        nodePool: "a3-mega-nodepool"
+        networks:
+          - default
+          - vpc1
+          - vpc2
+          - vpc3
+          - vpc4
+          - vpc5
+          - vpc6
+          - vpc7
+          - vpc8
 
-# The GPU nodeset that matches targetNodeSets
+# The GPU nodeset that matches targetNodeSet
 nodesets:
   a3-mega-nodes:
     enabled: true
