@@ -63,8 +63,13 @@ Format image reference from image object.
   {{- printf $image | toString -}}
 {{- else -}}
   {{- $repository := required "image repository is required" .repository -}}
-  {{- $tag := required "image tag is required" .tag -}}
-  {{- printf "%s:%s" $repository $tag | toString -}}
+  {{- if .digest -}}
+    {{- $digest := required "image digest is required" .digest -}}
+    {{- printf "%s@%s" $repository $digest | toString -}}
+  {{- else -}}
+    {{- $tag := required "image tag is required" .tag -}}
+    {{- printf "%s:%s" $repository $tag | toString -}}
+  {{- end -}}
 {{- end -}}
 {{- end -}}
 

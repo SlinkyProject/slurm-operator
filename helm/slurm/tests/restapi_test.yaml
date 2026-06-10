@@ -178,3 +178,39 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should format repository and tag on slurmrestd
+    set:
+      restapi:
+        slurmrestd:
+          image:
+            repository: registry.example.com/org/slurmrestd
+            tag: "24.11.0"
+            digest: null
+    asserts:
+      - equal:
+          path: spec.slurmrestd.image
+          value: registry.example.com/org/slurmrestd:24.11.0
+  - it: should format repository and digest on slurmrestd
+    set:
+      restapi:
+        slurmrestd:
+          image:
+            repository: registry.example.com/org/slurmrestd
+            digest: sha256:abcdef0123456789
+            tag: null
+    asserts:
+      - equal:
+          path: spec.slurmrestd.image
+          value: registry.example.com/org/slurmrestd@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on slurmrestd
+    set:
+      restapi:
+        slurmrestd:
+          image:
+            repository: registry.example.com/org/slurmrestd
+            tag: "24.11.0"
+            digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.slurmrestd.image
+          value: registry.example.com/org/slurmrestd@sha256:abcdef0123456789

@@ -48,7 +48,7 @@ type ControllerSpec struct {
 
 	// accountingRef is a reference to the Accounting CR to which this has membership.
 	// +optional
-	AccountingRef *ObjectReference `json:"accountingRef,omitempty"`
+	AccountingRef *corev1.LocalObjectReference `json:"accountingRef,omitempty"`
 
 	// external indicates if this component is external to Kubernetes or not.
 	// If true, then externalConfig is used and other fields are ignored.
@@ -99,31 +99,31 @@ type ControllerSpec struct {
 	// Ref: https://slurm.schedmd.com/slurm.conf.html
 	// +nullable
 	// +optional
-	ConfigFileRefs []ObjectReference `json:"configFileRefs,omitzero"`
+	ConfigFileRefs []corev1.LocalObjectReference `json:"configFileRefs,omitzero"`
 
 	// PrologScriptRefs is a list of prolog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
 	// +nullable
 	// +optional
-	PrologScriptRefs []ObjectReference `json:"prologScriptRefs,omitzero"`
+	PrologScriptRefs []corev1.LocalObjectReference `json:"prologScriptRefs,omitzero"`
 
 	// EpilogScriptRefs is a list of epilog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
 	// +nullable
 	// +optional
-	EpilogScriptRefs []ObjectReference `json:"epilogScriptRefs,omitzero"`
+	EpilogScriptRefs []corev1.LocalObjectReference `json:"epilogScriptRefs,omitzero"`
 
 	// PrologSlurmctldScriptRefs is a list of PrologSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld
 	// +nullable
 	// +optional
-	PrologSlurmctldScriptRefs []ObjectReference `json:"prologSlurmctldScriptRefs,omitzero"`
+	PrologSlurmctldScriptRefs []corev1.LocalObjectReference `json:"prologSlurmctldScriptRefs,omitzero"`
 
 	// EpilogSlurmctldScriptRefs is a list of EpilogSlurmctld scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_EpilogSlurmctld
 	// +nullable
 	// +optional
-	EpilogSlurmctldScriptRefs []ObjectReference `json:"epilogSlurmctldScriptRefs,omitzero"`
+	EpilogSlurmctldScriptRefs []corev1.LocalObjectReference `json:"epilogSlurmctldScriptRefs,omitzero"`
 
 	// Persistence defines a persistent volume for the slurm controller to store its save-state.
 	// Used to recover from system failures or from pod upgrades.

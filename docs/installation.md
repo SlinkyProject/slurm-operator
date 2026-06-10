@@ -104,6 +104,8 @@ Install a Slurm cluster via helm chart:
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set-json 'nodesets={"slinky":{}}' \
+  --set "partitions.all.enabled=true" \
   --namespace=slurm --create-namespace
 ```
 

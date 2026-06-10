@@ -66,10 +66,10 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 						ExtraConf: strings.Join([]string{
 							"MinJobAge=2",
 						}, "\n"),
-						PrologScriptRefs: []slinkyv1beta1.ObjectReference{
+						PrologScriptRefs: []corev1.LocalObjectReference{
 							{Name: "prolog"},
 						},
-						EpilogScriptRefs: []slinkyv1beta1.ObjectReference{
+						EpilogScriptRefs: []corev1.LocalObjectReference{
 							{Name: "epilog"},
 						},
 					},
@@ -95,7 +95,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 							Name: "slurm-foo",
 						},
 						Spec: slinkyv1beta1.NodeSetSpec{
-							ControllerRef: slinkyv1beta1.ObjectReference{
+							ControllerRef: corev1.LocalObjectReference{
 								Name: "slurm",
 							},
 							ExtraConf: strings.Join([]string{
@@ -136,10 +136,10 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.ControllerSpec{
-						AccountingRef: &slinkyv1beta1.ObjectReference{
+						AccountingRef: &corev1.LocalObjectReference{
 							Name: "slurm",
 						},
-						ConfigFileRefs: []slinkyv1beta1.ObjectReference{
+						ConfigFileRefs: []corev1.LocalObjectReference{
 							{Name: "slurm-config"},
 						},
 					},
@@ -174,7 +174,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
 					Spec: slinkyv1beta1.ControllerSpec{
-						PrologScriptRefs: []slinkyv1beta1.ObjectReference{
+						PrologScriptRefs: []corev1.LocalObjectReference{
 							{Name: "prolog-1"},
 							{Name: "prolog-2"},
 						},
@@ -211,7 +211,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 				controller: &slinkyv1beta1.Controller{
 					ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
 					Spec: slinkyv1beta1.ControllerSpec{
-						EpilogScriptRefs: []slinkyv1beta1.ObjectReference{
+						EpilogScriptRefs: []corev1.LocalObjectReference{
 							{Name: "epilog-1"},
 							{Name: "epilog-2"},
 						},
@@ -359,7 +359,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 						Name: "slurm-foo",
 					},
 					Spec: slinkyv1beta1.NodeSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						ExtraConf: strings.Join([]string{
@@ -398,10 +398,10 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 					Name: "slurm",
 				},
 				Spec: slinkyv1beta1.ControllerSpec{
-					AccountingRef: &slinkyv1beta1.ObjectReference{
+					AccountingRef: &corev1.LocalObjectReference{
 						Name: "slurm",
 					},
-					ConfigFileRefs: []slinkyv1beta1.ObjectReference{
+					ConfigFileRefs: []corev1.LocalObjectReference{
 						{Name: "slurm-config"},
 					},
 				},

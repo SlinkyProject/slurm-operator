@@ -9,50 +9,7 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
-
-// ObjectReference is a reference to an object.
-// +structType=atomic
-type ObjectReference struct {
-	// Namespace of the referent.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-
-	// Name of the referent.
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-	// +optional
-	Name string `json:"name,omitempty"`
-}
-
-func (o *ObjectReference) NamespacedName() types.NamespacedName {
-	return types.NamespacedName{
-		Name:      o.Name,
-		Namespace: o.Namespace,
-	}
-}
-
-func (o *ObjectReference) IsMatch(key types.NamespacedName) bool {
-	switch {
-	case o.Name != key.Name:
-		return false
-	case o.Namespace != key.Namespace:
-		return false
-	default:
-		return true
-	}
-}
-
-type JwtSecretKeySelector struct {
-	// SecretKeySelector selects a key of a Secret.
-	// +structType=atomic
-	corev1.SecretKeySelector `json:",inline"`
-
-	// The namespace of the Slurm `auth/jwt` JWT key.
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-}
 
 // PodTemplate describes a template for creating copies of a predefined pod.
 type PodTemplate struct {

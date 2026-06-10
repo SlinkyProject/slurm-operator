@@ -32,7 +32,7 @@ spec:
       {{- include "slurm-operator.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: webhook
-          image: {{ include "slurm-operator.webhook.imageRef" . }}
+          image: {{ include "format-image" (list .Values.webhook.image .Chart.Version) }}
           imagePullPolicy: {{ include "slurm-operator.webhook.imagePullPolicy" . }}
           args:
             - --zap-log-level

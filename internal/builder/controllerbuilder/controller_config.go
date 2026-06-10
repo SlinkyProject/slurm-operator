@@ -34,7 +34,7 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 	var accounting *slinkyv1beta1.Accounting
 	if controller.Spec.AccountingRef != nil {
 		var err error
-		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef, controller.Namespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return nil, err
@@ -338,11 +338,7 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
 	})
 	for _, nodeset := range nodesetList.Items {
-		name := nodeset.Name
-		template := nodeset.Spec.Template.PodSpecWrapper
-		if template.Hostname != "" {
-			name = strings.Trim(template.Hostname, "-")
-		}
+		name := common.GetSlurmNodeSetName(&nodeset)
 		nodesetLine := []string{
 			fmt.Sprintf("NodeSet=%v", name),
 			fmt.Sprintf("Feature=%v", name),
@@ -397,7 +393,7 @@ func (b *ControllerBuilder) BuildControllerConfigExternal(controller *slinkyv1be
 	var accounting *slinkyv1beta1.Accounting
 	if controller.Spec.AccountingRef != nil {
 		var err error
-		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef)
+		accounting, err = b.refResolver.GetAccounting(ctx, *controller.Spec.AccountingRef, controller.Namespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return nil, err

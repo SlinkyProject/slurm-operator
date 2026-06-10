@@ -162,3 +162,42 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should format repository and tag on slurmdbd
+    set:
+      accounting:
+        enabled: true
+        slurmdbd:
+          image:
+            repository: registry.example.com/org/slurmdbd
+            tag: "24.11.0"
+            digest: null
+    asserts:
+      - equal:
+          path: spec.slurmdbd.image
+          value: registry.example.com/org/slurmdbd:24.11.0
+  - it: should format repository and digest on slurmdbd
+    set:
+      accounting:
+        enabled: true
+        slurmdbd:
+          image:
+            repository: registry.example.com/org/slurmdbd
+            digest: sha256:abcdef0123456789
+            tag: null
+    asserts:
+      - equal:
+          path: spec.slurmdbd.image
+          value: registry.example.com/org/slurmdbd@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on slurmdbd
+    set:
+      accounting:
+        enabled: true
+        slurmdbd:
+          image:
+            repository: registry.example.com/org/slurmdbd
+            tag: "24.11.0"
+            digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.slurmdbd.image
+          value: registry.example.com/org/slurmdbd@sha256:abcdef0123456789

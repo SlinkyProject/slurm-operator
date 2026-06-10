@@ -45,7 +45,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.controllerWorkers | int | `4` | Set the max concurrent workers for the Controller controller. |
 | operator.enabled | bool | `true` | Enables the operator. |
 | operator.healthPort | int | `8081` | Set the port used for health checks. |
-| operator.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
+| operator.image | object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurm-operator","tag":null}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | operator.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | operator.leaderElection | bool | `true` | Enable leader election for slurm-operator |
 | operator.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
@@ -58,6 +58,8 @@ Kubernetes: `>= 1.29.0-0`
 | operator.pdb.maxUnavailable | string | `nil` | Maximum pods that may be unavailable (int or quoted percent). Rendered only when set, and takes precedence over `minAvailable`. |
 | operator.pdb.minAvailable | int | `1` | Minimum pods that must remain available after eviction (int or quoted percent). |
 | operator.podSecurityContext | object | `{}` | Pod-level security context for the operator pod. Applied to all containers in the pod. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ |
+| operator.profile | bool | `false` | Enable Go profiling for slurm-operator |
+| operator.profileAddr | string | `"localhost:6060"` | Set the port used for exposing Go profiling metrics. This should never be exposed on a public network. |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | operator.restapiWorkers | int | `4` | Set the max concurrent workers for the Restapi controller. |
@@ -73,7 +75,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | webhook.enabled | bool | `true` | Enable the webhook. |
 | webhook.healthPort | int | `8081` | Set the port used for health checks. |
-| webhook.image | object | `{"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":""}` | The image to use, `${repository}:${tag}`. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
+| webhook.image | object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurm-operator-webhook","tag":null}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |

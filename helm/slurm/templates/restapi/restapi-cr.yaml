@@ -3,13 +3,15 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- $metadata := merge dict .Values.restapi.metadata (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
+{{- $metadata := merge dict (.Values.restapi.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
 {{- $podSpec := .Values.restapi.podSpec | default dict -}}
-{{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
+{{- $imagePullSecrets := concat list ($podSpec | dig "imagePullSecrets" list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" . | toString) -}}
+{{- $priorityClassName := $podSpec | dig "priorityClassName" "" | default (include "slurm.priorityClassName" . | toString) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
+{{- $slurmrestd := .Values.restapi.slurmrestd | default dict -}}
+---
 apiVersion: slinky.slurm.net/v1beta1
 kind: RestApi
 metadata:
@@ -21,11 +23,10 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" . }}
-    namespace: {{ include "slurm.namespace" . }}
   replicas: {{ .Values.restapi.replicas }}
   slurmrestd:
-    {{- $_ := set .Values.restapi.slurmrestd "imagePullPolicy" (get .Values.restapi.slurmrestd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" .Values.restapi.slurmrestd | nindent 4 }}
+    {{- $_ := set $slurmrestd "imagePullPolicy" (get $slurmrestd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $slurmrestd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.restapi.service }}
   service:

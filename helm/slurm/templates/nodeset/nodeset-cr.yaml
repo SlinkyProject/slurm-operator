@@ -4,6 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- range $key, $nodeset := $.Values.nodesets }}
+{{- $nodeset = mergeOverwrite (dict) (deepCopy ($.Values.nodesetDefaults | default dict)) (deepCopy ($nodeset | default dict)) -}}
 {{- if $nodeset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.worker.name" $) $key }}
 {{- $metadata := merge dict ($nodeset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
@@ -109,19 +110,22 @@ SPDX-License-Identifier: Apache-2.0
 {{- end }}
 {{- /* ================= END GKE A3 MEGA INJECTION ================= */ -}}
 
-{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
-{{- $slurmdEnv := $nodeset.slurmd.env | default list -}}
-{{- $_ := set $nodeset.slurmd "env" $slurmdEnv -}}
-{{- if and (include "vendor.dcgm.enabled" $) (include "vendor.dcgm.nodesetHasGPU" $nodeset.slurmd) }}
-  {{- $volumeMounts := $nodeset.slurmd.volumeMounts | default list -}}
+{{- $slurmd := $nodeset.slurmd | default dict -}}
+{{- $_ := set $slurmd "env" ($slurmd.env | default list) -}}
+{{- $_ := set $nodeset "slurmd" $slurmd -}}
+{{- if and (include "vendor.dcgm.enabled" $) (include "vendor.dcgm.nodesetHasGPU" $slurmd) }}
+  {{- $volumeMounts := $slurmd.volumeMounts | default list -}}
   {{- $dcgmVolumeMount := dict "name" "dcgm-job-mapping" "mountPath" (include "vendor.dcgm.jobMappingDir" $) }}
   {{- $volumeMounts = append $volumeMounts $dcgmVolumeMount }}
-  {{- $_ := set $nodeset.slurmd "volumeMounts" $volumeMounts -}}
-  {{- $volumes := $nodeset.podSpec.volumes | default list -}}
+  {{- $_ := set $slurmd "volumeMounts" $volumeMounts -}}
+  {{- $_ := set $nodeset "slurmd" $slurmd -}}
+  {{- $volumes := $podSpec.volumes | default list -}}
   {{- $dcgmVolume := dict "name" "dcgm-job-mapping" "hostPath" (dict "path" (include "vendor.dcgm.jobMappingDir" $) "type" "DirectoryOrCreate") }}
   {{- $volumes = append $volumes $dcgmVolume }}
-  {{- $_ := set $nodeset.podSpec "volumes" $volumes -}}
+  {{- $_ := set $podSpec "volumes" $volumes -}}
 {{- end }}
+{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
+{{- $logfile := $nodeset.logfile | default dict }}
 ---
 apiVersion: slinky.slurm.net/v1beta1
 kind: NodeSet
@@ -134,32 +138,31 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
-    namespace: {{ include "slurm.namespace" $ }}
   {{- if (include "slurm.worker.extraConf" $nodeset) }}
   extraConf: {{ include "slurm.worker.extraConf" $nodeset }}
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}
   {{- with $nodeset.partition }}
   partition:
-    enabled: {{ $nodeset.partition.enabled }}
-    {{- if (include "slurm.worker.partitionConfig" $nodeset.partition) }}
-    config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
-    {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
+    enabled: {{ .enabled }}
+    {{- if (include "slurm.worker.partitionConfig" .) }}
+    config: {{ include "slurm.worker.partitionConfig" . }}
+    {{- end }}{{- /* if (include "slurm.worker.partitionConfig" .) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
   {{- with $nodeset.ssh }}
-  {{- if $nodeset.ssh.enabled }}
+  {{- if .enabled }}
   {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
   ssh:
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* if $nodeset.ssh.enabled */}}
+  {{- end }}{{- /* if .enabled */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
   scalingMode: {{ $nodeset.scalingMode }}
   replicas: {{ $nodeset.replicas }}
   slurmd:
-    {{- $_ := set $nodeset.slurmd "imagePullPolicy" (get $nodeset.slurmd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" $nodeset.slurmd | nindent 4 }}
+    {{- $_ := set $slurmd "imagePullPolicy" (get $slurmd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $slurmd | nindent 4 }}
   logfile:
-    {{- $_ := set $nodeset.logfile "imagePullPolicy" (get $nodeset.logfile "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" $nodeset.logfile | nindent 4 }}
+    {{- $_ := set $logfile "imagePullPolicy" (get $logfile "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with $nodeset.updateStrategy }}
   updateStrategy:
@@ -167,7 +170,6 @@ spec:
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
   ordinalPadding: {{ $nodeset.ordinalPadding }}
   pinToNode: {{ $nodeset.pinToNode }}
-  taintKubeNodes: {{ $nodeset.taintKubeNodes }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
   pruneSlurmNodeRecords: {{ $nodeset.pruneSlurmNodeRecords }}
 {{- end }}{{- /* $nodeset.enabled */}}

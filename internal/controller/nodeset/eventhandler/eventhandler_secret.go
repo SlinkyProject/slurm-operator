@@ -97,10 +97,7 @@ func (e *SecretEventHandler) enqueueRequest(
 		}
 
 		for _, nodeset := range nodesetList.Items {
-			key := client.ObjectKeyFromObject(&controller)
-			if nodeset.Spec.ControllerRef.IsMatch(key) {
-				objectutils.EnqueueRequest(q, &nodeset)
-			}
+			objectutils.EnqueueRequest(q, &nodeset)
 		}
 	}
 }

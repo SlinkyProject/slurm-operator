@@ -18,17 +18,8 @@
 When running Slinky in certain environments, it may be necessary to isolate the
 nodes running Slurm NodeSets from other Kubernetes workloads.
 
-By default, Slurm-operator does not taint nodes on which NodeSet pods are
-running. This can be configured by setting `taintKubeNodes` to `true` for
-specific NodeSets in the Slurm Helm chart, or by deploying a NodeSet CR with
-`TaintKubeNodes: true`. This option causes
-`nodeset.slinky.slurm.net/worker=:NoExecute` taints to be applied to any node on
-which a NodeSet slurmd replica is scheduled. Any pods that do not have a
-toleration matching this taint will be evicted by the Kubernetes controllers.
-
 This document provides an example of how this can be done manually using
-[taints and tolerations], to demonstrate what Slurm-operator does for NodeSet
-pods automatically when `taintKubeNodes` is set.
+[taints and tolerations].
 
 ## Pre-requisites
 

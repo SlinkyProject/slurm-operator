@@ -177,3 +177,121 @@ tests:
       - equal:
           path: spec.slurmctld.livenessProbe.failureThreshold
           value: 3
+  - it: should format a string image reference on slurmctld
+    set:
+      controller.slurmctld.image: registry.example.com/org/slurm:24.11.0
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: registry.example.com/org/slurm:24.11.0
+  - it: should format repository and tag on slurmctld
+    set:
+      controller.slurmctld.image.repository: registry.example.com/org/slurmctld
+      controller.slurmctld.image.tag: "24.11.0"
+      controller.slurmctld.image.digest: null
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: registry.example.com/org/slurmctld:24.11.0
+  - it: should format repository and digest on slurmctld
+    set:
+      controller.slurmctld.image.repository: registry.example.com/org/slurmctld
+      controller.slurmctld.image.digest: sha256:abcdef0123456789
+      controller.slurmctld.image.tag: null
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: registry.example.com/org/slurmctld@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on slurmctld
+    set:
+      controller.slurmctld.image.repository: registry.example.com/org/slurmctld
+      controller.slurmctld.image.tag: "24.11.0"
+      controller.slurmctld.image.digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.slurmctld.image
+          value: registry.example.com/org/slurmctld@sha256:abcdef0123456789
+  - it: should fail when string image is empty on slurmctld
+    set:
+      controller.slurmctld.image: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: image is required
+  - it: should fail when repository is missing on slurmctld
+    set:
+      controller.slurmctld.image.repository: null
+      controller.slurmctld.image.tag: "24.11.0"
+      controller.slurmctld.image.digest: null
+    asserts:
+      - failedTemplate:
+          errorPattern: image repository is required
+  - it: should fail when tag is missing and digest is unset on slurmctld
+    set:
+      controller.slurmctld.image.repository: registry.example.com/org/slurmctld
+      controller.slurmctld.image.tag: null
+      controller.slurmctld.image.digest: null
+    asserts:
+      - failedTemplate:
+          errorPattern: image tag is required
+  - it: should fail when digest is empty on slurmctld
+    set:
+      controller.slurmctld.image.repository: registry.example.com/org/slurmctld
+      controller.slurmctld.image.digest: ""
+      controller.slurmctld.image.tag: null
+    asserts:
+      - failedTemplate:
+          errorPattern: image tag is required
+  - it: should format repository and tag on reconfigure
+    set:
+      controller.reconfigure.image.repository: registry.example.com/org/reconfigure
+      controller.reconfigure.image.tag: "24.11.0"
+      controller.reconfigure.image.digest: null
+    asserts:
+      - equal:
+          path: spec.reconfigure.image
+          value: registry.example.com/org/reconfigure:24.11.0
+  - it: should format repository and digest on reconfigure
+    set:
+      controller.reconfigure.image.repository: registry.example.com/org/reconfigure
+      controller.reconfigure.image.digest: sha256:abcdef0123456789
+      controller.reconfigure.image.tag: null
+    asserts:
+      - equal:
+          path: spec.reconfigure.image
+          value: registry.example.com/org/reconfigure@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on reconfigure
+    set:
+      controller.reconfigure.image.repository: registry.example.com/org/reconfigure
+      controller.reconfigure.image.tag: "24.11.0"
+      controller.reconfigure.image.digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.reconfigure.image
+          value: registry.example.com/org/reconfigure@sha256:abcdef0123456789
+  - it: should format repository and tag on logfile
+    set:
+      controller.logfile.image.repository: registry.example.com/org/logfile
+      controller.logfile.image.tag: "24.11.0"
+      controller.logfile.image.digest: null
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile:24.11.0
+  - it: should format repository and digest on logfile
+    set:
+      controller.logfile.image.repository: registry.example.com/org/logfile
+      controller.logfile.image.digest: sha256:abcdef0123456789
+      controller.logfile.image.tag: null
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on logfile
+    set:
+      controller.logfile.image.repository: registry.example.com/org/logfile
+      controller.logfile.image.tag: "24.11.0"
+      controller.logfile.image.digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile@sha256:abcdef0123456789

@@ -16,6 +16,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
 func NewSecretEventHandler(reader client.Reader) *SecretEventHandler {
@@ -83,11 +84,10 @@ func (e *SecretEventHandler) enqueueRequest(
 	for _, accounting := range accountingList.Items {
 		slurmKeyKey := accounting.AuthSlurmKey()
 		jwtKeyKey := accounting.AuthJwtKey()
-		if secretKey.String() != slurmKeyKey.String() &&
-			secretKey.String() != jwtKeyKey.String() {
+		if !refresolver.IsKeyMatch(secretKey, slurmKeyKey) &&
+			!refresolver.IsKeyMatch(secretKey, jwtKeyKey) {
 			continue
 		}
-
 		objectutils.EnqueueRequest(q, &accounting)
 	}
 }

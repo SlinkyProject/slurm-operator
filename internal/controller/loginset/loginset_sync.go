@@ -9,9 +9,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -42,7 +42,10 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	}
 
 	controller := &slinkyv1beta1.Controller{}
-	controllerKey := client.ObjectKey(loginset.Spec.ControllerRef.NamespacedName())
+	controllerKey := types.NamespacedName{
+		Namespace: loginset.Namespace,
+		Name:      loginset.Spec.ControllerRef.Name,
+	}
 	if err := r.Get(ctx, controllerKey, controller); err != nil {
 		msg := fmt.Sprintf("Failed to get Controller (%s): %v", controllerKey, err)
 		r.eventRecorder.Eventf(loginset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Sync", msg)

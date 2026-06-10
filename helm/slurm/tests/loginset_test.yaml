@@ -199,3 +199,87 @@ tests:
           count: 2
       - isKind:
           of: LoginSet
+  - it: should format repository and tag on login
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          login:
+            image:
+              repository: registry.example.com/org/login
+              tag: "24.11.0"
+              digest: null
+    asserts:
+      - equal:
+          path: spec.login.image
+          value: registry.example.com/org/login:24.11.0
+  - it: should format repository and digest on login
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          login:
+            image:
+              repository: registry.example.com/org/login
+              digest: sha256:abcdef0123456789
+              tag: null
+    asserts:
+      - equal:
+          path: spec.login.image
+          value: registry.example.com/org/login@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on login
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          login:
+            image:
+              repository: registry.example.com/org/login
+              tag: "24.11.0"
+              digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.login.image
+          value: registry.example.com/org/login@sha256:abcdef0123456789
+  - it: should format repository and tag on initconf
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          initconf:
+            image:
+              repository: registry.example.com/org/initconf
+              tag: "24.11.0"
+              digest: null
+    asserts:
+      - equal:
+          path: spec.initconf.image
+          value: registry.example.com/org/initconf:24.11.0
+  - it: should format repository and digest on initconf
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          initconf:
+            image:
+              repository: registry.example.com/org/initconf
+              digest: sha256:abcdef0123456789
+              tag: null
+    asserts:
+      - equal:
+          path: spec.initconf.image
+          value: registry.example.com/org/initconf@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on initconf
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          initconf:
+            image:
+              repository: registry.example.com/org/initconf
+              tag: "24.11.0"
+              digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.initconf.image
+          value: registry.example.com/org/initconf@sha256:abcdef0123456789

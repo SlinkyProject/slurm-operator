@@ -9,6 +9,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -46,7 +47,7 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.RestApiSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 					},
@@ -107,6 +108,72 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != SlurmrestdPort:
 				t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
 					got.Spec.Template.Spec.Containers[0].Ports[0].Name, SlurmrestdPort)
+			}
+		})
+	}
+}
+
+func BenchmarkBuilder_BuildRestapi(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		restapi *slinkyv1beta1.RestApi
+	}
+	benchmarks := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "failure",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			client := New(bb.fields.client)
+			for b.Loop() {
+				_, err := client.BuildRestapi(bb.args.restapi)
+				if (err != nil) != bb.wantErr {
+					b.Errorf("Builder.BuildRestapi() error = %v, wantErr %v", err, bb.wantErr)
+					return
+				}
 			}
 		})
 	}

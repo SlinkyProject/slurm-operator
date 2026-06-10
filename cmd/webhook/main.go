@@ -56,23 +56,13 @@ type Flags struct {
 }
 
 func parseFlags(flags *Flags) {
-	flag.StringVar(
-		&flags.serverAddr,
-		"server-addr",
-		":9443",
-		"The address the webhook server binds to.",
-	)
+	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(
 		&flags.probeAddr,
 		"health-addr",
 		":8081",
 		"The address the probe endpoint binds to.",
-	)
-	flag.StringVar(
-		&flags.metricsAddr,
-		"metrics-addr",
-		"0",
-		"The address the metrics server binds to.",
 	)
 	flag.BoolVar(
 		&flags.enableLeaderElection,
@@ -87,12 +77,23 @@ func parseFlags(flags *Flags) {
 		"",
 		"Determines the namespace in which the leader election resource will be created.",
 	)
+	flag.StringVar(
+		&flags.metricsAddr,
+		"metrics-addr",
+		"0",
+		"The address the metrics server binds to.",
+	)
 	flag.BoolVar(&flags.secureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+
 	flag.StringVar(&flags.namespaces, "namespaces", "",
 		"Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched.")
+	flag.StringVar(
+		&flags.serverAddr,
+		"server-addr",
+		":9443",
+		"The address the webhook server binds to.",
+	)
 	flag.Parse()
 }
 

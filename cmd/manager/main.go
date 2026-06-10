@@ -5,9 +5,15 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -16,7 +22,7 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,9 +44,11 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
+	scheme   = k8sruntime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+const defaultProfileAddr = "localhost:6060"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -60,20 +68,18 @@ type Flags struct {
 	enableHTTP2              bool
 	namespaces               string
 	propagatedNodeConditions string
+	profile                  bool
+	profileAddr              string
 }
 
 func parseFlags(flags *Flags) {
+	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(
 		&flags.probeAddr,
 		"health-addr",
 		":8081",
 		"The address the probe endpoint binds to.",
-	)
-	flag.StringVar(
-		&flags.metricsAddr,
-		"metrics-addr",
-		":8080",
-		"The address the metrics server binds to.",
 	)
 	flag.BoolVar(
 		&flags.enableLeaderElection,
@@ -88,15 +94,66 @@ func parseFlags(flags *Flags) {
 		"",
 		"Determines the namespace in which the leader election resource will be created.",
 	)
+	flag.StringVar(
+		&flags.metricsAddr,
+		"metrics-addr",
+		":8080",
+		"The address the metrics server binds to.",
+	)
 	flag.BoolVar(&flags.secureMetrics, "metrics-secure", false,
 		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&flags.enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&flags.namespaces, "namespaces", "",
 		"Comma-separated list of namespaces the controller will watch. If empty, all namespaces are watched.")
 	flag.StringVar(&flags.propagatedNodeConditions, "propagated-node-conditions", "",
 		"Comma-separated list of Kube node conditions, by type field, the controller will parse when setting drain reason on Slurm nodes.")
+	flag.BoolVar(&flags.profile, "profile", false,
+		"If set the Go profiling endpoints will be exposed via HTTP")
+	flag.StringVar(
+		&flags.profileAddr,
+		"profile-addr",
+		defaultProfileAddr,
+		"The address the Go profiling endpoint binds to. This should never be exposed publicly. If empty and profiling is enabled, defaults to localhost:6060.",
+	)
 	flag.Parse()
+}
+
+func profileAddr(addr string) string {
+	if addr == "" {
+		return defaultProfileAddr
+	}
+	return addr
+}
+
+func newProfileMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	return mux
+}
+
+func startProfileServer(addr string) (*http.Server, error) {
+	server := &http.Server{
+		Addr:         profileAddr(addr),
+		Handler:      newProfileMux(),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 120 * time.Second,
+	}
+
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("listen on pprof address %q: %w", server.Addr, err)
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			setupLog.Error(err, "pprof server failed")
+		}
+	}()
+
+	return server, nil
 }
 
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;create;update;patch;watch
@@ -118,6 +175,13 @@ func main() {
 	disableHTTP2 := func(c *tls.Config) {
 		setupLog.Info("disabling http/2")
 		c.NextProtos = []string{"http/1.1"}
+	}
+
+	if flags.profile {
+		if _, err := startProfileServer(flags.profileAddr); err != nil {
+			setupLog.Error(err, "unable to start pprof server")
+			os.Exit(1)
+		}
 	}
 
 	tlsOpts := []func(*tls.Config){}

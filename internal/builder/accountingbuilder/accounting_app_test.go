@@ -91,3 +91,46 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkBuilder_BuildAccounting(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		accounting *slinkyv1beta1.Accounting
+	}
+	benchmarks := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.AccountingSpec{
+						JwtKeyRef: &corev1.SecretKeySelector{},
+					},
+				},
+			},
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			client := New(bb.fields.client)
+
+			for b.Loop() {
+				_, err := client.BuildAccounting(bb.args.accounting)
+				if err != nil {
+					b.Fatalf("Failed to build accounting: %v", err)
+				}
+			}
+		})
+	}
+}

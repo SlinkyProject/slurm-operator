@@ -3,13 +3,17 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
-{{- $metadata := merge dict .Values.controller.metadata (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
+{{- $metadata := merge dict (.Values.controller.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
 {{- $podSpec := .Values.controller.podSpec | default dict -}}
-{{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
+{{- $imagePullSecrets := concat list ($podSpec | dig "imagePullSecrets" list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $ | toString)  -}}
+{{- $priorityClassName := $podSpec | dig "priorityClassName" "" | default (include "slurm.priorityClassName" $ | toString) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
+{{- $slurmctld := .Values.controller.slurmctld | default dict -}}
+{{- $reconfigure := .Values.controller.reconfigure | default dict -}}
+{{- $logfile := .Values.controller.logfile | default dict -}}
+---
 apiVersion: slinky.slurm.net/v1beta1
 kind: Controller
 metadata:
@@ -22,7 +26,6 @@ spec:
   {{- if .Values.accounting.enabled }}
   accountingRef:
     name: {{ include "slurm.fullname" . }}
-    namespace: {{ include "slurm.namespace" . }}
   {{- end }}{{- /* if .Values.accounting.enabled */}}
   slurmKeyRef:
     name: {{ include "slurm.authSlurmRef.name" . }}
@@ -77,15 +80,15 @@ spec:
     - name: {{ include "slurm.controller.epilogSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.epilogSlurmctldScripts */}}
   slurmctld:
-    {{- $_ := set .Values.controller.slurmctld "imagePullPolicy" (get .Values.controller.slurmctld "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" .Values.controller.slurmctld | nindent 4 }}
+    {{- $_ := set $slurmctld "imagePullPolicy" (get $slurmctld "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $slurmctld | nindent 4 }}
   inplaceReconfigure: {{ .Values.controller.inplaceReconfigure }}
   reconfigure:
-    {{- $_ := set .Values.controller.reconfigure "imagePullPolicy" (get .Values.controller.reconfigure "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" .Values.controller.reconfigure | nindent 4 }}
+    {{- $_ := set $reconfigure "imagePullPolicy" (get $reconfigure "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $reconfigure | nindent 4 }}
   logfile:
-    {{- $_ := set .Values.controller.logfile "imagePullPolicy" (get .Values.controller.logfile "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" .Values.controller.logfile | nindent 4 }}
+    {{- $_ := set $logfile "imagePullPolicy" (get $logfile "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $logfile | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.controller.persistence }}
   {{- $persistence := fromYaml (include "toYaml-set-storageClassName" .) }}

@@ -94,6 +94,20 @@ tests:
       - equal:
           path: spec.replicas
           value: 42
+  - it: should render profile flag without a positional bool argument
+    set:
+      operator:
+        profile: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[20]
+          value: --profile
+      - equal:
+          path: spec.template.spec.containers[0].args[21]
+          value: --profile-addr
+      - equal:
+          path: spec.template.spec.containers[0].args[23]
+          value: --leader-elect
   - it: should set namespace
     set:
       namespaceOverride: custom-namespace
@@ -166,3 +180,65 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
           value: 512Mi
+  - it: should format a string image reference on operator
+    set:
+      operator.image: registry.example.com/org/slurm-operator:1.2.3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator:1.2.3
+  - it: should format repository and tag on operator
+    set:
+      operator.image.repository: registry.example.com/org/slurm-operator
+      operator.image.tag: "1.2.3"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator:1.2.3
+  - it: should format repository and digest on operator
+    set:
+      operator.image.repository: registry.example.com/org/slurm-operator
+      operator.image.digest: sha256:abcdef0123456789
+      operator.image.tag: null
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on operator
+    set:
+      operator.image.repository: registry.example.com/org/slurm-operator
+      operator.image.tag: "1.2.3"
+      operator.image.digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator@sha256:abcdef0123456789
+  - it: should default tag to chart version when tag is unset on operator
+    set:
+      operator.image.repository: registry.example.com/org/slurm-operator
+      operator.image.tag: null
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator:1.2.3
+  - it: should default tag to chart version when tag is empty on operator
+    set:
+      operator.image.repository: registry.example.com/org/slurm-operator
+      operator.image.tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-operator:1.2.3
+  - it: should fail when string image is empty on operator
+    set:
+      operator.image: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: image is required
+  - it: should fail when repository is missing on operator
+    set:
+      operator.image.repository: null
+      operator.image.tag: "1.2.3"
+    asserts:
+      - failedTemplate:
+          errorPattern: image repository is required

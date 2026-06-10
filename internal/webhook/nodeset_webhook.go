@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
@@ -76,10 +77,6 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		errs = append(errs, errors.New("controllerRef.name must not be empty"))
 	}
 
-	if nodeset.Spec.TaintKubeNodes { //nolint:staticcheck // SA1019
-		warns = append(warns, "TaintKubeNodes option is deprecated and will removed in the future.")
-	}
-
 	if mu := nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable; mu != nil {
 		switch mu.Type {
 		case intstr.Int:
@@ -95,6 +92,13 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 
 	if nodeset.Spec.Ssh.Enabled && nodeset.Spec.Ssh.SssdConfRef.Name == "" {
 		errs = append(errs, errors.New("ssh.sssdConfRef.name must not be empty when ssh is enabled"))
+	}
+
+	hostname := nodeset.Spec.Template.PodSpecWrapper.Hostname
+	if hostname != "" {
+		for _, msg := range apivalidation.NameIsDNSSubdomain(hostname, true) {
+			errs = append(errs, fmt.Errorf("template.spec.hostname: %s", msg))
+		}
 	}
 
 	return warns, errs

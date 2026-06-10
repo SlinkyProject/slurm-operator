@@ -8,29 +8,26 @@ SPDX-License-Identifier: Apache-2.0
 Check if DCGM integration is enabled
 */}}
 {{- define "vendor.dcgm.enabled" -}}
-{{- .Values.vendor.nvidia.dcgm.enabled | ternary "true" "" -}}
+{{- $vendor := .Values.vendor | default dict -}}
+{{- ($vendor | dig "nvidia" "dcgm" "enabled" false) | ternary "true" "" -}}
 {{- end }}
 
 {{/*
 Get the DCGM job mapping directory
 */}}
 {{- define "vendor.dcgm.jobMappingDir" -}}
-{{- .Values.vendor.nvidia.dcgm.jobMappingDir | default "/var/lib/dcgm-exporter/job-mapping" -}}
+{{- $vendor := .Values.vendor | default dict -}}
+{{- $vendor | dig "nvidia" "dcgm" "jobMappingDir" "/var/lib/dcgm-exporter/job-mapping" -}}
 {{- end }}
 
 {{/*
 Check if a nodeset has GPU resources allocated
 */}}
 {{- define "vendor.dcgm.nodesetHasGPU" -}}
-{{- $hasGPU := "" -}}
-{{- with .resources -}}
-  {{- with .limits -}}
-    {{- if index . "nvidia.com/gpu" -}}
-      {{- $hasGPU = "nvidia.com/gpu" -}}
-    {{- end -}}
-  {{- end -}}
+{{- $limits := . | dig "resources" "limits" dict -}}
+{{- if index $limits "nvidia.com/gpu" -}}
+nvidia.com/gpu
 {{- end -}}
-{{- print $hasGPU -}}
 {{- end }}
 
 {{/*
@@ -51,7 +48,8 @@ Generate DCGM epilog configmap name.
 Generate DCGM prolog script content
 */}}
 {{- define "vendor.dcgm.prologScripts" -}}
-{{- $scriptPriority := .Values.vendor.nvidia.dcgm.scriptPriority | default "90" }}
+{{- $vendor := .Values.vendor | default dict -}}
+{{- $scriptPriority := $vendor | dig "nvidia" "dcgm" "scriptPriority" "90" }}
 {{- $jobMappingDir := include "vendor.dcgm.jobMappingDir" . -}}
 {{- range $path, $_ := .Files.Glob "_vendor/nvidia/dcgm/scripts/prolog/*.sh" -}}
   {{- $contents := $.Files.Get $path | replace "__JOB_MAPPING_DIR__" $jobMappingDir -}}
@@ -64,7 +62,8 @@ Generate DCGM prolog script content
 Generate DCGM epilog script content
 */}}
 {{- define "vendor.dcgm.epilogScripts" -}}
-{{- $scriptPriority := .Values.vendor.nvidia.dcgm.scriptPriority | default "90" }}
+{{- $vendor := .Values.vendor | default dict -}}
+{{- $scriptPriority := $vendor | dig "nvidia" "dcgm" "scriptPriority" "90" }}
 {{- $jobMappingDir := include "vendor.dcgm.jobMappingDir" . -}}
 {{- range $path, $_ := .Files.Glob "_vendor/nvidia/dcgm/scripts/epilog/*.sh" -}}
   {{- $contents := $.Files.Get $path | replace "__JOB_MAPPING_DIR__" $jobMappingDir -}}

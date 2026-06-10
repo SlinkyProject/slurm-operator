@@ -4,15 +4,18 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- range $key, $loginset := $.Values.loginsets }}
+{{- $loginset = mergeOverwrite (dict) (deepCopy ($.Values.loginsetDefaults | default dict)) (deepCopy ($loginset | default dict)) -}}
 {{- if $loginset.enabled }}
 {{- $name := printf "%s-%s" (include "slurm.login.name" $) $key }}
-{{- $metadata := merge dict ($loginset.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
-{{- $podSpec := $loginset.podSpec | default dict -}}
-{{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) ($.Values.imagePullSecrets | default list) -}}
+{{- $metadata := merge dict ($loginset | dig "metadata" dict) (dict "labels" (fromYaml (include "slurm.labels" $))) -}}
+{{- $podSpec := $loginset | dig "podSpec" dict -}}
+{{- $imagePullSecrets := concat list ($podSpec | dig "imagePullSecrets" list) ($.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $) -}}
+{{- $priorityClassName := $podSpec | dig "priorityClassName" "" | default (include "slurm.priorityClassName" $) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
-{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec }}
+{{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
+{{- $login := $loginset | dig "login" dict -}}
+{{- $initconf := $loginset | dig "initconf" dict }}
 ---
 apiVersion: slinky.slurm.net/v1beta1
 kind: LoginSet
@@ -25,7 +28,6 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
-    namespace: {{ include "slurm.namespace" $ }}
   {{- with $loginset.extraSshdConfig }}
   extraSshdConfig: |
     {{- . | nindent 4 }}
@@ -43,15 +45,15 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $loginset.strategy */}}
   login:
-    {{- $_ := set $loginset.login "imagePullPolicy" (get $loginset.login "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" $loginset.login | nindent 4 }}
+    {{- $_ := set $login "imagePullPolicy" ($login | dig "imagePullPolicy" "" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $login | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   initconf:
-    {{- $_ := set $loginset.initconf "imagePullPolicy" (default $.Values.imagePullPolicy $loginset.initconf.imagePullPolicy) -}}
-    {{- include "format-container" $loginset.initconf | nindent 4 }}
-  {{- with $loginset.service }}
+    {{- $_ := set $initconf "imagePullPolicy" ($initconf | dig "imagePullPolicy" "" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $initconf | nindent 4 }}
+  {{- with $loginset | dig "service" dict }}
   service:
     {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* with $loginset.service */}}
+  {{- end }}{{- /* with $loginset | dig "service" dict */}}
 {{- end }}{{- /* $loginset.enabled */}}
 {{- end }}{{- /* range $loginset := $.Values.loginsets */}}

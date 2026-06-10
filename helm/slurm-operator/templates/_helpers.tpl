@@ -60,6 +60,27 @@ imagePullSecrets:
 {{- end }}
 
 {{/*
+Format image reference from image object.
+*/}}
+{{- define "format-image" -}}
+{{- $spec := index . 0 -}}
+{{- $defaultTag := index . 1 -}}
+{{- if kindIs "string" $spec -}}
+  {{- $image := required "image is required" $spec -}}
+  {{- printf $image | toString -}}
+{{- else -}}
+  {{- $repository := required "image repository is required" $spec.repository -}}
+  {{- if $spec.digest -}}
+    {{- $digest := required "image digest is required" $spec.digest -}}
+    {{- printf "%s@%s" $repository $digest | toString -}}
+  {{- else -}}
+    {{- $tag := required "image tag is required" ($spec.tag | default $defaultTag) -}}
+    {{- printf "%s:%s" $repository $tag | toString -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Define the API group
 */}}
 {{- define "slurm-operator.apiGroup" -}}

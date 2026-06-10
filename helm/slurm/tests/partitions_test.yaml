@@ -39,6 +39,9 @@ tests:
   - it: should append a custom partition with explicit nodesets to extraConf
     template: controller/controller-cr.yaml
     set:
+      nodesets:
+        slinky:
+          enabled: true
       partitions:
         all:
           enabled: true
@@ -72,6 +75,9 @@ tests:
   - it: should build partition options from configMap when config is unset
     template: controller/controller-cr.yaml
     set:
+      nodesets:
+        slinky:
+          enabled: true
       partitions:
         custom:
           enabled: true
@@ -95,6 +101,9 @@ tests:
   - it: should not include disabled partitions in extraConf
     template: controller/controller-cr.yaml
     set:
+      nodesets:
+        slinky:
+          enabled: true
       partitions:
         all:
           enabled: false

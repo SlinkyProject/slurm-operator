@@ -17,13 +17,11 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	daemonutils "k8s.io/kubernetes/pkg/controller/daemon/util"
 	"k8s.io/kubernetes/pkg/controller/history"
-	"k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,7 +40,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	slurmtaints "github.com/SlinkyProject/slurm-operator/pkg/taints"
 )
 
 const (
@@ -258,12 +255,6 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
-			Name: "NodeTaint",
-			SyncFn: func(ctx context.Context, _ *slinkyv1beta1.NodeSet) error {
-				return r.syncNodeTaint(ctx)
-			},
-		},
-		{
 			Name: "RefreshNodeCache",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
@@ -441,79 +432,6 @@ func (r *NodeSetReconciler) syncCordon(
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncCordonFn); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// syncNodeTaint ensures that a NoExecute taint is applied to all nodes running NodeSets
-func (r *NodeSetReconciler) syncNodeTaint(
-	ctx context.Context,
-) error {
-	// Build a list of Kube nodes
-	kubeNodeList := &corev1.NodeList{}
-	if err := r.List(ctx, kubeNodeList); err != nil {
-		return err
-	}
-
-	// Build a list NodeSets and NodeSet UIDs
-	nodesetList := &slinkyv1beta1.NodeSetList{}
-	if err := r.List(ctx, nodesetList); err != nil {
-		return err
-	}
-	nodesetUIDs := sets.New[types.UID]()
-	for _, nodeset := range nodesetList.Items {
-		if nodeset.Spec.TaintKubeNodes { //nolint:staticcheck // SA1019
-			nodesetUIDs.Insert(nodeset.UID)
-		}
-	}
-
-	// Build a list of Pods
-	podList := &corev1.PodList{}
-	if err := r.List(ctx, podList); err != nil {
-		return err
-	}
-
-	// Build a set of Kube Nodes that have NodeSet pods that are not terminating
-	// Use GetControllerOf on the pod
-	nodeSetWithPod := sets.New[string]()
-	for _, pod := range podList.Items {
-		owner := metav1.GetControllerOf(&pod)
-		if owner == nil || !nodesetUIDs.Has(owner.UID) || !podutils.IsRunning(&pod) || podutils.IsTerminating(&pod) {
-			continue
-		}
-		nodeSetWithPod.Insert(pod.Spec.NodeName)
-	}
-
-	syncTaintFn := func(i int) error {
-		node := kubeNodeList.Items[i]
-
-		mutateFn := func(node *corev1.Node) error {
-			// Taint the node if it has a NodeSet pod that is not terminating
-			if nodeSetWithPod.Has(node.Name) {
-				mutNode, _, err := taints.AddOrUpdateTaint(node, &slurmtaints.TaintNodeWorker)
-				if err != nil {
-					return err
-				}
-				*node = *mutNode
-			} else {
-				// Remove the taint from nodes that don't have NodeSet pods
-				mutNode, _, err := taints.RemoveTaint(node, &slurmtaints.TaintNodeWorker)
-				if err != nil {
-					return err
-				}
-				*node = *mutNode
-			}
-			return nil
-		}
-		if err := objectutils.PatchObject(r.Client, ctx, &node, mutateFn); err != nil {
-			return err
-		}
-
-		return nil
-	}
-	if _, err := utils.SlowStartBatch(len(kubeNodeList.Items), utils.SlowStartInitialBatchSize, syncTaintFn); err != nil {
 		return err
 	}
 
@@ -1125,7 +1043,10 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 	revisionHash string,
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
-	key := nodeset.Spec.ControllerRef.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: nodeset.Namespace,
+		Name:      nodeset.Spec.ControllerRef.Name,
+	}
 	if err := r.Get(ctx, key, controller); err != nil {
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
 			"Failed to get Controller (%s): %v", key, err)
@@ -1155,7 +1076,10 @@ func newSimulatedDaemonPod(
 	nodeName string,
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
-	key := nodeset.Spec.ControllerRef.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: nodeset.Namespace,
+		Name:      nodeset.Spec.ControllerRef.Name,
+	}
 	if err := client.Get(ctx, key, controller); err != nil {
 		return nil, err
 	}
@@ -1175,7 +1099,10 @@ func (r *NodeSetReconciler) newNodeSetPodOrdinal(
 	revisionHash string,
 ) (*corev1.Pod, error) {
 	controller := &slinkyv1beta1.Controller{}
-	key := nodeset.Spec.ControllerRef.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: nodeset.Namespace,
+		Name:      nodeset.Spec.ControllerRef.Name,
+	}
 	if err := r.Get(ctx, key, controller); err != nil {
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
 			"Failed to get Controller (%s): %v", key, err)

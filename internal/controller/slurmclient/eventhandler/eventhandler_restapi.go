@@ -77,7 +77,7 @@ func (e *RestApiEventHandler) enqueueRequest(
 		return
 	}
 
-	controller, err := e.refResolver.GetController(ctx, restapi.Spec.ControllerRef)
+	controller, err := e.refResolver.GetController(ctx, restapi.Spec.ControllerRef, restapi.Namespace)
 	if err != nil {
 		logger.Error(err, "failed to Get RestApi referencing Controller")
 		return

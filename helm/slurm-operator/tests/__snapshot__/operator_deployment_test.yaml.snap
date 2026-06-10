@@ -51,6 +51,8 @@ manifest should match snapshot:
                 - :8081
                 - --metrics-addr
                 - :8080
+                - --profile-addr
+                - localhost:6060
                 - --leader-elect
                 - --leader-elect-namespace
                 - test-namespace

@@ -165,3 +165,29 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
           value: 256Mi
+  - it: should format repository and tag on webhook
+    set:
+      webhook.image.repository: registry.example.com/org/slurm-webhook
+      webhook.image.tag: "1.2.3"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-webhook:1.2.3
+  - it: should format repository and digest on webhook
+    set:
+      webhook.image.repository: registry.example.com/org/slurm-webhook
+      webhook.image.digest: sha256:abcdef0123456789
+      webhook.image.tag: null
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-webhook@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on webhook
+    set:
+      webhook.image.repository: registry.example.com/org/slurm-webhook
+      webhook.image.tag: "1.2.3"
+      webhook.image.digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/org/slurm-webhook@sha256:abcdef0123456789

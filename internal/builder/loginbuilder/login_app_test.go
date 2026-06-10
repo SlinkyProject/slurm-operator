@@ -46,7 +46,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 					},
@@ -70,7 +70,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Login: slinkyv1beta1.ContainerWrapper{
@@ -102,7 +102,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 						Name: "slurm",
 					},
 					Spec: slinkyv1beta1.LoginSetSpec{
-						ControllerRef: slinkyv1beta1.ObjectReference{
+						ControllerRef: corev1.LocalObjectReference{
 							Name: "slurm",
 						},
 						Login: slinkyv1beta1.ContainerWrapper{
@@ -193,6 +193,104 @@ func TestBuilder_BuildLogin(t *testing.T) {
 				}
 				if _, ok := envMap["SACKD_OPTIONS"]; !ok {
 					t.Errorf("env var SACKD_OPTIONS not found")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkBuilder_BuildLogin(b *testing.B) {
+	type fields struct {
+		client client.Client
+	}
+	type args struct {
+		loginset *slinkyv1beta1.LoginSet
+	}
+	benchmarks := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "default",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "envars",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+						Login: slinkyv1beta1.ContainerWrapper{
+							Container: corev1.Container{
+								Env: []corev1.EnvVar{
+									{Name: "A", Value: "1"},
+									{Name: "B", Value: "2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "failure",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, bb := range benchmarks {
+		b.Run(bb.name, func(b *testing.B) {
+			client := New(bb.fields.client)
+			for b.Loop() {
+				_, err := client.BuildLogin(bb.args.loginset)
+				if (err != nil) != bb.wantErr {
+					b.Errorf("Failed to build login %v", err)
+					return
 				}
 			}
 		})

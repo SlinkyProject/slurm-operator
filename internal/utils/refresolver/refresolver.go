@@ -25,18 +25,24 @@ func New(reader client.Reader) *RefResolver {
 	}
 }
 
-func (r *RefResolver) GetController(ctx context.Context, ref slinkyv1beta1.ObjectReference) (*slinkyv1beta1.Controller, error) {
+func (r *RefResolver) GetController(ctx context.Context, ref corev1.LocalObjectReference, namespace string) (*slinkyv1beta1.Controller, error) {
 	obj := &slinkyv1beta1.Controller{}
-	key := ref.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: namespace,
+		Name:      ref.Name,
+	}
 	if err := r.reader.Get(ctx, key, obj); err != nil {
 		return nil, err
 	}
 	return obj, nil
 }
 
-func (r *RefResolver) GetAccounting(ctx context.Context, ref slinkyv1beta1.ObjectReference) (*slinkyv1beta1.Accounting, error) {
+func (r *RefResolver) GetAccounting(ctx context.Context, ref corev1.LocalObjectReference, namespace string) (*slinkyv1beta1.Accounting, error) {
 	obj := &slinkyv1beta1.Accounting{}
-	key := ref.NamespacedName()
+	key := types.NamespacedName{
+		Namespace: namespace,
+		Name:      ref.Name,
+	}
 	if err := r.reader.Get(ctx, key, obj); err != nil {
 		return nil, err
 	}
@@ -49,13 +55,17 @@ func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *
 	}
 
 	list := &slinkyv1beta1.NodeSetList{}
-	if err := r.reader.List(ctx, list); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
 		return nil, err
 	}
 
 	out := &slinkyv1beta1.NodeSetList{}
 	for _, item := range list.Items {
-		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
+		refKey := types.NamespacedName{
+			Namespace: item.Namespace,
+			Name:      item.Spec.ControllerRef.Name,
+		}
+		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
 		}
 	}
@@ -69,13 +79,17 @@ func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller 
 	}
 
 	list := &slinkyv1beta1.LoginSetList{}
-	if err := r.reader.List(ctx, list); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
 		return nil, err
 	}
 
 	out := &slinkyv1beta1.LoginSetList{}
 	for _, item := range list.Items {
-		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
+		refKey := types.NamespacedName{
+			Namespace: item.Namespace,
+			Name:      item.Spec.ControllerRef.Name,
+		}
+		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
 		}
 	}
@@ -89,13 +103,17 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 	}
 
 	list := &slinkyv1beta1.RestApiList{}
-	if err := r.reader.List(ctx, list); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
 		return nil, err
 	}
 
 	out := &slinkyv1beta1.RestApiList{}
 	for _, item := range list.Items {
-		if item.Spec.ControllerRef.IsMatch(objectutils.NamespacedName(controller)) {
+		refKey := types.NamespacedName{
+			Namespace: item.Namespace,
+			Name:      item.Spec.ControllerRef.Name,
+		}
+		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
 			out.Items = append(out.Items, item)
 		}
 	}
@@ -109,13 +127,20 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 	}
 
 	list := &slinkyv1beta1.ControllerList{}
-	if err := r.reader.List(ctx, list); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(accounting.Namespace)); err != nil {
 		return nil, err
 	}
 
 	out := &slinkyv1beta1.ControllerList{}
 	for _, item := range list.Items {
-		if item.Spec.AccountingRef != nil && item.Spec.AccountingRef.IsMatch(objectutils.NamespacedName(accounting)) {
+		if item.Spec.AccountingRef == nil {
+			continue
+		}
+		refKey := types.NamespacedName{
+			Namespace: item.Namespace,
+			Name:      item.Spec.AccountingRef.Name,
+		}
+		if IsKeyMatch(refKey, objectutils.NamespacedName(accounting)) {
 			out.Items = append(out.Items, item)
 		}
 	}
@@ -139,4 +164,11 @@ func (r *RefResolver) GetSecretKeyRef(ctx context.Context, selector corev1.Secre
 	}
 
 	return data, nil
+}
+
+func IsKeyMatch(key1, key2 types.NamespacedName) bool {
+	if key1.Namespace == key2.Namespace && key1.Name == key2.Name {
+		return true
+	}
+	return false
 }

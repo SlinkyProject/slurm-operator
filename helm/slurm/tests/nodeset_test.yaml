@@ -22,6 +22,9 @@ tests:
       - matchSnapshot: {}
   - it: should set imagePullSecrets
     set:
+      nodesets:
+        slinky:
+          enabled: true
       imagePullSecrets:
         - name: "docker-secret-1"
         - name: "docker-secret-2"
@@ -166,3 +169,87 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should format repository and tag on slurmd
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              repository: registry.example.com/org/slurmd
+              tag: "24.11.0"
+              digest: null
+    asserts:
+      - equal:
+          path: spec.slurmd.image
+          value: registry.example.com/org/slurmd:24.11.0
+  - it: should format repository and digest on slurmd
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              repository: registry.example.com/org/slurmd
+              digest: sha256:abcdef0123456789
+              tag: null
+    asserts:
+      - equal:
+          path: spec.slurmd.image
+          value: registry.example.com/org/slurmd@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on slurmd
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              repository: registry.example.com/org/slurmd
+              tag: "24.11.0"
+              digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.slurmd.image
+          value: registry.example.com/org/slurmd@sha256:abcdef0123456789
+  - it: should format repository and tag on logfile
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          logfile:
+            image:
+              repository: registry.example.com/org/logfile
+              tag: "24.11.0"
+              digest: null
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile:24.11.0
+  - it: should format repository and digest on logfile
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          logfile:
+            image:
+              repository: registry.example.com/org/logfile
+              digest: sha256:abcdef0123456789
+              tag: null
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should prefer digest over tag when both are set on logfile
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          logfile:
+            image:
+              repository: registry.example.com/org/logfile
+              tag: "24.11.0"
+              digest: sha256:abcdef0123456789
+    asserts:
+      - equal:
+          path: spec.logfile.image
+          value: registry.example.com/org/logfile@sha256:abcdef0123456789

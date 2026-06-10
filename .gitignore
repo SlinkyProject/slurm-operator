@@ -17,6 +17,7 @@
 *.swo
 bin/*
 govulncheck-vulns.csv
+govulncheck-commit-message.txt
 build-docs/*
 
 # Test binary, built with `go test -c`
@@ -25,6 +26,12 @@ build-docs/*
 # Output of the go coverage tooling, specifically when used with LiteIDE
 *.out
 cover.html
+
+# Output of go tool pprof
+cpu.prof
+
+# CPU flamegraphs
+cpu.svg
 
 # Dependency directories (remove the comment below to include it)
 !vendor/**/zz_generated.*

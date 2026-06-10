@@ -36,16 +36,17 @@ Determine controller extraConf
 {{- end -}}
 {{- $nodesetList := list "ALL" -}}
 {{- range $nodesetName, $nodeset := .Values.nodesets -}}
+  {{- $nodeset = mergeOverwrite (dict) (deepCopy ($.Values.nodesetDefaults | default dict)) (deepCopy ($nodeset | default dict)) -}}
   {{- if $nodeset.enabled }}
     {{- $nodesetList = append $nodesetList $nodesetName }}
   {{- end }}{{- /* if $nodeset.enabled */}}
 {{- end }}{{- /* range $nodeset := .Values.nodesets */}}
 {{- range $partName, $part := .Values.partitions -}}
-  {{- $part_nodesets := $part.nodesets | default list | uniq | sortAlpha -}}
+  {{- $part_nodesets := $part | dig "nodesets" list | uniq | sortAlpha -}}
   {{- if eq (len $part_nodesets) 0 -}}
     {{- fail (printf "partition `%s` must contain at least one NodeSet (or ALL)." $partName) }}
   {{- end -}}{{- /* if eq len $part_nodesets 0 */}}
-  {{- if $part.enabled }}
+  {{- if $part | dig "enabled" false }}
     {{- range $part_nodesetName := $part_nodesets -}}
       {{- if not (has $part_nodesetName $nodesetList) }}
         {{- fail (printf "partition `%s` is referencing nodeset `%s` that does not exist or is disabled." $partName $part_nodesetName) }}
@@ -59,10 +60,10 @@ Determine controller extraConf
     {{- end -}}{{- /* range $part_nodesetName := $part_nodesets */}}
     {{- $partLine := list (printf "PartitionName=%s" $partName) (printf "Nodes=%s" (join "," $partNodes)) -}}
     {{- $partConfig := list -}}
-    {{- if $part.config -}}
-      {{- $partConfig = list $part.config -}}
-    {{- else if $part.configMap -}}
-      {{- $partConfig = (include "_toList" $part.configMap) | splitList ";" -}}
+    {{- if $part | dig "config" nil -}}
+      {{- $partConfig = list ($part | dig "config" "") -}}
+    {{- else if $part | dig "configMap" dict -}}
+      {{- $partConfig = (include "_toList" ($part | dig "configMap" dict)) | splitList ";" -}}
     {{- end -}}
     {{- $partLine = append $partLine (join " " $partConfig) -}}
     {{- $extraConf = append $extraConf (join " " $partLine) -}}

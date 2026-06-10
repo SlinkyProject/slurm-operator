@@ -4,13 +4,15 @@ SPDX-License-Identifier: Apache-2.0
 */}}
 
 {{- if .Values.accounting.enabled }}
-{{- $metadata := merge dict .Values.accounting.metadata (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
+{{- $metadata := merge dict (.Values.accounting.metadata | default dict) (dict "labels" (fromYaml (include "slurm.labels" .))) -}}
 {{- $podSpec := .Values.accounting.podSpec | default dict -}}
-{{- $imagePullSecrets := concat list ($podSpec.imagePullSecrets | default list) (.Values.imagePullSecrets | default list) -}}
+{{- $imagePullSecrets := concat list ($podSpec | dig "imagePullSecrets" list) (.Values.imagePullSecrets | default list) -}}
 {{- $_ := set $podSpec "imagePullSecrets" $imagePullSecrets -}}
-{{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $ | toString) -}}
+{{- $priorityClassName := $podSpec | dig "priorityClassName" "" | default (include "slurm.priorityClassName" $ | toString) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $podTemplate := dict "metadata" $metadata "spec" $podSpec -}}
+{{- $slurmdbd := .Values.accounting.slurmdbd | default dict -}}
+---
 apiVersion: slinky.slurm.net/v1beta1
 kind: Accounting
 metadata:
@@ -43,8 +45,8 @@ spec:
     {{- include "slurm.accounting.extraConf" . | nindent 4 }}
   {{- end }}{{- /* if (include "slurm.accounting.extraConf" .) */}}
   slurmdbd:
-    {{- $_ := set .Values.accounting.slurmdbd "imagePullPolicy" (get .Values.accounting.slurmdbd "imagePullPolicy" | default $.Values.imagePullPolicy ) -}}
-    {{- include "format-container" .Values.accounting.slurmdbd | nindent 4 }}
+    {{- $_ := set $slurmdbd "imagePullPolicy" (get $slurmdbd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
+    {{- include "format-container" $slurmdbd | nindent 4 }}
   {{- include "format-podTemplate" $podTemplate | nindent 2 }}
   {{- with .Values.accounting.storageConfig }}
   storageConfig:

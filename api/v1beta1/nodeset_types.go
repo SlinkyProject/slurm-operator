@@ -22,7 +22,7 @@ var (
 type NodeSetSpec struct {
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
-	ControllerRef ObjectReference `json:"controllerRef"`
+	ControllerRef corev1.LocalObjectReference `json:"controllerRef"`
 
 	// replicas is the desired number of replicas of the given Template.
 	// These are replicas in the sense that they are instantiations of the
@@ -124,14 +124,6 @@ type NodeSetSpec struct {
 	// +default:=false
 	PinToNode bool `json:"pinToNode"`
 
-	// TaintKubeNodes controls whether or not to apply a NoExecute taint to any nodes which are running a pod from this NodeSet.
-	// See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ for more information.
-	// +optional
-	// +default:=false
-	//
-	// Deprecated: To be removed in the future.
-	TaintKubeNodes bool `json:"taintKubeNodes,omitempty"`
-
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
 	// a Pod Disruption Budget.
 	// See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
@@ -167,6 +159,7 @@ type NodeSetPartition struct {
 	// Config is added to the NodeSet's partition line.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
 	// +optional
+	// +kubebuilder:validation:Pattern:="^[^\\n]+$"
 	Config string `json:"config,omitzero"`
 }
 

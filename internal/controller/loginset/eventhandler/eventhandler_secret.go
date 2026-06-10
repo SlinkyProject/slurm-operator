@@ -99,16 +99,13 @@ func (e *SecretEventHandler) enqueueRequest(
 		}
 
 		for _, loginset := range loginsetList.Items {
-			key := client.ObjectKeyFromObject(&controller)
-			if loginset.Spec.ControllerRef.IsMatch(key) {
-				objectutils.EnqueueRequest(q, &loginset)
-				enqueued[loginset.Key().String()] = true
-			}
+			objectutils.EnqueueRequest(q, &loginset)
+			enqueued[loginset.Key().String()] = true
 		}
 	}
 
 	loginsetList := &slinkyv1beta1.LoginSetList{}
-	if err := e.List(ctx, loginsetList); err != nil {
+	if err := e.List(ctx, loginsetList, client.InNamespace(secret.Namespace)); err != nil {
 		logger.Error(err, "failed to list LoginSet CRs")
 		return
 	}

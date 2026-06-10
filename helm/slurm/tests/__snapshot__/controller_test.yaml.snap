@@ -13,7 +13,6 @@ manifest should match snapshot:
     spec:
       epilogScriptRefs: null
       epilogSlurmctldScriptRefs: null
-      extraConf: PartitionName=all Nodes=ALL Default=YES MaxTime=UNLIMITED State=UP
       inplaceReconfigure: false
       jwtKeyRef:
         key: jwt.key

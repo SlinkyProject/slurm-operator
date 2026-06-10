@@ -28,7 +28,7 @@ spec:
       {{- include "slurm-operator.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: slurm-operator
-          image: {{ include "slurm-operator.operator.imageRef" . }}
+          image: {{ include "format-image" (list .Values.operator.image .Chart.Version) }}
           imagePullPolicy: {{ include "slurm-operator.operator.imagePullPolicy" . }}
           args:
             {{- with .Values.operator.accountingWorkers }}
@@ -71,6 +71,13 @@ spec:
             - --metrics-addr
             - {{ printf ":%s" (toString .) | quote }}
             {{- end }}{{- /* with .Values.operator.metricsPort */}}
+            {{- with .Values.operator.profile }}
+            - --profile
+            {{- end }}{{- /* with .Values.operator.profile */}}
+            {{- with .Values.operator.profileAddr }}
+            - --profile-addr
+            - {{ . | quote }}
+            {{- end }}{{- /* with .Values.operator.profileAddr */}}
             {{- if .Values.operator.leaderElection }}
             - --leader-elect
             {{- end }}{{- /* if .Values.operator.leaderElection */}}

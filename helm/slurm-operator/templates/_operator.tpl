@@ -28,32 +28,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the operator service account to use
 */}}
 {{- define "slurm-operator.operator.serviceAccountName" -}}
-{{- if .Values.operator.serviceAccount.create }}
-{{- default (include "slurm-operator.fullname" .) .Values.operator.serviceAccount.name }}
+{{- $serviceAccount := .Values.operator.serviceAccount | default dict -}}
+{{- if $serviceAccount.create }}
+{{- default (include "slurm-operator.fullname" .) $serviceAccount.name }}
 {{- else }}
-{{- default "default" .Values.operator.serviceAccount.name }}
+{{- default "default" $serviceAccount.name }}
 {{- end }}
-{{- end }}
-
-{{/*
-Determine operator image repository
-*/}}
-{{- define "slurm-operator.operator.image.repository" -}}
-{{ .Values.operator.image.repository | default "ghcr.io/slinkyproject/slurm-operator" }}
-{{- end }}
-
-{{/*
-Define operator image tag
-*/}}
-{{- define "slurm-operator.operator.image.tag" -}}
-{{ .Values.operator.image.tag | default .Chart.Version }}
-{{- end }}
-
-{{/*
-Determine operator image reference (repo:tag)
-*/}}
-{{- define "slurm-operator.operator.imageRef" -}}
-{{ printf "%s:%s" (include "slurm-operator.operator.image.repository" .) (include "slurm-operator.operator.image.tag" .) | quote }}
 {{- end }}
 
 {{/*

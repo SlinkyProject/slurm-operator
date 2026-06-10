@@ -176,6 +176,7 @@ controller:
     image:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 25.11-ubuntu24.04
+      digest: null
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS
     args: []
@@ -197,6 +198,7 @@ controller:
     image:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 25.11-ubuntu24.04
+      digest: null
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -210,6 +212,7 @@ controller:
     image:
       repository: docker.io/library/alpine
       tag: latest
+      digest: null
     # -- The container resource limits and requests.
     # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
     resources: {}
@@ -335,6 +338,7 @@ restapi:
     image:
       repository: ghcr.io/slinkyproject/slurmrestd
       tag: 25.11-ubuntu24.04
+      digest: null
     # -- Environment passed to the image.
     # Ref: https://slurm.schedmd.com/slurmrestd.html#SECTION_ENVIRONMENT-VARIABLES
     env: []
@@ -417,6 +421,7 @@ accounting:
     image:
       repository: ghcr.io/slinkyproject/slurmdbd
       tag: 25.11-ubuntu24.04
+      digest: null
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS
     args: []
@@ -533,260 +538,268 @@ sssd:
     id_provider = files
     auth_provider = files
 
+# -- (object) Defines defaults for the LoginSet map values.
+loginsetDefaults:
+  # -- Enable use of this LoginSet.
+  enabled: true
+  # -- Number of replicas to deploy.
+  replicas: 1
+  # -- Deployment strategy configuration.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+  strategy: {}
+    # type: RollingUpdate
+    # rollingUpdate:
+    #   maxUnavailable: 0
+    #   maxSurge: 1
+  # login container configurations.
+  login:
+    # -- (string \| object) The image to use.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
+    image:
+      repository: ghcr.io/slinkyproject/login
+      tag: 25.11-ubuntu24.04
+      digest: null
+    # -- Environment passed to the image.
+    env: []
+      # - name: SACKD_DEBUG
+      #   value: debug2
+    # -- The container security context to use.
+    # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+    securityContext:
+      privileged: false
+      # capabilities:
+      #   add:
+      #     - SYS_CHROOT
+    # -- The container resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 1
+      #   memory: 1Gi
+    # -- List of volume mounts to use.
+    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+    volumeMounts: []
+      # - name: nfs-home
+      #   mountPath: /home
+  # InitConf container configurations.
+  initconf:
+    # -- (string \| object) The image to use.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
+    image:
+      repository: docker.io/library/alpine
+      tag: latest
+      digest: null
+    # -- The container resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # limits:
+      #   cpu: 500m
+      #   memory: 100Mi
+  # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
+  rootSshAuthorizedKeys: null
+  # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
+  # Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
+  extraSshdConfig: null
+  # -- Labels and annotations.
+  # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  metadata: {}
+    # annotations: {}
+    # labels: {}
+  # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+  podSpec:
+    # -- The pod resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 1
+      #   memory: 1Gi
+    # -- Additional initContainers for the pod.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+    initContainers: []
+    # -- (map[string]string) Node label selector for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    nodeSelector:
+      kubernetes.io/os: linux
+    # -- Affinity for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+    affinity: {}
+    # -- Tolerations for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    tolerations: []
+      # - key: key1
+      #   operator: Exists
+      #   effect: NoSchedule
+    # -- List of volumes to use.
+    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+    volumes: []
+      # - name: nfs-home
+      #   nfs:
+      #     server: nfs-server.example.com
+      #     path: /exports/home
+  # -- The service configuration.
+  service:
+    # -- Labels and annotations.
+    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+    metadata: {}
+      # annotations: {}
+      # labels: {}
+    # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
+    # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
+    spec:
+      type: LoadBalancer
+    # port: 22
+    # nodePort: 32222
+
 # -- (map[string]object) Slurm LoginSet (sackd, sshd, sssd) configurations.
-loginsets:
-  # Sample LoginSet.
-  slinky:
-    # -- Enable use of this LoginSet.
+loginsets: {}
+  # slinky:
+  #   enabled: false
+
+# -- (object) Defines defaults for the NodeSet map values.
+nodesetDefaults:
+  # -- Enable use of this NodeSet.
+  enabled: true
+  # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
+  scalingMode: StatefulSet
+  # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
+  replicas: 1
+  # -- Pin pods to their initially assigned Kubernetes nodes.
+  pinToNode: false
+  # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
+  # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+  workloadDisruptionProtection: true
+  # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
+  pruneSlurmNodeRecords: Never
+  # -- How many places to pad with zeroes when constructing the pod ordinal.
+  ordinalPadding: 0
+  # slurmd container configurations.
+  slurmd:
+    # -- (string \| object) The image to use.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
+    image:
+      repository: ghcr.io/slinkyproject/slurmd
+      tag: 25.11-ubuntu24.04
+      digest: null
+    # -- Arguments passed to the image.
+    # Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS
+    args: []
+      # - -vvv
+    # -- Environment passed to the image.
+    env: []
+      # - name: PAM_SLURM_ADOPT_OPTIONS
+      #   value: action_adopt_failure=deny action_generic_failure=deny
+    # -- The container resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # limits:
+      #   cpu: 1
+      #   memory: 1Gi
+    # -- List of volume mounts to use.
+    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+    volumeMounts: []
+      # - name: nfs-home
+      #   mountPath: /home
+  # LogFile sidecar configurations.
+  logfile:
+    # -- (string \| object) The image to use.
+    # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
+    image:
+      repository: docker.io/library/alpine
+      tag: latest
+      digest: null
+    # -- The container resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # requests:
+      #   cpu: 500m
+      #   memory: 128Mi
+  # -- (string) Raw extra configuration added to the `--conf` argument.
+  # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
+  # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
+  extraConf: null
+  # -- (map[string]string \| map[string][]string) Extra configuration added to the `--conf` option.
+  # If `extraConf` is not empty, it takes precedence.
+  # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
+  # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
+  extraConfMap: {}
+    # Features: []
+    # Gres: []
+    # Weight: 1
+  # Partition configuration for this NodeSet.
+  partition:
+    # -- Enable NodeSet partition creation.
     enabled: false
-    # -- Number of replicas to deploy.
-    replicas: 1
-    # -- Deployment strategy configuration.
-    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
-    strategy: {}
-      # type: RollingUpdate
-      # rollingUpdate:
-      #   maxUnavailable: 0
-      #   maxSurge: 1
-    # login container configurations.
-    login:
-      # -- (string \| object) The image to use.
-      # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
-      image:
-        repository: ghcr.io/slinkyproject/login
-        tag: 25.11-ubuntu24.04
-      # -- Environment passed to the image.
-      env: []
-        # - name: SACKD_DEBUG
-        #   value: debug2
-      # -- The container security context to use.
-      # Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
-      securityContext:
-        privileged: false
-        # capabilities:
-        #   add:
-        #     - SYS_CHROOT
-      # -- The container resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # requests:
-        #   cpu: 1
-        #   memory: 1Gi
-      # -- List of volume mounts to use.
-      # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumeMounts: []
-        # - name: nfs-home
-        #   mountPath: /home
-    # InitConf container configurations.
-    initconf:
-      # -- (string \| object) The image to use.
-      # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
-      image:
-        repository: docker.io/library/alpine
-        tag: latest
-      # -- The container resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # limits:
-        #   cpu: 500m
-        #   memory: 100Mi
-    # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
-    rootSshAuthorizedKeys: null
+    # -- (string) Raw Slurm partition configuration options added to the partition line added to the partition line.
+    # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
+    config: null
+    # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.
+    # If `config` is not empty, it takes precedence.
+    # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
+    configMap: {}
+      # State: UP
+      # MaxTime: UNLIMITED
+  # SSH configuration for this NodeSet.
+  ssh:
+    # -- Enable SSH access to worker pods with pam_slurm_adopt.
+    # Ref: https://slurm.schedmd.com/pam_slurm_adopt.html
+    enabled: false
     # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
     # Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
     extraSshdConfig: null
-    # -- Labels and annotations.
-    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-    metadata: {}
-      # annotations: {}
-      # labels: {}
-    # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
-    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
-    podSpec:
-      # -- The pod resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # requests:
-        #   cpu: 1
-        #   memory: 1Gi
-      # -- Additional initContainers for the pod.
-      # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-      # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-      initContainers: []
-      # -- (map[string]string) Node label selector for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-      nodeSelector:
-        kubernetes.io/os: linux
-      # -- Affinity for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-      affinity: {}
-      # -- Tolerations for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-      tolerations: []
-        # - key: key1
-        #   operator: Exists
-        #   effect: NoSchedule
-      # -- List of volumes to use.
-      # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumes: []
-        # - name: nfs-home
-        #   nfs:
-        #     server: nfs-server.example.com
-        #     path: /exports/home
-    # -- The service configuration.
-    service:
-      # -- Labels and annotations.
-      # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-      metadata: {}
-        # annotations: {}
-        # labels: {}
-      # -- (corev1.ServiceSpec) Extend the service template, and/or override certain configurations.
-      # Ref: https://kubernetes.io/docs/concepts/services-networking/service/
-      spec:
-        type: LoadBalancer
-      # port: 22
-      # nodePort: 32222
+  # Update strategy configuration.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+  updateStrategy:
+    # -- The strategy type. Can be one of: RollingUpdate; OnDelete.
+    type: RollingUpdate
+    # The RollingUpdate configuration. Ignored unless `type=RollingUpdate`.
+    rollingUpdate:
+      # -- Maximum number of pods that can be unavailable during update.
+      # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
+      maxUnavailable: 25%
+  # -- Labels and annotations.
+  # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  metadata: {}
+    # annotations: {}
+    # labels: {}
+  # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
+  # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
+  podSpec:
+    # -- The pod resource limits and requests.
+    # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
+    resources: {}
+      # limits:
+      #   cpu: 1
+      #   memory: 1Gi
+    # -- Additional initContainers for the pod.
+    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+    initContainers: []
+    # -- (map[string]string) Node label selector for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+    nodeSelector:
+      kubernetes.io/os: linux
+    # -- Affinity for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+    affinity: {}
+    # -- Tolerations for pod assignment.
+    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+    tolerations: []
+      # - key: nvidia.com/gpu
+      #   effect: NoSchedule
+    # -- List of volumes to use.
+    # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
+    volumes: []
+      # - name: nfs-home
+      #   nfs:
+      #     server: nfs-server.example.com
+      #     path: /exports/home
 
 # -- (map[string]object) Slurm NodeSet (slurmd) configurations.
-nodesets:
-  # Sample NodeSet.
-  slinky:
-    # -- Enable use of this NodeSet.
-    enabled: true
-    # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
-    scalingMode: StatefulSet
-    # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
-    replicas: 1
-    # -- Pin pods to their initially assigned Kubernetes nodes.
-    pinToNode: false
-    # -- Taint the Kubernetes nodes on which nodeset pods are scheduled with NoExecute.
-    taintKubeNodes: false
-    # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
-    # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-    workloadDisruptionProtection: true
-    # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
-    pruneSlurmNodeRecords: Never
-    # -- How many places to pad with zeroes when constructing the pod ordinal.
-    ordinalPadding: 0
-    # slurmd container configurations.
-    slurmd:
-      # -- (string \| object) The image to use.
-      # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
-      image:
-        repository: ghcr.io/slinkyproject/slurmd
-        tag: 25.11-ubuntu24.04
-      # -- Arguments passed to the image.
-      # Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS
-      args: []
-        # - -vvv
-      # -- Environment passed to the image.
-      env: []
-        # - name: PAM_SLURM_ADOPT_OPTIONS
-        #   value: action_adopt_failure=deny action_generic_failure=deny
-      # -- The container resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # limits:
-        #   cpu: 1
-        #   memory: 1Gi
-      # -- List of volume mounts to use.
-      # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumeMounts: []
-        # - name: nfs-home
-        #   mountPath: /home
-    # LogFile sidecar configurations.
-    logfile:
-      # -- (string \| object) The image to use.
-      # Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names
-      image:
-        repository: docker.io/library/alpine
-        tag: latest
-      # -- The container resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # requests:
-        #   cpu: 500m
-        #   memory: 128Mi
-    # -- (string) Raw extra configuration added to the `--conf` argument.
-    # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
-    # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
-    extraConf: null
-    # -- (map[string]string \| map[string][]string) Extra configuration added to the `--conf` option.
-    # If `extraConf` is not empty, it takes precedence.
-    # Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E
-    # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION
-    extraConfMap: {}
-      # Features: []
-      # Gres: []
-      # Weight: 1
-    # Partition configuration for this NodeSet.
-    partition:
-      # -- Enable NodeSet partition creation.
-      enabled: false
-      # -- (string) Raw Slurm partition configuration options added to the partition line added to the partition line.
-      # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
-      config: null
-      # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.
-      # If `config` is not empty, it takes precedence.
-      # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
-      configMap: {}
-        # State: UP
-        # MaxTime: UNLIMITED
-    # SSH configuration for this NodeSet.
-    ssh:
-      # -- Enable SSH access to worker pods with pam_slurm_adopt.
-      # Ref: https://slurm.schedmd.com/pam_slurm_adopt.html
-      enabled: false
-      # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
-      # Ref: https://manpages.ubuntu.com/manpages/noble/man5/sshd_config.5.html
-      extraSshdConfig: null
-    # Update strategy configuration.
-    # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
-    updateStrategy:
-      # -- The strategy type. Can be one of: RollingUpdate; OnDelete.
-      type: RollingUpdate
-      # The RollingUpdate configuration. Ignored unless `type=RollingUpdate`.
-      rollingUpdate:
-        # -- Maximum number of pods that can be unavailable during update.
-        # Can be an absolute number (ex: 5) or a percentage (ex: 25%).
-        maxUnavailable: 25%
-    # -- Labels and annotations.
-    # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-    metadata: {}
-      # annotations: {}
-      # labels: {}
-    # -- (corev1.PodSpec) Extend the pod template, and/or override certain configurations.
-    # Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates
-    podSpec:
-      # -- The pod resource limits and requests.
-      # Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container
-      resources: {}
-        # limits:
-        #   cpu: 1
-        #   memory: 1Gi
-      # -- Additional initContainers for the pod.
-      # Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-      # Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-      initContainers: []
-      # -- (map[string]string) Node label selector for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-      nodeSelector:
-        kubernetes.io/os: linux
-      # -- Affinity for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-      affinity: {}
-      # -- Tolerations for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-      tolerations: []
-        # - key: nvidia.com/gpu
-        #   effect: NoSchedule
-      # -- List of volumes to use.
-      # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
-      volumes: []
-        # - name: nfs-home
-        #   nfs:
-        #     server: nfs-server.example.com
-        #     path: /exports/home
+nodesets: {}
+  # slinky:
+  #   enabled: false
 
 # -- (map[string]object) Slurm partition configurations.
 # The map key represents the partition name (must be unique); the map value represents the partition definition.
@@ -794,7 +807,7 @@ partitions:
   # Example partition containing all NodeSets.
   all:
     # -- Enable this partition to be defined in Slurm config.
-    enabled: true
+    enabled: false
     # -- List of NodeSets to be associated with this partition.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Nodes_1
     nodesets:
@@ -806,7 +819,6 @@ partitions:
     # If `config` is not empty, it takes precedence.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
     configMap:
-      State: UP
       Default: "YES"
       MaxTime: UNLIMITED
 

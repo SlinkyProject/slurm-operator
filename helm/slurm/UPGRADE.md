@@ -6,9 +6,20 @@
 
 - [Upgrade](#upgrade)
   - [Table of Contents](#table-of-contents)
+  - [From 1.1.x to 1.2.x](#from-11x-to-12x)
   - [From 1.0.x to 1.1.x](#from-10x-to-11x)
 
 <!-- mdformat-toc end -->
+
+## From 1.1.x to 1.2.x
+
+The helm chart interface has changed. Please review the following changes and
+the migration steps.
+
+- Value `nodesets.slinky` is no longer enabled by default. To keep this named
+  NodeSet, install with `--set-json 'nodesets={"slinky":{}}'`.
+- Value `partitions.all` is no longer enabled by default. To enable it, install
+  with `--set partitions.all.enabled=true`.
 
 ## From 1.0.x to 1.1.x
 

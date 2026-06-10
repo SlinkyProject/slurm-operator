@@ -13,7 +13,6 @@ manifest should match snapshot:
     spec:
       controllerRef:
         name: test-release-slurm
-        namespace: test-namespace
       logfile:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent
@@ -32,7 +31,6 @@ manifest should match snapshot:
         imagePullPolicy: IfNotPresent
         resources: {}
         volumeMounts: []
-      taintKubeNodes: false
       template:
         metadata:
           labels:
