@@ -38,7 +38,7 @@ type SlurmControlInterface interface {
 	// UpdateNodeWithPodInfo handles updating the Node with its pod info
 	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 	// MakeNodeDrain handles adding the DRAIN state to the slurm node.
-	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
+	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string, overrideReason bool) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
 	MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
 	// IsNodeDrain checks if the slurm node has the DRAIN state.
@@ -175,7 +175,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 const nodeReasonPrefix = "slurm-operator: "
 
 // MakeNodeDrain implements SlurmControlInterface.
-func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error {
+func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string, overrideReason bool) error {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -194,15 +194,14 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		return err
 	}
 
-	// If the reason is not empty, prefix it with nodeReasonPrefix
-	prefixedReason := ""
-	if reason != "" {
-		prefixedReason = formatNodeReason(reason)
+	nodeReason := ptr.Deref(slurmNode.Reason, "")
+	newReason := FormatNodeReason(reason)
+	if !overrideReason && nodeReason != "" {
+		newReason = nodeReason
 	}
 
 	// If Slurm node is already drained and the reasons match, no need to drain it again
-	nodeReason := ptr.Deref(slurmNode.Reason, "")
-	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) && nodeReason == prefixedReason {
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN) && nodeReason == newReason {
 		logger.V(1).Info("Node is already drained, skipping drain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State, "nodeReason", nodeReason)
 		return nil
@@ -212,7 +211,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		"pod", klog.KObj(pod))
 	req := slurmapi.V0044UpdateNodeMsg{
 		State:  ptr.To([]slurmapi.V0044UpdateNodeMsgState{slurmapi.V0044UpdateNodeMsgStateDRAIN}),
-		Reason: ptr.To(prefixedReason),
+		Reason: ptr.To(newReason),
 	}
 	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
 		if tolerateError(err) {
@@ -224,7 +223,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 	return nil
 }
 
-func formatNodeReason(reason string) string {
+func FormatNodeReason(reason string) string {
 	return nodeReasonPrefix + reason
 }
 
@@ -258,7 +257,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	// If the reason is not empty, prefix it with nodeReasonPrefix
 	prefixedReason := ""
 	if reason != "" {
-		prefixedReason = formatNodeReason(reason)
+		prefixedReason = FormatNodeReason(reason)
 	}
 
 	logger.V(1).Info("make slurm node undrain",
