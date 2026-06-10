@@ -31,14 +31,28 @@ func (o *Controller) PrimaryName() string {
 	if o.Spec.External {
 		return o.Spec.ExternalConfig.Host
 	}
-	key := o.Key()
-	return fmt.Sprintf("%s-0", key.Name)
+	return o.PodName(0)
 }
 
 func (o *Controller) PrimaryFQDN() string {
 	key := o.PrimaryName()
-	svc := o.ServiceFQDNShort()
+	svc := o.ServiceInternalFQDNShort()
 	return fmt.Sprintf("%s.%s", key, svc)
+}
+
+// PodName returns the StatefulSet pod name (and pod hostname) at the given ordinal.
+func (o *Controller) PodName(ordinal int) string {
+	if o.Spec.External {
+		return o.Spec.ExternalConfig.Host
+	}
+	return fmt.Sprintf("%s-%d", o.Key().Name, ordinal)
+}
+
+// PodFQDNShort returns the pod's stable DNS name (e.g.
+// `<cr>-controller-0.<cr>-controller.<ns>`), provided by the headless
+// governing Service when Replicas>1.
+func (o *Controller) PodFQDNShort(ordinal int) string {
+	return fmt.Sprintf("%s.%s", o.PodName(ordinal), o.ServiceFQDNShort())
 }
 
 func (o *Controller) ServiceKey() types.NamespacedName {
@@ -57,6 +71,28 @@ func (o *Controller) ServiceFQDN() string {
 func (o *Controller) ServiceFQDNShort() string {
 	s := o.ServiceKey()
 	return domainname.FqdnShort(s.Name, s.Namespace)
+}
+
+func (o *Controller) ServiceInternalKey() types.NamespacedName {
+	key := o.Key()
+	return types.NamespacedName{
+		Name:      fmt.Sprintf("%s-internal", key.Name),
+		Namespace: o.Namespace,
+	}
+}
+
+func (o *Controller) ServiceInternalFQDN() string {
+	s := o.ServiceInternalKey()
+	return domainname.Fqdn(s.Name, s.Namespace)
+}
+
+func (o *Controller) ServiceInternalFQDNShort() string {
+	s := o.ServiceInternalKey()
+	return domainname.FqdnShort(s.Name, s.Namespace)
+}
+
+func (o *Controller) PodInternalFQDNShort(ordinal int) string {
+	return fmt.Sprintf("%s.%s", o.PodName(ordinal), o.ServiceInternalFQDNShort())
 }
 
 func (o *Controller) AuthSlurmKey() types.NamespacedName {
@@ -117,4 +153,17 @@ func (o *Controller) ConfigKey() types.NamespacedName {
 		Name:      fmt.Sprintf("%s-config", o.Name),
 		Namespace: o.Namespace,
 	}
+}
+
+// Replicas returns the configured slurmctld replica count, defaulting to 1.
+// External controllers are always treated as a single replica.
+func (o *Controller) Replicas() int32 {
+	if o.Spec.External {
+		return 1
+	}
+	var cnt int32 = 1
+	if o.Spec.HighAvailability.Enabled {
+		cnt += ptr.Deref(o.Spec.HighAvailability.Backups, 1) // defaults.DefaultControllerHighAvailabilityBackups
+	}
+	return cnt
 }

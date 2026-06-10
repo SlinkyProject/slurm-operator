@@ -58,6 +58,8 @@ Kubernetes: `>= 1.29.0-0`
 | controller.externalConfig.port | string | `nil` | The slurmctld port. Default is 6817. |
 | controller.extraConf | string | `nil` | Raw extra Slurm configuration lines appended to `slurm.conf`. Ref: https://slurm.schedmd.com/slurm.conf.html |
 | controller.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra Slurm configuration lines appended to `slurm.conf`. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html |
+| controller.ha.backups | int | `1` | Indicates how may secondary (backup) controllers to deploy. |
+| controller.ha.enabled | bool | `false` | Indicates if HA mode should be used. When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required. |
 | controller.inplaceReconfigure | bool | `false` | Indicates how reconfigure is handled when Slurm configuration changes. When true, the reconfigure sidecar will do reconfigure inplace. When false, the pod will be recreated and reconfigure done only on startup. |
 | controller.logfile.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.logfile.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
@@ -82,7 +84,7 @@ Kubernetes: `>= 1.29.0-0`
 | controller.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | controller.reconfigure.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmctld","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.reconfigure.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
-| controller.service | object | `{"metadata":{},"spec":{}}` | The service configuration. |
+| controller.service | object | `{"metadata":{},"spec":{}}` | The service configuration. Type/port/nodePort overrides apply only with `replicas: 1`; with more, the controller Service is operator-managed. |
 | controller.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | controller.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | controller.slurmctld.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS |

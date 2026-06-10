@@ -11,7 +11,8 @@ import (
 
 // Default values for Controller Spec fields when unspecified.
 const (
-	DefaultControllerPersistenceEnabled bool = true
+	DefaultControllerPersistenceEnabled      bool  = true
+	DefaultControllerHighAvailabilityBackups int32 = 1
 )
 
 func SetControllerDefaults(controller *slinkyv1beta1.Controller) {
@@ -22,5 +23,11 @@ func SetControllerDefaults(controller *slinkyv1beta1.Controller) {
 
 	if s.Persistence.Enabled == nil {
 		s.Persistence.Enabled = ptr.To(DefaultControllerPersistenceEnabled)
+	}
+
+	if s.HighAvailability.Enabled {
+		if s.HighAvailability.Backups == nil {
+			s.HighAvailability.Backups = new(DefaultControllerHighAvailabilityBackups)
+		}
 	}
 }

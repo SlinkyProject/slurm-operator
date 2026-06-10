@@ -174,16 +174,22 @@ func buildSlurmConf(
 		}(),
 	}
 
-	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
-
 	conf := config.NewBuilder()
 
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
 	conf.AddProperty(config.NewProperty("ClusterName", controller.ClusterName()))
 	conf.AddProperty(config.NewProperty("SlurmUser", common.SlurmUser))
-	conf.AddProperty(config.NewProperty("SlurmctldHost", controllerHost))
-	conf.AddProperty(config.NewProperty("SlurmctldPort", common.SlurmctldPort))
+	if controller.Spec.External {
+		conf.AddProperty(config.NewProperty("SlurmctldHost", controller.Spec.ExternalConfig.Host))
+		conf.AddProperty(config.NewProperty("SlurmctldPort", controller.Spec.ExternalConfig.Port))
+	} else {
+		for i := range controller.Replicas() {
+			host := fmt.Sprintf("%s(%s)", controller.PodName(int(i)), controller.PodInternalFQDNShort(int(i)))
+			conf.AddProperty(config.NewProperty("SlurmctldHost", host))
+		}
+		conf.AddProperty(config.NewProperty("SlurmctldPort", common.SlurmctldPort))
+	}
 	conf.AddProperty(config.NewProperty("StateSaveLocation", clusterSpoolDir(controller.ClusterName())))
 	conf.AddProperty(config.NewProperty("SlurmdUser", common.SlurmdUser))
 	conf.AddProperty(config.NewProperty("SlurmdPort", common.SlurmdPort))

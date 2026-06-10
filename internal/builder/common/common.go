@@ -22,18 +22,25 @@ import (
 )
 
 func ConfiglessArgs(controller *slinkyv1beta1.Controller) []string {
-	host := controller.ServiceFQDNShort()
-	port := SlurmctldPort
 	if controller.Spec.External {
 		externalConfig := controller.Spec.ExternalConfig
-		host = externalConfig.Host
-		port = externalConfig.Port
+		return []string{
+			"--conf-server",
+			fmt.Sprintf("%s:%d", externalConfig.Host, externalConfig.Port),
+		}
 	}
-	args := []string{
+
+	replicas := controller.Replicas()
+	servers := make([]string, 0, replicas)
+	for i := range int(replicas) {
+		server := fmt.Sprintf("%s:%d", controller.PodInternalFQDNShort(i), SlurmctldPort)
+		servers = append(servers, server)
+	}
+
+	return []string{
 		"--conf-server",
-		fmt.Sprintf("%s:%d", host, port),
+		strings.Join(servers, ","),
 	}
-	return args
 }
 
 //go:embed scripts/logfile.sh

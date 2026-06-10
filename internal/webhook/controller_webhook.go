@@ -11,19 +11,23 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=delete;create;update
 
 type ControllerWebhook struct {
@@ -79,6 +83,17 @@ func (r *ControllerWebhook) ValidateUpdate(ctx context.Context, oldController, n
 	// StatefulSet does not allow update of that field.
 	if !apiequality.Semantic.DeepEqual(newController.Spec.Persistence.Enabled, oldController.Spec.Persistence.Enabled) {
 		errs = append(errs, errors.New("cannot change persistence.enabled after deployment"))
+	}
+
+	if ptr.Deref(newController.Spec.Persistence.Enabled, defaults.DefaultControllerPersistenceEnabled) &&
+		newController.Spec.Persistence.ExistingClaim != oldController.Spec.Persistence.ExistingClaim {
+		errs = append(errs, errors.New("cannot change persistence.existingClaim after deployment"))
+	}
+
+	if newController.Spec.HighAvailability.Enabled != oldController.Spec.HighAvailability.Enabled {
+		if err := r.validatePVC(ctx, newController); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	return warns, utilerrors.NewAggregate(errs)
@@ -144,5 +159,27 @@ func (r *ControllerWebhook) validateController(ctx context.Context, controller *
 		warns = append(warns, "ExternalIPs may not be set for controller service")
 	}
 
+	if err := r.validatePVC(ctx, controller); err != nil {
+		errs = append(errs, err)
+	}
+
 	return warns, errs
+}
+
+func (r *ControllerWebhook) validatePVC(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+	if controller.Spec.HighAvailability.Enabled {
+		pvc := &corev1.PersistentVolumeClaim{}
+		pvcKey := types.NamespacedName{
+			Namespace: controller.Namespace,
+			Name:      controller.Spec.Persistence.ExistingClaim,
+		}
+		if err := r.Get(ctx, pvcKey, pvc); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get PVC (%s): %w", klog.KObj(pvc), err)
+			}
+		} else if !slices.Contains(pvc.Spec.AccessModes, corev1.ReadWriteMany) {
+			return fmt.Errorf("slurm high availability (HA) mode requires given PVC (%s) to have access mode 'ReadWriteMany'", klog.KObj(pvc))
+		}
+	}
+	return nil
 }

@@ -29,7 +29,6 @@ import (
 
 func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller) (*appsv1.StatefulSet, error) {
 	key := controller.Key()
-	serviceKey := controller.ServiceKey()
 	selectorLabels := labels.NewBuilder().
 		WithControllerSelectorLabels(controller).
 		Build()
@@ -41,6 +40,7 @@ func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller
 		Build()
 
 	persistence := controller.Spec.Persistence
+	replicas := controller.Replicas()
 
 	podTemplate, err := b.controllerPodTemplate(controller)
 	if err != nil {
@@ -51,19 +51,24 @@ func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller
 		ObjectMeta: objectMeta,
 		Spec: appsv1.StatefulSetSpec{
 			PodManagementPolicy:  appsv1.ParallelPodManagement,
-			Replicas:             ptr.To[int32](1),
+			Replicas:             new(replicas),
 			RevisionHistoryLimit: ptr.To[int32](0),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},
-			ServiceName: serviceKey.Name,
+			ServiceName: controller.ServiceInternalKey().Name,
 			Template:    podTemplate,
 		},
 	}
 
 	isPersistenceEnabled := ptr.Deref(persistence.Enabled, defaults.DefaultControllerPersistenceEnabled)
+	isHighAvailabilityEnabled := controller.Spec.HighAvailability.Enabled
 	switch {
-	case isPersistenceEnabled && persistence.ExistingClaim != "":
+	case isHighAvailabilityEnabled && !isPersistenceEnabled:
+		return nil, fmt.Errorf("invalid configuration: HA is enabled but persistence is disabled")
+	case isHighAvailabilityEnabled && isPersistenceEnabled && persistence.ExistingClaim == "":
+		return nil, fmt.Errorf("HA requires persistence.existingClaim")
+	case isPersistenceEnabled && persistence.ExistingClaim != "", isHighAvailabilityEnabled:
 		volume := corev1.Volume{
 			Name: common.SlurmctldStateSaveVolume,
 			VolumeSource: corev1.VolumeSource{
@@ -73,7 +78,7 @@ func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller
 			},
 		}
 		out.Spec.Template.Spec.Volumes = append(out.Spec.Template.Spec.Volumes, volume)
-	case isPersistenceEnabled:
+	case isPersistenceEnabled && !isHighAvailabilityEnabled:
 		volumeClaimTemplate := corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      common.SlurmctldStateSaveVolume,
@@ -158,8 +163,9 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 		},
 		Base: corev1.PodSpec{
 			AutomountServiceAccountToken: ptr.To(false),
+			Affinity:                     controllerHAAntiAffinity(controller),
 			Containers: []corev1.Container{
-				b.slurmctldContainer(spec.Slurmctld.Container, controller.ClusterName()),
+				b.slurmctldContainer(spec.Slurmctld.Container, controller.ClusterName(), controller.Replicas()),
 			},
 			InitContainers: func() []corev1.Container {
 				var initContainers []corev1.Container
@@ -181,6 +187,32 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 	}
 
 	return b.CommonBuilder.BuildPodTemplate(opts), nil
+}
+
+// controllerHAAntiAffinity appends a required pod anti-affinity term
+// (hostname topology) so a primary and backup never co-locate on the same
+// node. Terms from the user pod template are preserved.
+func controllerHAAntiAffinity(controller *slinkyv1beta1.Controller) *corev1.Affinity {
+	existing := controller.Spec.Template.PodSpecWrapper.Affinity.DeepCopy()
+
+	term := corev1.PodAffinityTerm{
+		LabelSelector: &metav1.LabelSelector{
+			MatchLabels: labels.NewBuilder().
+				WithControllerSelectorLabels(controller).
+				Build(),
+		},
+		TopologyKey: corev1.LabelHostname,
+	}
+	out := existing.DeepCopy()
+	if out == nil {
+		out = &corev1.Affinity{}
+	}
+	if out.PodAntiAffinity == nil {
+		out.PodAntiAffinity = &corev1.PodAntiAffinity{}
+	}
+	out.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(
+		out.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, term)
+	return out
 }
 
 func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []corev1.Volume {
@@ -257,7 +289,15 @@ func clusterSpoolDir(clustername string) string {
 	return path.Join(common.SlurmctldSpoolDir, clustername)
 }
 
-func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterName string) corev1.Container {
+func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterName string, replicas int32) corev1.Container {
+	// Only the active controller answers /readyz with 2xx; with `replicas > 1`
+	// that would leave the standby permanently NotReady and wedge StatefulSet
+	// rolling updates, so HA gates readiness on /livez. Clients select the
+	// active controller via SlurmctldHost, not Service readiness.
+	readinessPath := common.SlurmReadyz
+	if replicas > 1 {
+		readinessPath = common.SlurmLivez
+	}
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.ControllerApp,
@@ -281,7 +321,7 @@ func (b *ControllerBuilder) slurmctldContainer(merge corev1.Container, clusterNa
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
-						Path: common.SlurmReadyz,
+						Path: readinessPath,
 						Port: intstr.FromString(labels.ControllerApp),
 					},
 				},
