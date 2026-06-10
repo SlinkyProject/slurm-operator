@@ -228,3 +228,40 @@ tests:
           path: spec.configFileRefs[0].name
           value: test-release-slurm-config-extra
 
+  - it: should fail if exactly 9 networks are not specified
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Mega requires exactly 9 networks, but 2 were specified.
+
+  - it: should fail if networks are completely missing
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Mega requires exactly 9 networks, but 0 were specified.
+
