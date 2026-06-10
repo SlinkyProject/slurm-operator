@@ -825,22 +825,20 @@ vendor:
       scriptPriority: "90"
   # Google Cloud
   google:
-    a3mega:
-      # -- Target NodeSet names to apply optimizations to.
-      targetNodeSets: []
-      # -- GKE Node Pool name that hosts the A3 Mega instances. If set, GKE Node Selector is applied.
-      nodePool: ""
-      # -- VPC networks for GPUDirect-TCPXO.
-      networks:
-        - default
-        - vpc1
-        - vpc2
-        - vpc3
-        - vpc4
-        - vpc5
-        - vpc6
-        - vpc7
-        - vpc8
+    # -- A3 Mega configurations. List of objects corresponding to nodesets.
+    a3mega: []
+    # - targetNodeSet: a3-megagpu-8g
+    #   nodePool: "a3-megagpu-8g-a3megagpupool"
+    #   networks:
+    #     - default
+    #     - vpc1
+    #     - vpc2
+    #     - vpc3
+    #     - vpc4
+    #     - vpc5
+    #     - vpc6
+    #     - vpc7
+    #     - vpc8
 
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
