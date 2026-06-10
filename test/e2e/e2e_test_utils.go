@@ -13,6 +13,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/test"
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -151,9 +152,7 @@ func testSlurmNodeSet() types.Feature {
 		Assess("NodeSet scale-up functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			crClient, err := GetControllerRuntimeClient(config)
-			if err != nil {
-				t.Fatalf("Failed to get new controller-runtime client: %v", err)
-			}
+			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			nodesetKey := crclient.ObjectKey{
 				Namespace: test.SlurmNamespace,
@@ -161,17 +160,13 @@ func testSlurmNodeSet() types.Feature {
 			}
 			nodeset := &slinkyv1beta1.NodeSet{}
 			err = crClient.Get(ctx, nodesetKey, nodeset)
-			if err != nil {
-				t.Fatal("failed to Get() NodeSet using controller-runtime client")
-			}
+			require.NoError(t, err, "failed to Get() NodeSet using controller-runtime client")
 
 			var replicas int32 = 2
 			nodeset.Spec.Replicas = &replicas
 
 			err = crClient.Update(ctx, nodeset)
-			if err != nil {
-				t.Fatal("failed to Update() NodeSet using controller-runtime client")
-			}
+			require.NoError(t, err, "failed to Update() NodeSet using controller-runtime client")
 
 			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
 
@@ -217,9 +212,7 @@ func testSlurmNodeSet() types.Feature {
 		Assess("NodeSet scale-down functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			crClient, err := GetControllerRuntimeClient(config)
-			if err != nil {
-				t.Fatalf("Failed to get new controller-runtime client: %v", err)
-			}
+			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			nodesetKey := crclient.ObjectKey{
 				Namespace: test.SlurmNamespace,
@@ -227,17 +220,13 @@ func testSlurmNodeSet() types.Feature {
 			}
 			nodeset := &slinkyv1beta1.NodeSet{}
 			err = crClient.Get(ctx, nodesetKey, nodeset)
-			if err != nil {
-				t.Fatal("failed to Get() NodeSet using controller-runtime client")
-			}
+			require.NoError(t, err, "failed to Get() NodeSet using controller-runtime client")
 
 			var replicas int32 = 1
 			nodeset.Spec.Replicas = &replicas
 
 			err = crClient.Update(ctx, nodeset)
-			if err != nil {
-				t.Fatal("failed to Update() NodeSet using controller-runtime client")
-			}
+			require.NoError(t, err, "failed to Update() NodeSet using controller-runtime client")
 
 			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
 
@@ -270,13 +259,8 @@ func testSlurmAccounting() types.Feature {
 
 			cmd := exec.Command(command, args...)
 			output, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr show cluster returned non-zero error code")
-			}
-
-			if strings.TrimSpace(string(output)) != "slurm_slurm" {
-				t.Fatalf("Clustername in slurmdbd %s does not match expected slurm_slurm", string(output))
-			}
+			require.NoError(t, err, "sacctmgr show cluster returned non-zero error code")
+			require.Equal(t, "slurm_slurm", strings.TrimSpace(string(output)), "clustername in slurmdbd does not match expected slurm_slurm")
 
 			return ctx
 		}).
@@ -287,20 +271,13 @@ func testSlurmAccounting() types.Feature {
 
 			cmd := exec.Command(command, args...)
 			_, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr add account returned non-zero error code")
-			}
+			require.NoError(t, err, "sacctmgr add account returned non-zero error code")
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
 			cmd = exec.Command(command, args...)
 			output, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr show account returned non-zero error code")
-			}
-
-			if strings.TrimSpace(string(output)) != "test" {
-				t.Fatal("Account test does not exist in slurmdbd")
-			}
+			require.NoError(t, err, "sacctmgr show account returned non-zero error code")
+			require.Equal(t, "test", strings.TrimSpace(string(output)), "account test does not exist in slurmdbd")
 
 			return ctx
 		}).
@@ -311,20 +288,13 @@ func testSlurmAccounting() types.Feature {
 
 			cmd := exec.Command(command, args...)
 			_, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr add user returned non-zero error code")
-			}
+			require.NoError(t, err, "sacctmgr add user returned non-zero error code")
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
 			cmd = exec.Command(command, args...)
 			output, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr show user returned non-zero error code")
-			}
-
-			if strings.TrimSpace(string(output)) != "testuser" {
-				t.Fatal("User testuser does not exist in slurmdbd")
-			}
+			require.NoError(t, err, "sacctmgr show user returned non-zero error code")
+			require.Equal(t, "testuser", strings.TrimSpace(string(output)), "user testuser does not exist in slurmdbd")
 
 			return ctx
 		}).
@@ -335,20 +305,13 @@ func testSlurmAccounting() types.Feature {
 
 			cmd := exec.Command(command, args...)
 			_, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr add account returned non-zero error code")
-			}
+			require.NoError(t, err, "sacctmgr add account returned non-zero error code")
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
 			cmd = exec.Command(command, args...)
 			output, err := cmd.Output()
-			if err != nil {
-				t.Fatal("sacctmgr show account returned non-zero error code")
-			}
-
-			if strings.TrimSpace(string(output)) == "test" {
-				t.Fatal("Account test was not deleted from slurmdbd")
-			}
+			require.NoError(t, err, "sacctmgr show account returned non-zero error code")
+			require.NotEqual(t, "test", strings.TrimSpace(string(output)), "account test was not deleted from slurmdbd")
 
 			return ctx
 		}).Feature()

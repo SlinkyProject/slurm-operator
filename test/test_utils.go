@@ -18,6 +18,7 @@ import (
 
 	dockerbuild "github.com/docker/docker/api/types/build"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/stretchr/testify/require"
 	ptr "k8s.io/utils/ptr"
 
 	"github.com/moby/go-archive"
@@ -115,9 +116,7 @@ func RetryCommand(ctx context.Context, t *testing.T, command string, args []stri
 		}
 
 		if retry == retries-retry {
-			if err != nil {
-				t.Fatalf("failed running '%v %v': %v", command, args, err)
-			}
+			require.NoError(t, err, "failed running %v %v", command, args)
 			if string(output) != "" {
 				t.Fatalf("assertion failed. wants: %v, got: %v", wants, string(output))
 			}

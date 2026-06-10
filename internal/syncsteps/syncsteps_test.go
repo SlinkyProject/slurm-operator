@@ -20,7 +20,7 @@ func readOneEvent(t *testing.T, rec *events.FakeRecorder) string {
 	case ev := <-rec.Events:
 		return ev
 	default:
-		require.Fail(t, "expected one event on channel")
+		t.Fatal("expected one event on channel")
 		return ""
 	}
 }
@@ -29,7 +29,7 @@ func assertNoEvents(t *testing.T, rec *events.FakeRecorder) {
 	t.Helper()
 	select {
 	case ev := <-rec.Events:
-		require.Failf(t, "unexpected event", "%q", ev)
+		t.Fatalf("unexpected event: %q", ev)
 	default:
 	}
 }
