@@ -668,7 +668,6 @@ func (r *NodeSetReconciler) processCondemned(
 ) error {
 	logger := klog.FromContext(ctx)
 	pod := condemned[i]
-	key := objectutils.KeyFunc(pod)
 
 	podKey := client.ObjectKeyFromObject(pod)
 	if err := r.Get(ctx, podKey, pod); err != nil {
@@ -691,8 +690,10 @@ func (r *NodeSetReconciler) processCondemned(
 			"pod", klog.KObj(pod))
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
 		// We must wait until fully drained to terminate the pod.
-		durationStore.Push(key, 30*time.Second)
-		reason := fmt.Sprintf("Pod (%s) was cordoned pending termination", klog.KObj(pod))
+		nodesetKey := objectutils.KeyFunc(nodeset)
+		durationStore.Push(nodesetKey, 30*time.Second)
+		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
+		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason)
 	}
 
