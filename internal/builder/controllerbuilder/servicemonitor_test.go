@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -36,19 +36,14 @@ func TestBuilder_BuildServiceMonitor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.c)
 			got, gotErr := b.BuildServiceMonitor(tt.opts, tt.owner)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("BuildServiceMonitor() failed: %v", gotErr)
-				}
+
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			switch {
-			case tt.wantErr:
-				t.Fatal("BuildServiceMonitor() succeeded unexpectedly")
 
-			case !apiequality.Semantic.DeepEqual(got.Spec, tt.want.Spec):
-				t.Errorf("BuildServiceMonitor() = %v, want %v", got, tt.want)
-			}
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want.Spec, got.Spec)
 		})
 	}
 }

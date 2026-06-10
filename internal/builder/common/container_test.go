@@ -6,8 +6,8 @@ package common
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -350,11 +350,8 @@ func TestBuilder_BuildContainer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.client)
-			got := b.BuildContainer(tt.opts)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("Builder.BuildContainer() = %v, want %v", got, tt.want)
-				return
-			}
+
+			require.Equal(t, tt.want, b.BuildContainer(tt.opts))
 		})
 	}
 }

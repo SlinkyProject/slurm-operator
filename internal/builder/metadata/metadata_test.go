@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -44,9 +44,7 @@ func TestNewBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewBuilder(tt.args.key).Build(); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("NewBuilder() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, NewBuilder(tt.args.key).Build())
 		})
 	}
 }
@@ -113,9 +111,7 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewBuilder(tt.fields.key)
-			if got := b.WithMetadata(tt.args.meta).Build(); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("MetadataBuilder.WithMetadata() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, b.WithMetadata(tt.args.meta).Build())
 		})
 	}
 }
@@ -174,9 +170,7 @@ func TestMetadataBuilder_WithAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewBuilder(tt.fields.key)
-			if got := b.WithAnnotations(tt.args.annotations).Build(); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("MetadataBuilder.WithAnnotations() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, b.WithAnnotations(tt.args.annotations).Build())
 		})
 	}
 }
@@ -235,9 +229,7 @@ func TestMetadataBuilder_WithLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewBuilder(tt.fields.key)
-			if got := b.WithLabels(tt.args.labels).Build(); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("MetadataBuilder.WithLabels() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, b.WithLabels(tt.args.labels).Build())
 		})
 	}
 }

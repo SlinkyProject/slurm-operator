@@ -9,6 +9,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/set"
@@ -139,61 +140,44 @@ func TestBuilder_BuildLogin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildLogin(tt.args.loginset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildLogin() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case !set.KeySet(got.Spec.Template.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...):
-				t.Errorf("Template.Labels = %v , Selector.MatchLabels = %v",
-					got.Spec.Template.Labels, got.Spec.Selector.MatchLabels)
+			require.NoError(t, err)
+			require.True(t, set.KeySet(got.Spec.Template.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...))
+			require.Equal(t, labels.LoginApp, got.Spec.Template.Spec.Containers[0].Name)
+			require.Equal(t, labels.LoginApp, got.Spec.Template.Spec.Containers[0].Ports[0].Name)
 
-			case got.Spec.Template.Spec.Containers[0].Name != labels.LoginApp:
-				t.Errorf("Template.Spec.Containers[0].Name = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Name, labels.LoginApp)
-
-			case got.Spec.Template.Spec.Containers[0].Ports[0].Name != labels.LoginApp:
-				t.Errorf("Template.Spec.Containers[0].Ports[0].Name = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Ports[0].Name, labels.LoginApp)
-
-			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != LoginPort:
-				if len(tt.args.loginset.Spec.Login.Ports) > 0 && tt.args.loginset.Spec.Login.Ports[0].ContainerPort != 0 {
-					if tt.args.loginset.Spec.Login.Ports[0].ContainerPort != got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort {
-						t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
-							got.Spec.Template.Spec.Containers[0].Ports[0].Name, tt.args.loginset.Spec.Login.Ports[0].ContainerPort)
-					}
-				} else {
-					t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
-						got.Spec.Template.Spec.Containers[0].Ports[0].Name, LoginPort)
-				}
-
-			case got.Spec.Template.Spec.DNSConfig == nil:
-				t.Errorf("Template.Spec.DNSConfig = %v , want = non-nil", got.Spec.Template.Spec.DNSConfig)
-
-			case len(got.Spec.Template.Spec.DNSConfig.Searches) == 0:
-				t.Errorf("len(Template.Spec.DNSConfig.Searches) = %v , want = > 0", len(got.Spec.Template.Spec.DNSConfig.Searches))
+			if len(tt.args.loginset.Spec.Login.Ports) > 0 && tt.args.loginset.Spec.Login.Ports[0].ContainerPort != 0 {
+				require.Equal(t, tt.args.loginset.Spec.Login.Ports[0].ContainerPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			} else {
+				require.Equal(t, LoginPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 			}
+
+			require.NotNil(t, got.Spec.Template.Spec.DNSConfig)
+			require.NotEmpty(t, got.Spec.Template.Spec.DNSConfig.Searches)
+
 			if tt.name == "envars" {
 				envs := got.Spec.Template.Spec.Containers[0].Env
 				envMap := make(map[string]struct{})
+
 				for _, env := range envs {
-					if _, exists := envMap[env.Name]; exists {
-						t.Errorf("duplicate env var: %s", env.Name)
-					}
+					_, exists := envMap[env.Name]
+					require.False(t, exists, "duplicate env var: %s", env.Name)
 					envMap[env.Name] = struct{}{}
 				}
-				if _, ok := envMap["A"]; !ok {
-					t.Errorf("env var A not found")
-				}
-				if _, ok := envMap["B"]; !ok {
-					t.Errorf("env var B not found")
-				}
-				if _, ok := envMap["SACKD_OPTIONS"]; !ok {
-					t.Errorf("env var SACKD_OPTIONS not found")
-				}
+
+				_, hasA := envMap["A"]
+				require.True(t, hasA, "env var A not found")
+
+				_, hasB := envMap["B"]
+				require.True(t, hasB, "env var B not found")
+
+				_, hasSackd := envMap["SACKD_OPTIONS"]
+				require.True(t, hasSackd, "env var SACKD_OPTIONS not found")
 			}
 		})
 	}

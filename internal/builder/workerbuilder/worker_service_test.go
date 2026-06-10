@@ -8,6 +8,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,26 +53,18 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildClusterWorkerService(tt.args.nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildClusterWorkerService() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case got.Name != common.SlurmClusterWorkerServiceName(tt.args.nodeset.Spec.ControllerRef.Name):
-				t.Errorf("Service.Name = %v, want %v", got.Name, common.SlurmClusterWorkerServiceName(tt.args.nodeset.Spec.ControllerRef.Name))
-
-			case len(got.OwnerReferences) != 0:
-				t.Errorf("Service.OwnerReferences = length %v, want zero", len(got.OwnerReferences))
-
-			case got.Spec.ClusterIP != corev1.ClusterIPNone:
-				t.Errorf("Service.Spec.ClusterIP = %v, want headless service", got.Spec.ClusterIP)
-
-			case len(got.Spec.Ports) != 1 || got.Spec.Ports[0].Port != common.SlurmdPort:
-				t.Errorf("Service.Spec.Ports = %v, want single port %d", got.Spec.Ports, common.SlurmdPort)
-			}
+			require.NoError(t, err)
+			require.Equal(t, common.SlurmClusterWorkerServiceName(tt.args.nodeset.Spec.ControllerRef.Name), got.Name)
+			require.Empty(t, got.OwnerReferences)
+			require.Equal(t, corev1.ClusterIPNone, got.Spec.ClusterIP)
+			require.Len(t, got.Spec.Ports, 1)
+			require.Equal(t, common.SlurmdPort, got.Spec.Ports[0].Port)
 		})
 	}
 }

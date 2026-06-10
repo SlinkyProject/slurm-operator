@@ -8,8 +8,8 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -68,32 +68,19 @@ func TestBuilder_BuildConfigMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(fake.NewFakeClient())
 			got, err := b.BuildConfigMap(tt.args.opts, tt.args.owner)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildConfigMap() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case objectutils.KeyFunc(got) != tt.args.opts.Key.String():
-				t.Errorf("NamespacedName = %v , want = %v", objectutils.KeyFunc(got), tt.args.opts.Key.String())
-
-			case !apiequality.Semantic.DeepEqual(got.Annotations, tt.args.opts.Metadata.Annotations):
-				t.Errorf("Annotations = %v , want = %v", got.Annotations, tt.args.opts.Metadata.Annotations)
-
-			case !apiequality.Semantic.DeepEqual(got.Labels, tt.args.opts.Metadata.Labels):
-				t.Errorf("Labels = %v , want = %v", got.Labels, tt.args.opts.Metadata.Labels)
-
-			case ptr.Deref(got.Immutable, false) != tt.args.opts.Immutable:
-				t.Errorf("got.Immutable = %v , want = %v", got.Immutable, tt.args.opts.Immutable)
-
-			case !apiequality.Semantic.DeepEqual(got.Data, tt.args.opts.Data):
-				t.Errorf("got.Data = %v , want = %v", got.Data, tt.args.opts.Data)
-
-			case !apiequality.Semantic.DeepEqual(got.BinaryData, tt.args.opts.BinaryData):
-				t.Errorf("got.BinaryData = %v , want = %v", got.BinaryData, tt.args.opts.BinaryData)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.args.opts.Key.String(), objectutils.KeyFunc(got))
+			require.Equal(t, tt.args.opts.Metadata.Annotations, got.Annotations)
+			require.Equal(t, tt.args.opts.Metadata.Labels, got.Labels)
+			require.Equal(t, tt.args.opts.Immutable, ptr.Deref(got.Immutable, false))
+			require.Equal(t, tt.args.opts.Data, got.Data)
+			require.Equal(t, tt.args.opts.BinaryData, got.BinaryData)
 		})
 	}
 }

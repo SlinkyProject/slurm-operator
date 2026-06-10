@@ -8,6 +8,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	loginbuilder "github.com/SlinkyProject/slurm-operator/internal/builder/loginbuilder"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -49,17 +50,14 @@ func TestBuilder_BuildWorkerSshConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildWorkerSshConfig(tt.args.nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildWorkerSshConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			switch {
-			case err != nil:
-				return
 
-			case got.Data[loginbuilder.SshdConfigFile] == "" && got.BinaryData[loginbuilder.SshdConfigFile] == nil:
-				t.Errorf("got.Data[%s] = %v", loginbuilder.SshdConfigFile, got.Data[loginbuilder.SshdConfigFile])
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
+			require.True(t, got.Data[loginbuilder.SshdConfigFile] != "" || got.BinaryData[loginbuilder.SshdConfigFile] != nil)
 		})
 	}
 }

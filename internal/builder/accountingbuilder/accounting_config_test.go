@@ -9,6 +9,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	common "github.com/SlinkyProject/slurm-operator/internal/builder/common"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -68,17 +69,14 @@ func TestBuilder_BuildAccountingConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildAccountingConfig(tt.args.accounting)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildAccountingConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			switch {
-			case err != nil:
-				return
 
-			case got.Data[common.SlurmdbdConfFile] == nil && got.StringData[common.SlurmdbdConfFile] == "":
-				t.Errorf("got.Data[%s] = %v", common.SlurmdbdConfFile, got.Data[common.SlurmdbdConfFile])
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
+			require.True(t, got.Data[common.SlurmdbdConfFile] != nil || got.StringData[common.SlurmdbdConfFile] != "")
 		})
 	}
 }
