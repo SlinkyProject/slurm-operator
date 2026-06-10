@@ -351,7 +351,7 @@ func (r *NodeSetReconciler) syncCordon(
 		// If pod is uncordoned, undrain the Slurm node
 		case !podIsCordoned:
 			reason := fmt.Sprintf("Pod (%s) was uncordoned", klog.KObj(pod))
-			if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
+			if err := r.makePodUncordonAndUndrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
 		}
