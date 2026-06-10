@@ -10,10 +10,10 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -771,18 +771,21 @@ func TestSyncObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := SyncObject(tt.args.c, tt.args.ctx, nil, nil, tt.args.newObj, tt.args.shouldUpdate); (err != nil) != tt.wantErr {
-				t.Errorf("SyncObject() error = %v, wantErr %v", err, tt.wantErr)
+			err := SyncObject(tt.args.c, tt.args.ctx, nil, nil, tt.args.newObj, tt.args.shouldUpdate)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
+
 			if tt.wantOwnerRefs != nil {
 				key := client.ObjectKeyFromObject(tt.args.newObj)
 				fetchObj := reflect.New(reflect.TypeOf(tt.args.newObj).Elem()).Interface().(client.Object)
-				if err := tt.args.c.Get(tt.args.ctx, key, fetchObj); err != nil {
-					t.Fatalf("failed to get object after sync: %v", err)
-				}
-				if !equality.Semantic.DeepEqual(fetchObj.GetOwnerReferences(), tt.wantOwnerRefs) {
-					t.Errorf("OwnerReferences = %v, want %v", fetchObj.GetOwnerReferences(), tt.wantOwnerRefs)
-				}
+
+				require.NoError(t, tt.args.c.Get(tt.args.ctx, key, fetchObj))
+				require.Equal(t, tt.wantOwnerRefs, fetchObj.GetOwnerReferences())
 			}
 		})
 	}
@@ -822,30 +825,16 @@ func TestPatchObject_Pod(t *testing.T) {
 		pod.Annotations = map[string]string{"note": "via PatchObject"}
 		return nil
 	})
-	if err != nil {
-		t.Fatalf("PatchObject() error = %v", err)
-	}
-
-	if pod.Labels["app"] != "after" || pod.Labels["patched"] != "true" {
-		t.Errorf("pod.Labels after PatchObject = %v, want app=after and patched=true", pod.Labels)
-	}
-	if pod.Annotations["note"] != "via PatchObject" {
-		t.Errorf("pod.Annotations after PatchObject = %v", pod.Annotations)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "after", pod.Labels["app"])
+	require.Equal(t, "true", pod.Labels["patched"])
+	require.Equal(t, "via PatchObject", pod.Annotations["note"])
 
 	stored := &corev1.Pod{}
-	if err := c.Get(ctx, key, stored); err != nil {
-		t.Fatalf("Get() after patch: %v", err)
-	}
-	if stored.Labels["app"] != "after" {
-		t.Errorf("stored pod labels = %v, want app=after", stored.Labels)
-	}
-	if stored.Annotations["note"] != "via PatchObject" {
-		t.Errorf("stored pod annotations = %v", stored.Annotations)
-	}
-	if !equality.Semantic.DeepEqual(pod.Labels, stored.Labels) {
-		t.Errorf("returned pod labels %v != stored %v", pod.Labels, stored.Labels)
-	}
+	require.NoError(t, c.Get(ctx, key, stored))
+	require.Equal(t, "after", stored.Labels["app"])
+	require.Equal(t, "via PatchObject", stored.Annotations["note"])
+	require.Equal(t, pod.Labels, stored.Labels)
 }
 
 func TestStatusPatchObject_Pod(t *testing.T) {
@@ -881,19 +870,10 @@ func TestStatusPatchObject_Pod(t *testing.T) {
 		pod.Status.ObservedGeneration = 2
 		return nil
 	})
-	if err != nil {
-		t.Fatalf("StatusPatchObject() error = %v", err)
-	}
-
-	if pod.Status.ObservedGeneration != 2 {
-		t.Errorf("pod.Status.ObservedGeneration after StatusPatchObject = %v, want 2", pod.Status.ObservedGeneration)
-	}
+	require.NoError(t, err)
+	require.Equal(t, int64(2), pod.Status.ObservedGeneration)
 
 	stored := &corev1.Pod{}
-	if err := c.Get(ctx, key, stored); err != nil {
-		t.Fatalf("Get() after patch: %v", err)
-	}
-	if stored.Status.ObservedGeneration != 2 {
-		t.Errorf("stored.Status.ObservedGeneration after StatusPatchObject = %v, want 2", stored.Status.ObservedGeneration)
-	}
+	require.NoError(t, c.Get(ctx, key, stored))
+	require.Equal(t, int64(2), stored.Status.ObservedGeneration)
 }

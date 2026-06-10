@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeys(t *testing.T) {
@@ -52,9 +52,8 @@ func TestKeys(t *testing.T) {
 			got := Keys(tt.args.items)
 			slices.Sort(got)
 			slices.Sort(tt.want)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("Keys() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -100,9 +99,8 @@ func TestValues(t *testing.T) {
 			got := Values(tt.args.items)
 			slices.Sort(got)
 			slices.Sort(tt.want)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("Values() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -146,9 +144,7 @@ func TestMergeMaps(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := MergeMaps(tt.args.mapList...); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("MergeMaps() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, MergeMaps(tt.args.mapList...))
 		})
 	}
 }
@@ -221,9 +217,7 @@ func Test_validFirstDigit(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := validFirstDigit(tt.args.str); got != tt.want {
-				t.Errorf("validFirstDigit() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, validFirstDigit(tt.args.str))
 		})
 	}
 }
@@ -270,13 +264,14 @@ func TestGetNumberFromAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetNumberFromAnnotations(tt.args.annotations, tt.args.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetNumberFromAnnotations() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("GetNumberFromAnnotations() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -350,13 +345,14 @@ func TestGetBoolFromAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetBoolFromAnnotations(tt.args.annotations, tt.args.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetBoolFromAnnotations() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("GetBoolFromAnnotations() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -396,14 +392,15 @@ func TestGetTimeFromAnnotations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetTimeFromAnnotations(tt.args.annotations, tt.args.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetTimeFromAnnotations() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+
+			require.NoError(t, err)
 			// Compare Unix to avoid nanosecond precision loss due to (un)marshaling
-			if tt.want.Unix() != got.Unix() {
-				t.Errorf("GetTimeFromAnnotations() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want.Unix(), got.Unix())
 		})
 	}
 }

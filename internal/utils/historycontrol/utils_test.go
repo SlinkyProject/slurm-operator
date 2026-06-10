@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	"k8s.io/kubernetes/pkg/controller/history"
 )
 
@@ -92,9 +93,7 @@ func TestGetRevision(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetRevision(tt.args.labels); got != tt.want {
-				t.Errorf("GetRevision() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, GetRevision(tt.args.labels))
 		})
 	}
 }

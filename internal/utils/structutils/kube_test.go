@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -104,10 +104,7 @@ func test_strategicMergePatch_pod(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := structutils.StrategicMergePatch(tt.base, tt.patch)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("StrategicMergePatch() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, structutils.StrategicMergePatch(tt.base, tt.patch))
 		})
 	}
 }

@@ -6,6 +6,8 @@ package testutils
 import (
 	"path"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetEnvTestBinary(t *testing.T) {
@@ -35,8 +37,11 @@ func TestGetEnvTestBinary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GetEnvTestBinary(tt.args.rootPath)
-			if tt.wantFound && got == "" || !tt.wantFound && got != "" {
-				t.Errorf("GetEnvTestBinary() = %v, wantFound %v", got, tt.wantFound)
+
+			if tt.wantFound {
+				require.NotEmpty(t, got)
+			} else {
+				require.Empty(t, got)
 			}
 		})
 	}
@@ -67,9 +72,8 @@ func TestGenerateResourceName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := GenerateResourceName(tt.args.length)
-			if len(got) != tt.args.length {
-				t.Errorf("got wrong length: got = %v, want = %v", len(got), tt.args.length)
-			}
+
+			require.Len(t, got, tt.args.length)
 		})
 	}
 }

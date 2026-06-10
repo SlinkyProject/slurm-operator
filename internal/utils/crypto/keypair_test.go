@@ -6,6 +6,8 @@ package crypto
 import (
 	"crypto/elliptic"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewKeyPair(t *testing.T) {
@@ -97,27 +99,21 @@ func TestNewKeyPair(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewKeyPair(tt.args.opts...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewKeyPair() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if err != nil {
-				return
-			}
-			if key, err := got.PrivateKey(); err != nil {
-				t.Errorf("PrivateKey() error = %v", err)
-				return
-			} else if len(key) == 0 {
-				t.Errorf("PrivateKey() len() = %v", len(key))
-				return
-			}
-			if key, err := got.PublicKey(); err != nil {
-				t.Errorf("PublicKey() error = %v", err)
-				return
-			} else if len(key) == 0 {
-				t.Errorf("PublicKey() len() = %v", len(key))
-				return
-			}
+
+			require.NoError(t, err)
+
+			privKey, err := got.PrivateKey()
+			require.NoError(t, err)
+			require.NotEmpty(t, privKey)
+
+			pubKey, err := got.PublicKey()
+			require.NoError(t, err)
+			require.NotEmpty(t, pubKey)
 		})
 	}
 }

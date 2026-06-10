@@ -9,8 +9,8 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -90,12 +90,16 @@ func TestRefResolver_GetController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetController(tt.args.ctx, tt.args.ref, tt.args.namespace)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetController() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if got != nil && objectutils.KeyFunc(got) != objectutils.KeyFunc(tt.want) {
-				t.Errorf("RefResolver.GetController() = %v, want %v", objectutils.KeyFunc(got), objectutils.KeyFunc(tt.want))
+
+			require.NoError(t, err)
+
+			if got != nil {
+				require.Equal(t, objectutils.KeyFunc(tt.want), objectutils.KeyFunc(got))
 			}
 		})
 	}
@@ -165,12 +169,16 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetAccounting(tt.args.ctx, tt.args.ref, tt.args.namespace)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetAccounting() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if got != nil && objectutils.KeyFunc(got) != objectutils.KeyFunc(tt.want) {
-				t.Errorf("RefResolver.GetAccounting() = %v, want %v", objectutils.KeyFunc(got), objectutils.KeyFunc(tt.want))
+
+			require.NoError(t, err)
+
+			if got != nil {
+				require.Equal(t, objectutils.KeyFunc(tt.want), objectutils.KeyFunc(got))
 			}
 		})
 	}
@@ -254,13 +262,14 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetNodeSetsForController(tt.args.ctx, tt.args.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetNodeSetsForController() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if len(got.Items) != tt.want {
-				t.Errorf("RefResolver.GetNodeSetsForController() = %v, want %v", len(got.Items), tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Len(t, got.Items, tt.want)
 		})
 	}
 }
@@ -343,13 +352,14 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetLoginSetsForController(tt.args.ctx, tt.args.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetLoginSetsForController() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if len(got.Items) != tt.want {
-				t.Errorf("RefResolver.GetLoginSetsForController() = %v, want %v", len(got.Items), tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Len(t, got.Items, tt.want)
 		})
 	}
 }
@@ -432,13 +442,14 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetRestapisForController(tt.args.ctx, tt.args.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetRestapisForController() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if len(got.Items) != tt.want {
-				t.Errorf("RefResolver.GetRestapisForController() = %v, want %v", len(got.Items), tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Len(t, got.Items, tt.want)
 		})
 	}
 }
@@ -521,13 +532,14 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetControllersForAccounting(tt.args.ctx, tt.args.accounting)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetControllersForAccounting() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if len(got.Items) != tt.want {
-				t.Errorf("RefResolver.GetControllersForAccounting() = %v, want %v", len(got.Items), tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Len(t, got.Items, tt.want)
 		})
 	}
 }
@@ -600,13 +612,14 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := New(tt.fields.reader)
 			got, err := r.GetSecretKeyRef(tt.args.ctx, tt.args.selector, tt.args.namespace)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("RefResolver.GetSecretKeyRef() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("RefResolver.GetSecretKeyRef() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
