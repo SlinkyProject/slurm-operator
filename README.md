@@ -67,11 +67,18 @@ For additional information about Slurm, see the [slurm][slurm-docs] docs.
 The Slurm control-plane is responsible for scheduling Slurm workload onto its
 worker nodes and managing their states.
 
-Slurm [High Availability (HA)][slurm-ha] is effectively achieved though
-Kubernetes regenerating the Slurm controller pod if it crashes. This is
-generally faster than the time it takes for a backup controller to assume
-control if the primary crashes. Because Slurm's version of HA is not being used,
-a shared filesystem is not required for this.
+The Controller CRD exposes a `replicas` field that controls the availability
+mode for slurmctld. With `replicas: 1` (the default), Kubernetes restarts the
+pod on failure, but a node failure delays rescheduling. With `replicas` greater
+than `1`, the operator enables [Slurm native active/passive HA][slurm-ha]: a
+primary (pod ordinal 0) plus backups spread across nodes via required pod
+anti-affinity, providing HA across node failures with automatic failover after
+`SlurmctldTimeout`. Native HA requires `persistence.existingClaim` to reference
+a ReadWriteMany PVC for `StateSaveLocation`, enforced by a CRD validation rule.
+Slurm recommends a low-latency shared filesystem (not NFS) for this volume. The
+controller `service` overrides (`spec`, `port`, `nodePort`) apply only with
+`replicas: 1`; with more replicas the operator manages a headless Service for
+per-pod DNS and rejects them.
 
 Changes to the Slurm configuration files are automatically detected and the
 Slurm cluster is reconfigured seamlessly with zero downtime of the Slurm

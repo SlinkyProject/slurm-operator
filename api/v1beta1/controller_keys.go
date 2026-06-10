@@ -118,3 +118,24 @@ func (o *Controller) ConfigKey() types.NamespacedName {
 		Namespace: o.Namespace,
 	}
 }
+
+// Replicas returns the configured slurmctld replica count, defaulting to 1.
+// External controllers are always treated as a single replica.
+func (o *Controller) Replicas() int32 {
+	if o.Spec.External {
+		return 1
+	}
+	return ptr.Deref(o.Spec.Replicas, 1)
+}
+
+// PodName returns the StatefulSet pod name (and pod hostname) at the given ordinal.
+func (o *Controller) PodName(ordinal int32) string {
+	return fmt.Sprintf("%s-%d", o.Key().Name, ordinal)
+}
+
+// PodFQDNShort returns the pod's stable DNS name (e.g.
+// `<cr>-controller-0.<cr>-controller.<ns>`), provided by the headless
+// governing Service when Replicas>1.
+func (o *Controller) PodFQDNShort(ordinal int32) string {
+	return fmt.Sprintf("%s.%s", o.PodName(ordinal), o.ServiceFQDNShort())
+}

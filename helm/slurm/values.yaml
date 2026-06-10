@@ -169,6 +169,16 @@ controller:
     host: slurmctld.example.com
     # -- The slurmctld port. Default is 6817.
     port: null
+  # -- Number of slurmctld replicas. 1 is a singleton (Kubernetes restarts the
+  # pod on failure). Greater than 1 enables Slurm native active/passive HA
+  # (a primary plus backups, with automatic failover after SlurmctldTimeout).
+  # HA requires `persistence.existingClaim` to reference a ReadWriteMany PVC for
+  # StateSaveLocation, and slurmctld pods are spread across nodes via required
+  # pod anti-affinity. The controller `service` overrides apply only with a
+  # single replica; with more, the controller Service is operator-managed
+  # (headless, for per-pod DNS).
+  # Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+  replicas: 1
   # slurmctld container configurations.
   slurmctld:
     # -- (string \| object) The image to use.
@@ -285,7 +295,8 @@ controller:
       # - key: key1
       #   operator: Exists
       #   effect: NoSchedule
-  # -- The service configuration.
+  # -- The service configuration. Type/port/nodePort overrides apply only with
+  # `replicas: 1`; with more, the controller Service is operator-managed.
   service:
     # -- Labels and annotations.
     # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/

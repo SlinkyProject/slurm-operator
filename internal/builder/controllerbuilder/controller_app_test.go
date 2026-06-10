@@ -5,6 +5,7 @@ package controllerbuilder
 
 import (
 	_ "embed"
+	"reflect"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -207,5 +208,88 @@ func BenchmarkBuilder_BuildController(b *testing.B) {
 				build.BuildController(bb.args.controller) //nolint:errcheck
 			}
 		})
+	}
+}
+
+func TestBuildController_Singleton(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+	}
+	b := New(fake.NewFakeClient())
+	sts, err := b.BuildController(c)
+	if err != nil {
+		t.Fatalf("BuildController() error = %v", err)
+	}
+	if got := ptr.Deref(sts.Spec.Replicas, -1); got != 1 {
+		t.Errorf("Replicas = %d, want 1", got)
+	}
+	if sts.Spec.ServiceName != "slurm-controller" {
+		t.Errorf("ServiceName = %q, want slurm-controller", sts.Spec.ServiceName)
+	}
+	if got := sts.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Path; got != common.SlurmReadyz {
+		t.Errorf("singleton readiness path = %q, want %q", got, common.SlurmReadyz)
+	}
+	if aff := sts.Spec.Template.Spec.Affinity; aff != nil && aff.PodAntiAffinity != nil &&
+		len(aff.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) > 0 {
+		t.Error("singleton should not have required pod anti-affinity")
+	}
+}
+
+func TestBuildController_HARequiresExistingClaim(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec: slinkyv1beta1.ControllerSpec{
+			Replicas: ptr.To(int32(2)),
+			Persistence: slinkyv1beta1.ControllerPersistence{
+				Enabled: ptr.To(true),
+				// no ExistingClaim -> must error
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	if _, err := b.BuildController(c); err == nil {
+		t.Fatal("BuildController() with replicas>1 and no existingClaim: want error, got nil")
+	}
+}
+
+func TestBuildController_HA(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec: slinkyv1beta1.ControllerSpec{
+			Replicas: ptr.To(int32(2)),
+			Persistence: slinkyv1beta1.ControllerPersistence{
+				Enabled:       ptr.To(true),
+				ExistingClaim: "slurm-statesave",
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	sts, err := b.BuildController(c)
+	if err != nil {
+		t.Fatalf("BuildController() error = %v", err)
+	}
+	if got := ptr.Deref(sts.Spec.Replicas, -1); got != 2 {
+		t.Errorf("Replicas = %d, want 2", got)
+	}
+	aff := sts.Spec.Template.Spec.Affinity
+	if aff == nil || aff.PodAntiAffinity == nil ||
+		len(aff.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) == 0 {
+		t.Fatal("HA should set required pod anti-affinity")
+	}
+	term := aff.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution[0]
+	if term.TopologyKey != corev1.LabelHostname {
+		t.Errorf("anti-affinity topologyKey = %q, want %q", term.TopologyKey, corev1.LabelHostname)
+	}
+	wantSelector := labels.NewBuilder().WithControllerSelectorLabels(c).Build()
+	if term.LabelSelector == nil || !reflect.DeepEqual(term.LabelSelector.MatchLabels, wantSelector) {
+		t.Errorf("anti-affinity selector = %v, want %v", term.LabelSelector, wantSelector)
+	}
+	if len(sts.Spec.VolumeClaimTemplates) != 0 {
+		t.Errorf("HA must not use volumeClaimTemplates, got %d", len(sts.Spec.VolumeClaimTemplates))
+	}
+	// A standby never answers /readyz with 2xx, so /readyz readiness would
+	// leave it permanently NotReady and wedge StatefulSet rolling updates.
+	if got := sts.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Path; got != common.SlurmLivez {
+		t.Errorf("HA readiness path = %q, want %q", got, common.SlurmLivez)
 	}
 }

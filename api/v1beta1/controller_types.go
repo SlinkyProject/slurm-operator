@@ -21,12 +21,25 @@ var (
 // +kubebuilder:validation:XValidation:rule="!self.external ? has(self.slurmKeyRef) : true", message="slurmKeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="!self.external ? has(self.jwtKeyRef) || has(self.jwtHs256KeyRef) : true", message="jwtKeyRef or jwtHs256KeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas <= 1 || (has(self.persistence) && has(self.persistence.existingClaim) && self.persistence.existingClaim.size() > 0)", message="replicas > 1 requires persistence.existingClaim (StateSaveLocation must be ReadWriteMany)"
+// +kubebuilder:validation:XValidation:rule="!has(self.replicas) || self.replicas <= 1 || !has(self.service) || ((!has(self.service.port) || self.service.port == 0) && (!has(self.service.nodePort) || self.service.nodePort == 0))", message="replicas > 1 requires service.port and service.nodePort to be unset (the governing Service is headless under HA)"
 type ControllerSpec struct {
 	// The Slurm ClusterName, which uniquely identifies the Slurm Cluster to
 	// itself and accounting.
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName
 	// +optional
 	ClusterName string `json:"clusterName,omitzero"`
+
+	// Replicas is the number of slurmctld pods to run. 1 (the default) is a
+	// singleton restarted by Kubernetes on failure. Greater than 1 enables
+	// Slurm native active/passive HA: a primary plus backups spread across
+	// nodes, with automatic failover after SlurmctldTimeout. Requires
+	// persistence.existingClaim to reference a ReadWriteMany PVC for
+	// StateSaveLocation.
+	// Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Slurm `auth/slurm` key authentication.
 	// +optional

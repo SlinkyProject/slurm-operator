@@ -583,6 +583,18 @@ spec:
                   Ref: https://slurm.schedmd.com/scontrol.html#OPT_reconfigure
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              replicas:
+                description: |-
+                  Replicas is the number of slurmctld pods to run. 1 (the default) is a
+                  singleton restarted by Kubernetes on failure. Greater than 1 enables
+                  Slurm native active/passive HA: a primary plus backups spread across
+                  nodes, with automatic failover after SlurmctldTimeout. Requires
+                  persistence.existingClaim to reference a ReadWriteMany PVC for
+                  StateSaveLocation.
+                  Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+                format: int32
+                minimum: 1
+                type: integer
               service:
                 description: Service defines a template for a Kubernetes Service object.
                 properties:
@@ -706,6 +718,16 @@ spec:
                 : true'
             - message: externalConfig must be set when external is true
               rule: 'self.external ? has(self.externalConfig) : true'
+            - message: replicas > 1 requires persistence.existingClaim (StateSaveLocation
+                must be ReadWriteMany)
+              rule: '!has(self.replicas) || self.replicas <= 1 || (has(self.persistence)
+                && has(self.persistence.existingClaim) && self.persistence.existingClaim.size()
+                > 0)'
+            - message: replicas > 1 requires service.port and service.nodePort to
+                be unset (the governing Service is headless under HA)
+              rule: '!has(self.replicas) || self.replicas <= 1 || !has(self.service)
+                || ((!has(self.service.port) || self.service.port == 0) && (!has(self.service.nodePort)
+                || self.service.nodePort == 0))'
           status:
             description: ControllerStatus defines the observed state of Controller
             properties:
