@@ -778,35 +778,8 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 		return err
 	}
 
-	if err := r.syncSlurmNodeDrain(ctx, nodeset, pod, reason); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// syncSlurmNodeDrain will drain the corresponding Slurm node.
-func (r *NodeSetReconciler) syncSlurmNodeDrain(
-	ctx context.Context,
-	nodeset *slinkyv1beta1.NodeSet,
-	pod *corev1.Pod,
-	message string,
-) error {
-	logger := log.FromContext(ctx)
-
-	isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, pod)
-	if err != nil {
-		return err
-	}
-
-	if isDrain {
-		logger.V(1).Info("Node is drain, skipping drain request")
-		return nil
-	}
-
-	reason := fmt.Sprintf("Pod (%s) has been cordoned", klog.KObj(pod))
-	if message != "" {
-		reason = message
+	if reason == "" {
+		reason = "unknown"
 	}
 
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason); err != nil {
