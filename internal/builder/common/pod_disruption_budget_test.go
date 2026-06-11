@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	policyv1 "k8s.io/api/policy/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +35,8 @@ func TestBuilder_BuildPodDisruptionBudget(t *testing.T) {
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{},
+					Annotations: map[string]string{},
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							APIVersion:         "slinky.slurm.net/v1beta1",
@@ -60,18 +62,14 @@ func TestBuilder_BuildPodDisruptionBudget(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.c)
 			got, gotErr := b.BuildPodDisruptionBudget(tt.opts, tt.owner)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("BuildPodDisruptionBudget() failed: %v", gotErr)
-				}
+
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("BuildPodDisruptionBudget() succeeded unexpectedly")
-			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("BuildPodDisruptionBudget() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

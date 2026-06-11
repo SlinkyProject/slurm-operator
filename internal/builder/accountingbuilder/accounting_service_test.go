@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/set"
@@ -177,33 +177,23 @@ func TestBuilder_BuildAccountingService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildAccountingService(tt.args.accounting)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildAccountingService() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+
+			require.NoError(t, err)
+
 			got2, err := b.BuildAccounting(tt.args.accounting)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildAccounting() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			switch {
-			case err != nil:
-				return
+			require.NoError(t, err)
+			require.True(t, set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector).UnsortedList()...))
+			require.True(t,
+				got.Spec.Ports[0].TargetPort.String() == got2.Spec.Template.Spec.Containers[0].Ports[0].Name ||
+					got.Spec.Ports[0].TargetPort.IntValue() == int(got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort))
 
-			case !set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector).UnsortedList()...):
-				t.Errorf("Labels = %v , Selector = %v", got.Labels, got.Spec.Selector)
-
-			case got.Spec.Ports[0].TargetPort.String() != got2.Spec.Template.Spec.Containers[0].Ports[0].Name &&
-				got.Spec.Ports[0].TargetPort.IntValue() != int(got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort):
-				t.Errorf("Ports[0].TargetPort = %v , Template.Spec.Containers[0].Ports[0].Name = %v , Template.Spec.Containers[0].Ports[0].ContainerPort = %v",
-					got.Spec.Ports[0].TargetPort,
-					got2.Spec.Template.Spec.Containers[0].Ports[0].Name,
-					got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
-			}
 			if tt.want != nil {
-				if !apiequality.Semantic.DeepEqual(tt.want.Spec, got.Spec) {
-					t.Errorf("Wanted service = %v, Got service = %v", tt.want.Spec, got.Spec)
-				}
+				require.Equal(t, tt.want.Spec, got.Spec)
 			}
 		})
 	}

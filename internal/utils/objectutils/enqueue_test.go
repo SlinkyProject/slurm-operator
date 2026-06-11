@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -44,9 +45,8 @@ func TestEnqueueRequestAfter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			EnqueueRequestAfter(tt.args.q, tt.args.obj, tt.args.duration)
-			if tt.args.q.Len() == 0 {
-				t.Errorf("Len() = %d", tt.args.q.Len())
-			}
+
+			require.NotZero(t, tt.args.q.Len())
 		})
 	}
 }
@@ -75,9 +75,8 @@ func TestEnqueueRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			EnqueueRequest(tt.args.q, tt.args.obj)
-			if tt.args.q.Len() == 0 {
-				t.Errorf("Len() = %d", tt.args.q.Len())
-			}
+
+			require.NotZero(t, tt.args.q.Len())
 		})
 	}
 }

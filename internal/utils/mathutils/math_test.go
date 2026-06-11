@@ -4,9 +4,9 @@
 package mathutils
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 )
@@ -88,9 +88,7 @@ func Test_clamp(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Clamp(tt.args.val, tt.args.min, tt.args.max); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("clamp() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, Clamp(tt.args.val, tt.args.min, tt.args.max))
 		})
 	}
 }
@@ -140,9 +138,16 @@ func Test_GetScaledValueFromIntOrPercent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetScaledValueFromIntOrPercent(tt.args.intOrPercent, tt.args.total, tt.args.roundUp, tt.args.defaultValue); got != tt.want {
-				t.Errorf("GetScaledValueFromIntOrPercent() = %v, want %v", got, tt.want)
-			}
+			require.Equal(
+				t,
+				tt.want,
+				GetScaledValueFromIntOrPercent(
+					tt.args.intOrPercent,
+					tt.args.total,
+					tt.args.roundUp,
+					tt.args.defaultValue,
+				),
+			)
 		})
 	}
 }

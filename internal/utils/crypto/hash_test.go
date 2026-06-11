@@ -5,6 +5,8 @@ package crypto
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckSum(t *testing.T) {
@@ -33,9 +35,7 @@ func TestCheckSum(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CheckSum(tt.args.b); got != tt.want {
-				t.Errorf("CheckSum() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, CheckSum(tt.args.b))
 		})
 	}
 }
@@ -69,9 +69,7 @@ func TestCheckSumFromMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CheckSumFromMap(tt.args.items); got != tt.want {
-				t.Errorf("CheckSumFromMap() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, CheckSumFromMap(tt.args.items))
 		})
 	}
 }

@@ -6,8 +6,8 @@ package objectutils
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -43,9 +43,7 @@ func TestKeyFunc(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := KeyFunc(tt.args.obj); got != tt.want {
-				t.Errorf("KeyFunc() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, KeyFunc(tt.args.obj))
 		})
 	}
 }
@@ -84,9 +82,7 @@ func TestNamespacedName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NamespacedName(tt.args.obj); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("NamespacedName() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, NamespacedName(tt.args.obj))
 		})
 	}
 }

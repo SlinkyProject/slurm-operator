@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -189,19 +190,17 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &PodBindingWebhook{Client: tt.client}
-			if err := r.Default(tt.args.ctx, tt.args.binding); (err != nil) != tt.wantErr {
-				t.Errorf("PodBindingWebhook.Default() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.Default(tt.args.ctx, tt.args.binding)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			if tt.checkTopology {
 				gotPod := &corev1.Pod{}
 				podKey := client.ObjectKeyFromObject(tt.args.binding)
-				if err := tt.client.Get(tt.args.ctx, podKey, gotPod); err != nil {
-					t.Fatalf("failed to get pod after Default: %v", err)
-				}
-				got := gotPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
-				if got != tt.wantTopology {
-					t.Errorf("pod topology annotation = %q, want %q", got, tt.wantTopology)
-				}
+				require.NoError(t, tt.client.Get(tt.args.ctx, podKey, gotPod))
+				require.Equal(t, tt.wantTopology, gotPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec])
 			}
 		})
 	}

@@ -5,6 +5,8 @@ package crypto
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewSigningKeyWithLength(t *testing.T) {
@@ -43,9 +45,8 @@ func TestNewSigningKeyWithLength(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewSigningKeyWithLength(tt.args.length)
-			if len(got) != tt.args.length {
-				t.Errorf("NewSigningKeyWithLength(): length = %v, got %v", tt.args.length, len(got))
-			}
+
+			require.Len(t, got, tt.args.length)
 		})
 	}
 }

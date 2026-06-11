@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -22,22 +23,18 @@ func DoCertMgrInstall(ctx context.Context, t *testing.T, config *envconf.Config)
 	manager := helm.New(config.KubeconfigFile())
 
 	err := manager.RunRepo(helm.WithArgs("add", "jetstack", "https://charts.jetstack.io"))
-	if err != nil {
-		t.Fatal("failed to add jetstack helm chart repo")
-	}
+	require.NoError(t, err, "failed to add jetstack helm chart repo")
+
 	err = manager.RunRepo(helm.WithArgs("update"))
-	if err != nil {
-		t.Fatal("failed to upgrade helm repo")
-	}
+	require.NoError(t, err, "failed to upgrade helm repo")
+
 	err = manager.RunInstall(helm.WithName("cert-manager"), helm.WithNamespace("cert-manager"),
 		helm.WithReleaseName("jetstack/cert-manager"),
 		// pinning to a specific version to make sure we will have reproducible executions
 		helm.WithVersion("1.19.1"),
 		helm.WithArgs("--set 'crds.enabled=true'"),
 	)
-	if err != nil {
-		t.Fatal("failed to install cert-manager Helm chart", err)
-	}
+	require.NoError(t, err, "failed to install cert-manager Helm chart")
 
 	return ctx
 }
@@ -46,22 +43,18 @@ func DoMariaDBInstall(ctx context.Context, t *testing.T, config *envconf.Config)
 	manager := helm.New(config.KubeconfigFile())
 
 	err := manager.RunRepo(helm.WithArgs("add", "mariadb-operator", "https://helm.mariadb.com/mariadb-operator"))
-	if err != nil {
-		t.Fatal("failed to add mariadb-operator helm chart repo")
-	}
+	require.NoError(t, err, "failed to add mariadb-operator helm chart repo")
+
 	err = manager.RunRepo(helm.WithArgs("update"))
-	if err != nil {
-		t.Fatal("failed to upgrade helm repo")
-	}
+	require.NoError(t, err, "failed to upgrade helm repo")
+
 	err = manager.RunInstall(helm.WithName("mariadb-operator"), helm.WithNamespace("mariadb"),
 		helm.WithReleaseName("mariadb-operator/mariadb-operator"),
 		// pinning to a specific version to make sure we will have reproducible executions
 		helm.WithVersion("25.10.2"),
 		helm.WithArgs("--set 'crds.enabled=true'"),
 	)
-	if err != nil {
-		t.Fatal("failed to install mariadb-operator Helm chart", err)
-	}
+	require.NoError(t, err, "failed to install mariadb-operator Helm chart")
 
 	return ctx
 }
@@ -70,20 +63,16 @@ func DoPrometheusInstall(ctx context.Context, t *testing.T, config *envconf.Conf
 	manager := helm.New(config.KubeconfigFile())
 
 	err := manager.RunRepo(helm.WithArgs("add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"))
-	if err != nil {
-		t.Fatal("failed to add prometheus-community helm chart repo")
-	}
+	require.NoError(t, err, "failed to add prometheus-community helm chart repo")
+
 	err = manager.RunRepo(helm.WithArgs("update"))
-	if err != nil {
-		t.Fatal("failed to update helm repo")
-	}
+	require.NoError(t, err, "failed to update helm repo")
+
 	err = manager.RunInstall(helm.WithName("prometheus"), helm.WithNamespace("prometheus"),
 		helm.WithReleaseName("prometheus-community/kube-prometheus-stack"),
 		helm.WithArgs("--set 'installCRDs=true'"),
 	)
-	if err != nil {
-		t.Fatal("failed to install prometheus Helm chart", err)
-	}
+	require.NoError(t, err, "failed to install prometheus Helm chart")
 
 	return ctx
 }
@@ -97,9 +86,8 @@ func DoSlurmOperatorCRDInstall(ctx context.Context, t *testing.T, config *envcon
 		helm.WithChart(Basepath+"helm/slurm-operator-crds"),
 		helm.WithWait(),
 		helm.WithTimeout("10m"))
-	if err != nil {
-		t.Fatal("failed to invoke helm install slurm-operator-crds due to an error", err)
-	}
+	require.NoError(t, err, "failed to invoke helm install slurm-operator-crds due to an error")
+
 	return ctx
 }
 
@@ -117,9 +105,8 @@ func DoSlurmOperatorInstall(ctx context.Context, t *testing.T, config *envconf.C
 		helm.WithTimeout("10m"),
 		helm.WithArgs(setOperatorImage),
 		helm.WithArgs(setWebhookImage))
-	if err != nil {
-		t.Fatal("failed to invoke helm install slurm-operator due to an error", err)
-	}
+	require.NoError(t, err, "failed to invoke helm install slurm-operator due to an error")
+
 	return ctx
 }
 
@@ -127,8 +114,6 @@ func DoSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 	manager := helm.New(config.KubeconfigFile())
 
 	setValuesFile := fmt.Sprintf("--values %s/helm/slurm/values.yaml", Basepath)
-
-	var err error
 
 	opts := []helm.Option{}
 	opts = append(
@@ -161,11 +146,8 @@ func DoSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository=ghcr.io/slinkyproject/slurmd-pyxis'"))
 	}
 
-	err = manager.RunInstall(opts...)
-
-	if err != nil {
-		t.Fatal("failed to invoke helm install operation due to an error", err)
-	}
+	err := manager.RunInstall(opts...)
+	require.NoError(t, err, "failed to invoke helm install operation due to an error")
 
 	return ctx
 }
@@ -180,9 +162,7 @@ func CheckDeploymentStatus(ctx context.Context, t *testing.T, config *envconf.Co
 	err := wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
 		return object.(*appsv1.Deployment).Status.ReadyReplicas
 	}, 1))
-	if err != nil {
-		t.Fatalf("failed waiting for the %s deployment to reach a ready state", deploymentName)
-	}
+	require.NoError(t, err, "failed waiting for the %s deployment to reach a ready state", deploymentName)
 
 	return ctx
 }
@@ -196,10 +176,7 @@ func DoUninstallHelmChart(ctx context.Context, t *testing.T, config *envconf.Con
 		helm.WithWait(),
 		helm.WithTimeout("5m"),
 	)
-
-	if err != nil {
-		t.Fatalf("failed to invoke helm uninstall %s due to an error: %v", chartName, err)
-	}
+	require.NoError(t, err, "failed to invoke helm uninstall %s due to an error", chartName)
 
 	return ctx
 }

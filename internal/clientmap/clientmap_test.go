@@ -4,10 +4,10 @@
 package clientmap
 
 import (
-	"reflect"
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/SlinkyProject/slurm-client/pkg/client"
@@ -28,9 +28,7 @@ func TestNewClientMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewClientMap(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewClientMap() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, NewClientMap())
 		})
 	}
 }
@@ -84,9 +82,8 @@ func TestClientMap_Get(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
-			if got := c.Get(tt.args.name); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ClientMap.Get() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, c.Get(tt.args.name))
 		})
 	}
 }
@@ -143,9 +140,8 @@ func TestClientMap_add(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
-			if got := c.add(tt.args.name, tt.args.client); got != tt.want {
-				t.Errorf("ClientMap.add() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, c.add(tt.args.name, tt.args.client))
 		})
 	}
 }
@@ -202,9 +198,8 @@ func TestClientMap_Add(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
-			if got := c.Add(tt.args.name, tt.args.client); got != tt.want {
-				t.Errorf("ClientMap.Add() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, c.Add(tt.args.name, tt.args.client))
 		})
 	}
 }
@@ -261,9 +256,8 @@ func TestClientMap_Has(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
-			if got := c.Has(tt.args.names...); got != tt.want {
-				t.Errorf("ClientMap.Has() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, c.Has(tt.args.names...))
 		})
 	}
 }
@@ -317,9 +311,8 @@ func TestClientMap_Remove(t *testing.T) {
 				lock:    sync.RWMutex{},
 				clients: tt.fields.clients,
 			}
-			if got := c.Remove(tt.args.name); got != tt.want {
-				t.Errorf("ClientMap.Remove() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, c.Remove(tt.args.name))
 		})
 	}
 }

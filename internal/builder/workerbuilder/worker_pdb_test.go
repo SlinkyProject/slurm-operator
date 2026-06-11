@@ -8,9 +8,9 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -32,7 +32,10 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 			nodeset: &slinkyv1beta1.NodeSet{},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "slurm-workers-pdb-",
+					Name:            "slurm-workers-pdb-",
+					Labels:          map[string]string{},
+					Annotations:     map[string]string{},
+					OwnerReferences: []v1.OwnerReference{},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					Selector: &v1.LabelSelector{
@@ -55,7 +58,10 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "slurm-workers-pdb-slurm",
+					Name:            "slurm-workers-pdb-slurm",
+					Labels:          map[string]string{},
+					Annotations:     map[string]string{},
+					OwnerReferences: []v1.OwnerReference{},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					Selector: &v1.LabelSelector{
@@ -71,18 +77,14 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.c)
 			got, gotErr := b.BuildClusterWorkerPodDisruptionBudget(tt.nodeset)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("BuildClusterWorkerPodDisruptionBudget() failed: %v", gotErr)
-				}
+
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("BuildClusterWorkerPodDisruptionBudget() succeeded unexpectedly")
-			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("BuildClusterWorkerPodDisruptionBudget() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, gotErr)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

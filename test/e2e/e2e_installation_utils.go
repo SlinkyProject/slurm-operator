@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/SlinkyProject/slurm-operator/test"
+	"github.com/stretchr/testify/require"
 
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -53,17 +54,13 @@ func applyMariaDBYaml() types.Feature {
 
 			cmd := exec.Command("kubectl", "apply", "-f", path)
 			_, err := cmd.Output()
-			if err != nil {
-				t.Fatalf("failed running 'kubectl apply -f %s /hack/resources/mariadb.yaml: %v", test.Basepath, err)
-			}
+			require.NoError(t, err, "failed running 'kubectl apply -f %s /hack/resources/mariadb.yaml'", test.Basepath)
 
 			return ctx
 		}).
 		Assess("Pod mariadb-0 running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
-			if err != nil {
-				t.Fatalf("Failed to get new controller-runtime client: %v", err)
-			}
+			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			checkMariaDBHealth(crClient, ctx, t, config)
 
@@ -88,9 +85,7 @@ func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 		}).
 		Assess("Slurm Cluster Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
-			if err != nil {
-				t.Fatalf("Failed to get new controller-runtime client: %v", err)
-			}
+			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			checkControllerHealth(crClient, ctx, t, config)
 			checkRestAPIHealth(crClient, ctx, t, config)

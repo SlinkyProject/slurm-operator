@@ -3,7 +3,11 @@
 
 package config
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func Test_configBuilder_Build(t *testing.T) {
 	type fields struct {
@@ -36,9 +40,7 @@ func Test_configBuilder_Build(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.fields.builder
-			if got := b.Build(); got != tt.want {
-				t.Errorf("configBuilder.Build() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, b.Build())
 		})
 	}
 }

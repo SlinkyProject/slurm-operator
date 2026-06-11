@@ -10,6 +10,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -91,42 +92,20 @@ func TestBuilder_BuildController(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildController(tt.args.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildController() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case !set.KeySet(got.Spec.Template.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...):
-				t.Errorf("Template.Labels = %v , Selector.MatchLabels = %v",
-					got.Spec.Template.Labels, got.Spec.Selector.MatchLabels)
-
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, false) != true:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, true)
-
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser, 0) != common.SlurmUserUid:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser, common.SlurmUserUid)
-
-			case ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, 0) != common.SlurmUserGid:
-				t.Errorf("got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, common.SlurmUserGid)
-
-			case got.Spec.Template.Spec.Containers[0].Name != labels.ControllerApp:
-				t.Errorf("Template.Spec.Containers[0].Name = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Name, labels.ControllerApp)
-
-			case got.Spec.Template.Spec.Containers[0].Ports[0].Name != labels.ControllerApp:
-				t.Errorf("Template.Spec.Containers[0].Ports[0].Name = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Ports[0].Name, labels.ControllerApp)
-
-			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != common.SlurmctldPort:
-				t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
-					got.Spec.Template.Spec.Containers[0].Ports[0].Name, common.SlurmctldPort)
-			}
+			require.NoError(t, err)
+			require.True(t, set.KeySet(got.Spec.Template.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...))
+			require.True(t, ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsNonRoot, false))
+			require.Equal(t, common.SlurmUserUid, ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsUser, 0))
+			require.Equal(t, common.SlurmUserGid, ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, 0))
+			require.Equal(t, labels.ControllerApp, got.Spec.Template.Spec.Containers[0].Name)
+			require.Equal(t, labels.ControllerApp, got.Spec.Template.Spec.Containers[0].Ports[0].Name)
+			require.Equal(t, int32(common.SlurmctldPort), got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		})
 	}
 }

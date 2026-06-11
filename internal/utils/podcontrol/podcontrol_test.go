@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -134,9 +135,14 @@ func Test_realPodControl_CreatePods(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.CreatePods(tt.args.ctx, tt.args.namespace, tt.args.template, tt.args.object, tt.args.controllerRef); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.CreatePods() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.CreatePods(tt.args.ctx, tt.args.namespace, tt.args.template, tt.args.object, tt.args.controllerRef)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -217,9 +223,14 @@ func Test_realPodControl_CreatePodsWithGenerateName(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.CreatePodsWithGenerateName(tt.args.ctx, tt.args.namespace, tt.args.template, tt.args.object, tt.args.controllerRef, tt.args.generateName); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.CreatePodsWithGenerateName() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.CreatePodsWithGenerateName(tt.args.ctx, tt.args.namespace, tt.args.template, tt.args.object, tt.args.controllerRef, tt.args.generateName)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -273,9 +284,14 @@ func Test_realPodControl_CreateThisPod(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.CreateThisPod(tt.args.ctx, tt.args.pod, tt.args.object); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.CreateThisPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.CreateThisPod(tt.args.ctx, tt.args.pod, tt.args.object)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -365,9 +381,14 @@ func Test_realPodControl_createPods(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.createPods(tt.args.ctx, tt.args.pod, tt.args.object); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.createPods() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.createPods(tt.args.ctx, tt.args.pod, tt.args.object)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -434,9 +455,14 @@ func Test_realPodControl_DeletePod(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.DeletePod(tt.args.ctx, tt.args.namespace, tt.args.podName, tt.args.object); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.DeletePod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.DeletePod(tt.args.ctx, tt.args.namespace, tt.args.podName, tt.args.object)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -516,9 +542,14 @@ func Test_realPodControl_PatchPod(t *testing.T) {
 				Client:   tt.fields.Client,
 				recorder: tt.fields.recorder,
 			}
-			if err := r.PatchPod(tt.args.ctx, tt.args.namespace, tt.args.name, tt.args.data); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.PatchPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.PatchPod(tt.args.ctx, tt.args.namespace, tt.args.name, tt.args.data)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
