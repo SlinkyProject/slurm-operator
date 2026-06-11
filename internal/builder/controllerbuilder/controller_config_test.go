@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -225,23 +226,18 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildControllerConfig(tt.args.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildControllerConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			switch {
-			case err != nil:
-				return
 
-			case got.Data[SlurmConfFile] == "" && got.BinaryData[SlurmConfFile] == nil:
-				t.Errorf("got.Data[%s] = %v", SlurmConfFile, got.Data[SlurmConfFile])
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
+			require.True(t, got.Data[SlurmConfFile] != "" || got.BinaryData[SlurmConfFile] != nil)
 
 			// Verify expected scripts are present in slurm.conf
 			for _, script := range tt.wantScripts {
-				if !strings.Contains(got.Data[SlurmConfFile], script) {
-					t.Errorf("Expected %s in slurm.conf", script)
-				}
+				require.Contains(t, got.Data[SlurmConfFile], script)
 			}
 		})
 	}
@@ -291,9 +287,7 @@ ignoresystemd=yes`,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isCgroupEnabled(tt.args.cgroupConf); got != tt.want {
-				t.Errorf("isCgroupEnabled() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, isCgroupEnabled(tt.args.cgroupConf))
 		})
 	}
 }
@@ -418,22 +412,15 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.c)
 			got, gotErr := b.BuildControllerConfigExternal(tt.controller)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("BuildControllerConfigExternal() failed: %v", gotErr)
-				}
+
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("BuildControllerConfigExternal() succeeded unexpectedly")
-			}
-			if got.Data[SlurmConfFile] == "" && got.BinaryData[SlurmConfFile] == nil {
-				t.Errorf("got.Data[%s] = %v", SlurmConfFile, got.Data[SlurmConfFile])
-			}
-			if got.Data[SlurmConfFile] != tt.want.Data[SlurmConfFile] {
-				t.Errorf("got.Data[%s] = %v\nwant.Data[%s] = %v", SlurmConfFile, got.Data[SlurmConfFile], SlurmConfFile, tt.want.Data[SlurmConfFile])
 
-			}
+			require.NoError(t, gotErr)
+			require.True(t, got.Data[SlurmConfFile] != "" || got.BinaryData[SlurmConfFile] != nil)
+			require.Equal(t, tt.want.Data[SlurmConfFile], got.Data[SlurmConfFile])
 		})
 	}
 }
@@ -506,13 +493,12 @@ PartitionName=nodeset-2 Nodes=nodeset-2 MaxTime=UNLIMITED PreemptMode=REQUEUE`,
 			for range 5 {
 				idx := rand.Perm(size)
 				randomized := make([]slinkyv1beta1.NodeSet, size)
+
 				for j := range size {
 					randomized[j] = tt.nodesetList.Items[idx[j]]
 				}
-				got := buildNodeSetConf(tt.nodesetList)
-				if got != tt.want {
-					t.Errorf("buildNodeSetConf() = %v, want %v", got, tt.want)
-				}
+
+				require.Equal(t, tt.want, buildNodeSetConf(tt.nodesetList))
 			}
 		})
 	}
@@ -574,10 +560,7 @@ Epilog=epilog-2.sh`,
 				for j := range epilogScriptsSize {
 					randomizedEpilogScripts[j] = tt.epilogScripts[jdx[j]]
 				}
-				got := buildPrologEpilogConf(tt.prologScripts, tt.epilogScripts)
-				if got != tt.want {
-					t.Errorf("buildPrologEpilogConf() = %v, want %v", got, tt.want)
-				}
+				require.Equal(t, tt.want, buildPrologEpilogConf(tt.prologScripts, tt.epilogScripts))
 			}
 		})
 	}
@@ -634,15 +617,14 @@ EpilogSlurmctld=/etc/slurm/epilog-slurmctld-2.sh`,
 				for i := range prologSlurmctldScriptsSize {
 					randomizedPrologSlurmctldScripts[i] = tt.prologSlurmctldScripts[idx[i]]
 				}
+
 				jdx := rand.Perm(epilogSlurmctldScriptsSize)
 				randomizedEpilogSlurmctldScripts := make([]string, epilogSlurmctldScriptsSize)
 				for i := range epilogSlurmctldScriptsSize {
 					randomizedEpilogSlurmctldScripts[i] = tt.epilogSlurmctldScripts[jdx[i]]
 				}
-				got := buildPrologEpilogSlurmctldConf(tt.prologSlurmctldScripts, tt.epilogSlurmctldScripts)
-				if got != tt.want {
-					t.Errorf("buildPrologEpilogSlurmctldConf() = %v, want %v", got, tt.want)
-				}
+
+				require.Equal(t, tt.want, buildPrologEpilogSlurmctldConf(tt.prologSlurmctldScripts, tt.epilogSlurmctldScripts))
 			}
 		})
 	}

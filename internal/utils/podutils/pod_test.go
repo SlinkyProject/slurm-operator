@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,9 +50,7 @@ func TestIsRunningAndReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsRunningAndReady(tt.args.pod); got != tt.want {
-				t.Errorf("IsRunningAndReady() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsRunningAndReady(tt.args.pod))
 		})
 	}
 }
@@ -119,9 +118,7 @@ func TestIsRunningAndAvailable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsRunningAndAvailable(tt.args.pod, tt.args.minReadySeconds); got != tt.want {
-				t.Errorf("IsRunningAndAvailable() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsRunningAndAvailable(tt.args.pod, tt.args.minReadySeconds))
 		})
 	}
 }
@@ -155,9 +152,7 @@ func TestIsCreated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsCreated(tt.args.pod); got != tt.want {
-				t.Errorf("IsCreated() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsCreated(tt.args.pod))
 		})
 	}
 }
@@ -191,9 +186,7 @@ func TestIsPending(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsPending(tt.args.pod); got != tt.want {
-				t.Errorf("IsPending() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsPending(tt.args.pod))
 		})
 	}
 }
@@ -227,9 +220,7 @@ func TestIsFailed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsFailed(tt.args.pod); got != tt.want {
-				t.Errorf("IsFailed() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsFailed(tt.args.pod))
 		})
 	}
 }
@@ -263,9 +254,7 @@ func TestIsSucceeded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsSucceeded(tt.args.pod); got != tt.want {
-				t.Errorf("IsSucceeded() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsSucceeded(tt.args.pod))
 		})
 	}
 }
@@ -295,13 +284,12 @@ func TestIsTerminating(t *testing.T) {
 			args: args{
 				pod: &podB,
 			},
-			want: false},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsTerminating(tt.args.pod); got != tt.want {
-				t.Errorf("IsTerminating() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsTerminating(tt.args.pod))
 		})
 	}
 }
@@ -358,9 +346,7 @@ func TestIsHealthy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsHealthy(tt.args.pod); got != tt.want {
-				t.Errorf("IsHealthy() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsHealthy(tt.args.pod))
 		})
 	}
 }

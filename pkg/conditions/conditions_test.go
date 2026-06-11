@@ -6,6 +6,7 @@ package conditions
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -86,9 +87,7 @@ func TestIsConditionTrue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsConditionTrue(tt.args.status, tt.args.condType); got != tt.want {
-				t.Errorf("IsCondition() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsConditionTrue(tt.args.status, tt.args.condType))
 		})
 	}
 }
@@ -159,9 +158,7 @@ func TestIsNodeDrained(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNodeDrained(tt.args.status); got != tt.want {
-				t.Errorf("IsNodeDrained() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsNodeDrained(tt.args.status))
 		})
 	}
 }
@@ -228,9 +225,7 @@ func TestIsNodeDraining(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNodeDraining(tt.args.status); got != tt.want {
-				t.Errorf("IsNodeDraining() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsNodeDraining(tt.args.status))
 		})
 	}
 }
@@ -284,9 +279,7 @@ func TestIsSlurmNodeDrain(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNodeDrain(tt.args.status); got != tt.want {
-				t.Errorf("IsSlurmNodeDrain() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsNodeDrain(tt.args.status))
 		})
 	}
 }
@@ -349,9 +342,7 @@ func TestAreJobsRunning(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsNodeBusy(tt.args.status); got != tt.want {
-				t.Errorf("AreJobsRunning() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, IsNodeBusy(tt.args.status))
 		})
 	}
 }

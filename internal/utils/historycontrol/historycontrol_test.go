@@ -7,8 +7,8 @@ package historycontrol
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -68,7 +68,7 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 				parent:   rs,
 				selector: selector,
 			},
-			want:    []*appsv1.ControllerRevision{},
+			want:    nil,
 			wantErr: false,
 		},
 		{
@@ -90,13 +90,14 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			got, err := rh.ListControllerRevisions(tt.args.parent, tt.args.selector)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.ListControllerRevisions() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("realHistory.ListControllerRevisions() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -158,10 +159,13 @@ func Test_realHistory_CreateControllerRevision(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			_, err := rh.CreateControllerRevision(tt.args.parent, tt.args.revision, tt.args.collisionCount)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.CreateControllerRevision() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -226,10 +230,13 @@ func Test_realHistory_UpdateControllerRevision(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			_, err := rh.UpdateControllerRevision(tt.args.revision, tt.args.newRevision)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.UpdateControllerRevision() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -279,9 +286,14 @@ func Test_realHistory_DeleteControllerRevision(t *testing.T) {
 			rh := &realHistory{
 				Client: tt.fields.Client,
 			}
-			if err := rh.DeleteControllerRevision(tt.args.revision); (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.DeleteControllerRevision() error = %v, wantErr %v", err, tt.wantErr)
+			err := rh.DeleteControllerRevision(tt.args.revision)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -348,13 +360,14 @@ func Test_realHistory_AdoptControllerRevision(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			got, err := rh.AdoptControllerRevision(tt.args.parent, tt.args.parentKind, tt.args.revision)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.AdoptControllerRevision() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("realHistory.AdoptControllerRevision() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -410,13 +423,14 @@ func Test_realHistory_ReleaseControllerRevision(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			got, err := rh.ReleaseControllerRevision(tt.args.parent, tt.args.revision)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realHistory.ReleaseControllerRevision() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("realHistory.ReleaseControllerRevision() = %v, want %v", got, tt.want)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

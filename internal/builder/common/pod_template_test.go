@@ -6,9 +6,8 @@ package common
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -34,7 +33,11 @@ func TestBuilder_buildPodTemplate(t *testing.T) {
 			args: args{
 				opts: PodTemplateOpts{},
 			},
-			want: corev1.PodTemplateSpec{},
+			want: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{},
+				},
+			},
 		},
 		{
 			name: "containers",
@@ -78,9 +81,8 @@ func TestBuilder_buildPodTemplate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
-			if got := b.BuildPodTemplate(tt.args.opts); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("Builder.buildPodTemplate() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, b.BuildPodTemplate(tt.args.opts))
 		})
 	}
 }

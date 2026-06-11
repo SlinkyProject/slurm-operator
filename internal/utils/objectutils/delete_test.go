@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -149,9 +150,14 @@ func TestDeleteObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := DeleteObject(tt.args.c, tt.args.ctx, nil, nil, tt.args.newObj); (err != nil) != tt.wantErr {
-				t.Errorf("DeleteObject() error = %v, wantErr %v", err, tt.wantErr)
+			err := DeleteObject(tt.args.c, tt.args.ctx, nil, nil, tt.args.newObj)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }

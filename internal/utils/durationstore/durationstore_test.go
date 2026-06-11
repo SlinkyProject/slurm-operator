@@ -6,6 +6,8 @@ package durationstore
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestDurationStore_Push(t *testing.T) {
@@ -50,9 +52,7 @@ func TestDurationStore_Push(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ds := NewDurationStore(Greater)
 			ds.Push(tt.args.key, tt.args.newDur)
-			if got := ds.Pop(tt.args.key); got != tt.args.newDur {
-				t.Errorf("ds.Pop() = %v, want %v", got, tt.args.newDur)
-			}
+			require.Equal(t, tt.args.newDur, ds.Pop(tt.args.key))
 		})
 	}
 }
@@ -120,9 +120,7 @@ func TestDurationStore_Peek(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ds.Push(tt.args.key, tt.args.newDur)
-			if got := ds.Peek(tt.args.key); got != tt.want {
-				t.Errorf("ds.Peek() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, ds.Peek(tt.args.key))
 		})
 	}
 }
@@ -192,9 +190,7 @@ func TestDurationStore_Pop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ds.Pop(tt.args.key); got != tt.want {
-				t.Errorf("DurationStore.Pop() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.ds.Pop(tt.args.key))
 		})
 	}
 }
@@ -264,9 +260,8 @@ func Test_duration_Update(t *testing.T) {
 				dur: tt.fields.dur,
 			}
 			d.Update(tt.args.newDur, tt.args.eval)
-			if got := d.dur; got != tt.want {
-				t.Errorf("DurationStore.Pop() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, d.dur)
 		})
 	}
 }

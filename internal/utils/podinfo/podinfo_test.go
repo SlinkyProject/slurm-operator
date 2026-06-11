@@ -6,8 +6,8 @@ package podinfo
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/utils/ptr"
 )
 
@@ -135,9 +135,7 @@ func TestPodInfo_Equal(t *testing.T) {
 				NodeSetName: tt.fields.NodeSetName,
 				NodeSetUID:  tt.fields.NodeSetUID,
 			}
-			if got := podInfo.Equal(tt.args.cmp); got != tt.want {
-				t.Errorf("PodInfo.Equal() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, podInfo.Equal(tt.args.cmp))
 		})
 	}
 }
@@ -181,9 +179,7 @@ func TestPodInfo_ToString(t *testing.T) {
 				NodeSetName: tt.fields.NodeSetName,
 				NodeSetUID:  tt.fields.NodeSetUID,
 			}
-			if got := podInfo.ToString(); got != tt.want {
-				t.Errorf("PodInfo.ToString() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, podInfo.ToString())
 		})
 	}
 }
@@ -241,12 +237,15 @@ func TestParseIntoPodInfo(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ParseIntoPodInfo(tt.args.str, tt.args.out); (err != nil) != tt.wantErr {
-				t.Errorf("ParseIntoPodInfo() error = %v, wantErr %v", err, tt.wantErr)
+			err := ParseIntoPodInfo(tt.args.str, tt.args.out)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got := tt.args.out; !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("ParseIntoPodInfo() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, tt.args.out)
 		})
 	}
 }

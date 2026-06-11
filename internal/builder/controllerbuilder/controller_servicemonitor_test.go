@@ -8,6 +8,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	"github.com/stretchr/testify/require"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -61,24 +62,18 @@ func TestBuilder_BuildControllerServiceMonitor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.c)
 			got, gotErr := b.BuildControllerServiceMonitor(tt.controller)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("BuildControllerServiceMonitor() failed: %v", gotErr)
-				}
-				return
-			}
-			got2, err := b.BuildController(tt.controller)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildControllerServiceMonitor() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			switch {
-			case tt.wantErr:
-				t.Fatal("BuildControllerServiceMonitor() succeeded unexpectedly")
 
-			case !set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...):
-				t.Errorf("Labels = %v , Selector = %v", got.Labels, got.Spec.Selector)
+			if tt.wantErr {
+				require.Error(t, gotErr)
+				return
 			}
+
+			require.NoError(t, gotErr)
+
+			got2, err := b.BuildController(tt.controller)
+
+			require.NoError(t, err)
+			require.True(t, set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector.MatchLabels).UnsortedList()...))
 		})
 	}
 }

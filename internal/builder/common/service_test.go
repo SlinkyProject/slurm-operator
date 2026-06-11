@@ -8,9 +8,9 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/set"
@@ -98,32 +98,30 @@ func TestBuilder_BuildService(t *testing.T) {
 			wantErr: true,
 		},
 	}
+	normSS := func(m map[string]string) map[string]string {
+		if m == nil {
+			return map[string]string{}
+		}
+		return m
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(fake.NewFakeClient())
 			got, err := b.BuildService(tt.args.opts, tt.args.owner)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildService() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case objectutils.KeyFunc(got) != tt.args.opts.Key.String():
-				t.Errorf("NamespacedName = %v , want = %v", objectutils.KeyFunc(got), tt.args.opts.Key.String())
+			require.NoError(t, err)
+			require.Equal(t, tt.args.opts.Key.String(), objectutils.KeyFunc(got))
+			require.Equal(t, normSS(tt.args.opts.Metadata.Annotations), got.Annotations)
+			require.Equal(t, normSS(tt.args.opts.Metadata.Labels), got.Labels)
+			require.True(t, set.KeySet(got.Spec.Selector).HasAll(set.KeySet(tt.args.opts.Selector).UnsortedList()...))
 
-			case !apiequality.Semantic.DeepEqual(got.Annotations, tt.args.opts.Metadata.Annotations):
-				t.Errorf("Annotations = %v , want = %v", got.Annotations, tt.args.opts.Metadata.Annotations)
-
-			case !apiequality.Semantic.DeepEqual(got.Labels, tt.args.opts.Metadata.Labels):
-				t.Errorf("Labels = %v , want = %v", got.Labels, tt.args.opts.Metadata.Labels)
-
-			case !set.KeySet(got.Spec.Selector).HasAll(set.KeySet(tt.args.opts.Selector).UnsortedList()...):
-				t.Errorf("Selector = %v , want = %v", got.Spec.Selector, tt.args.opts.Selector)
-
-			case tt.args.opts.Headless && got.Spec.ClusterIP != corev1.ClusterIPNone:
-				t.Errorf("Headless enabled but `ClusterIP != %s`", corev1.ClusterIPNone)
+			if tt.args.opts.Headless {
+				require.Equal(t, corev1.ClusterIPNone, got.Spec.ClusterIP)
 			}
 		})
 	}

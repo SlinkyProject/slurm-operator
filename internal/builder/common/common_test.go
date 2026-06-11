@@ -8,8 +8,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -142,9 +142,8 @@ func Test_mergeEnvVar(t *testing.T) {
 				item2 := tt.want[j]
 				return item1.Name < item2.Name
 			})
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("mergeEnvVar() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -193,12 +192,9 @@ func TestCommonBuilder_GetContainerResourceLimits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(client)
 			got, got2 := b.GetContainerResourceLimits(tt.container)
-			if got != tt.want {
-				t.Errorf("GetContainerResourceLimits() = %v, want %v", got, tt.want)
-			}
-			if got2 != tt.want2 {
-				t.Errorf("GetContainerResourceLimits() = %v, want %v", got2, tt.want2)
-			}
+
+			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want2, got2)
 		})
 	}
 }
@@ -246,12 +242,9 @@ func TestCommonBuilder_GetPodResourceLimits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(client)
 			got, got2 := b.GetPodResourceLimits(tt.pod)
-			if got != tt.want {
-				t.Errorf("GetPodResourceLimits() = %v, want %v", got, tt.want)
-			}
-			if got2 != tt.want2 {
-				t.Errorf("GetPodResourceLimits() = %v, want %v", got2, tt.want2)
-			}
+
+			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want2, got2)
 		})
 	}
 }
@@ -370,10 +363,7 @@ Foo=bar1`,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BuildMergedConfig(tt.confRaw, tt.mergeParameters)
-			if got != tt.want {
-				t.Errorf("buildMergedParameters() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, BuildMergedConfig(tt.confRaw, tt.mergeParameters))
 		})
 	}
 }
@@ -444,10 +434,7 @@ c`,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseSlurmConfKV(tt.confRaw)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("parseSlurmConfKV() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, parseSlurmConfKV(tt.confRaw))
 		})
 	}
 }
@@ -476,10 +463,7 @@ func Test_parseKVKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseKVKey(tt.s)
-			if got != tt.want {
-				t.Errorf("parseKVKey() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, parseKVKey(tt.s))
 		})
 	}
 }

@@ -6,6 +6,8 @@ package domainname
 import (
 	"path"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_clusterDomain(t *testing.T) {
@@ -39,9 +41,8 @@ func Test_clusterDomain(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resolvConfPath = path.Join(".testdata", tt.resolveConf)
 			got := clusterDomain()
-			if got != tt.want {
-				t.Errorf("clusterDomain() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

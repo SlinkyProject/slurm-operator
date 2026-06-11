@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -50,20 +51,15 @@ func TestBuilder_BuildLoginSshConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
 			got, err := b.BuildLoginSshConfig(tt.args.loginset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Builder.BuildLoginSshConfig() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			switch {
-			case err != nil:
-				return
 
-			case got.Data[authorizedKeysFile] == "" && got.BinaryData[authorizedKeysFile] == nil:
-				t.Errorf("got.Data[%s] = %v", authorizedKeysFile, got.Data[authorizedKeysFile])
-
-			case got.Data[SshdConfigFile] == "" && got.BinaryData[SshdConfigFile] == nil:
-				t.Errorf("got.Data[%s] = %v", SshdConfigFile, got.Data[SshdConfigFile])
-			}
+			require.NoError(t, err)
+			require.True(t, got.Data[authorizedKeysFile] != "" || got.BinaryData[authorizedKeysFile] != nil)
+			require.True(t, got.Data[SshdConfigFile] != "" || got.BinaryData[SshdConfigFile] != nil)
 		})
 	}
 }
