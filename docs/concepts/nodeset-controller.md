@@ -12,6 +12,7 @@
     - [Slurm Node State Visibility](#slurm-node-state-visibility)
     - [Drain and Cordon Design](#drain-and-cordon-design)
     - [Scale-in Lifecycle](#scale-in-lifecycle)
+  - [Config-Change Rollouts](#config-change-rollouts)
 
 <!-- mdformat-toc end -->
 
@@ -139,3 +140,38 @@ not interrupted.
 
 For practical usage of annotations, labels, and integration patterns, see
 [NodeSet Operations](../usage/nodeset-operations.md).
+
+## Config-Change Rollouts
+
+A NodeSet can automatically roll its worker pods when a mounted Secret or
+ConfigMap changes. Enable it by setting this annotation on the NodeSet:
+
+```yaml
+metadata:
+  annotations:
+    slinky.slurm.net/reload-on-change: "true"
+```
+
+When enabled, the controller tracks every Secret and ConfigMap referenced by the
+pod template through volumes (including projected sources), `envFrom`, and
+`env[].valueFrom`. It computes a checksum for each and stamps it as a
+per-resource annotation (`slinky.slurm.net/secret-<name>-hash`,
+`slinky.slurm.net/configmap-<name>-hash`) on the pod template. A content change
+updates the checksum, which produces a new revision and triggers a rolling
+update following the NodeSet's `updateStrategy` (including Slurm node draining
+and `maxUnavailable`).
+
+> [!NOTE]
+> For very long resource names, the per-resource annotation key is truncated
+> with a short disambiguator to stay within Kubernetes annotation key limits.
+
+The most recently observed checksums are recorded in the NodeSet status under
+`status.configHashes`, keyed by `<kind>/<name>` (for example,
+`configmap/my-config`). On each reconcile the controller compares the freshly
+computed checksums against this map; when a tracked resource's content has
+changed it emits a `ConfigHashChanged` event against the NodeSet before rolling
+the pods. No event is emitted the first time a resource is observed (such as on
+creation or when the feature is first enabled), only on subsequent changes.
+
+Operator-injected resources (the Slurm auth key, SSH config) are not covered by
+this annotation; they are handled separately.

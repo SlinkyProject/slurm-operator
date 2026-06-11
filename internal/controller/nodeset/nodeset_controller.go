@@ -62,6 +62,9 @@ const (
 	RollingUpdateReason = "RollingUpdate"
 	// ControllerRefFailedReason is added to an event when the referenced Controller CR cannot be fetched.
 	ControllerRefFailedReason = "ControllerRefFailed"
+	// ConfigHashChangedReason is added to an event when a tracked Secret/ConfigMap's
+	// content changes, updating its config-hash annotation and triggering a rolling update.
+	ConfigHashChangedReason = "ConfigHashChanged"
 )
 
 func init() {
@@ -100,6 +103,8 @@ type NodeSetReconciler struct {
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=nodesets/finalizers,verbs=update
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
@@ -163,6 +168,7 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.Node{}, eventhandler.NewNodeEventHandler(r.Client)).
 		Watches(&slinkyv1beta1.Controller{}, eventhandler.NewControllerEventHandler(r.Client)).
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
+		Watches(&corev1.ConfigMap{}, eventhandler.NewConfigMapEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).

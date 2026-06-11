@@ -432,6 +432,18 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              configHashes:
+                additionalProperties:
+                  type: string
+                description: |-
+                  ConfigHashes records the most recently observed checksum for each mounted
+                  Secret/ConfigMap tracked when the NodeSet opts in via the
+                  "slinky.slurm.net/reload-on-change" annotation. Keys are the per-resource
+                  config-hash annotation keys; values are the corresponding checksums. The
+                  controller compares freshly computed checksums against this map to detect
+                  content changes and emit a ConfigHashChanged event.
+                nullable: true
+                type: object
               desired:
                 description: |-
                   Desired is the number of nodes that should be running a NodeSet pod.
