@@ -10,7 +10,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
@@ -105,6 +107,124 @@ var _ = Describe("Slurm Controller", func() {
 			Expect(k8sClient.Get(ctx, controllerKey, controller)).To(Succeed())
 			controller.Finalizers = nil
 			Expect(k8sClient.Update(ctx, controller)).To(Succeed())
+		}, SpecTimeout(testutils.Timeout))
+
+		It("Should recreate the Service when HA replicas toggles headlessness", func(ctx SpecContext) {
+			By("Waiting for the singleton ClusterIP Service")
+			serviceKey := controller.ServiceKey()
+			service := &corev1.Service{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, serviceKey, service)).To(Succeed())
+				g.Expect(service.Spec.ClusterIP).ToNot(Equal(corev1.ClusterIPNone))
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+			originalUID := service.UID
+
+			By("Enabling HA")
+			controllerKey := client.ObjectKeyFromObject(controller)
+			Eventually(func(g Gomega) {
+				current := &slinkyv1beta1.Controller{}
+				g.Expect(k8sClient.Get(ctx, controllerKey, current)).To(Succeed())
+				current.Spec.Replicas = ptr.To[int32](2)
+				current.Spec.Persistence.ExistingClaim = "statesave"
+				g.Expect(k8sClient.Update(ctx, current)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Expecting the Service to be recreated headless")
+			Eventually(func(g Gomega) {
+				recreated := &corev1.Service{}
+				g.Expect(k8sClient.Get(ctx, serviceKey, recreated)).To(Succeed())
+				g.Expect(recreated.Spec.ClusterIP).To(Equal(corev1.ClusterIPNone))
+				g.Expect(recreated.UID).ToNot(Equal(originalUID))
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+			headless := &corev1.Service{}
+			Expect(k8sClient.Get(ctx, serviceKey, headless)).To(Succeed())
+			headlessUID := headless.UID
+
+			By("Disabling HA")
+			Eventually(func(g Gomega) {
+				current := &slinkyv1beta1.Controller{}
+				g.Expect(k8sClient.Get(ctx, controllerKey, current)).To(Succeed())
+				current.Spec.Replicas = ptr.To[int32](1)
+				g.Expect(k8sClient.Update(ctx, current)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Expecting the Service to be recreated with a ClusterIP")
+			Eventually(func(g Gomega) {
+				restored := &corev1.Service{}
+				g.Expect(k8sClient.Get(ctx, serviceKey, restored)).To(Succeed())
+				g.Expect(restored.Spec.ClusterIP).ToNot(Equal(corev1.ClusterIPNone))
+				g.Expect(restored.UID).ToNot(Equal(headlessUID))
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+		}, SpecTimeout(testutils.Timeout*2))
+
+		It("Should reject service overrides combined with replicas > 1", func(ctx SpecContext) {
+			By("Updating the Controller with replicas=2 and a nodePort override")
+			controllerKey := client.ObjectKeyFromObject(controller)
+			Eventually(func(g Gomega) {
+				current := &slinkyv1beta1.Controller{}
+				g.Expect(k8sClient.Get(ctx, controllerKey, current)).To(Succeed())
+				current.Spec.Replicas = ptr.To[int32](2)
+				current.Spec.Persistence.ExistingClaim = "statesave"
+				current.Spec.Service.NodePort = 32500
+				err := k8sClient.Update(ctx, current)
+				g.Expect(apierrors.IsInvalid(err)).To(BeTrue(), "expected Invalid, got: %v", err)
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+		}, SpecTimeout(testutils.Timeout))
+	})
+
+	Context("When a Service the operator does not own occupies the controller Service name", func() {
+		var name = testutils.GenerateResourceName(5)
+		var controller *slinkyv1beta1.Controller
+		var slurmKeySecret *corev1.Secret
+		var jwtKeySecret *corev1.Secret
+		var unowned *corev1.Service
+
+		BeforeEach(func() {
+			slurmKeyRef := testutils.NewSlurmKeyRef(name)
+			jwtKeyRef := testutils.NewJwtKeyRef(name)
+			slurmKeySecret = testutils.NewSlurmKeySecret(slurmKeyRef)
+			jwtKeySecret = testutils.NewJwtKeySecret(jwtKeyRef)
+			controller = testutils.NewController(name, slurmKeyRef, jwtKeyRef, nil)
+			// Headless where the controller (replicas=1) wants ClusterIP, and
+			// no owner reference: a mismatch the operator must not delete.
+			unowned = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      controller.ServiceKey().Name,
+					Namespace: controller.ServiceKey().Namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: corev1.ClusterIPNone,
+					Ports: []corev1.ServicePort{
+						{Name: "slurmctld", Port: 6817},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, slurmKeySecret.DeepCopy())).To(Succeed())
+			Expect(k8sClient.Create(ctx, jwtKeySecret.DeepCopy())).To(Succeed())
+			Expect(k8sClient.Create(ctx, unowned.DeepCopy())).To(Succeed())
+			Expect(k8sClient.Create(ctx, controller.DeepCopy())).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = k8sClient.Delete(ctx, controller)
+			_ = k8sClient.Delete(ctx, unowned)
+			_ = k8sClient.Delete(ctx, slurmKeySecret)
+			_ = k8sClient.Delete(ctx, jwtKeySecret)
+		})
+
+		It("Should not delete a Service it does not own", func(ctx SpecContext) {
+			By("Waiting for the Controller children to be created")
+			statefulsetKey := controller.Key()
+			statefulset := &appsv1.StatefulSet{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, statefulsetKey, statefulset)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Verifying the unowned Service survives reconciliation")
+			existing := &corev1.Service{}
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(unowned), existing)).To(Succeed())
+			Expect(existing.Spec.ClusterIP).To(Equal(corev1.ClusterIPNone))
+			Expect(existing.OwnerReferences).To(BeEmpty())
 		}, SpecTimeout(testutils.Timeout))
 	})
 })

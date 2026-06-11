@@ -48,6 +48,9 @@ spec:
   {{- with .Values.clusterName }}
   clusterName: {{ . }}
   {{- end }}{{- /* with .Values.clusterName */}}
+  {{- with .Values.controller.replicas }}
+  replicas: {{ . }}
+  {{- end }}{{- /* with .Values.controller.replicas */}}
   {{- if (include "slurm.controller.extraConf" .) }}
   extraConf: |-
     {{- include "slurm.controller.extraConf" . | nindent 4 }}

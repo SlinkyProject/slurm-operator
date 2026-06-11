@@ -187,7 +187,22 @@ func buildSlurmConf(
 		}(),
 	}
 
-	controllerHost := fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort())
+	replicas := controller.Replicas()
+	controllerHosts := make([]string, 0, replicas)
+	if replicas <= 1 {
+		// Singleton: clients address the controller via the ClusterIP Service FQDN.
+		controllerHosts = append(controllerHosts,
+			fmt.Sprintf("%s(%s)", controller.PrimaryName(), controller.ServiceFQDNShort()))
+	} else {
+		// Native active/passive HA: one SlurmctldHost per pod via per-pod DNS
+		// from the headless governing Service. NodeName matches the pod
+		// hostname so each slurmctld resolves its own role.
+		// Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+		for i := int32(0); i < replicas; i++ {
+			controllerHosts = append(controllerHosts,
+				fmt.Sprintf("%s(%s)", controller.PodName(i), controller.PodFQDNShort(i)))
+		}
+	}
 
 	conf := config.NewBuilder()
 
@@ -195,7 +210,9 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
 	conf.AddProperty(config.NewProperty("ClusterName", controller.ClusterName()))
 	conf.AddProperty(config.NewProperty("SlurmUser", common.SlurmUser))
-	conf.AddProperty(config.NewProperty("SlurmctldHost", controllerHost))
+	for _, host := range controllerHosts {
+		conf.AddProperty(config.NewProperty("SlurmctldHost", host))
+	}
 	conf.AddProperty(config.NewProperty("SlurmctldPort", common.SlurmctldPort))
 	conf.AddProperty(config.NewProperty("StateSaveLocation", clusterSpoolDir(controller.ClusterName())))
 	conf.AddProperty(config.NewProperty("SlurmdUser", common.SlurmdUser))
@@ -204,6 +221,14 @@ func buildSlurmConf(
 	conf.AddProperty(config.NewProperty("ReturnToService", 2))
 	conf.AddProperty(config.NewProperty("MaxNodeCount", 1024))
 	conf.AddProperty(config.NewProperty("GresTypes", "gpu"))
+	if replicas > 1 {
+		// Emitted before ExtraConf so users may override. SlurmctldTimeout=30
+		// suits in-cluster heartbeat latency; MessageTimeout=5 turns the
+		// silent ~10s per-RPC hang against a dead primary into a fast
+		// timeout-then-retry.
+		conf.AddProperty(config.NewProperty("SlurmctldTimeout", 30))
+		conf.AddProperty(config.NewProperty("MessageTimeout", 5))
+	}
 
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### LOGGING ###"))

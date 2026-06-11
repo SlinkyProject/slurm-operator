@@ -22,18 +22,33 @@ import (
 )
 
 func ConfiglessArgs(controller *slinkyv1beta1.Controller) []string {
-	host := controller.ServiceFQDNShort()
 	port := SlurmctldPort
 	if controller.Spec.External {
 		externalConfig := controller.Spec.ExternalConfig
-		host = externalConfig.Host
-		port = externalConfig.Port
+		return []string{
+			"--conf-server",
+			fmt.Sprintf("%s:%d", externalConfig.Host, externalConfig.Port),
+		}
 	}
-	args := []string{
+
+	// With Replicas>1, list every pod FQDN: sackd/slurmd resolve the
+	// conf-server once and do not re-resolve between retries, so a headless
+	// Service address can latch onto a standby backup. They fall through the
+	// list in order.
+	replicas := controller.Replicas()
+	servers := make([]string, 0, replicas)
+	if replicas <= 1 {
+		servers = append(servers, fmt.Sprintf("%s:%d", controller.ServiceFQDNShort(), port))
+	} else {
+		for i := int32(0); i < replicas; i++ {
+			servers = append(servers, fmt.Sprintf("%s:%d", controller.PodFQDNShort(i), port))
+		}
+	}
+
+	return []string{
 		"--conf-server",
-		fmt.Sprintf("%s:%d", host, port),
+		strings.Join(servers, ","),
 	}
-	return args
 }
 
 //go:embed scripts/logfile.sh

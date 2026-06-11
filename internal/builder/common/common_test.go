@@ -6,13 +6,56 @@ package common
 import (
 	_ "embed"
 	"sort"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
+
+func TestConfiglessArgs_Singleton(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+	}
+	args := ConfiglessArgs(c)
+	if len(args) != 2 || args[0] != "--conf-server" {
+		t.Fatalf("args = %v, want [--conf-server <host>]", args)
+	}
+	if !strings.HasPrefix(args[1], "slurm-controller.slurm:") {
+		t.Errorf("singleton conf-server = %q, want slurm-controller.slurm:<port>", args[1])
+	}
+	if strings.Contains(args[1], ",") {
+		t.Errorf("singleton conf-server should be a single host, got %q", args[1])
+	}
+}
+
+func TestConfiglessArgs_HA(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec:       slinkyv1beta1.ControllerSpec{Replicas: ptr.To(int32(2))},
+	}
+	args := ConfiglessArgs(c)
+	if len(args) != 2 || args[0] != "--conf-server" {
+		t.Fatalf("args = %v, want [--conf-server <list>]", args)
+	}
+	for _, want := range []string{
+		"slurm-controller-0.slurm-controller.slurm:6817",
+		"slurm-controller-1.slurm-controller.slurm:6817",
+	} {
+		if !strings.Contains(args[1], want) {
+			t.Errorf("HA conf-server %q missing %q", args[1], want)
+		}
+	}
+	if !strings.Contains(args[1], ",") {
+		t.Errorf("HA conf-server should be comma-separated, got %q", args[1])
+	}
+}
 
 func Test_mergeEnvVar(t *testing.T) {
 	type args struct {

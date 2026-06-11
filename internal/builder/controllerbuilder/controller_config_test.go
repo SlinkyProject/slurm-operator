@@ -4,6 +4,7 @@
 package controllerbuilder
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -580,6 +582,71 @@ Epilog=epilog-2.sh`,
 				}
 			}
 		})
+	}
+}
+
+func TestBuildSlurmConf_HA(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec:       slinkyv1beta1.ControllerSpec{Replicas: ptr.To(int32(2))},
+	}
+	b := New(fake.NewFakeClient())
+	cm, err := b.BuildControllerConfig(c)
+	if err != nil {
+		t.Fatalf("BuildControllerConfig() error = %v", err)
+	}
+	conf := cm.Data[SlurmConfFile]
+	want := []string{
+		"SlurmctldHost=slurm-controller-0(slurm-controller-0.slurm-controller.slurm)",
+		"SlurmctldHost=slurm-controller-1(slurm-controller-1.slurm-controller.slurm)",
+		"SlurmctldTimeout=30",
+		"MessageTimeout=5",
+	}
+	for _, w := range want {
+		if !strings.Contains(conf, w) {
+			t.Errorf("HA slurm.conf missing %q\nfull conf:\n%s", w, conf)
+		}
+	}
+}
+
+func TestBuildSlurmConf_HA_ThreeReplicas(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec:       slinkyv1beta1.ControllerSpec{Replicas: ptr.To(int32(3))},
+	}
+	b := New(fake.NewFakeClient())
+	cm, err := b.BuildControllerConfig(c)
+	if err != nil {
+		t.Fatalf("BuildControllerConfig() error = %v", err)
+	}
+	conf := cm.Data[SlurmConfFile]
+	// Arbitrary N: one SlurmctldHost per pod, in ordinal order (0 = primary).
+	for i := 0; i < 3; i++ {
+		want := fmt.Sprintf("SlurmctldHost=slurm-controller-%d(slurm-controller-%d.slurm-controller.slurm)", i, i)
+		if !strings.Contains(conf, want) {
+			t.Errorf("3-replica slurm.conf missing %q\nfull conf:\n%s", want, conf)
+		}
+	}
+	if strings.Count(conf, "SlurmctldHost=") != 3 {
+		t.Errorf("expected exactly 3 SlurmctldHost lines, got %d\nfull conf:\n%s", strings.Count(conf, "SlurmctldHost="), conf)
+	}
+}
+
+func TestBuildSlurmConf_Singleton(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+	}
+	b := New(fake.NewFakeClient())
+	cm, err := b.BuildControllerConfig(c)
+	if err != nil {
+		t.Fatalf("BuildControllerConfig() error = %v", err)
+	}
+	conf := cm.Data[SlurmConfFile]
+	if !strings.Contains(conf, "SlurmctldHost=slurm-controller-0(slurm-controller.slurm)") {
+		t.Errorf("singleton slurm.conf missing expected SlurmctldHost\nfull conf:\n%s", conf)
+	}
+	if strings.Contains(conf, "SlurmctldTimeout=30") || strings.Contains(conf, "MessageTimeout=5") {
+		t.Errorf("singleton must not emit HA timeouts\nfull conf:\n%s", conf)
 	}
 }
 
