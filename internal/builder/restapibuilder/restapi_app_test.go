@@ -87,7 +87,7 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 			require.Equal(t, slurmrestdUserGid, ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, 0))
 			require.Equal(t, labels.RestapiApp, got.Spec.Template.Spec.Containers[0].Name)
 			require.Equal(t, labels.RestapiApp, got.Spec.Template.Spec.Containers[0].Ports[0].Name)
-			require.Equal(t, SlurmrestdPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			require.Equal(t, int32(SlurmrestdPort), got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		})
 	}
 }

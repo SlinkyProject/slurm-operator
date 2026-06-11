@@ -64,7 +64,7 @@ func TestBuilder_BuildClusterWorkerService(t *testing.T) {
 			require.Empty(t, got.OwnerReferences)
 			require.Equal(t, corev1.ClusterIPNone, got.Spec.ClusterIP)
 			require.Len(t, got.Spec.Ports, 1)
-			require.Equal(t, common.SlurmdPort, got.Spec.Ports[0].Port)
+			require.Equal(t, int32(common.SlurmdPort), got.Spec.Ports[0].Port)
 		})
 	}
 }

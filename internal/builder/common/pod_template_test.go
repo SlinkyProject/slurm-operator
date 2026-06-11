@@ -33,7 +33,11 @@ func TestBuilder_buildPodTemplate(t *testing.T) {
 			args: args{
 				opts: PodTemplateOpts{},
 			},
-			want: corev1.PodTemplateSpec{},
+			want: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{},
+				},
+			},
 		},
 		{
 			name: "containers",

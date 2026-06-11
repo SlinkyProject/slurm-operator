@@ -24,11 +24,18 @@ func TestBuilder_BuildServiceMonitor(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "empty",
-			c:       fake.NewFakeClient(),
-			opts:    ServiceMonitorOpts{},
-			owner:   &corev1.Pod{},
-			want:    &monitoringv1.ServiceMonitor{},
+			name:  "empty",
+			c:     fake.NewFakeClient(),
+			opts:  ServiceMonitorOpts{},
+			owner: &corev1.Pod{},
+			want: &monitoringv1.ServiceMonitor{
+				Spec: monitoringv1.ServiceMonitorSpec{
+					TargetLabels:    []string{},
+					PodTargetLabels: []string{},
+					Endpoints:       []monitoringv1.Endpoint{},
+					ScrapeProtocols: []monitoringv1.ScrapeProtocol{},
+				},
+			},
 			wantErr: false,
 		},
 	}

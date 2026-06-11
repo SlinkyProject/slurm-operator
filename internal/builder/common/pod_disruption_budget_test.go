@@ -35,6 +35,8 @@ func TestBuilder_BuildPodDisruptionBudget(t *testing.T) {
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{},
+					Annotations: map[string]string{},
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							APIVersion:         "slinky.slurm.net/v1beta1",

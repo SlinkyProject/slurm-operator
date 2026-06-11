@@ -82,7 +82,7 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 			require.True(t, set.KeySet(got.Labels).HasAll(set.KeySet(selector).UnsortedList()...))
 			require.Equal(t, labels.WorkerApp, got.Spec.Containers[0].Name)
 			require.Equal(t, labels.WorkerApp, got.Spec.Containers[0].Ports[0].Name)
-			require.Equal(t, common.SlurmdPort, got.Spec.Containers[0].Ports[0].ContainerPort)
+			require.Equal(t, int32(common.SlurmdPort), got.Spec.Containers[0].Ports[0].ContainerPort)
 			require.NotEmpty(t, got.Spec.Subdomain)
 			require.NotNil(t, got.Spec.DNSConfig)
 			require.NotEmpty(t, got.Spec.DNSConfig.Searches)

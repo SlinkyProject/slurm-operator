@@ -98,6 +98,12 @@ func TestBuilder_BuildService(t *testing.T) {
 			wantErr: true,
 		},
 	}
+	normSS := func(m map[string]string) map[string]string {
+		if m == nil {
+			return map[string]string{}
+		}
+		return m
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(fake.NewFakeClient())
@@ -110,8 +116,8 @@ func TestBuilder_BuildService(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.args.opts.Key.String(), objectutils.KeyFunc(got))
-			require.Equal(t, tt.args.opts.Metadata.Annotations, got.Annotations)
-			require.Equal(t, tt.args.opts.Metadata.Labels, got.Labels)
+			require.Equal(t, normSS(tt.args.opts.Metadata.Annotations), got.Annotations)
+			require.Equal(t, normSS(tt.args.opts.Metadata.Labels), got.Labels)
 			require.True(t, set.KeySet(got.Spec.Selector).HasAll(set.KeySet(tt.args.opts.Selector).UnsortedList()...))
 
 			if tt.args.opts.Headless {

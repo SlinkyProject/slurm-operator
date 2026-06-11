@@ -66,7 +66,7 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 			require.Equal(t, common.SlurmUserGid, ptr.Deref(got.Spec.Template.Spec.Containers[0].SecurityContext.RunAsGroup, 0))
 			require.Equal(t, labels.AccountingApp, got.Spec.Template.Spec.Containers[0].Name)
 			require.Equal(t, labels.AccountingApp, got.Spec.Template.Spec.Containers[0].Ports[0].Name)
-			require.Equal(t, common.SlurmdbdPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			require.Equal(t, int32(common.SlurmdbdPort), got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 		})
 	}
 }

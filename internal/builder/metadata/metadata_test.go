@@ -26,7 +26,10 @@ func TestNewBuilder(t *testing.T) {
 			args: args{
 				key: types.NamespacedName{},
 			},
-			want: metav1.ObjectMeta{},
+			want: metav1.ObjectMeta{
+				Labels:      map[string]string{},
+				Annotations: map[string]string{},
+			},
 		},
 		{
 			name: "non-empty",
@@ -37,8 +40,10 @@ func TestNewBuilder(t *testing.T) {
 				},
 			},
 			want: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:        "foo",
+				Namespace:   "bar",
+				Labels:      map[string]string{},
+				Annotations: map[string]string{},
 			},
 		},
 	}
@@ -74,8 +79,10 @@ func TestMetadataBuilder_WithMetadata(t *testing.T) {
 				meta: slinkyv1beta1.Metadata{},
 			},
 			want: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:        "foo",
+				Namespace:   "bar",
+				Labels:      map[string]string{},
+				Annotations: map[string]string{},
 			},
 		},
 		{
@@ -141,8 +148,10 @@ func TestMetadataBuilder_WithAnnotations(t *testing.T) {
 				annotations: map[string]string{},
 			},
 			want: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:        "foo",
+				Namespace:   "bar",
+				Labels:      map[string]string{},
+				Annotations: map[string]string{},
 			},
 		},
 		{
@@ -161,6 +170,7 @@ func TestMetadataBuilder_WithAnnotations(t *testing.T) {
 			want: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "bar",
+				Labels:    map[string]string{},
 				Annotations: map[string]string{
 					"foo": "bar",
 				},
@@ -200,8 +210,10 @@ func TestMetadataBuilder_WithLabels(t *testing.T) {
 				labels: map[string]string{},
 			},
 			want: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:        "foo",
+				Namespace:   "bar",
+				Labels:      map[string]string{},
+				Annotations: map[string]string{},
 			},
 		},
 		{
@@ -218,8 +230,9 @@ func TestMetadataBuilder_WithLabels(t *testing.T) {
 				},
 			},
 			want: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:        "foo",
+				Namespace:   "bar",
+				Annotations: map[string]string{},
 				Labels: map[string]string{
 					"fizz": "buzz",
 				},

@@ -154,7 +154,7 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			if len(tt.args.loginset.Spec.Login.Ports) > 0 && tt.args.loginset.Spec.Login.Ports[0].ContainerPort != 0 {
 				require.Equal(t, tt.args.loginset.Spec.Login.Ports[0].ContainerPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 			} else {
-				require.Equal(t, LoginPort, got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+				require.Equal(t, int32(LoginPort), got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 			}
 
 			require.NotNil(t, got.Spec.Template.Spec.DNSConfig)

@@ -68,7 +68,7 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 				parent:   rs,
 				selector: selector,
 			},
-			want:    []*appsv1.ControllerRevision{},
+			want:    nil,
 			wantErr: false,
 		},
 		{

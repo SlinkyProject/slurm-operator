@@ -32,7 +32,10 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 			nodeset: &slinkyv1beta1.NodeSet{},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "slurm-workers-pdb-",
+					Name:            "slurm-workers-pdb-",
+					Labels:          map[string]string{},
+					Annotations:     map[string]string{},
+					OwnerReferences: []v1.OwnerReference{},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					Selector: &v1.LabelSelector{
@@ -55,7 +58,10 @@ func TestBuilder_BuildClusterWorkerPodDisruptionBudget(t *testing.T) {
 			},
 			want: &policyv1.PodDisruptionBudget{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "slurm-workers-pdb-slurm",
+					Name:            "slurm-workers-pdb-slurm",
+					Labels:          map[string]string{},
+					Annotations:     map[string]string{},
+					OwnerReferences: []v1.OwnerReference{},
 				},
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					Selector: &v1.LabelSelector{

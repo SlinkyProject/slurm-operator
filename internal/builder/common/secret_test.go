@@ -64,6 +64,12 @@ func TestBuilder_BuildSecret(t *testing.T) {
 			},
 		},
 	}
+	normSS := func(m map[string]string) map[string]string {
+		if m == nil {
+			return map[string]string{}
+		}
+		return m
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(fake.NewFakeClient())
@@ -76,8 +82,8 @@ func TestBuilder_BuildSecret(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.args.opts.Key.String(), objectutils.KeyFunc(got))
-			require.Equal(t, tt.args.opts.Metadata.Annotations, got.Annotations)
-			require.Equal(t, tt.args.opts.Metadata.Labels, got.Labels)
+			require.Equal(t, normSS(tt.args.opts.Metadata.Annotations), got.Annotations)
+			require.Equal(t, normSS(tt.args.opts.Metadata.Labels), got.Labels)
 			require.Equal(t, tt.args.opts.Immutable, ptr.Deref(got.Immutable, false))
 			require.Equal(t, tt.args.opts.Data, got.Data)
 			require.Equal(t, tt.args.opts.StringData, got.StringData)
