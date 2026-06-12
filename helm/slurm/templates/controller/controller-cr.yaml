@@ -52,10 +52,11 @@ spec:
   extraConf: |-
     {{- include "slurm.controller.extraConf" . | nindent 4 }}
   {{- end }}{{- /* if (include "slurm.controller.extraConf" .) */}}
-  {{- with .Values.configFiles }}
+  {{- $hasA3mega := gt (len (.Values.vendor.google | dig "a3mega" list)) 0 -}}
+  {{- if or .Values.configFiles $hasA3mega }}
   configFileRefs:
     - name: {{ include "slurm.controller.configName" $ }}
-  {{- end }}{{- /* with .Values.configFiles */}}
+  {{- end }}
   prologScriptRefs:
     {{- with .Values.prologScripts }}
     - name: {{ include "slurm.controller.prologName" $ }}

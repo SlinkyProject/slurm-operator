@@ -853,6 +853,23 @@ vendor:
       jobMappingDir: "/var/lib/dcgm-exporter/job-mapping"
       # -- Script execution priority (lower numbers run first)
       scriptPriority: "90"
+  # Google Cloud
+  google:
+    # -- A3 Mega configurations. List of objects corresponding to nodesets.
+    a3mega: []
+    # - targetNodeSet: a3-megagpu-8g
+    #   nodePool: "a3-megagpu-8g-a3megagpupool"
+    #   networks:
+    #     - default
+    #     - vpc1
+    #     - vpc2
+    #     - vpc3
+    #     - vpc4
+    #     - vpc5
+    #     - vpc6
+    #     - vpc7
+    #     - vpc8
+
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.

@@ -1,0 +1,267 @@
+---
+suite: test vendor google gke
+templates:
+  - nodeset/nodeset-cr.yaml
+  - controller/config-configmap.yaml
+  - controller/controller-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should not inject A3 Mega configuration when disabled
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega: []
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations
+      - notExists:
+          path: spec.template.spec.containers
+      - equal:
+          path: spec.template.spec.initContainers
+          value: []
+      - equal:
+          path: spec.template.spec.volumes
+          value: []
+
+  - it: should inject A3 Mega configuration when enabled and targeting nodeset
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      # Node Pool Selector
+      - equal:
+          path: spec.template.spec.nodeSelector["cloud.google.com/gke-nodepool"]
+          value: "a3-mega-nodepool"
+      # Automatic GPU limits/requests injection
+      - equal:
+          path: spec.slurmd.resources.limits["nvidia.com/gpu"]
+          value: 8
+      - equal:
+          path: spec.slurmd.resources.requests["nvidia.com/gpu"]
+          value: 8
+      # Annotations
+      - equal:
+          path: spec.template.metadata.annotations["networking.gke.io/default-interface"]
+          value: "eth0"
+      - equal:
+          path: spec.template.metadata.annotations["networking.gke.io/interfaces"]
+          value: |
+            [
+              {"interfaceName":"eth0","network":"default"},
+              {"interfaceName":"eth1","network":"vpc1"},
+              {"interfaceName":"eth2","network":"vpc2"},
+              {"interfaceName":"eth3","network":"vpc3"},
+              {"interfaceName":"eth4","network":"vpc4"},
+              {"interfaceName":"eth5","network":"vpc5"},
+              {"interfaceName":"eth6","network":"vpc6"},
+              {"interfaceName":"eth7","network":"vpc7"},
+              {"interfaceName":"eth8","network":"vpc8"}
+            ]
+      # sidecar container tcpxo-daemon
+      - contains:
+          path: spec.template.spec.containers
+          content:
+            name: tcpxo-daemon
+            image: us-docker.pkg.dev/gce-ai-infra/gpudirect-tcpxo/tcpgpudmarxd-dev:v1.0.21
+            imagePullPolicy: Always
+            command: ["/bin/sh", "-c"]
+            args:
+              - |
+                set -ex
+                chmod 755 /fts/entrypoint_rxdm_container.sh
+                /fts/entrypoint_rxdm_container.sh --num_hops=2 --num_nics=8 --uid= --alsologtostderr
+            securityContext:
+              capabilities:
+                add:
+                  - NET_ADMIN
+                  - NET_BIND_SERVICE
+            volumeMounts:
+              - name: libraries
+                mountPath: /usr/local/nvidia/lib64
+              - name: sys
+                mountPath: /hostsysfs
+              - name: proc-sys
+                mountPath: /hostprocsysfs
+            env:
+              - name: LD_LIBRARY_PATH
+                value: /usr/local/nvidia/lib64
+      # Volumes
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: libraries
+            hostPath:
+              path: /home/kubernetes/bin/nvidia/lib64
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: sys
+            hostPath:
+              path: /sys
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: proc-sys
+            hostPath:
+              path: /proc/sys
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: aperture-devices
+            hostPath:
+              path: /dev/aperture_devices
+      # slurmd container volume mounts
+      - contains:
+          path: spec.slurmd.volumeMounts
+          content:
+            name: aperture-devices
+            mountPath: /dev/aperture_devices
+      # slurmd container environment variables
+      - contains:
+          path: spec.slurmd.env
+          content:
+            name: LD_LIBRARY_PATH
+            value: /usr/local/nvidia/lib64
+      - contains:
+          path: spec.slurmd.env
+          content:
+            name: NCCL_FASTRAK_LLCM_DEVICE_DIRECTORY
+            value: /dev/aperture_devices
+      # Automatic extraConfMap Gres injection
+      - equal:
+          path: spec.extraConf
+          value: "Gres=gpu:nvidia_h100_80gb_hbm3:8"
+
+  - it: should inject AutoDetect=nvidia in gres.conf when A3 Mega is enabled
+    template: controller/config-configmap.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-config-extra
+      - equal:
+          path: data["gres.conf"]
+          value: "AutoDetect=nvidia\n"
+
+  - it: should not override gres.conf if already provided in configFiles when A3 Mega is enabled
+    template: controller/config-configmap.yaml
+    set:
+      configFiles:
+        gres.conf: |
+          AutoDetect=off
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: data["gres.conf"]
+          value: "AutoDetect=off\n"
+
+  - it: should include configFileRefs in controller spec when A3 Mega is enabled
+    template: controller/controller-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1", "vpc2", "vpc3", "vpc4", "vpc5", "vpc6", "vpc7", "vpc8"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - equal:
+          path: spec.configFileRefs[0].name
+          value: test-release-slurm-config-extra
+
+  - it: should fail if exactly 9 networks are not specified
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+              networks: ["default", "vpc1"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Mega requires exactly 9 networks, but 2 were specified.
+
+  - it: should fail if networks are completely missing
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3mega:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-mega-nodepool"
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Mega requires exactly 9 networks, but 0 were specified.
+

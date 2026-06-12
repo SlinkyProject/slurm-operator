@@ -14,6 +14,11 @@ SPDX-License-Identifier: Apache-2.0
 {{- $priorityClassName := $podSpec.priorityClassName | default (include "slurm.priorityClassName" $) -}}
 {{- $_ := set $podSpec "priorityClassName" $priorityClassName -}}
 {{- $_ := set $podSpec "hostname" (printf "%s-" $key) -}}
+
+{{- /* ================= BEGIN GKE A3 MEGA INJECTION ================= */ -}}
+{{- include "slurm.vendor.google.a3mega" (dict "root" $ "key" $key "nodeset" $nodeset "metadata" $metadata "podSpec" $podSpec) -}}
+{{- /* ================= END GKE A3 MEGA INJECTION ================= */ -}}
+
 {{- $slurmd := $nodeset.slurmd | default dict -}}
 {{- $_ := set $slurmd "env" ($slurmd.env | default list) -}}
 {{- $_ := set $nodeset "slurmd" $slurmd -}}

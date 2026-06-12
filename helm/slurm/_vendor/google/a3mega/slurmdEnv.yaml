@@ -1,0 +1,4 @@
+- name: LD_LIBRARY_PATH
+  value: /usr/local/nvidia/lib64
+- name: NCCL_FASTRAK_LLCM_DEVICE_DIRECTORY
+  value: /dev/aperture_devices

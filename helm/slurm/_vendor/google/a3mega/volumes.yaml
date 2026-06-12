@@ -1,0 +1,12 @@
+- name: libraries
+  hostPath:
+    path: /home/kubernetes/bin/nvidia/lib64
+- name: sys
+  hostPath:
+    path: /sys
+- name: proc-sys
+  hostPath:
+    path: /proc/sys
+- name: aperture-devices
+  hostPath:
+    path: /dev/aperture_devices

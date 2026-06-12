@@ -1,0 +1,31 @@
+---
+# Example configuration for Google Cloud GKE A3 Mega node topology
+
+vendor:
+  google:
+    a3mega:
+      - targetNodeSet: a3-mega-nodes
+        nodePool: "a3-mega-nodepool"
+        networks:
+          - default
+          - vpc1
+          - vpc2
+          - vpc3
+          - vpc4
+          - vpc5
+          - vpc6
+          - vpc7
+          - vpc8
+
+# The GPU nodeset that matches targetNodeSet
+nodesets:
+  a3-mega-nodes:
+    enabled: true
+    replicas: 1
+    image:
+      repository: ghcr.io/slinkyproject/slurmd
+      tag: 25.05-ubuntu24.04
+    logfile:
+      image:
+        repository: docker.io/library/alpine
+        tag: latest
