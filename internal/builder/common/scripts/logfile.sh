@@ -6,6 +6,9 @@ set -eu
 
 SOCKET="${SOCKET:-"/tmp/logfile.log"}"
 
+trap "exit 0" TERM
+trap "exit 1" INT HUP
+
 mkdir -v -p "$(dirname "$SOCKET")"
 rm -f "$SOCKET"
 if ! [ -f "$SOCKET" ]; then
