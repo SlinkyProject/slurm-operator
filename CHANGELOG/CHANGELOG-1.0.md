@@ -1,3 +1,60 @@
+## v1.0.4
+
+### Added
+
+- Use cosign to sign image artifacts.
+
+### Fixed
+
+- Fixed token-controller not passing --token-workers when initializing the
+  controller.
+- GO-2026-5005 GO-2026-5006 GO-2026-5013 GO-2026-5014 GO-2026-5015 GO-2026-5016
+  GO-2026-5017 GO-2026-5018 GO-2026-5019 GO-2026-5020 GO-2026-5021 GO-2026-5023
+  GO-2026-5024 GO-2026-5025 GO-2026-5026 GO-2026-5027 GO-2026-5028 GO-2026-5029
+  GO-2026-5030 GO-2026-5033.
+- GO-2026-5037 GO-2026-5038 GO-2026-5039.
+- Prevent modification of ServiceSpec.externalIP for accountings, controllers,
+  loginsets, and restapis.
+- Prevent Token from being able to reference a JWT key secret outside of its
+  namespace.
+- Fixed cases where a Patch request was issued with an empty patch, causing
+  needless interactions.
+- Fixed cases where a Status Patch request was issued with an empty patch,
+  causing needless interactions.
+- Update Slurm conditions on pods such that status patch thrashing does not
+  occur.
+- Reduce object patch skew by using in memory object to generate patch from.
+- Force disablement of TaintKubeNodes feature for NodeSets.
+- Fixed cases where CRs could reference and use other CRs in other namespaces.
+- Fixed cases where the NodeSet partition config string could be used inject
+  arbitrary slurm.conf lines, circumventing the intention of the partition
+  config field.
+- Fixed exploit where pod hostname could be used to write arbitrary slurm.conf
+  lines.
+
+## v1.0.3
+
+### Fixed
+
+- Fixed cases where chart values were omitted because they were falsy but a
+  valid input.
+- Properly default `NodeSet.UpdateStrategy.Type=RollingUpdate` with enum
+  validation.
+- Fixed case where a rolling update could dereference a nil pointer.
+- Fixed case where a NodeSet pod's status was redundantly patched twice.
+- Fixed cases where NotFound errors were not handled, causing NodeSet
+  reconciliation to prematurely error.
+- Updated google.golang.org/grpc to v1.79.3 to address CVE-2026-33186.
+- Fixed duplicate SlurmNodeState pod conditions.
+- Fixed shared objects properly applying multiple owners.
+- Fixed error caused from a race of multiple NodeSets attempting to create the
+  same shared resource.
+
+### Removed
+
+- Removed webhook validation for `Controller.Spec.ClusterName` with regards to
+  valid database table characters.
+
 ## v1.0.2
 
 ### Fixed
