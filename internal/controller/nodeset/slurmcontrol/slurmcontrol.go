@@ -29,6 +29,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/timestore"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
@@ -40,6 +41,9 @@ type SlurmControlInterface interface {
 	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 	// UpdateNodeTopology handles updating the Node with its topologySpec.
 	UpdateNodeTopology(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, topologySpec string) error
+	// UpdateNodeFeatures reconciles the prefix-namespaced Slurm node features to the
+	// given (unprefixed) values, preserving all features outside the prefix.
+	UpdateNodeFeatures(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, prefix string, features []string) error
 	// MakeNodeDrain handles adding the DRAIN state to the slurm node.
 	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
@@ -189,6 +193,78 @@ func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slin
 	}
 
 	return nil
+}
+
+// UpdateNodeFeatures implements SlurmControlInterface.
+func (r *realSlurmControl) UpdateNodeFeatures(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, prefix string, features []string) error {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeFeatures()",
+			"pod", klog.KObj(pod))
+		return nil
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	// The operator owns only the `prefix` namespace. Recompute the available and
+	// active feature sets by replacing the prefixed features with the desired set
+	// and preserving everything else: the NodeSet baseline (seeded at slurmd
+	// registration via --conf), ExtraConf features, and externally-managed features
+	// such as those from NodeFeaturesPlugins.
+	desired := make([]string, 0, len(features))
+	for _, f := range features {
+		desired = append(desired, prefix+f)
+	}
+	curAvailable := ptr.Deref(slurmNode.Features, slurmapi.V0044CsvString{})
+	curActive := ptr.Deref(slurmNode.ActiveFeatures, slurmapi.V0044CsvString{})
+	newAvailable := replaceFeatureNamespace(curAvailable, prefix, desired)
+	newActive := replaceFeatureNamespace(curActive, prefix, desired)
+
+	// Features are a set; compare order-insensitively so we only update when the
+	// prefixed namespace actually changed.
+	availableInSync := set.New(newAvailable...).Equal(set.New(curAvailable...))
+	activeInSync := set.New(newActive...).Equal(set.New(curActive...))
+	if availableInSync && activeInSync {
+		logger.V(3).Info("Node features already in sync, skipping update request",
+			"node", slurmNode.GetKey(), "features", desired)
+		return nil
+	}
+
+	logger.Info("Update Slurm Node features", "Node", slurmNode.GetKey(), "features", desired)
+	req := slurmapi.V0044UpdateNodeMsg{
+		Features:    ptr.To(slurmapi.V0044CsvString(newAvailable)),
+		FeaturesAct: ptr.To(slurmapi.V0044CsvString(newActive)),
+	}
+	if err := slurmClient.Update(ctx, slurmNode, req); err != nil {
+		if tolerateError(err) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+// replaceFeatureNamespace returns current with all features carrying prefix replaced
+// by desired (already prefixed), preserving every feature outside the prefix. The
+// result is sorted and de-duplicated.
+func replaceFeatureNamespace(current []string, prefix string, desired []string) []string {
+	preserved := make([]string, 0, len(current))
+	for _, f := range current {
+		if !strings.HasPrefix(f, prefix) {
+			preserved = append(preserved, f)
+		}
+	}
+	return structutils.SortedDedup(structutils.MergeList(preserved, desired))
 }
 
 const nodeReasonPrefix = "slurm-operator:"

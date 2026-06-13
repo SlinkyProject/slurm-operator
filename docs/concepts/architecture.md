@@ -15,6 +15,7 @@
       - [`auth/jwt`](#authjwt)
       - [Dynamic Nodes](#dynamic-nodes)
         - [Dynamic Topology](#dynamic-topology)
+        - [Node Features](#node-features)
   - [Slurm](#slurm)
     - [Hybrid](#hybrid)
     - [Autoscale](#autoscale)
@@ -140,6 +141,17 @@ advance for topology-aware scheduling to work on Kubernetes.
 
 See the [topology usage guide][topology] for more.
 
+##### Node Features
+
+The operator can also propagate Slurm node features from the Kubernetes node a
+slurmd pod is scheduled on. When the node carries the
+`features.slinky.slurm.net/spec` annotation, the operator applies its values to the
+Slurm node's available and active features under a reserved `k8s/` prefix,
+preserving the NodeSet baseline and any externally-managed features, so jobs can
+target those nodes with `--constraint=k8s/<feature>`.
+
+See the [node features usage guide][node-features] for more.
+
 ## Slurm
 
 The following diagram illustrates a containerized Slurm cluster, from a
@@ -236,6 +248,7 @@ Each webhook is named after the Custom Resource Definition (CRD) it manages.
 [kubebuilder]: https://book.kubebuilder.io/
 [kustomize]: https://kustomize.io/
 [munge]: https://github.com/dun/munge
+[node-features]: ../usage/node-features.md
 [operator-pattern]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 [operator-sdk]: https://sdk.operatorframework.io/
 [slurm]: ./slurm.md

@@ -49,6 +49,8 @@ func newFakeClientList(interceptorFuncs interceptor.Funcs, initObjLists ...objec
 			o.Comment = r.Comment
 			o.Reason = r.Reason
 			o.Topology = r.TopologyStr
+			o.Features = r.Features
+			o.ActiveFeatures = r.FeaturesAct
 		default:
 			return errors.New("failed to cast slurm object")
 		}

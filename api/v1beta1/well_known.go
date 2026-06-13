@@ -10,6 +10,7 @@ const (
 	NodeSetPrefix  = "nodeset." + SlinkyPrefix
 	LoginSetPrefix = "loginset." + SlinkyPrefix
 	TopologyPrefix = "topology." + SlinkyPrefix
+	FeaturesPrefix = "features." + SlinkyPrefix
 )
 
 // Well Known Annotations
@@ -40,10 +41,28 @@ const (
 	// Ref: https://slurm.schedmd.com/topology.html#dynamic_topo
 	AnnotationNodeTopologySpec = TopologyPrefix + "spec"
 
+	// AnnotationNodeFeaturesSpec indicates a comma-separated list of Slurm node features (e.g.
+	// "nn-75bfcf47ca3e4f7dc,GPU") for the Slurm node that the NodeSet pod runs on. The operator applies
+	// each value as a NodeFeaturePrefix-namespaced feature (e.g. "k8s/nn-75bfcf47ca3e4f7dc") on the Slurm
+	// node's available and active features via the REST API, preserving all non-prefixed features.
+	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Features
+	AnnotationNodeFeaturesSpec = FeaturesPrefix + "spec"
+
 	// AnnotationNodeHostnameOverride may be set to override the pod hostname assigned to NodeSet DaemonSet-mode
 	// pod scheduled on the node. When present, the value is used verbatim as the pod's spec.hostname
 	// (and therefore the Slurm node name) instead of the default derived from the node name.
 	AnnotationNodeHostnameOverride = NodeSetPrefix + "hostname-override"
+)
+
+// Well Known Slurm node feature prefixes
+const (
+	// NodeFeaturePrefix namespaces the Slurm node features the operator manages from
+	// AnnotationNodeFeaturesSpec. The operator owns features carrying this prefix
+	// (adding, replacing, and removing them to match the annotation) and preserves
+	// all others, including the NodeSet baseline, ExtraConf features, and
+	// externally-managed features such as NodeFeaturesPlugins. This mirrors the
+	// reserved-prefix pattern used for the node Reason ("slurm-operator:").
+	NodeFeaturePrefix = "k8s/"
 )
 
 // Well Known Labels
