@@ -25,7 +25,7 @@ func (r *ControllerReconciler) syncStatus(
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1beta1.ControllerStatus{
+	newStatus := slinkyv1beta1.ControllerStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, controller.Status.Conditions...)
@@ -36,7 +36,7 @@ func (r *ControllerReconciler) syncStatus(
 		return nil
 	}
 
-	if err := r.updateStatus(ctx, controller, newStatus); err != nil {
+	if err := r.updateStatus(ctx, controller, &newStatus); err != nil {
 		return fmt.Errorf("error updating Controller(%s) status: %w",
 			klog.KObj(controller), err)
 	}
