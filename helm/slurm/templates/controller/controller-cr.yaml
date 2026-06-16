@@ -64,10 +64,16 @@ spec:
     {{- if .Values.prologScripts }}
     - name: {{ include "slurm.controller.prologName" . }}
     {{- end }}{{- /* if .Values.prologScripts */}}
+    {{- with .Values.prologScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.prologScriptRefs */}}
     {{- if (include "slurm.vendor.nvidia.dcgm.enabled" .) }}
     - name: {{ include "slurm.vendor.nvidia.dcgm.prologName" . }}
     {{- end }}{{- /* if (include "slurm.vendor.nvidia.dcgm.enabled" .) */}}
   epilogScriptRefs:
+    {{- with .Values.epilogScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.epilogScriptRefs */}}
     {{- if .Values.epilogScripts }}
     - name: {{ include "slurm.controller.epilogName" . }}
     {{- end }}{{- /* if .Values.epilogScripts */}}
@@ -75,10 +81,16 @@ spec:
     - name: {{ include "slurm.vendor.nvidia.dcgm.epilogName" . }}
     {{- end }}{{- /* if (include "slurm.vendor.nvidia.dcgm.enabled" .) */}}
   prologSlurmctldScriptRefs:
+    {{- with .Values.prologSlurmctldScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.prologSlurmctldScriptRefs */}}
     {{- if .Values.prologSlurmctldScripts }}
     - name: {{ include "slurm.controller.prologSlurmctldName" . }}
     {{- end }}{{- /* if .Values.prologSlurmctldScripts */}}
   epilogSlurmctldScriptRefs:
+    {{- with .Values.epilogSlurmctldScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.epilogSlurmctldScriptRefs */}}
     {{- if .Values.epilogSlurmctldScripts }}
     - name: {{ include "slurm.controller.epilogSlurmctldName" . }}
     {{- end }}{{- /* if .Values.epilogSlurmctldScripts */}}

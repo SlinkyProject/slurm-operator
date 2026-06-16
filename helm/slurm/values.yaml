@@ -122,6 +122,12 @@ prologSlurmctldScripts: {}
   #   set -euo pipefail
   #   exit 0
 
+# -- References to existing ConfigMaps containing Slurm PrologSlurmctld scripts to mount in `/etc/slurm`.
+# Each key (filename) becomes a `PrologSlurmctld=/etc/slurm/<filename>` line, so follow the `prolog-slurmctld-*` naming used by `prologSlurmctldScripts`.
+# WARNING: Keys must be unique across this list, `prologSlurmctldScripts`, and every other ConfigMap mounted in `/etc/slurm`.
+prologSlurmctldScriptRefs: []
+  # - name: my-prolog-slurmctld-scripts
+
 # -- (map[string]string) The Slurm EpilogSlurmctld scripts ran on slurmctld at job completion.
 # The map key represents the filename; the map value represents the script contents.
 # WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm.
@@ -133,6 +139,12 @@ epilogSlurmctldScripts: {}
   #   #!/usr/bin/env bash
   #   set -euo pipefail
   #   exit 0
+
+# -- References to existing ConfigMaps containing Slurm EpilogSlurmctld scripts to mount in `/etc/slurm`.
+# Each key (filename) becomes an `EpilogSlurmctld=/etc/slurm/<filename>` line, so follow the `epilog-slurmctld-*` naming used by `epilogSlurmctldScripts`.
+# WARNING: Keys must be unique across this list, `epilogSlurmctldScripts`, and every other ConfigMap mounted in `/etc/slurm`.
+epilogSlurmctldScriptRefs: []
+  # - name: my-epilog-slurmctld-scripts
 
 # -- (map[string]string) The Slurm Prolog scripts ran on all NodeSets.
 # The map key represents the filename; the map value represents the script contents.
@@ -146,6 +158,12 @@ prologScripts: {}
   #   set -euo pipefail
   #   exit 0
 
+# -- References to existing ConfigMaps containing Slurm Prolog scripts to mount in `/etc/slurm`.
+# Keys (filenames) become `Prolog=` values, so follow the `prolog-*` naming used by `prologScripts`.
+# WARNING: Keys must be unique across this list, `prologScripts`, any enabled vendor scripts (e.g. DCGM), and every other ConfigMap mounted in `/etc/slurm`.
+prologScriptRefs: []
+  # - name: my-prolog-scripts
+
 # -- (map[string]string) The Slurm Epilog scripts ran on all NodeSets.
 # The map key represents the filename; the map value represents the script contents.
 # WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm.
@@ -157,6 +175,12 @@ epilogScripts: {}
   #   #!/usr/bin/env bash
   #   set -euo pipefail
   #   exit 0
+
+# -- References to existing ConfigMaps containing Slurm Epilog scripts to mount in `/etc/slurm`.
+# Keys (filenames) become `Epilog=` values, so follow the `epilog-*` naming used by `epilogScripts`.
+# WARNING: Keys must be unique across this list, `epilogScripts`, any enabled vendor scripts (e.g. DCGM), and every other ConfigMap mounted in `/etc/slurm`.
+epilogScriptRefs: []
+  # - name: my-epilog-scripts
 
 # Slurm controller (slurmctld) configuration.
 controller:
