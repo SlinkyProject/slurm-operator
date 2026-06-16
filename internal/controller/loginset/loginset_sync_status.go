@@ -36,7 +36,7 @@ func (r *LoginSetReconciler) syncStatus(
 		return err
 	}
 
-	newStatus := &slinkyv1beta1.LoginSetStatus{
+	newStatus := slinkyv1beta1.LoginSetStatus{
 		Replicas:   replicaStatus.Replicas,
 		Selector:   selector.String(),
 		Conditions: []metav1.Condition{},
@@ -49,7 +49,7 @@ func (r *LoginSetReconciler) syncStatus(
 		return nil
 	}
 
-	if err := r.updateStatus(ctx, loginset, newStatus); err != nil {
+	if err := r.updateStatus(ctx, loginset, &newStatus); err != nil {
 		return fmt.Errorf("error updating LoginSet(%s) status: %w",
 			klog.KObj(loginset), err)
 	}
