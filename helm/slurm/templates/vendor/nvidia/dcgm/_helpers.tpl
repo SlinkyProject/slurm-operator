@@ -9,7 +9,9 @@ Check if DCGM integration is enabled
 */}}
 {{- define "vendor.dcgm.enabled" -}}
 {{- $vendor := .Values.vendor | default dict -}}
-{{- ($vendor | dig "nvidia" "dcgm" "enabled" false) | ternary "true" "" -}}
+{{- if ($vendor | dig "nvidia" "dcgm" "enabled" false) -}}
+true
+{{- end -}}
 {{- end }}
 
 {{/*
