@@ -20,6 +20,7 @@ tests:
             tag: v1.2.3
     asserts:
       - matchSnapshot: {}
+
   - it: should set imagePullSecrets
     set:
       imagePullSecrets:
@@ -32,6 +33,7 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[1].name
           value: docker-secret-2
+
   - it: should set resourceSettings
     set:
       controller:
@@ -53,6 +55,7 @@ tests:
             requests:
               cpu: "1"
               memory: "2"
+
   - it: should add nodeSelector
     set:
       controller:
@@ -63,6 +66,7 @@ tests:
       - equal:
           path: spec.template.spec.nodeSelector["beta.kubernetes.io/os"]
           value: linux
+
   - it: should set affinity
     set:
       controller:
@@ -80,6 +84,7 @@ tests:
       - equal:
           path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
           value: x86_64
+
   - it: should add tolerations
     set:
       controller:
@@ -93,6 +98,7 @@ tests:
       - equal:
           path: spec.template.spec.tolerations[0].key
           value: test
+
   - it: should add topologySpreadConstraints
     set:
       controller:
@@ -108,6 +114,7 @@ tests:
       - equal:
           path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
           value: bar
+
   - it: should default the name of a JWKS secret if JWKS is enabled but not provided
     set:
       jwksKeys:
@@ -119,6 +126,7 @@ tests:
       - equal:
           path: spec.jwksKeyRef.key
           value: jwks.json
+
   - it: should not use priority class
     set:
       priorityClass:
@@ -128,6 +136,7 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: ""
+
   - it: should use priority class
     set:
       priorityClass:
@@ -137,6 +146,7 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: slurm-priorityclass
+
   - it: should override priority class
     set:
       priorityClass:
@@ -149,6 +159,74 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+
+  - it: should set extraConf from raw string
+    set:
+      controller:
+        extraConf: |
+          DebugFlags=Backfill
+          SchedulerParameters=permit_job_expansion
+    asserts:
+      - matchRegex:
+          path: spec.extraConf
+          pattern: DebugFlags=Backfill
+      - matchRegex:
+          path: spec.extraConf
+          pattern: SchedulerParameters=permit_job_expansion
+
+  - it: should set extraConf from extraConfMap
+    set:
+      controller:
+        extraConfMap:
+          MinJobAge: 2
+          SlurmctldDebug: debug2
+    asserts:
+      - exists:
+          path: spec.extraConf
+      - matchRegex:
+          path: spec.extraConf
+          pattern: MinJobAge=2
+      - matchRegex:
+          path: spec.extraConf
+          pattern: SlurmctldDebug=debug2
+
+  - it: should set extraConf from extraConfMap with list values
+    set:
+      controller:
+        extraConfMap:
+          DebugFlags:
+            - Backfill
+            - Gang
+          SlurmSchedLogLevel: 1
+    asserts:
+      - exists:
+          path: spec.extraConf
+      - matchRegex:
+          path: spec.extraConf
+          pattern: "DebugFlags=Backfill,Gang"
+      - matchRegex:
+          path: spec.extraConf
+          pattern: SlurmSchedLogLevel=1
+
+  - it: should prefer extraConf over extraConfMap when both are set
+    set:
+      controller:
+        extraConf: |
+          DebugFlags=Backfill
+        extraConfMap:
+          MinJobAge: 2
+          SlurmctldDebug: debug2
+    asserts:
+      - matchRegex:
+          path: spec.extraConf
+          pattern: DebugFlags=Backfill
+      - notMatchRegex:
+          path: spec.extraConf
+          pattern: MinJobAge
+      - notMatchRegex:
+          path: spec.extraConf
+          pattern: SlurmctldDebug
+
   - it: should set slurmctld livenessProbe exec
     set:
       controller:
