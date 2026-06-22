@@ -667,14 +667,13 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		nodeset.Spec.Template.PodSpecWrapper.Affinity = userAffinity
 
 		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-1")
-		if pod == nil {
+		switch {
+		case pod == nil:
 			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
-		}
-		if pod.Spec.NodeName != "node-1" {
+		case pod.Spec.NodeName != "node-1":
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-1")
-		}
-		if pod.Spec.Affinity == nil || pod.Spec.Affinity.NodeAffinity == nil ||
-			pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		case pod.Spec.Affinity == nil || pod.Spec.Affinity.NodeAffinity == nil ||
+			pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil:
 			t.Fatal("user node affinity was not preserved")
 		}
 		terms := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
@@ -692,8 +691,7 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-2")
 		if pod == nil {
 			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
-		}
-		if pod.Spec.NodeName != "node-2" {
+		} else if pod.Spec.NodeName != "node-2" {
 			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-2")
 		}
 	})
@@ -705,8 +703,7 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-3")
 		if pod == nil {
 			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
-		}
-		if pod.Spec.NodeSelector["disk"] != "ssd" {
+		} else if pod.Spec.NodeSelector["disk"] != "ssd" {
 			t.Errorf("nodeSelector not preserved: got %v", pod.Spec.NodeSelector)
 		}
 	})
@@ -720,6 +717,7 @@ func TestNewNodeSetDaemonSetSimulatedPod(t *testing.T) {
 		pod := NewNodeSetDaemonSetSimulatedPod(client, nodeset, controller, "node-4")
 		if pod == nil {
 			t.Fatal("NewNodeSetDaemonSetSimulatedPod() returned nil")
+			return
 		}
 		found := false
 		for _, t := range pod.Spec.Tolerations {
