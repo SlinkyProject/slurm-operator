@@ -205,6 +205,14 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Token")
 		os.Exit(1)
 	}
+	if err = (&slinkywebhook.AccountWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Account")
+		os.Exit(1)
+	}
+	if err = (&slinkywebhook.UserWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "User")
+		os.Exit(1)
+	}
 	if err = (&slinkywebhook.PodBindingWebhook{
 		Client: mgr.GetClient(),
 	}).SetupWebhookWithManager(mgr); err != nil {

@@ -48,11 +48,13 @@ rules:
   - slinky.slurm.net
   resources:
   - accountings
+  - accounts
   - controllers
   - loginsets
   - nodesets
   - restapis
   - tokens
+  - users
   verbs:
   - create
   - delete

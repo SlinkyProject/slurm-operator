@@ -38,6 +38,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/loginset"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/sacctmgr"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token"
 	// +kubebuilder:scaffold:imports
@@ -260,6 +261,14 @@ func main() {
 	}
 	if err := token.NewReconciler(mgr.GetClient()).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Token")
+		os.Exit(1)
+	}
+	if err := sacctmgr.NewAccountReconciler(mgr.GetClient(), clientMap).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Account")
+		os.Exit(1)
+	}
+	if err := sacctmgr.NewUserReconciler(mgr.GetClient(), clientMap).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "User")
 		os.Exit(1)
 	}
 

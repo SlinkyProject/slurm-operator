@@ -95,11 +95,13 @@ rules:
   - slinky.slurm.net
   resources:
   - accountings
+  - accounts
   - controllers
   - loginsets
   - nodesets
   - restapis
   - tokens
+  - users
   verbs:
   - create
   - delete
@@ -112,22 +114,26 @@ rules:
   - slinky.slurm.net
   resources:
   - accountings/finalizers
+  - accounts/finalizers
   - controllers/finalizers
   - loginsets/finalizers
   - nodesets/finalizers
   - restapis/finalizers
   - tokens/finalizers
+  - users/finalizers
   verbs:
   - update
 - apiGroups:
   - slinky.slurm.net
   resources:
   - accountings/status
+  - accounts/status
   - controllers/status
   - loginsets/status
   - nodesets/status
   - restapis/status
   - tokens/status
+  - users/status
   verbs:
   - get
   - patch

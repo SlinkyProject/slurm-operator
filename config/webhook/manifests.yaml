@@ -36,6 +36,27 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-slinky-slurm-net-v1beta1-account
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: account-v1beta1.kb.io
+  rules:
+  - apiGroups:
+    - slinky.slurm.net
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - accounts
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-slinky-slurm-net-v1beta1-accounting
   failurePolicy: Fail
   matchPolicy: Equivalent
@@ -155,4 +176,25 @@ webhooks:
     - UPDATE
     resources:
     - tokens
+  sideEffects: None
+- admissionReviewVersions:
+  - v1beta1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-slinky-slurm-net-v1beta1-user
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: user-v1beta1.kb.io
+  rules:
+  - apiGroups:
+    - slinky.slurm.net
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - users
   sideEffects: None
