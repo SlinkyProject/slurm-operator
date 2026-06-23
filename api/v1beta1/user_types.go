@@ -45,11 +45,13 @@ type UserSpec struct {
 
 	// defaultAccount must match one of the associations' account.
 	// +required
+	// +kubebuilder:validation:MaxLength=64
 	DefaultAccount string `json:"defaultAccount"`
 
 	// associations are the account memberships for this user.
 	// +required
 	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=128
 	Associations []UserAssociation `json:"associations"`
 
 	// deletionPolicy controls the Slurm-side entity on CR deletion.

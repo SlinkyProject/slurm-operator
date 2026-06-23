@@ -50,6 +50,7 @@ type AssociationLimits struct {
 type UserAssociation struct {
 	// account name this user belongs to.
 	// +required
+	// +kubebuilder:validation:MaxLength=64
 	Account string `json:"account"`
 
 	// partition scopes this association to a Slurm partition.

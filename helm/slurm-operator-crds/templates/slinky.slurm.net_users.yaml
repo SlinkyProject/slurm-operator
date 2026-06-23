@@ -69,6 +69,7 @@ spec:
                   properties:
                     account:
                       description: account name this user belongs to.
+                      maxLength: 64
                       type: string
                     limits:
                       description: limits for this specific membership.
@@ -125,6 +126,7 @@ spec:
                   required:
                   - account
                   type: object
+                maxItems: 128
                 minItems: 1
                 type: array
               controllerRef:
@@ -143,6 +145,7 @@ spec:
                 x-kubernetes-map-type: atomic
               defaultAccount:
                 description: defaultAccount must match one of the associations' account.
+                maxLength: 64
                 type: string
               deletionPolicy:
                 default: Delete
