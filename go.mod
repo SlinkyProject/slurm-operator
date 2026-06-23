@@ -193,4 +193,4 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-replace github.com/SlinkyProject/slurm-client => /Users/gcalzolari/git/opensource/slurm-client
+replace github.com/SlinkyProject/slurm-client => github.com/giuliocalzo/slurm-client v0.0.0-20260623130633-54d808daa1cc
