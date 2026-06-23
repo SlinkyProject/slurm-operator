@@ -6,11 +6,16 @@ set -eu
 
 SOCKET="${SOCKET:-"/tmp/logfile.log"}"
 
+trap "exit 0" TERM
+trap "exit 1" INT HUP
+
 mkdir -v -p "$(dirname "$SOCKET")"
-rm -f "$SOCKET"
-if ! [ -f "$SOCKET" ]; then
+if ! [ -p "$SOCKET" ]; then
+	rm -f "$SOCKET"
 	mkfifo -m 777 "$SOCKET"
 fi
-while IFS="" read data; do
-	echo "$data"
-done <"$SOCKET"
+
+while true; do
+	cat "$SOCKET" || true
+	sleep 1
+done
