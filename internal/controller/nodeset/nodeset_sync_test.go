@@ -1137,16 +1137,18 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 		ClientMap *clientmap.ClientMap
 	}
 	type args struct {
-		ctx     context.Context
-		nodeset *slinkyv1beta1.NodeSet
-		pod     *corev1.Pod
-		reason  string
+		ctx            context.Context
+		nodeset        *slinkyv1beta1.NodeSet
+		pod            *corev1.Pod
+		reason         string
+		overrideReason bool
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name           string
+		fields         fields
+		args           args
+		wantNodeReason string
+		wantErr        bool
 	}{
 		{
 			name: "success",
@@ -1171,8 +1173,76 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				ctx:     context.TODO(),
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
+				reason:  "test",
 			},
-			wantErr: false,
+			wantNodeReason: slurmcontrol.FormatNodeReason("test"),
+			wantErr:        false,
+		},
+		{
+			name: "do not override reason",
+			fields: fields{
+				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{
+						Items: []slurmtypes.V0044Node{
+							{
+								V0044Node: slurmapi.V0044Node{
+									Name: new(nodesetutils.GetNodeName(pod)),
+									State: new([]slurmapi.V0044NodeState{
+										slurmapi.V0044NodeStateIDLE,
+										slurmapi.V0044NodeStateDRAIN,
+									}),
+									Reason: new("preserve me"),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:            context.TODO(),
+				nodeset:        nodeset.DeepCopy(),
+				pod:            pod.DeepCopy(),
+				reason:         "test",
+				overrideReason: false,
+			},
+			wantNodeReason: "preserve me",
+			wantErr:        false,
+		},
+		{
+			name: "override reason",
+			fields: fields{
+				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{
+						Items: []slurmtypes.V0044Node{
+							{
+								V0044Node: slurmapi.V0044Node{
+									Name: new(nodesetutils.GetNodeName(pod)),
+									State: new([]slurmapi.V0044NodeState{
+										slurmapi.V0044NodeStateIDLE,
+										slurmapi.V0044NodeStateDRAIN,
+									}),
+									Reason: new("override me"),
+								},
+							},
+						},
+					}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:            context.TODO(),
+				nodeset:        nodeset.DeepCopy(),
+				pod:            pod.DeepCopy(),
+				reason:         "test",
+				overrideReason: true,
+			},
+			wantNodeReason: slurmcontrol.FormatNodeReason("test"),
+			wantErr:        false,
 		},
 		{
 			name: "success with drain state annotations",
@@ -1198,8 +1268,10 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				ctx:     context.TODO(),
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
+				reason:  "test",
 			},
-			wantErr: false,
+			wantNodeReason: "test reason",
+			wantErr:        false,
 		},
 		{
 			name: "kubernetes update failure",
@@ -1234,6 +1306,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				ctx:     context.TODO(),
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
+				reason:  "test",
 			},
 			wantErr: true,
 		},
@@ -1264,6 +1337,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				ctx:     context.TODO(),
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
+				reason:  "test",
 			},
 			wantErr: true,
 		},
@@ -1271,7 +1345,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
+			mapKey := types.NamespacedName{
+				Namespace: nodeset.Namespace,
+				Name:      nodeset.Spec.ControllerRef.Name,
+			}
+			if err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.makePodCordonAndDrain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check Pod Annotations
@@ -1285,24 +1363,25 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 					t.Errorf("IsPodCordon() = %v", ok)
 				}
 			}
-			// Check Slurm Node State
-			gotSlurmNode := &slurmtypes.V0044Node{}
-			mapKey := types.NamespacedName{
-				Namespace: nodeset.Namespace,
-				Name:      nodeset.Spec.ControllerRef.Name,
+			if tt.wantErr {
+				return
 			}
 			sc := r.ClientMap.Get(mapKey)
 			if sc == nil {
 				t.Error("ClientMap.Get() is nil")
 			}
+			gotSlurmNode := &slurmtypes.V0044Node{}
 			if err := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetNodeName(tt.args.pod)), gotSlurmNode); err != nil {
 				if err.Error() != http.StatusText(http.StatusNotFound) {
 					t.Errorf("slurmclient.Get() error = %v", err)
 				}
-			} else if !tt.wantErr {
-				if ok := gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN); !ok {
-					t.Errorf("SlurmNode Has DRAIN = %v", ok)
-				}
+			}
+			if ok := gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN); !ok {
+				t.Errorf("SlurmNode Has DRAIN = %v", ok)
+			}
+			gotNodeReason := ptr.Deref(gotSlurmNode.Reason, "")
+			if gotNodeReason != tt.wantNodeReason {
+				t.Fatalf("MakeNodeDrain() reason = '%s', want = '%s'", gotNodeReason, tt.wantNodeReason)
 			}
 		})
 	}

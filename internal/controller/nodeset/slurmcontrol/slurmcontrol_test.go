@@ -154,7 +154,7 @@ var _ = Describe("SlurmControlInterface", func() {
 			slurmcontrol = NewSlurmControl(controllers)
 
 			By("Draining matching Slurm node")
-			err := slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain")
+			err := slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Check Slurm Node state")
@@ -205,7 +205,7 @@ var _ = Describe("SlurmControlInterface", func() {
 			Expect(checkPodInfo.Equal(wantPodInfo)).To(BeTrue())
 
 			By("Make node drain")
-			err = slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain")
+			err = slurmcontrol.MakeNodeDrain(ctx, nodeset, pod, "drain", false)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Migrate pod to a new Kube node")
@@ -1178,7 +1178,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateDOWN,
 						}),
-						Reason: ptr.To(nodeReasonPrefix + " " + "foo"),
+						Reason: new(FormatNodeReason("foo")),
 					},
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
