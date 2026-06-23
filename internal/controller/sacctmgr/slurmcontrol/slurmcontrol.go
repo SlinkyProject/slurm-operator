@@ -287,9 +287,21 @@ func mapAdminLevel(level slinkyv1beta1.AdminLevel) slurmapi.V0044UserAdministrat
 // applyLimits merges the supported AssociationLimits fields into the assoc
 // without clobbering already-set fields (account/user/partition/parent).
 //
-// The following AssociationLimits fields have no v0044 association schema
-// target and are intentionally not mapped: GrpJobs, GrpSubmitJobs, GrpWall.
-// A non-numeric Fairshare (e.g. the literal "parent") is also skipped.
+// The nested v0044 association schema paths below were established empirically
+// (set each limit via sacctmgr, read it back via the REST API) because the
+// names are non-obvious. The slurmdbd data parser is symmetric, so writing the
+// same path sets the corresponding sacctmgr limit:
+//
+//	MaxJobs        -> max.jobs.active
+//	MaxSubmitJobs  -> max.jobs.total
+//	MaxWallPerJob  -> max.jobs.per.wall_clock   (minutes)
+//	MaxTRESPerJob  -> max.tres.per.job
+//	GrpJobs        -> max.jobs.per.count
+//	GrpSubmitJobs  -> max.jobs.per.submitted
+//	GrpWall        -> max.per.account.wall_clock (minutes)
+//	GrpTRES        -> max.tres.total
+//
+// A non-numeric Fairshare (e.g. the literal "parent") is skipped.
 func applyLimits(assoc *slurmapi.V0044Assoc, l slinkyv1beta1.AssociationLimits) {
 	m := map[string]any{}
 
@@ -310,12 +322,18 @@ func applyLimits(assoc *slurmapi.V0044Assoc, l slinkyv1beta1.AssociationLimits) 
 
 	max := map[string]any{}
 	jobs := map[string]any{}
+	per := map[string]any{} // max.jobs.per
 	if l.MaxJobs != nil {
-		jobs["total"] = noVal(*l.MaxJobs)
+		jobs["active"] = noVal(*l.MaxJobs)
 	}
-	per := map[string]any{}
 	if l.MaxSubmitJobs != nil {
-		per["submitted"] = noVal(*l.MaxSubmitJobs)
+		jobs["total"] = noVal(*l.MaxSubmitJobs)
+	}
+	if l.GrpJobs != nil {
+		per["count"] = noVal(*l.GrpJobs)
+	}
+	if l.GrpSubmitJobs != nil {
+		per["submitted"] = noVal(*l.GrpSubmitJobs)
 	}
 	if l.MaxWallPerJob != nil {
 		per["wall_clock"] = noVal(int32(l.MaxWallPerJob.Minutes()))
@@ -326,9 +344,14 @@ func applyLimits(assoc *slurmapi.V0044Assoc, l slinkyv1beta1.AssociationLimits) 
 	if len(jobs) > 0 {
 		max["jobs"] = jobs
 	}
+	if l.GrpWall != nil {
+		max["per"] = map[string]any{
+			"account": map[string]any{"wall_clock": noVal(int32(l.GrpWall.Minutes()))},
+		}
+	}
 	tres := map[string]any{}
 	if len(l.GrpTRES) > 0 {
-		tres["group"] = map[string]any{"active": tresList(l.GrpTRES)}
+		tres["total"] = tresList(l.GrpTRES)
 	}
 	if len(l.MaxTRESPerJob) > 0 {
 		tres["per"] = map[string]any{"job": tresList(l.MaxTRESPerJob)}

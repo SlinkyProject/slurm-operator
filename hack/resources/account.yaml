@@ -12,11 +12,21 @@ spec:
   organization: acme
   parentAccount: root
   deletionPolicy: Delete
+  # Exercises every AssociationLimits field for end-to-end validation.
   limits:
+    fairshare: "200"
+    priority: 100
     qos:
       - normal
     defaultQos: normal
     grpTRES:
       cpu: "100"
-      gres/gpu: "8"
+      mem: "500"
+    grpJobs: 40
+    grpSubmitJobs: 80
+    grpWall: 48h
     maxJobs: 50
+    maxSubmitJobs: 100
+    maxTRESPerJob:
+      cpu: "16"
+    maxWallPerJob: 4h

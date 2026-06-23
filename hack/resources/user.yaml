@@ -12,12 +12,25 @@ spec:
   defaultAccount: research
   deletionPolicy: Delete
   associations:
+    # Exercises every AssociationLimits field for end-to-end validation.
     - account: research
       limits:
+        fairshare: "100"
+        priority: 50
         qos:
           - normal
         defaultQos: normal
+        grpTRES:
+          cpu: "200"
+          mem: "1000"
+        grpJobs: 30
+        grpSubmitJobs: 60
+        grpWall: 24h
         maxJobs: 10
+        maxSubmitJobs: 20
+        maxTRESPerJob:
+          cpu: "8"
+        maxWallPerJob: 2h
     - account: research
       partition: debug
       limits:
