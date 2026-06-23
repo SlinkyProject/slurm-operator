@@ -172,20 +172,21 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 		node *types.V0044Node
 	}
 	type args struct {
-		ctx     context.Context
-		nodeset *slinkyv1beta1.NodeSet
-		pod     *corev1.Pod
-		reason  string
+		ctx            context.Context
+		nodeset        *slinkyv1beta1.NodeSet
+		pod            *corev1.Pod
+		reason         string
+		overrideReason bool
 	}
 	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantDrain bool
-		wantErr   bool
+		name       string
+		fields     fields
+		args       args
+		wantReason string
+		wantErr    bool
 	}{
 		{
-			name: "smoke",
+			name: "not drained, no reason",
 			fields: fields{
 				node: &types.V0044Node{
 					V0044Node: api.V0044Node{
@@ -202,7 +203,52 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 				pod:     pod,
 				reason:  "test",
 			},
-			wantDrain: true,
+			wantReason: FormatNodeReason("test"),
+		},
+		{
+			name: "already drained, preserve reason",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: new(nodesetutils.GetSlurmNodeName(pod)),
+						State: new([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+						}),
+						Reason: new("already drained"),
+					},
+				},
+			},
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+				reason:  "do not set",
+			},
+			wantReason: "already drained",
+		},
+		{
+			name: "already drained, override reason",
+			fields: fields{
+				node: &types.V0044Node{
+					V0044Node: api.V0044Node{
+						Name: new(nodesetutils.GetSlurmNodeName(pod)),
+						State: new([]api.V0044NodeState{
+							api.V0044NodeStateIDLE,
+							api.V0044NodeStateDRAIN,
+						}),
+						Reason: new("already drained"),
+					},
+				},
+			},
+			args: args{
+				ctx:            ctx,
+				nodeset:        nodeset,
+				pod:            pod,
+				reason:         "override",
+				overrideReason: true,
+			},
+			wantReason: FormatNodeReason("override"),
 		},
 	}
 	for _, tt := range tests {
@@ -210,7 +256,7 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
+			if err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason); (err != nil) != tt.wantErr {
 				t.Errorf("MakeNodeDrain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			checkNode := &types.V0044Node{}
@@ -220,8 +266,12 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 				}
 			}
 			isDrain := checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
-			if isDrain != tt.wantDrain {
-				t.Fatalf("MakeNodeDrain() isDrain = %v", isDrain)
+			if !isDrain {
+				t.Fatalf("MakeNodeDrain() failed to DRAIN the node")
+			}
+			nodeReason := ptr.Deref(checkNode.Reason, "")
+			if nodeReason != tt.wantReason {
+				t.Fatalf("MakeNodeDrain() reason = '%s', want = '%s'", nodeReason, tt.wantReason)
 			}
 		})
 	}
@@ -1187,7 +1237,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateDOWN,
 						}),
-						Reason: ptr.To(nodeReasonPrefix + " " + "foo"),
+						Reason: new(FormatNodeReason("foo")),
 					},
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
