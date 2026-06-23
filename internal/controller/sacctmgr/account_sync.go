@@ -6,6 +6,7 @@ package sacctmgr
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -27,7 +28,20 @@ func (r *AccountReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	if !account.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(account, AccountFinalizer) {
 			if err := r.control.DeleteAccount(ctx, account); err != nil {
+				if r.eventRecorder != nil {
+					r.eventRecorder.Eventf(account, nil, corev1.EventTypeWarning, "DeleteFailed", "Delete",
+						"failed to delete Account %q from Slurm: %v", account.Spec.AccountName, err)
+				}
 				return err
+			}
+			if r.eventRecorder != nil {
+				if account.Spec.DeletionPolicy == slinkyv1beta1.DeletionPolicyOrphan {
+					r.eventRecorder.Eventf(account, nil, corev1.EventTypeNormal, "Orphaned", "Delete",
+						"Account %q orphaned in Slurm (deletionPolicy=Orphan)", account.Spec.AccountName)
+				} else {
+					r.eventRecorder.Eventf(account, nil, corev1.EventTypeNormal, "Deleted", "Delete",
+						"Account %q deleted from Slurm", account.Spec.AccountName)
+				}
 			}
 			controllerutil.RemoveFinalizer(account, AccountFinalizer)
 			return r.Update(ctx, account)

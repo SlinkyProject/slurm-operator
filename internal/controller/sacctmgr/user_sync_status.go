@@ -68,7 +68,12 @@ func (r *UserReconciler) syncStatusFailed(ctx context.Context, user *slinkyv1bet
 // persistStatus sets the condition and persists the User status using the same
 // conflict-retry Get -> Status().Update pattern as the Account controller.
 func (r *UserReconciler) persistStatus(ctx context.Context, user *slinkyv1beta1.User, cond metav1.Condition) error {
+	prev := meta.FindStatusCondition(user.Status.Conditions, cond.Type)
+	transitioned := prev == nil || prev.Status != cond.Status || prev.Reason != cond.Reason
 	meta.SetStatusCondition(&user.Status.Conditions, cond)
+	if transitioned && r.eventRecorder != nil {
+		r.eventRecorder.Eventf(user, nil, conditionEventType(cond), cond.Reason, "Sync", cond.Message)
+	}
 
 	key := types.NamespacedName{Namespace: user.Namespace, Name: user.Name}
 	conds := user.Status.Conditions

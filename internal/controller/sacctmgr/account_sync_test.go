@@ -5,6 +5,7 @@ package sacctmgr
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -60,13 +62,23 @@ func TestAccountSync_CreatesAndSetsReady(t *testing.T) {
 		Build()
 
 	fc := &fakeControl{}
-	r := &AccountReconciler{Client: c, Scheme: scheme, control: fc}
+	recorder := events.NewFakeRecorder(10)
+	r := &AccountReconciler{Client: c, Scheme: scheme, control: fc, eventRecorder: recorder}
 
 	err := r.Sync(ctx, reconcile.Request{
 		NamespacedName: types.NamespacedName{Namespace: "default", Name: "research"},
 	})
 	if err != nil {
 		t.Fatalf("Sync returned error: %v", err)
+	}
+
+	select {
+	case ev := <-recorder.Events:
+		if !strings.Contains(ev, "Synced") {
+			t.Errorf("expected a Synced event, got %q", ev)
+		}
+	default:
+		t.Error("expected an event to be emitted on first sync")
 	}
 
 	got := &slinkyv1beta1.Account{}

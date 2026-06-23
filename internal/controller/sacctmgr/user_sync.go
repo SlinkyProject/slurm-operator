@@ -6,6 +6,7 @@ package sacctmgr
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -28,7 +29,20 @@ func (r *UserReconciler) Sync(ctx context.Context, req reconcile.Request) (recon
 	if !user.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(user, UserFinalizer) {
 			if err := r.control.DeleteUser(ctx, user); err != nil {
+				if r.eventRecorder != nil {
+					r.eventRecorder.Eventf(user, nil, corev1.EventTypeWarning, "DeleteFailed", "Delete",
+						"failed to delete User %q from Slurm: %v", user.Spec.UserName, err)
+				}
 				return reconcile.Result{}, err
+			}
+			if r.eventRecorder != nil {
+				if user.Spec.DeletionPolicy == slinkyv1beta1.DeletionPolicyOrphan {
+					r.eventRecorder.Eventf(user, nil, corev1.EventTypeNormal, "Orphaned", "Delete",
+						"User %q orphaned in Slurm (deletionPolicy=Orphan)", user.Spec.UserName)
+				} else {
+					r.eventRecorder.Eventf(user, nil, corev1.EventTypeNormal, "Deleted", "Delete",
+						"User %q deleted from Slurm", user.Spec.UserName)
+				}
 			}
 			controllerutil.RemoveFinalizer(user, UserFinalizer)
 			return reconcile.Result{}, r.Update(ctx, user)

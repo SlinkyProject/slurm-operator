@@ -36,7 +36,12 @@ func (r *AccountReconciler) syncStatus(ctx context.Context, account *slinkyv1bet
 		cond.Message = "Account synced to Slurm"
 	}
 
+	prev := meta.FindStatusCondition(account.Status.Conditions, cond.Type)
+	transitioned := prev == nil || prev.Status != cond.Status || prev.Reason != cond.Reason
 	meta.SetStatusCondition(&account.Status.Conditions, cond)
+	if transitioned && r.eventRecorder != nil {
+		r.eventRecorder.Eventf(account, nil, conditionEventType(cond), cond.Reason, "Sync", cond.Message)
+	}
 
 	key := types.NamespacedName{Namespace: account.Namespace, Name: account.Name}
 	conds := account.Status.Conditions

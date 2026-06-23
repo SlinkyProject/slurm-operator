@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,8 +28,9 @@ const (
 // UserReconciler reconciles a User object
 type UserReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	control slurmcontrol.AccountingControlInterface
+	Scheme        *runtime.Scheme
+	control       slurmcontrol.AccountingControlInterface
+	eventRecorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=users,verbs=get;list;watch;create;update;patch;delete
@@ -47,6 +49,7 @@ func (r *UserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *UserReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.eventRecorder = mgr.GetEventRecorder(UserControllerName)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&slinkyv1beta1.User{}).
 		Complete(r)
@@ -54,8 +57,9 @@ func (r *UserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func NewUserReconciler(c client.Client, cm *clientmap.ClientMap) *UserReconciler {
 	return &UserReconciler{
-		Client:  c,
-		Scheme:  c.Scheme(),
-		control: slurmcontrol.NewAccountingControl(cm),
+		Client:        c,
+		Scheme:        c.Scheme(),
+		control:       slurmcontrol.NewAccountingControl(cm),
+		eventRecorder: events.NewFakeRecorder(100),
 	}
 }
