@@ -3,6 +3,8 @@
 
 # Custom
 *.gen.* linguist-generated merge=ours
+NOTICE linguist-generated merge=ours
+THIRD_PARTY_LICENSES linguist-generated merge=ours
 
 # Golang
 go.mod linguist-generated merge=union
