@@ -1,0 +1,23 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- range $name, $account := $.Values.accounts | default dict }}
+{{- $spec := deepCopy ($account | default dict) -}}
+{{- if not (hasKey $spec "controllerRef") -}}
+{{- $_ := set $spec "controllerRef" (dict "name" (include "slurm.fullname" $)) -}}
+{{- end }}{{- /* if not controllerRef */}}
+{{- $metadata := dict "labels" (fromYaml (include "slurm.labels" $)) }}
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: Account
+metadata:
+  name: {{ $name }}
+  namespace: {{ include "slurm.namespace" $ }}
+  {{- with $metadata }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}{{- /* with $metadata */}}
+spec:
+  {{- toYaml $spec | nindent 2 }}
+{{- end }}{{- /* range .Values.accounts */}}

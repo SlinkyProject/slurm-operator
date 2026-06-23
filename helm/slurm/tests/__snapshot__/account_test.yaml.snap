@@ -1,0 +1,22 @@
+manifest should match snapshot:
+  1: |
+    apiVersion: slinky.slurm.net/v1beta1
+    kind: Account
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: slurm
+        app.kubernetes.io/version: 1.2.3
+        helm.sh/chart: slurm-1.2.3
+      name: research
+      namespace: test-namespace
+    spec:
+      controllerRef:
+        name: test-release-slurm
+      description: Research team account
+      limits:
+        fairshare: "100"
+        qos:
+          - normal
+      organization: root
+      parentAccount: root

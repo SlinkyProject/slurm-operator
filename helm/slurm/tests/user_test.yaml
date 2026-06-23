@@ -1,0 +1,154 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test user
+templates:
+  - cluster/user-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should render no documents when users is empty
+    set:
+      users: {}
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: manifest should match snapshot
+    set:
+      users:
+        alice:
+          adminLevel: Operator
+          defaultAccount: research
+          associations:
+            - account: research
+            - account: research
+              partition: debug
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should set name from the map key
+    set:
+      users:
+        alice:
+          associations:
+            - account: research
+    asserts:
+      - equal:
+          path: metadata.name
+          value: alice
+      - equal:
+          path: kind
+          value: User
+      - equal:
+          path: apiVersion
+          value: slinky.slurm.net/v1beta1
+
+  - it: should set the namespace
+    set:
+      users:
+        alice:
+          associations:
+            - account: research
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+
+  - it: should set chart labels
+    set:
+      users:
+        alice:
+          associations:
+            - account: research
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should default controllerRef to the chart controller
+    set:
+      users:
+        alice:
+          associations:
+            - account: research
+    asserts:
+      - equal:
+          path: spec.controllerRef.name
+          value: test-release-slurm
+
+  - it: should honor an explicit controllerRef
+    set:
+      users:
+        alice:
+          controllerRef:
+            name: custom-controller
+          associations:
+            - account: research
+    asserts:
+      - equal:
+          path: spec.controllerRef.name
+          value: custom-controller
+
+  - it: should pass through spec fields
+    set:
+      users:
+        alice:
+          adminLevel: Operator
+          defaultAccount: research
+          deletionPolicy: Orphan
+          associations:
+            - account: research
+            - account: research
+              partition: debug
+    asserts:
+      - equal:
+          path: spec.adminLevel
+          value: Operator
+      - equal:
+          path: spec.defaultAccount
+          value: research
+      - equal:
+          path: spec.deletionPolicy
+          value: Orphan
+      - equal:
+          path: spec.associations[0].account
+          value: research
+      - equal:
+          path: spec.associations[1].partition
+          value: debug
+
+  - it: should render one document per user
+    set:
+      users:
+        alice:
+          associations:
+            - account: research
+        bob:
+          associations:
+            - account: research
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should render the user selected by name
+    set:
+      users:
+        alice:
+          defaultAccount: research
+          associations:
+            - account: research
+        bob:
+          defaultAccount: engineering
+          associations:
+            - account: engineering
+    documentSelector:
+      path: metadata.name
+      value: bob
+    asserts:
+      - equal:
+          path: spec.defaultAccount
+          value: engineering

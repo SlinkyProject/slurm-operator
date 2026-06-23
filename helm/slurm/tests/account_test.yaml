@@ -1,0 +1,141 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test account
+templates:
+  - cluster/account-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should render no documents when accounts is empty
+    set:
+      accounts: {}
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: manifest should match snapshot
+    set:
+      accounts:
+        research:
+          description: Research team account
+          organization: root
+          parentAccount: root
+          limits:
+            fairshare: "100"
+            qos:
+              - normal
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should set name from the map key
+    set:
+      accounts:
+        research: {}
+    asserts:
+      - equal:
+          path: metadata.name
+          value: research
+      - equal:
+          path: kind
+          value: Account
+      - equal:
+          path: apiVersion
+          value: slinky.slurm.net/v1beta1
+
+  - it: should set the namespace
+    set:
+      accounts:
+        research: {}
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: test-namespace
+
+  - it: should set chart labels
+    set:
+      accounts:
+        research: {}
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should default controllerRef to the chart controller
+    set:
+      accounts:
+        research: {}
+    asserts:
+      - equal:
+          path: spec.controllerRef.name
+          value: test-release-slurm
+
+  - it: should honor an explicit controllerRef
+    set:
+      accounts:
+        research:
+          controllerRef:
+            name: custom-controller
+    asserts:
+      - equal:
+          path: spec.controllerRef.name
+          value: custom-controller
+
+  - it: should pass through spec fields
+    set:
+      accounts:
+        research:
+          description: Research team account
+          organization: root
+          parentAccount: root
+          deletionPolicy: Orphan
+          limits:
+            fairshare: "100"
+            qos:
+              - normal
+    asserts:
+      - equal:
+          path: spec.description
+          value: Research team account
+      - equal:
+          path: spec.organization
+          value: root
+      - equal:
+          path: spec.parentAccount
+          value: root
+      - equal:
+          path: spec.deletionPolicy
+          value: Orphan
+      - equal:
+          path: spec.limits.fairshare
+          value: "100"
+      - contains:
+          path: spec.limits.qos
+          content: normal
+
+  - it: should render one document per account
+    set:
+      accounts:
+        research: {}
+        engineering: {}
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should render the account selected by name
+    set:
+      accounts:
+        research:
+          description: research desc
+        engineering:
+          description: engineering desc
+    documentSelector:
+      path: metadata.name
+      value: engineering
+    asserts:
+      - equal:
+          path: spec.description
+          value: engineering desc

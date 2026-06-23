@@ -528,6 +528,35 @@ accounting:
     # port: 6819
     # nodePort: 30819
 
+# -- (map[string]object) Slurm accounting Account resources to manage declaratively.
+# The map key is the Account name (metadata.name); the map value is the Account spec.
+# Requires the accounting subsystem (slurmdbd) to be reachable.
+# Ref: https://slurm.schedmd.com/sacctmgr.html
+accounts: {}
+  # research:
+  #   # controllerRef defaults to the chart's controller when omitted.
+  #   # accountName defaults to the map key, description to accountName,
+  #   # organization and parentAccount to "root", deletionPolicy to Delete.
+  #   description: Research team account
+  #   organization: root
+  #   parentAccount: root
+  #   limits:
+  #     fairshare: "100"
+  #     qos:
+  #       - normal
+
+# -- (map[string]object) Slurm accounting User resources to manage declaratively.
+# The map key is the User name (metadata.name); the map value is the User spec.
+# Requires the accounting subsystem (slurmdbd) to be reachable.
+# Ref: https://slurm.schedmd.com/sacctmgr.html
+users: {}
+  # alice:
+  #   # controllerRef defaults to the chart's controller when omitted.
+  #   # userName defaults to the map key, adminLevel to None,
+  #   # defaultAccount to the first association's account, deletionPolicy to Delete.
+  #   associations:
+  #     - account: research
+
 # Cluster SSSD configuration.
 sssd:
   # -- (secretKeyRef) The `sssd.conf` by ref.
