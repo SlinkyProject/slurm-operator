@@ -15,7 +15,6 @@ spec:
   limits:
     qos:
       - normal
-      - high
     defaultQos: normal
     grpTRES:
       cpu: "100"

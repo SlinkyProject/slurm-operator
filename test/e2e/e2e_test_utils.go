@@ -15,7 +15,10 @@ import (
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -36,6 +39,7 @@ func getFeaturesFromConfig(install bool, test bool, config test.SlurmInstallatio
 
 		if config.Accounting {
 			steps = append(steps, testSlurmAccounting())
+			steps = append(steps, testSlurmAccountUserCRDs())
 		}
 	}
 
@@ -352,6 +356,187 @@ func testSlurmAccounting() types.Feature {
 
 			return ctx
 		}).Feature()
+}
+
+// testSlurmAccountUserCRDs exercises the Account and User CRDs end-to-end:
+// it creates the CRs through the operator, waits for them to become Ready,
+// verifies the entities land in slurmdbd, and confirms cleanup on deletion.
+func testSlurmAccountUserCRDs() types.Feature {
+	accountKey := crclient.ObjectKey{Namespace: test.SlurmNamespace, Name: "research"}
+	userKey := crclient.ObjectKey{Namespace: test.SlurmNamespace, Name: "alice"}
+
+	return features.New("Assess the Account and User CRDs").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
+		Teardown(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			if err != nil {
+				return ctx
+			}
+			// Best-effort cleanup; ignore errors (resources may already be gone).
+			_ = crClient.Delete(ctx, &slinkyv1beta1.User{ObjectMeta: metav1.ObjectMeta{Name: userKey.Name, Namespace: userKey.Namespace}})
+			_ = crClient.Delete(ctx, &slinkyv1beta1.Account{ObjectMeta: metav1.ObjectMeta{Name: accountKey.Name, Namespace: accountKey.Namespace}})
+			return ctx
+		}).
+		Assess("Account CR becomes Ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			if err != nil {
+				t.Fatalf("Failed to get new controller-runtime client: %v", err)
+			}
+
+			account := &slinkyv1beta1.Account{
+				ObjectMeta: metav1.ObjectMeta{Name: accountKey.Name, Namespace: accountKey.Namespace},
+				Spec: slinkyv1beta1.AccountSpec{
+					ControllerRef:  corev1.LocalObjectReference{Name: "slurm"},
+					AccountName:    "research",
+					Description:    "E2E research account",
+					Organization:   "acme",
+					ParentAccount:  ptr.To("root"),
+					DeletionPolicy: slinkyv1beta1.DeletionPolicyDelete,
+					Limits: slinkyv1beta1.AssociationLimits{
+						MaxJobs: ptr.To(int32(50)),
+					},
+				},
+			}
+			if err := crClient.Create(ctx, account); err != nil {
+				t.Fatalf("failed to Create() Account: %v", err)
+			}
+
+			waitForReadyCondition(ctx, t, crClient, account, accountKey, func() []metav1.Condition {
+				return account.Status.Conditions
+			})
+
+			return ctx
+		}).
+		Assess("Account exists in slurmdbd", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=research", "-n", "format=account"}
+			wants := "research"
+
+			var cleanupCommand string
+			var cleanupArgs []string
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanupCommand, cleanupArgs, 16, time.Duration(5*time.Second))
+
+			return ctx
+		}).
+		Assess("User CR becomes Ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			if err != nil {
+				t.Fatalf("Failed to get new controller-runtime client: %v", err)
+			}
+
+			user := &slinkyv1beta1.User{
+				ObjectMeta: metav1.ObjectMeta{Name: userKey.Name, Namespace: userKey.Namespace},
+				Spec: slinkyv1beta1.UserSpec{
+					ControllerRef:  corev1.LocalObjectReference{Name: "slurm"},
+					UserName:       "alice",
+					AdminLevel:     slinkyv1beta1.AdminLevelNone,
+					DefaultAccount: "research",
+					DeletionPolicy: slinkyv1beta1.DeletionPolicyDelete,
+					Associations: []slinkyv1beta1.UserAssociation{
+						{Account: "research"},
+					},
+				},
+			}
+			if err := crClient.Create(ctx, user); err != nil {
+				t.Fatalf("failed to Create() User: %v", err)
+			}
+
+			waitForReadyCondition(ctx, t, crClient, user, userKey, func() []metav1.Condition {
+				return user.Status.Conditions
+			})
+
+			return ctx
+		}).
+		Assess("User and association exist in slurmdbd", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			command := "kubectl"
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=alice", "-n", "format=user"}
+			wants := "alice"
+
+			var cleanupCommand string
+			var cleanupArgs []string
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanupCommand, cleanupArgs, 16, time.Duration(5*time.Second))
+
+			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "assoc", "where", "user=alice", "account=research", "-n", "format=account"}
+			test.RetryCommand(ctx, t, command, args, "research", cleanupCommand, cleanupArgs, 16, time.Duration(5*time.Second))
+
+			return ctx
+		}).
+		Assess("Deleting CRs removes entities from slurmdbd", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			if err != nil {
+				t.Fatalf("Failed to get new controller-runtime client: %v", err)
+			}
+
+			user := &slinkyv1beta1.User{ObjectMeta: metav1.ObjectMeta{Name: userKey.Name, Namespace: userKey.Namespace}}
+			if err := crClient.Delete(ctx, user); err != nil {
+				t.Fatalf("failed to Delete() User: %v", err)
+			}
+			waitForObjectDeleted(ctx, t, crClient, &slinkyv1beta1.User{}, userKey)
+
+			account := &slinkyv1beta1.Account{ObjectMeta: metav1.ObjectMeta{Name: accountKey.Name, Namespace: accountKey.Namespace}}
+			if err := crClient.Delete(ctx, account); err != nil {
+				t.Fatalf("failed to Delete() Account: %v", err)
+			}
+			waitForObjectDeleted(ctx, t, crClient, &slinkyv1beta1.Account{}, accountKey)
+
+			// Confirm the account is gone from slurmdbd.
+			for retry := range 16 {
+				cmd := exec.Command("kubectl", "exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--",
+					"sacctmgr", "show", "account", "name=research", "-n", "format=account")
+				output, err := cmd.Output()
+				if err != nil && retry == 15 {
+					t.Fatalf("sacctmgr show account returned error: %v", err)
+				}
+				if strings.TrimSpace(string(output)) == "" {
+					return ctx
+				}
+				if retry == 15 {
+					t.Fatalf("Account research was not deleted from slurmdbd, got: %q", strings.TrimSpace(string(output)))
+				}
+				time.Sleep(5 * time.Second)
+			}
+
+			return ctx
+		}).Feature()
+}
+
+// waitForReadyCondition polls the given object until its Ready condition is
+// True, re-fetching it on each attempt.
+func waitForReadyCondition(ctx context.Context, t *testing.T, crClient crclient.Client, obj crclient.Object, key crclient.ObjectKey, conditions func() []metav1.Condition) {
+	for retry := range 24 {
+		if err := crClient.Get(ctx, key, obj); err != nil {
+			t.Fatalf("failed to Get() %T %s: %v", obj, key.Name, err)
+		}
+		if meta.IsStatusConditionTrue(conditions(), "Ready") {
+			return
+		}
+		if retry == 23 {
+			t.Fatalf("timed out waiting for %T %s Ready=True; conditions: %+v", obj, key.Name, conditions())
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+// waitForObjectDeleted polls until the given object no longer exists, allowing
+// finalizer-driven Slurm-side cleanup to complete.
+func waitForObjectDeleted(ctx context.Context, t *testing.T, crClient crclient.Client, obj crclient.Object, key crclient.ObjectKey) {
+	for retry := range 24 {
+		err := crClient.Get(ctx, key, obj)
+		if crclient.IgnoreNotFound(err) != nil {
+			t.Fatalf("failed to Get() %T %s: %v", obj, key.Name, err)
+		}
+		if err != nil {
+			return // NotFound: object deleted
+		}
+		if retry == 23 {
+			t.Fatalf("timed out waiting for %T %s to be deleted", obj, key.Name)
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func GetControllerRuntimeClient(config *envconf.Config) (crclient.Client, error) {
