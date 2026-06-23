@@ -78,7 +78,8 @@ spec:
                 - Orphan
                 type: string
               description:
-                description: description of the account.
+                description: description of the account; defaults to accountName if
+                  empty.
                 type: string
               limits:
                 description: limits applied to this account's association.
@@ -128,7 +129,8 @@ spec:
                     type: array
                 type: object
               organization:
-                description: organization to which the account belongs.
+                description: organization to which the account belongs; defaults to
+                  "root" if empty.
                 type: string
               parentAccount:
                 description: parentAccount for hierarchy; defaults to "root".

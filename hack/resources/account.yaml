@@ -7,11 +7,11 @@ metadata:
 spec:
   controllerRef:
     name: slurm
-  accountName: research
-  description: Research team account
-  organization: acme
-  parentAccount: root
-  deletionPolicy: Delete
+  # accountName defaults to metadata.name (research) when omitted.
+  # description defaults to accountName when omitted.
+  # organization defaults to "root" when omitted.
+  # parentAccount defaults to "root" when omitted.
+  # deletionPolicy defaults to Delete when omitted.
   # Exercises every AssociationLimits field for end-to-end validation.
   limits:
     fairshare: "200"

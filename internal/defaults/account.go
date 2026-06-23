@@ -9,7 +9,10 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
-const DefaultParentAccount = "root"
+const (
+	DefaultParentAccount = "root"
+	DefaultOrganization  = "root"
+)
 
 // SetAccountDefaults applies defaults to an Account in place.
 func SetAccountDefaults(a *slinkyv1beta1.Account) {
@@ -17,12 +20,12 @@ func SetAccountDefaults(a *slinkyv1beta1.Account) {
 		a.Spec.AccountName = a.Name
 	}
 	// slurmdbd rejects accounts with an empty description or organization, so
-	// mirror sacctmgr and default both to the account name when unset.
+	// default the description to the account name and the organization to root.
 	if a.Spec.Description == "" {
 		a.Spec.Description = a.Spec.AccountName
 	}
 	if a.Spec.Organization == "" {
-		a.Spec.Organization = a.Spec.AccountName
+		a.Spec.Organization = DefaultOrganization
 	}
 	if a.Spec.ParentAccount == nil {
 		a.Spec.ParentAccount = ptr.To(DefaultParentAccount)

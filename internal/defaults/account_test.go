@@ -16,8 +16,8 @@ func TestSetAccountDefaults(t *testing.T) {
 	if a.Spec.Description != "research" {
 		t.Errorf("Description = %q, want research", a.Spec.Description)
 	}
-	if a.Spec.Organization != "research" {
-		t.Errorf("Organization = %q, want research", a.Spec.Organization)
+	if a.Spec.Organization != "root" {
+		t.Errorf("Organization = %q, want root", a.Spec.Organization)
 	}
 	if a.Spec.ParentAccount == nil || *a.Spec.ParentAccount != "root" {
 		t.Errorf("ParentAccount not defaulted to root")

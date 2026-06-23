@@ -13,6 +13,9 @@ func SetUserDefaults(u *slinkyv1beta1.User) {
 	if u.Spec.AdminLevel == "" {
 		u.Spec.AdminLevel = slinkyv1beta1.AdminLevelNone
 	}
+	if u.Spec.DefaultAccount == "" && len(u.Spec.Associations) > 0 {
+		u.Spec.DefaultAccount = u.Spec.Associations[0].Account
+	}
 	if u.Spec.DeletionPolicy == "" {
 		u.Spec.DeletionPolicy = slinkyv1beta1.DeletionPolicyDelete
 	}

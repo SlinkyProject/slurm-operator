@@ -7,10 +7,10 @@ metadata:
 spec:
   controllerRef:
     name: slurm
-  userName: alice
-  adminLevel: None
-  defaultAccount: research
-  deletionPolicy: Delete
+  # userName defaults to metadata.name (alice) when omitted.
+  # adminLevel defaults to None when omitted.
+  # defaultAccount defaults to the first association's account (research) when omitted.
+  # deletionPolicy defaults to Delete when omitted.
   associations:
     # Exercises every AssociationLimits field for end-to-end validation.
     - account: research

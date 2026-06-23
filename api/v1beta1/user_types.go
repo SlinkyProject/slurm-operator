@@ -28,7 +28,7 @@ const (
 )
 
 // UserSpec defines the desired state of User.
-// +kubebuilder:validation:XValidation:rule="self.associations.exists(a, a.account == self.defaultAccount)", message="defaultAccount must match one of the associations"
+// +kubebuilder:validation:XValidation:rule="self.defaultAccount == '' || self.associations.exists(a, a.account == self.defaultAccount)", message="defaultAccount must match one of the associations"
 type UserSpec struct {
 	// controllerRef references the target Controller CR.
 	// +required
@@ -44,9 +44,10 @@ type UserSpec struct {
 	AdminLevel AdminLevel `json:"adminLevel,omitempty"`
 
 	// defaultAccount must match one of the associations' account.
-	// +required
+	// Defaults to the first association's account if empty.
+	// +optional
 	// +kubebuilder:validation:MaxLength=64
-	DefaultAccount string `json:"defaultAccount"`
+	DefaultAccount string `json:"defaultAccount,omitempty"`
 
 	// associations are the account memberships for this user.
 	// +required

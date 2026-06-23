@@ -144,7 +144,9 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               defaultAccount:
-                description: defaultAccount must match one of the associations' account.
+                description: |-
+                  defaultAccount must match one of the associations' account.
+                  Defaults to the first association's account if empty.
                 maxLength: 64
                 type: string
               deletionPolicy:
@@ -160,11 +162,11 @@ spec:
             required:
             - associations
             - controllerRef
-            - defaultAccount
             type: object
             x-kubernetes-validations:
             - message: defaultAccount must match one of the associations
-              rule: self.associations.exists(a, a.account == self.defaultAccount)
+              rule: self.defaultAccount == '' || self.associations.exists(a, a.account
+                == self.defaultAccount)
           status:
             description: UserStatus defines the observed state of User.
             properties:

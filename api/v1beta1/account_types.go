@@ -36,11 +36,11 @@ type AccountSpec struct {
 	// +optional
 	AccountName string `json:"accountName,omitempty"`
 
-	// description of the account.
+	// description of the account; defaults to accountName if empty.
 	// +optional
 	Description string `json:"description,omitempty"`
 
-	// organization to which the account belongs.
+	// organization to which the account belongs; defaults to "root" if empty.
 	// +optional
 	Organization string `json:"organization,omitempty"`
 
