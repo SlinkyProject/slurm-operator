@@ -118,9 +118,12 @@ func TestBuildAccountAssoc(t *testing.T) {
 	a := &slinkyv1beta1.Account{}
 	a.Spec.AccountName = "research"
 	a.Spec.ParentAccount = ptr.To("root")
-	got := buildAccountAssoc(a)
+	got := buildAccountAssoc(a, "slurm_slurm")
 	if got.Account == nil || *got.Account != "research" {
 		t.Fatalf("account: %+v", got.Account)
+	}
+	if got.Cluster == nil || *got.Cluster != "slurm_slurm" {
+		t.Fatalf("cluster: %+v", got.Cluster)
 	}
 	if got.User != "" {
 		t.Fatalf("expected empty user for account assoc, got: %q", got.User)
@@ -153,9 +156,12 @@ func TestBuildUserAssoc(t *testing.T) {
 	got := buildUserAssoc(u, slinkyv1beta1.UserAssociation{
 		Account:   "research",
 		Partition: ptr.To("debug"),
-	})
+	}, "slurm_slurm")
 	if got.Account == nil || *got.Account != "research" {
 		t.Fatalf("account: %+v", got.Account)
+	}
+	if got.Cluster == nil || *got.Cluster != "slurm_slurm" {
+		t.Fatalf("cluster: %+v", got.Cluster)
 	}
 	if got.User != "alice" {
 		t.Fatalf("user: %q", got.User)

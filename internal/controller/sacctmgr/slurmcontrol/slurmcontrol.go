@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	ktypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -42,6 +44,13 @@ type AccountingControlInterface interface {
 // realAccountingControl is the default implementation of AccountingControlInterface.
 type realAccountingControl struct {
 	clientMap *clientmap.ClientMap
+
+	// clusterNames caches the discovered Slurm cluster name per controllerRef.
+	// slurmdbd associations are scoped to a cluster; an association POST that
+	// omits the cluster is silently dropped, so the name must be set on every
+	// association we create.
+	mu           sync.Mutex
+	clusterNames map[string]string
 }
 
 var _ AccountingControlInterface = &realAccountingControl{}
@@ -49,7 +58,8 @@ var _ AccountingControlInterface = &realAccountingControl{}
 // NewAccountingControl returns an AccountingControlInterface backed by the given ClientMap.
 func NewAccountingControl(clientMap *clientmap.ClientMap) AccountingControlInterface {
 	return &realAccountingControl{
-		clientMap: clientMap,
+		clientMap:    clientMap,
+		clusterNames: make(map[string]string),
 	}
 }
 
@@ -59,6 +69,41 @@ func (r *realAccountingControl) lookupClient(namespace, controllerName string) s
 		Name:      controllerName,
 	}
 	return r.clientMap.Get(key)
+}
+
+// clusterName discovers (and caches) the Slurm cluster name for the given
+// controllerRef. The name is read from any existing association (the root
+// association always exists once slurmdbd is up), since slurmdbd does not
+// expose a dedicated cluster lookup through this client.
+func (r *realAccountingControl) clusterName(ctx context.Context, namespace, controllerName string, c slurmclient.Client) (string, error) {
+	cacheKey := namespace + "/" + controllerName
+
+	r.mu.Lock()
+	if name, ok := r.clusterNames[cacheKey]; ok {
+		r.mu.Unlock()
+		return name, nil
+	}
+	r.mu.Unlock()
+
+	list := &slurmtypes.V0044AssocList{}
+	if err := c.List(ctx, list); err != nil {
+		return "", err
+	}
+	name := ""
+	for i := range list.Items {
+		if cn := ptr.Deref(list.Items[i].Cluster, ""); cn != "" {
+			name = cn
+			break
+		}
+	}
+	if name == "" {
+		return "", fmt.Errorf("unable to determine slurm cluster name for controllerRef %q", controllerName)
+	}
+
+	r.mu.Lock()
+	r.clusterNames[cacheKey] = name
+	r.mu.Unlock()
+	return name, nil
 }
 
 // GetAccount implements AccountingControlInterface.
@@ -84,7 +129,11 @@ func (r *realAccountingControl) ApplyAccount(ctx context.Context, account *slink
 	if err := c.Create(ctx, &slurmtypes.V0044Account{}, buildSlurmAccount(account)); err != nil {
 		return err
 	}
-	return c.Create(ctx, &slurmtypes.V0044Assoc{}, buildAccountAssoc(account))
+	cluster, err := r.clusterName(ctx, account.Namespace, account.Spec.ControllerRef.Name, c)
+	if err != nil {
+		return err
+	}
+	return c.Create(ctx, &slurmtypes.V0044Assoc{}, buildAccountAssoc(account, cluster))
 }
 
 // DeleteAccount implements AccountingControlInterface, honoring the deletion policy.
@@ -144,8 +193,12 @@ func (r *realAccountingControl) ApplyUser(ctx context.Context, user *slinkyv1bet
 	if err := c.Create(ctx, &slurmtypes.V0044User{}, buildSlurmUser(user)); err != nil {
 		return err
 	}
+	cluster, err := r.clusterName(ctx, user.Namespace, user.Spec.ControllerRef.Name, c)
+	if err != nil {
+		return err
+	}
 	for _, ua := range user.Spec.Associations {
-		if err := c.Create(ctx, &slurmtypes.V0044Assoc{}, buildUserAssoc(user, ua)); err != nil {
+		if err := c.Create(ctx, &slurmtypes.V0044Assoc{}, buildUserAssoc(user, ua, cluster)); err != nil {
 			return err
 		}
 	}
@@ -179,9 +232,11 @@ func buildSlurmAccount(account *slinkyv1beta1.Account) slurmapi.V0044Account {
 }
 
 // buildAccountAssoc maps an Account CR to its account-level association
-// (empty user), carrying the parent account and limits.
-func buildAccountAssoc(account *slinkyv1beta1.Account) slurmapi.V0044Assoc {
+// (empty user), carrying the parent account and limits. The cluster must be
+// set or slurmdbd silently drops the association write.
+func buildAccountAssoc(account *slinkyv1beta1.Account, cluster string) slurmapi.V0044Assoc {
 	assoc := slurmapi.V0044Assoc{
+		Cluster:       ptr.To(cluster),
 		Account:       ptr.To(account.Spec.AccountName),
 		User:          "",
 		ParentAccount: account.Spec.ParentAccount,
@@ -204,9 +259,11 @@ func buildSlurmUser(user *slinkyv1beta1.User) slurmapi.V0044User {
 	return out
 }
 
-// buildUserAssoc maps a single UserAssociation to a slurmdbd association.
-func buildUserAssoc(user *slinkyv1beta1.User, ua slinkyv1beta1.UserAssociation) slurmapi.V0044Assoc {
+// buildUserAssoc maps a single UserAssociation to a slurmdbd association. The
+// cluster must be set or slurmdbd silently drops the association write.
+func buildUserAssoc(user *slinkyv1beta1.User, ua slinkyv1beta1.UserAssociation, cluster string) slurmapi.V0044Assoc {
 	assoc := slurmapi.V0044Assoc{
+		Cluster:   ptr.To(cluster),
 		Account:   ptr.To(ua.Account),
 		User:      user.Spec.UserName,
 		Partition: ua.Partition,
