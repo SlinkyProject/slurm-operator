@@ -4,6 +4,7 @@
 package slurmcontrol
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -169,6 +170,18 @@ func tresCount(t *testing.T, list slurmapi.V0044TresList, typ, name string) int6
 	}
 	t.Fatalf("tres %s/%s not found in %+v", typ, name, list)
 	return 0
+}
+
+func TestIgnoreNotModified(t *testing.T) {
+	if err := ignoreNotModified(nil); err != nil {
+		t.Fatalf("nil should stay nil, got: %v", err)
+	}
+	if err := ignoreNotModified(errors.New("Not Modified")); err != nil {
+		t.Fatalf("Not Modified should be tolerated, got: %v", err)
+	}
+	if err := ignoreNotModified(errors.New("Internal Server Error")); err == nil {
+		t.Fatalf("real error should not be tolerated")
+	}
 }
 
 func TestApplyLimitsFairshareParentSkipped(t *testing.T) {

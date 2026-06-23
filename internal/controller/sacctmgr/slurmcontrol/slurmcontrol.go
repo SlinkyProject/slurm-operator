@@ -126,14 +126,14 @@ func (r *realAccountingControl) ApplyAccount(ctx context.Context, account *slink
 	if c == nil {
 		return ErrNoClient
 	}
-	if err := c.Create(ctx, &slurmtypes.V0044Account{}, buildSlurmAccount(account)); err != nil {
+	if err := ignoreNotModified(c.Create(ctx, &slurmtypes.V0044Account{}, buildSlurmAccount(account))); err != nil {
 		return err
 	}
 	cluster, err := r.clusterName(ctx, account.Namespace, account.Spec.ControllerRef.Name, c)
 	if err != nil {
 		return err
 	}
-	return c.Create(ctx, &slurmtypes.V0044Assoc{}, buildAccountAssoc(account, cluster))
+	return ignoreNotModified(c.Create(ctx, &slurmtypes.V0044Assoc{}, buildAccountAssoc(account, cluster)))
 }
 
 // DeleteAccount implements AccountingControlInterface, honoring the deletion policy.
@@ -190,7 +190,7 @@ func (r *realAccountingControl) ApplyUser(ctx context.Context, user *slinkyv1bet
 	if c == nil {
 		return ErrNoClient
 	}
-	if err := c.Create(ctx, &slurmtypes.V0044User{}, buildSlurmUser(user)); err != nil {
+	if err := ignoreNotModified(c.Create(ctx, &slurmtypes.V0044User{}, buildSlurmUser(user))); err != nil {
 		return err
 	}
 	cluster, err := r.clusterName(ctx, user.Namespace, user.Spec.ControllerRef.Name, c)
@@ -198,7 +198,7 @@ func (r *realAccountingControl) ApplyUser(ctx context.Context, user *slinkyv1bet
 		return err
 	}
 	for _, ua := range user.Spec.Associations {
-		if err := c.Create(ctx, &slurmtypes.V0044Assoc{}, buildUserAssoc(user, ua, cluster)); err != nil {
+		if err := ignoreNotModified(c.Create(ctx, &slurmtypes.V0044Assoc{}, buildUserAssoc(user, ua, cluster))); err != nil {
 			return err
 		}
 	}
@@ -407,6 +407,19 @@ func jsonMerge(src any, dst any) {
 	if err := json.Unmarshal(b, dst); err != nil {
 		panic(err)
 	}
+}
+
+// ignoreNotModified treats slurmdbd's 304 Not Modified response as success.
+// slurmdbd returns it when an upsert (POST) leaves the entity unchanged, so it
+// means "already in the desired state" rather than a failure.
+func ignoreNotModified(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), http.StatusText(http.StatusNotModified)) {
+		return nil
+	}
+	return err
 }
 
 func tolerateError(err error) bool {

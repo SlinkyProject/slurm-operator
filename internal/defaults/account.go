@@ -16,6 +16,14 @@ func SetAccountDefaults(a *slinkyv1beta1.Account) {
 	if a.Spec.AccountName == "" {
 		a.Spec.AccountName = a.Name
 	}
+	// slurmdbd rejects accounts with an empty description or organization, so
+	// mirror sacctmgr and default both to the account name when unset.
+	if a.Spec.Description == "" {
+		a.Spec.Description = a.Spec.AccountName
+	}
+	if a.Spec.Organization == "" {
+		a.Spec.Organization = a.Spec.AccountName
+	}
 	if a.Spec.ParentAccount == nil {
 		a.Spec.ParentAccount = ptr.To(DefaultParentAccount)
 	}
