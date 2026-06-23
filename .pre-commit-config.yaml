@@ -105,6 +105,13 @@ repos:
         files: ^helm/
         language: system
         pass_filenames: false
+      - id: make-legal
+        name: make legal notices
+        entry: make legal
+        types_or: [go, go-mod, go-sum]
+        language: system
+        require_serial: true
+        pass_filenames: false
       # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
       - id: make-golangci-lint
         name: make-golangci-lint

@@ -115,6 +115,7 @@ endif
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
+
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
@@ -298,6 +299,7 @@ fmt: ## Run go fmt against code.
 .PHONY: tidy
 tidy: ## Run go mod tidy against code
 	go mod tidy
+	$(MAKE) legal
 
 .PHONY: get-u
 get-u: ## Run `go get -u`
@@ -321,6 +323,78 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 .PHONY: golangci-lint-fmt
 golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 	$(GOLANGCI_LINT) fmt
+
+##@ Legal
+
+GO_MODULE ?= $(shell sed -n 's/^module[[:space:]]\{1,\}//p' go.mod)
+GO_LICENSES_VERSION ?= v2.0.1
+GO_LICENSES_PACKAGE ?= github.com/google/go-licenses/v2
+GO_LICENSES ?= $(LOCALBIN)/go-licenses-$(GO_LICENSES_VERSION)
+LICENSE_PACKAGE_PATTERN ?= ./...
+LEGAL_GOOS ?= linux
+LEGAL_GOARCH ?= amd64
+LEGAL_FILES = THIRD_PARTY_LICENSES NOTICE
+
+.PHONY: go-licenses-bin
+go-licenses-bin: $(GO_LICENSES) ## Download go-licenses locally if necessary.
+$(GO_LICENSES): $(LOCALBIN)
+	$(call go-install-tool,$(GO_LICENSES),$(GO_LICENSES_PACKAGE),$(GO_LICENSES_VERSION))
+
+.PHONY: legal
+legal: $(LEGAL_FILES) ## Generate legal notice files.
+
+.PHONY: THIRD_PARTY_LICENSES
+THIRD_PARTY_LICENSES: $(GO_LICENSES)
+	@tmp=$$(mktemp); \
+	tpl=$$(mktemp); \
+	trap 'rm -f "$$tmp" "$$tpl"' EXIT; \
+	printf '{{ range . }}{{ .Name }}\t{{ .Version }}\t{{ .LicenseName }}\n{{ end }}' > "$$tpl"; \
+	{ \
+		printf '# Third-Party Software Licenses\n\n'; \
+		printf 'This file contains license information for third-party software components used in slurm-operator.\n\n'; \
+		printf 'For complete license texts, please refer to the source repositories or the LICENSE files in the respective dependency packages.\n\n'; \
+		printf '## Dependencies\n\n'; \
+		first=true; \
+		GOOS=$(LEGAL_GOOS) GOARCH=$(LEGAL_GOARCH) $(GO_LICENSES) report "$(LICENSE_PACKAGE_PATTERN)" --template "$$tpl" --logtostderr=false --log_file=/dev/null --stderrthreshold=FATAL | LC_ALL=C sort -u | \
+			while IFS=$$(printf '\t') read -r name version license; do \
+				[ -n "$$name" ] || continue; \
+				case "$$name" in "$(GO_MODULE)"|"$(GO_MODULE)/"*) continue ;; esac; \
+				if [ "$$first" = true ]; then \
+					first=false; \
+				else \
+					printf '\n'; \
+				fi; \
+				printf '### %s\n' "$$name"; \
+				printf -- '- Name: %s\n' "$$name"; \
+				printf -- '- Version: %s\n' "$${version:-unknown}"; \
+				printf -- '- License: %s\n' "$${license:-UNKNOWN}"; \
+			done; \
+	} > "$$tmp"; \
+	mv "$$tmp" "$@"
+
+.PHONY: NOTICE
+NOTICE: $(GO_LICENSES)
+	@tmp=$$(mktemp); \
+	tpl=$$(mktemp); \
+	trap 'rm -f "$$tmp" "$$tpl"' EXIT; \
+	copyright=$$(sed -n '/^Copyright/{p;q;}' LICENSE 2>/dev/null); \
+	printf '{{ range . }}{{ .Name }}\t{{ .LicenseName }}\n{{ end }}' > "$$tpl"; \
+	{ \
+		printf '# slurm-operator\n'; \
+		[ -z "$$copyright" ] || printf '%s\n' "$$copyright"; \
+		printf '\n'; \
+		printf 'This product includes the following third-party software components:\n\n'; \
+		printf 'For a complete list of third-party software licenses, please see the\n'; \
+		printf 'THIRD_PARTY_LICENSES file.\n\n'; \
+		printf 'Third-party Dependencies:\n'; \
+		GOOS=$(LEGAL_GOOS) GOARCH=$(LEGAL_GOARCH) $(GO_LICENSES) report "$(LICENSE_PACKAGE_PATTERN)" --template "$$tpl" --logtostderr=false --log_file=/dev/null --stderrthreshold=FATAL | LC_ALL=C sort -u | \
+			while IFS=$$(printf '\t') read -r name license; do \
+				[ -n "$$name" ] || continue; \
+				case "$$name" in "$(GO_MODULE)"|"$(GO_MODULE)/"*) continue ;; esac; \
+				printf -- '- %s (%s)\n' "$$name" "$${license:-UNKNOWN}"; \
+			done; \
+	} > "$$tmp"; \
+	mv "$$tmp" "$@"
 
 CODECOV_PERCENT ?= 66
 
