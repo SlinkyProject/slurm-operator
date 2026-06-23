@@ -54,6 +54,8 @@ func slurmUpdateFn(_ context.Context, obj object.Object, req any, opts ...client
 		o.Comment = r.Comment
 		o.Reason = r.Reason
 		o.Topology = r.TopologyStr
+		o.Features = r.Features
+		o.ActiveFeatures = r.FeaturesAct
 	case *types.V0044ReservationInfo:
 		_, ok := req.(api.V0044ReservationDescMsg)
 		if !ok {
@@ -405,6 +407,166 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			got := ptr.Deref(checkNode.Topology, "")
 			if !apiequality.Semantic.DeepEqual(got, tt.args.topologySpec) {
 				t.Fatalf("UpdateNodeTopology() topologySpec = %v", got)
+			}
+		})
+	}
+}
+
+func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	prefix := slinkyv1beta1.NodeFeaturePrefix
+	// nodeWith returns an IDLE Slurm node with the given available/active features.
+	nodeWith := func(available, active []string) *types.V0044Node {
+		n := &types.V0044Node{
+			V0044Node: api.V0044Node{
+				Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+				State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE}),
+			},
+		}
+		if available != nil {
+			n.Features = ptr.To(api.V0044CsvString(available))
+		}
+		if active != nil {
+			n.ActiveFeatures = ptr.To(api.V0044CsvString(active))
+		}
+		return n
+	}
+	type args struct {
+		ctx      context.Context
+		nodeset  *slinkyv1beta1.NodeSet
+		pod      *corev1.Pod
+		features []string
+	}
+	tests := []struct {
+		name          string
+		node          *types.V0044Node
+		args          args
+		notRegistered bool  // node absent from slurmctld: Get returns a tolerated 404
+		updateErr     error // non-nil makes the Slurm Update fail with this error
+		wantErr       bool
+		wantSkip      bool
+		wantAvailable []string
+		wantActive    []string
+	}{
+		{
+			name:          "adds prefixed features, preserves baseline",
+			node:          nodeWith([]string{"foo"}, []string{"foo"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
+			wantAvailable: []string{"foo", prefix + "a100"},
+			wantActive:    []string{"foo", prefix + "a100"},
+		},
+		{
+			// Stale prefixed feature is replaced; non-prefixed (external) features stay.
+			name:          "replaces stale prefixed, preserves external",
+			node:          nodeWith([]string{"foo", prefix + "old"}, []string{"foo", prefix + "old"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"new"}},
+			wantAvailable: []string{"foo", prefix + "new"},
+			wantActive:    []string{"foo", prefix + "new"},
+		},
+		{
+			// Empty desired (annotation removed) strips the prefixed namespace only.
+			name:          "empty desired strips prefixed, preserves external",
+			node:          nodeWith([]string{"foo", prefix + "old"}, []string{"foo", prefix + "old"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: nil},
+			wantAvailable: []string{"foo"},
+			wantActive:    []string{"foo"},
+		},
+		{
+			name:          "already in sync skips",
+			node:          nodeWith([]string{"foo", prefix + "a100"}, []string{"foo", prefix + "a100"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
+			wantSkip:      true,
+			wantAvailable: []string{"foo", prefix + "a100"},
+			wantActive:    []string{"foo", prefix + "a100"},
+		},
+		{
+			name:          "no prefixed and empty desired skips",
+			node:          nodeWith([]string{"foo"}, []string{"foo"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: nil},
+			wantSkip:      true,
+			wantAvailable: []string{"foo"},
+			wantActive:    []string{"foo"},
+		},
+		{
+			// NodeFeaturesPlugins case: changeable features (mig=on/off available,
+			// mig=on active) must survive; only the prefixed namespace is replaced.
+			name:          "plugin-managed features survive",
+			node:          nodeWith([]string{"foo", "mig=on", "mig=off", prefix + "old"}, []string{"foo", "mig=on", prefix + "old"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"nn-a"}},
+			wantAvailable: []string{"foo", "mig=off", "mig=on", prefix + "nn-a"},
+			wantActive:    []string{"foo", "mig=on", prefix + "nn-a"},
+		},
+		{
+			// Node not registered in slurmctld yet: Get returns a tolerated 404 and
+			// the call is a no-op.
+			name:          "node not registered is tolerated",
+			node:          nodeWith([]string{"foo"}, []string{"foo"}),
+			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
+			notRegistered: true,
+		},
+		{
+			// A non-tolerated error from the Slurm update is surfaced to the caller.
+			name:      "update error is returned",
+			node:      nodeWith([]string{"foo"}, []string{"foo"}),
+			args:      args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
+			updateErr: errors.New("boom"),
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updates := 0
+			updateFn := func(ctx context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {
+				updates++
+				if tt.updateErr != nil {
+					return tt.updateErr
+				}
+				return slurmUpdateFn(ctx, obj, req, opts...)
+			}
+			builder := fake.NewClientBuilder().WithUpdateFn(updateFn)
+			if !tt.notRegistered {
+				builder = builder.WithObjects(tt.node)
+			}
+			sclient := builder.Build()
+			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
+			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			if err := r.UpdateNodeFeatures(tt.args.ctx, tt.args.nodeset, tt.args.pod, prefix, tt.args.features); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateNodeFeatures() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantSkip && updates != 0 {
+				t.Errorf("UpdateNodeFeatures() issued %d update(s), want 0 (already in sync)", updates)
+			}
+			// The Slurm node feature set is only well-defined on the success path; for
+			// the tolerated-404 and error cases there is nothing to assert.
+			if tt.notRegistered || tt.wantErr {
+				return
+			}
+			checkNode := &types.V0044Node{}
+			if err := sclient.Get(ctx, tt.node.GetKey(), checkNode); err != nil {
+				if !tolerateError(err) {
+					t.Fatalf("client.Get() = %v", err)
+				}
+			}
+			gotAvail := ptr.Deref(checkNode.Features, api.V0044CsvString{})
+			gotActive := ptr.Deref(checkNode.ActiveFeatures, api.V0044CsvString{})
+			slices.Sort(gotAvail)
+			slices.Sort(gotActive)
+			wantAvail := slices.Clone(tt.wantAvailable)
+			wantActive := slices.Clone(tt.wantActive)
+			slices.Sort(wantAvail)
+			slices.Sort(wantActive)
+			if !slices.Equal(gotAvail, wantAvail) {
+				t.Errorf("UpdateNodeFeatures() available = %v, want %v", gotAvail, wantAvail)
+			}
+			if !slices.Equal(gotActive, wantActive) {
+				t.Errorf("UpdateNodeFeatures() active = %v, want %v", gotActive, wantActive)
 			}
 		})
 	}

@@ -3,6 +3,11 @@
 
 package structutils
 
+import (
+	"sort"
+	"strings"
+)
+
 // Convert a list to a referenced list.
 func ReferenceList[T any](items []T) []*T {
 	list := make([]*T, 0, len(items))
@@ -35,4 +40,25 @@ func MergeList[T any](items ...[]T) []T {
 		list = append(list, item...)
 	}
 	return list
+}
+
+// SortedDedup trims whitespace from each entry, drops empty entries and
+// duplicates, and returns the result sorted, normalizing a string set into a
+// deterministic, comparable list.
+func SortedDedup(in []string) []string {
+	seen := make(map[string]struct{}, len(in))
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	sort.Strings(out)
+	return out
 }

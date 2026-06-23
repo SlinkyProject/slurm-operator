@@ -3851,6 +3851,208 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 	}
 }
 
+func TestNodeSetReconciler_syncSlurmFeatures(t *testing.T) {
+	node := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node0",
+		},
+	}
+	node2 := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node1",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeFeaturesSpec: "nn-75bfcf47ca3e4f7dc,GPU",
+			},
+		},
+	}
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 3)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+	pod2.Spec.NodeName = node2.Name
+	pod3 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 2, "")
+	pod3.Spec.NodeName = node.Name
+	nodeEq := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "node-eq",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeFeaturesSpec: "location=us-east-2,nn-aaaa1111",
+			},
+		},
+	}
+	podEq := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 3, "")
+	podEq.Spec.NodeName = nodeEq.Name
+
+	// DaemonSet-mode pod: GetSlurmNodeName resolves the Slurm node name from
+	// pod.Spec.Hostname (set by the daemonset pod builder), exercising the other
+	// branch from the StatefulSet-mode pods above.
+	dnode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dnode",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeFeaturesSpec: "nn-bbbb2222,IB",
+			},
+		},
+	}
+	daemonPod := newDaemonPodForNodeSet("foo-daemon", dnode.Name, nodeset)
+	daemonPod.Spec.Hostname = dnode.Name
+
+	// Node without the features annotation, with a pod whose Slurm node still carries
+	// a stale operator-prefixed feature, used to verify cleanup on annotation removal.
+	nodeClean := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-clean"}}
+	podClean := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 4, "")
+	podClean.Spec.NodeName = nodeClean.Name
+
+	prefix := slinkyv1beta1.NodeFeaturePrefix
+	// slurmNodeForPod returns a one-node list for the pod's Slurm node, seeded with
+	// the given features in both available and active (e.g. the registration baseline).
+	slurmNodeForPod := func(p *corev1.Pod, features ...string) *slurmtypes.V0044NodeList {
+		n := slurmtypes.V0044Node{
+			V0044Node: slurmapi.V0044Node{
+				Name:  ptr.To(nodesetutils.GetSlurmNodeName(p)),
+				State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+			},
+		}
+		if len(features) > 0 {
+			n.Features = ptr.To(slurmapi.V0044CsvString(features))
+			n.ActiveFeatures = ptr.To(slurmapi.V0044CsvString(features))
+		}
+		return &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{n}}
+	}
+
+	tests := []struct {
+		name         string
+		client       client.Client
+		slurmNodes   *slurmtypes.V0044NodeList // Slurm node registered for the pod, or nil
+		nodeset      *slinkyv1beta1.NodeSet
+		pods         []*corev1.Pod
+		wantFeatures []string
+		wantNoUpdate bool // assert the reconcile issues no Slurm node update
+		wantErr      bool
+	}{
+		{
+			name:         "pending",
+			client:       fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod.DeepCopy()),
+			nodeset:      nodeset,
+			pods:         []*corev1.Pod{pod.DeepCopy()},
+			wantNoUpdate: true,
+		},
+		{
+			name:       "allocated with annotation",
+			client:     fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod2.DeepCopy()),
+			slurmNodes: slurmNodeForPod(pod2, "foo"),
+			nodeset:    nodeset,
+			pods:       []*corev1.Pod{pod2.DeepCopy()},
+			// Baseline "foo" preserved; annotation "nn-75bfcf47ca3e4f7dc,GPU" applied under the prefix.
+			wantFeatures: []string{"foo", prefix + "GPU", prefix + "nn-75bfcf47ca3e4f7dc"},
+		},
+		{
+			name:       "allocated without annotation skips update",
+			client:     fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod3.DeepCopy()),
+			slurmNodes: slurmNodeForPod(pod3, "foo"),
+			nodeset:    nodeset,
+			pods:       []*corev1.Pod{pod3.DeepCopy()},
+			// No annotation and no prefixed features present: nothing to do.
+			wantNoUpdate: true,
+			wantFeatures: []string{"foo"},
+		},
+		{
+			name:       "annotation removed clears prefixed features",
+			client:     fake.NewFakeClient(nodeClean.DeepCopy(), podClean.DeepCopy()),
+			slurmNodes: slurmNodeForPod(podClean, "foo", prefix+"stale"),
+			nodeset:    nodeset,
+			pods:       []*corev1.Pod{podClean.DeepCopy()},
+			// No annotation: strip the operator-prefixed feature, preserve the baseline.
+			wantFeatures: []string{"foo"},
+		},
+		{
+			name:       "allocated with =-bearing feature",
+			client:     fake.NewFakeClient(nodeEq.DeepCopy(), podEq.DeepCopy()),
+			slurmNodes: slurmNodeForPod(podEq, "foo"),
+			nodeset:    nodeset,
+			pods:       []*corev1.Pod{podEq.DeepCopy()},
+			// annotation is comma-split only, so "location=us-east-2" stays a single feature token
+			wantFeatures: []string{"foo", prefix + "location=us-east-2", prefix + "nn-aaaa1111"},
+		},
+		{
+			name:       "daemonset mode with annotation",
+			client:     fake.NewFakeClient(dnode.DeepCopy(), daemonPod.DeepCopy()),
+			slurmNodes: slurmNodeForPod(daemonPod, "foo"),
+			nodeset:    nodeset,
+			pods:       []*corev1.Pod{daemonPod.DeepCopy()},
+			// DaemonSet pods resolve the Slurm node name via pod.Spec.Hostname.
+			wantFeatures: []string{"foo", prefix + "IB", prefix + "nn-bbbb2222"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			updates := 0
+			funcs := sinterceptor.Funcs{}
+			if tt.wantNoUpdate {
+				// Count (and suppress) Slurm node updates so we can assert none are issued.
+				funcs.Update = func(_ context.Context, _ slurmobject.Object, _ any, _ ...slurmclient.UpdateOption) error {
+					updates++
+					return nil
+				}
+			}
+			var lists []slurmobject.ObjectList
+			if tt.slurmNodes != nil {
+				lists = append(lists, tt.slurmNodes)
+			}
+			clientMap := newClientMap(controller.Name, newFakeClientList(funcs, lists...))
+			r := newNodeSetController(tt.client, clientMap)
+			gotErr := r.syncSlurmFeatures(ctx, tt.nodeset, tt.pods)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("syncSlurmFeatures() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("syncSlurmFeatures() succeeded unexpectedly")
+			}
+			if tt.wantNoUpdate && updates != 0 {
+				t.Errorf("syncSlurmFeatures() issued %d Slurm update(s), want 0", updates)
+			}
+			for _, pod := range tt.pods {
+				if pod.Spec.NodeName == "" {
+					continue
+				}
+				mapKey := types.NamespacedName{
+					Namespace: tt.nodeset.Namespace,
+					Name:      tt.nodeset.Spec.ControllerRef.Name,
+				}
+				sclient := clientMap.Get(mapKey)
+				if sclient == nil {
+					continue
+				}
+				slurmNode := &slurmtypes.V0044Node{}
+				slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+				if err := sclient.Get(ctx, slurmNodeKey, slurmNode); err != nil {
+					t.Errorf("Get() failed: %v", err)
+				}
+				gotAvail := ptr.Deref(slurmNode.Features, slurmapi.V0044CsvString{})
+				gotActive := ptr.Deref(slurmNode.ActiveFeatures, slurmapi.V0044CsvString{})
+				slices.Sort(gotAvail)
+				slices.Sort(gotActive)
+				want := slices.Clone(tt.wantFeatures)
+				slices.Sort(want)
+				if !slices.Equal(gotAvail, want) {
+					t.Errorf("Slurm node available features = %v, want %v", gotAvail, want)
+				}
+				if !slices.Equal(gotActive, want) {
+					t.Errorf("Slurm node active features = %v, want %v", gotActive, want)
+				}
+			}
+		})
+	}
+}
+
 func TestGetNodesToDaemonPods(t *testing.T) {
 	nodeset := newNodeSet("foo", "ctrl", 1)
 	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset

@@ -423,6 +423,12 @@ func (r *NodeSetReconciler) sync(
 				return r.syncSlurmReservation(ctx, nodeset, pods)
 			},
 		},
+		{
+			Name: "SlurmFeatures",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmFeatures(ctx, nodeset, pods)
+			},
+		},
 	}
 	return syncsteps.Sync(ctx, r.eventRecorder, nodeset, steps)
 }
@@ -779,6 +785,57 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmTopologyFn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// syncSlurmFeatures reconciles the NodeFeaturePrefix-namespaced Slurm node features of
+// each pod from its K8s Node's AnnotationNodeFeaturesSpec. The operator owns only
+// that namespace: it replaces the prefixed features with the (prefixed) annotation
+// values and preserves all other features, including the NodeSet baseline (seeded
+// at slurmd registration via --conf), ExtraConf features, and externally-managed
+// features such as those from NodeFeaturesPlugins. Removing the annotation clears
+// the node's prefixed features.
+//
+// Features are applied through the reconcile loop and are eventually consistent: a
+// Node annotation change re-enqueues the NodeSet, after which the prefixed features
+// are reconciled to match.
+func (r *NodeSetReconciler) syncSlurmFeatures(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	syncSlurmFeaturesFn := func(i int) error {
+		pod := pods[i]
+
+		if pod.Spec.NodeName == "" {
+			// Skip if Pod has not been allocated to a Node.
+			return nil
+		}
+
+		node := &corev1.Node{}
+		nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
+		if err := r.Get(ctx, nodeKey, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		// An absent annotation yields an empty feature set, which clears any
+		// previously applied prefixed features on the Slurm node.
+		annotation := node.Annotations[slinkyv1beta1.AnnotationNodeFeaturesSpec]
+		features := structutils.SortedDedup(strings.Split(annotation, ","))
+
+		if err := r.slurmControl.UpdateNodeFeatures(ctx, nodeset, pod, slinkyv1beta1.NodeFeaturePrefix, features); err != nil {
+			return fmt.Errorf("failed to update Slurm node features: %w", err)
+		}
+
+		return nil
+	}
+	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmFeaturesFn); err != nil {
 		return err
 	}
 
