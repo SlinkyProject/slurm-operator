@@ -1,0 +1,23 @@
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: Account
+metadata:
+  name: research
+  namespace: slurm
+spec:
+  controllerRef:
+    name: slurm
+  accountName: research
+  description: Research team account
+  organization: acme
+  parentAccount: root
+  deletionPolicy: Delete
+  limits:
+    qos:
+      - normal
+      - high
+    defaultQos: normal
+    grpTRES:
+      cpu: "100"
+      gres/gpu: "8"
+    maxJobs: 50

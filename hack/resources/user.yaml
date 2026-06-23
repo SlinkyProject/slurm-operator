@@ -1,0 +1,24 @@
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: User
+metadata:
+  name: alice
+  namespace: slurm
+spec:
+  controllerRef:
+    name: slurm
+  userName: alice
+  adminLevel: None
+  defaultAccount: research
+  deletionPolicy: Delete
+  associations:
+    - account: research
+      limits:
+        qos:
+          - normal
+        defaultQos: normal
+        maxJobs: 10
+    - account: research
+      partition: debug
+      limits:
+        maxSubmitJobs: 5
