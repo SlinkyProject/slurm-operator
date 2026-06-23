@@ -240,7 +240,7 @@ func applyLimits(assoc *slurmapi.V0044Assoc, l slinkyv1beta1.AssociationLimits) 
 		m["priority"] = noVal(*l.Priority)
 	}
 	if l.Fairshare != nil {
-		if n, err := strconv.Atoi(*l.Fairshare); err == nil {
+		if n, err := strconv.ParseInt(*l.Fairshare, 10, 32); err == nil {
 			m["shares_raw"] = int32(n)
 		}
 	}
@@ -261,7 +261,7 @@ func applyLimits(assoc *slurmapi.V0044Assoc, l slinkyv1beta1.AssociationLimits) 
 		per["submitted"] = noVal(*l.MaxSubmitJobs)
 	}
 	if l.MaxWallPerJob != nil {
-		per["wall_clock"] = noVal(int32(l.MaxWallPerJob.Duration.Minutes()))
+		per["wall_clock"] = noVal(int32(l.MaxWallPerJob.Minutes()))
 	}
 	if len(per) > 0 {
 		jobs["per"] = per
