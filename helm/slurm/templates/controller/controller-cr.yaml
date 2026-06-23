@@ -63,6 +63,9 @@ spec:
     {{- if (include "vendor.dcgm.enabled" .) }}
     - name: {{ include "vendor.dcgm.prologName" . }}
     {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+    {{- with .Values.prologScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.prologScriptRefs */}}
   epilogScriptRefs:
     {{- with .Values.epilogScripts }}
     - name: {{ include "slurm.controller.epilogName" $ }}
@@ -70,14 +73,23 @@ spec:
     {{- if (include "vendor.dcgm.enabled" .) }}
     - name: {{ include "vendor.dcgm.epilogName" . }}
     {{- end }}{{- /* if (include "vendor.dcgm.enabled" .) */}}
+    {{- with .Values.epilogScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.epilogScriptRefs */}}
   prologSlurmctldScriptRefs:
     {{- with .Values.prologSlurmctldScripts }}
     - name: {{ include "slurm.controller.prologSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.prologSlurmctldScripts */}}
+    {{- with .Values.prologSlurmctldScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.prologSlurmctldScriptRefs */}}
   epilogSlurmctldScriptRefs:
     {{- with .Values.epilogSlurmctldScripts }}
     - name: {{ include "slurm.controller.epilogSlurmctldName" $ }}
     {{- end }}{{- /* with .Values.epilogSlurmctldScripts */}}
+    {{- with .Values.epilogSlurmctldScriptRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.epilogSlurmctldScriptRefs */}}
   slurmctld:
     {{- $_ := set $slurmctld "imagePullPolicy" (get $slurmctld "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
     {{- include "format-container" $slurmctld | nindent 4 }}
