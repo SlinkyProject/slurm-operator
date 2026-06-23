@@ -17,6 +17,15 @@ var (
 	AccountAPIVersion = GroupVersion.String()
 )
 
+// DeletionPolicy controls what happens to the Slurm entity when the CR is deleted.
+// +kubebuilder:validation:Enum=Delete;Orphan
+type DeletionPolicy string
+
+const (
+	DeletionPolicyDelete DeletionPolicy = "Delete"
+	DeletionPolicyOrphan DeletionPolicy = "Orphan"
+)
+
 // AccountSpec defines the desired state of Account.
 type AccountSpec struct {
 	// controllerRef references the target Controller CR.
@@ -46,7 +55,7 @@ type AccountSpec struct {
 
 	// limits applied to this account's association.
 	// +optional
-	Limits AccountingLimits `json:"limits,omitempty"`
+	Limits AssociationLimits `json:"limits,omitempty"`
 }
 
 // AccountStatus defines the observed state of Account.

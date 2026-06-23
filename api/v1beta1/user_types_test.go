@@ -10,3 +10,9 @@ func TestUser_GVK(t *testing.T) {
 		t.Fatalf("UserGVK.Kind = %q", UserGVK.Kind)
 	}
 }
+
+func TestAdminLevelConstants(t *testing.T) {
+	if AdminLevelNone != "None" || AdminLevelOperator != "Operator" || AdminLevelAdministrator != "Administrator" {
+		t.Fatalf("unexpected AdminLevel values")
+	}
+}

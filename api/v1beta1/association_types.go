@@ -5,28 +5,9 @@ package v1beta1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// DeletionPolicy controls what happens to the Slurm entity when the CR is deleted.
-// +kubebuilder:validation:Enum=Delete;Orphan
-type DeletionPolicy string
-
-const (
-	DeletionPolicyDelete DeletionPolicy = "Delete"
-	DeletionPolicyOrphan DeletionPolicy = "Orphan"
-)
-
-// AdminLevel is the Slurm administrator level granted to a user.
-// +kubebuilder:validation:Enum=None;Operator;Administrator
-type AdminLevel string
-
-const (
-	AdminLevelNone          AdminLevel = "None"
-	AdminLevelOperator      AdminLevel = "Operator"
-	AdminLevelAdministrator AdminLevel = "Administrator"
-)
-
-// AccountingLimits captures the common Slurm association limits/QoS/fairshare.
+// AssociationLimits captures the common Slurm association limits/QoS/fairshare.
 // Unset fields are not managed by the operator.
-type AccountingLimits struct {
+type AssociationLimits struct {
 	// Fairshare is an integer number of shares, or the literal "parent".
 	// +optional
 	Fairshare *string `json:"fairshare,omitempty"`
@@ -77,5 +58,5 @@ type UserAssociation struct {
 
 	// limits for this specific membership.
 	// +optional
-	Limits AccountingLimits `json:"limits,omitempty"`
+	Limits AssociationLimits `json:"limits,omitempty"`
 }

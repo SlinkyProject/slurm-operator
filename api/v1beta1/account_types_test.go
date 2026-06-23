@@ -10,3 +10,9 @@ func TestAccount_GVK(t *testing.T) {
 		t.Fatalf("AccountGVK.Kind = %q", AccountGVK.Kind)
 	}
 }
+
+func TestDeletionPolicyConstants(t *testing.T) {
+	if DeletionPolicyDelete != "Delete" || DeletionPolicyOrphan != "Orphan" {
+		t.Fatalf("unexpected DeletionPolicy values")
+	}
+}

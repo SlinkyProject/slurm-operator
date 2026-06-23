@@ -17,6 +17,16 @@ var (
 	UserAPIVersion = GroupVersion.String()
 )
 
+// AdminLevel is the Slurm administrator level granted to a user.
+// +kubebuilder:validation:Enum=None;Operator;Administrator
+type AdminLevel string
+
+const (
+	AdminLevelNone          AdminLevel = "None"
+	AdminLevelOperator      AdminLevel = "Operator"
+	AdminLevelAdministrator AdminLevel = "Administrator"
+)
+
 // UserSpec defines the desired state of User.
 // +kubebuilder:validation:XValidation:rule="self.associations.exists(a, a.account == self.defaultAccount)", message="defaultAccount must match one of the associations"
 type UserSpec struct {
