@@ -90,7 +90,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	}
 	options := &slurmclient.ClientOptions{
 		DisableFor: []slurmobject.Object{
-			&slurmtypes.V0041ControllerPing{},
+			&slurmtypes.V0044ControllerPing{},
 		},
 	}
 	slurmClient, err := slurmclient.NewClient(config, options)
