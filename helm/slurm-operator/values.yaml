@@ -163,6 +163,10 @@ webhook:
     # -- How the rules listed in the validating webhook are matched against incoming requests.
     # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy
     matchPolicy: Equivalent
+    # -- Full override for the validating webhooks' namespaceSelector, rendered verbatim
+    # when set. Replaces `webhook.namespaces` and the default kube-system/kube-node-lease
+    # exclusions for these webhooks.
+    namespaceSelector: {}
   # Mutating webhook configuration.
   mutating:
     # -- Action taken when the mutating admission webhook is unreachable or returns an error.
@@ -171,6 +175,9 @@ webhook:
     # -- How the rules listed in the mutating webhook are matched against incoming requests.
     # Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy
     matchPolicy: Equivalent
+    # NOTE: the pods/binding webhook has no namespaceSelector override; scope it via
+    # `webhook.namespaces`, which also scopes the controller cache so the webhook can
+    # read the pods it intercepts.
   # -- Affinity for pod assignment.
   # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   affinity: {}

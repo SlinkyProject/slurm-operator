@@ -31,6 +31,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -60,6 +61,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -89,6 +91,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -118,6 +121,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -147,6 +151,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -176,6 +181,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
         rules:
           - apiGroups:
               - slinky.slurm.net
@@ -221,6 +227,7 @@ default manifest should match snapshot:
               operator: NotIn
               values:
                 - kube-system
+                - kube-node-lease
                 - test-namespace
         rules:
           - apiGroups:

@@ -1,0 +1,6 @@
+---
+webhook:
+  validating:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: slurm

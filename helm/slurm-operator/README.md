@@ -99,4 +99,5 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.topologySpreadConstraints | list | `[]` | Topology spread constraints for pod assignment. Prefer scheduling replicas across failure domains (nodes, zones, ...) when running in HA. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/ |
 | webhook.validating.failurePolicy | string | `"Fail"` | Action taken when the validating admission webhook is unreachable or returns an error. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
 | webhook.validating.matchPolicy | string | `"Equivalent"` | How the rules listed in the validating webhook are matched against incoming requests. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
+| webhook.validating.namespaceSelector | object | `{}` | Full override for the validating webhooks' namespaceSelector, rendered verbatim when set. Replaces `webhook.namespaces` and the default kube-system/kube-node-lease exclusions for these webhooks. |
 
