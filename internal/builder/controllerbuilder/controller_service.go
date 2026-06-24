@@ -18,16 +18,14 @@ func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Con
 	opts := common.ServiceOpts{
 		Key: controller.ServiceKey(),
 		Metadata: slinkyv1beta1.Metadata{
-			Annotations: structutils.MergeMaps(controller.Annotations, controller.Spec.Service.Metadata.Annotations),
-			Labels:      structutils.MergeMaps(controller.Labels, controller.Spec.Service.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
+			Annotations: structutils.MergeMaps(controller.Annotations, spec.Metadata.Annotations),
+			Labels:      structutils.MergeMaps(controller.Labels, spec.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
 		},
-		ServiceSpec: controller.Spec.Service.ServiceSpecWrapper.ServiceSpec,
+		ServiceSpec: spec.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
 			WithControllerSelectorLabels(controller).
 			Build(),
 	}
-
-	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build())
 
 	port := corev1.ServicePort{
 		Name:       labels.ControllerApp,
