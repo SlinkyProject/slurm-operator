@@ -385,9 +385,8 @@ func buildSlurmConfMinimal(
 	conf.AddProperty(config.NewPropertyRaw("### GENERAL ###"))
 	conf.AddProperty(config.NewProperty("ClusterName", controller.ClusterName()))
 	conf.AddProperty(config.NewProperty("SlurmUser", common.SlurmUser))
-	conf.AddProperty(config.NewProperty("SlurmctldHost", controller.PrimaryName()))
-	conf.AddProperty(config.NewProperty("SlurmctldPort", common.SlurmctldPort))
-
+	conf.AddProperty(config.NewProperty("SlurmctldHost", controller.Spec.ExternalConfig.Host))
+	conf.AddProperty(config.NewProperty("SlurmctldPort", controller.Spec.ExternalConfig.Port))
 	conf.AddProperty(config.NewPropertyRaw("#"))
 	conf.AddProperty(config.NewPropertyRaw("### PLUGINS & PARAMETERS ###"))
 	conf.AddProperty(config.NewProperty("AuthType", common.AuthType))
