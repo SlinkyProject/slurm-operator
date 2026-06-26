@@ -5,25 +5,46 @@ SPDX-License-Identifier: Apache-2.0
 
 {{- if .Values.webhook.enabled }}
 {{- $certNamespacedName := printf "%s/%s" (include "slurm-operator.namespace" .) .Values.certManager.secretName -}}
-{{- $durationDays := int 3650 -}}
-{{- $ca := genCA .Values.certManager.secretName $durationDays -}}
+{{- $caBundle := "" -}}
 {{- if not .Values.certManager.enabled }}
-{{- $cn := (include "slurm-operator.webhook.name" .) -}}
-{{- $dnsList := list (printf "%s.%s" (include "slurm-operator.webhook.name" .) (include "slurm-operator.namespace" .)) (printf "%s.%s.svc" (include "slurm-operator.webhook.name" .) (include "slurm-operator.namespace" .)) -}}
+{{- $namespace := include "slurm-operator.namespace" . -}}
+{{- $secretName := .Values.certManager.secretName -}}
+{{- $durationDays := int 3650 -}}
+{{- /* Reuse the existing serving certificate on upgrade to avoid rotating it
+       (and the injected caBundle) on every render. Regenerate only when the
+       Secret is missing/incomplete (e.g. first install). lookup returns an
+       empty map during `helm template`/`--dry-run`, so a cert is generated then. */ -}}
+{{- $existing := lookup "v1" "Secret" $namespace $secretName -}}
+{{- $existingData := dict -}}
+{{- if $existing -}}
+{{- $existingData = ($existing.data | default dict) -}}
+{{- end -}}
+{{- $tlsCrt := index $existingData "tls.crt" | default "" -}}
+{{- $tlsKey := index $existingData "tls.key" | default "" -}}
+{{- if and $tlsCrt $tlsKey (index $existingData "ca.crt") -}}
+{{- $caBundle = index $existingData "ca.crt" -}}
+{{- else -}}
+{{- $cn := include "slurm-operator.webhook.name" . -}}
+{{- $dnsList := list (printf "%s.%s" (include "slurm-operator.webhook.name" .) $namespace) (printf "%s.%s.svc" (include "slurm-operator.webhook.name" .) $namespace) -}}
+{{- $ca := genCA $secretName $durationDays -}}
 {{- $cert := genSignedCert $cn nil $dnsList $durationDays $ca -}}
+{{- $tlsCrt = $cert.Cert | b64enc -}}
+{{- $tlsKey = $cert.Key | b64enc -}}
+{{- $caBundle = $ca.Cert | b64enc -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Values.certManager.secretName }}
-  namespace: {{ include "slurm-operator.namespace" . }}
+  name: {{ $secretName }}
+  namespace: {{ $namespace }}
   labels:
     {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
 type: kubernetes.io/tls
 data:
-  tls.crt: {{ $cert.Cert | b64enc | quote }}
-  tls.key: {{ $cert.Key | b64enc | quote }}
-  ca.crt: {{ $ca.Cert | b64enc | quote }}
+  tls.crt: {{ $tlsCrt | quote }}
+  tls.key: {{ $tlsKey | quote }}
+  ca.crt: {{ $caBundle | quote }}
 {{- end }}{{- /* if not .Values.certManager.enabled */}}
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -65,7 +86,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -106,7 +127,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -147,7 +168,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -188,7 +209,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -229,7 +250,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -270,7 +291,7 @@ webhooks:
         scope: Namespaced
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
@@ -316,7 +337,7 @@ webhooks:
       - v1
     clientConfig:
       {{- if not .Values.certManager.enabled }}
-      caBundle: {{ $ca.Cert | b64enc | quote }}
+      caBundle: {{ $caBundle | quote }}
       {{- end }}{{- /* if not .Values.certManager.enabled */}}
       service:
         namespace: {{ include "slurm-operator.namespace" . }}
