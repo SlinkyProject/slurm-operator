@@ -1,0 +1,21 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.restapi.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "slurm.restapi.name" . }}
+  namespace: {{ include "slurm.namespace" . }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+    {{- include "slurm.restapi.selectorLabels" . | nindent 4 }}
+spec:
+  maxUnavailable: {{ .Values.restapi.pdb.maxUnavailable }}
+  minAvailable: {{ .Values.restapi.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "slurm.restapi.selectorLabels" . | nindent 6 }}
+{{- end }}{{- /* if .Values.restapi.pdb.enabled */}}
