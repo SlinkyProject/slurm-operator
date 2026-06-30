@@ -5,10 +5,13 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -96,14 +99,39 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 					return fmt.Errorf("failed to build: %w", err)
 				}
 
+				serviceMonitorGVK, err := r.GroupVersionKindFor(object.DeepCopy())
+				if err != nil {
+					if isServiceMonitorUnavailable(err) {
+						logger.V(1).Info("skip servicemonitor sync: GVK is not recognized")
+						return nil
+					}
+					return err
+				}
+
+				if _, err = r.RESTMapper().RESTMapping(serviceMonitorGVK.GroupKind(), serviceMonitorGVK.Version); err != nil {
+					if isServiceMonitorUnavailable(err) {
+						logger.V(1).Info("skip servicemonitor sync: GVK is not recognized", "GVK", serviceMonitorGVK)
+						return nil
+					}
+					return err
+				}
+
 				if !controller.Spec.Metrics.Enabled || !controller.Spec.Metrics.ServiceMonitor.Enabled {
 					if err := objectutils.DeleteObject(r.Client, ctx, object); err != nil {
+						if isServiceMonitorUnavailable(err) {
+							logger.V(1).Info("skip servicemonitor sync: GVK is not recognized", "GVK", serviceMonitorGVK)
+							return nil
+						}
 						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
 					}
 					return nil
 				}
 
 				if err := objectutils.SyncObject(r.Client, ctx, object, true); err != nil {
+					if isServiceMonitorUnavailable(err) {
+						logger.Info("skipping sync of servicemonitor because GVK is not recognized", "GVK", serviceMonitorGVK)
+						return nil
+					}
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
 				}
 				return nil
@@ -124,4 +152,17 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	}
 
 	return r.syncStatus(ctx, controller)
+}
+
+func isServiceMonitorUnavailable(err error) bool {
+	if meta.IsNoMatchError(err) {
+		return true
+	}
+	for err != nil {
+		if runtime.IsNotRegisteredError(err) {
+			return true
+		}
+		err = errors.Unwrap(err)
+	}
+	return false
 }

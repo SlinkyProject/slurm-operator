@@ -51,7 +51,7 @@ func (r *TokenReconciler) syncStatus(
 		issuedAt = ptr.To(metav1.NewTime(iat.Time))
 	}
 
-	newStatus := &slinkyv1beta1.TokenStatus{
+	newStatus := slinkyv1beta1.TokenStatus{
 		IssuedAt:   issuedAt,
 		Conditions: structutils.MergeList(token.Status.Conditions),
 	}
@@ -62,7 +62,7 @@ func (r *TokenReconciler) syncStatus(
 		return nil
 	}
 
-	if err := r.updateStatus(ctx, token, newStatus); err != nil {
+	if err := r.updateStatus(ctx, token, &newStatus); err != nil {
 		return fmt.Errorf("error updating Token(%s) status: %w",
 			klog.KObj(token), err)
 	}
