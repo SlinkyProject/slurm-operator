@@ -51,6 +51,10 @@ spec:
           labelSelector:
             matchLabels:
               {{- include "slurm.login.selectorLabels" . | nindent 12 }}
+      {{- with .Values.login.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: login
         image: "{{ .Values.login.image.repository }}:{{ .Values.login.image.tag }}"

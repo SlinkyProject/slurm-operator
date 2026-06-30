@@ -677,6 +677,10 @@ login:
     #   add:
     #     - SYS_CHROOT
   #
+  # -- (list)
+  # Additional initContainers for the login pod.
+  initContainers: []
+  #
   # --(list)
   # List of volume mounts.
   # Ref: https://kubernetes.io/docs/concepts/storage/volumes/
@@ -732,3 +736,23 @@ login:
 
 #
 # Slurm compute (slurmd) configurations.
+
+#
+# Model-Aware TorchPass ("clockworks") add-on. When enabled, renders the
+# torchpass-login-profile ConfigMap (sourced by login + worker shells) and the
+# torchpass-orchestrator Service. The sidecar/initContainers/volumes themselves
+# are injected via the controller/nodeset/login podSpec values by the caller.
+torchpass:
+  #
+  # -- (bool)
+  # Enables the TorchPass add-on resources.
+  enabled: false
+  #
+  # -- (integer)
+  # Orchestrator gRPC service port.
+  orchestratorPort: 26001
+  #
+  # -- (string)
+  # Contents of /etc/profile.d/torchpass.sh (rendered into the
+  # torchpass-login-profile ConfigMap).
+  profileScript: ""

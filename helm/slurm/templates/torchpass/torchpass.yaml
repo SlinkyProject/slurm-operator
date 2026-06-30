@@ -1,0 +1,38 @@
+{{- if .Values.torchpass.enabled }}
+{{- /*
+Model-Aware TorchPass add-on resources. The clockworks sidecar (controller),
+the torchpass-payload initContainers (nodeset + login) and their volumes are
+injected via the respective podSpec values; this template renders the two
+cluster-scoped pieces the chart owns: the login-profile ConfigMap and the
+orchestrator Service.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: torchpass-login-profile
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+data:
+  torchpass.sh: |
+    {{- .Values.torchpass.profileScript | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: torchpass-orchestrator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "slurm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  # Targets the slurmctld pod the slurm-operator labels from the Controller CR.
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: slurmctld
+  ports:
+    - name: orchestrator
+      port: {{ .Values.torchpass.orchestratorPort | default 26001 }}
+      targetPort: {{ .Values.torchpass.orchestratorPort | default 26001 }}
+      protocol: TCP
+{{- end }}
