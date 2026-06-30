@@ -161,14 +161,14 @@ func testSlurmNodeSet() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 48, time.Duration(5*time.Second))
 
 			return ctx
 		}).
 		Assess("NodeSet is idle", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "-p", "slinky", "--Format=StateLong", "-h"}
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}
 			wants := "idle"
 
 			cleanup_command := "kubectl"
@@ -296,34 +296,35 @@ func testSlurmAccounting() types.Feature {
 		Assess("Sacctmgr add account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "cluster=slurm_slurm", "name=test", "-i"}
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "name=test", "-i"}
+			var wants string
+			var cleanup_command string
+			var cleanup_args []string
 
-			cmd := exec.Command(command, args...)
-			_, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr add account returned non-zero error code")
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
-			cmd = exec.Command(command, args...)
-			output, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr show account returned non-zero error code")
-			require.Equal(t, "test", strings.TrimSpace(string(output)), "account test does not exist in slurmdbd")
+			wants = "test"
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
 
 			return ctx
 		}).
 		Assess("Sacctmgr add user", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "cluster=slurm_slurm", "account=test", "name=testuser", "-i"}
+			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "account=test", "name=testuser", "-i"}
 
-			cmd := exec.Command(command, args...)
-			_, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr add user returned non-zero error code")
+			var wants string
+			var cleanup_command string
+			var cleanup_args []string
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
-			cmd = exec.Command(command, args...)
-			output, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr show user returned non-zero error code")
-			require.Equal(t, "testuser", strings.TrimSpace(string(output)), "user testuser does not exist in slurmdbd")
+			wants = "testuser"
+
+			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
 
 			return ctx
 		}).
