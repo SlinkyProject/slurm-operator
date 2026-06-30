@@ -25,7 +25,7 @@ func (r *AccountingReconciler) syncStatus(
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1beta1.AccountingStatus{
+	newStatus := slinkyv1beta1.AccountingStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, accounting.Status.Conditions...)
@@ -36,7 +36,7 @@ func (r *AccountingReconciler) syncStatus(
 		return nil
 	}
 
-	if err := r.updateStatus(ctx, accounting, newStatus); err != nil {
+	if err := r.updateStatus(ctx, accounting, &newStatus); err != nil {
 		return fmt.Errorf("error updating Accounting(%s) status: %w",
 			klog.KObj(accounting), err)
 	}
