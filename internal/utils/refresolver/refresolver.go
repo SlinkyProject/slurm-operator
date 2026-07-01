@@ -56,7 +56,7 @@ func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *
 
 	list := &slinkyv1beta1.NodeSetList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.NodeSetList{}, err
 	}
 
 	out := &slinkyv1beta1.NodeSetList{}
@@ -80,7 +80,7 @@ func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller 
 
 	list := &slinkyv1beta1.LoginSetList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.LoginSetList{}, err
 	}
 
 	out := &slinkyv1beta1.LoginSetList{}
@@ -104,7 +104,7 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 
 	list := &slinkyv1beta1.RestApiList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.RestApiList{}, err
 	}
 
 	out := &slinkyv1beta1.RestApiList{}
@@ -128,7 +128,7 @@ func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accountin
 
 	list := &slinkyv1beta1.ControllerList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(accounting.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.ControllerList{}, err
 	}
 
 	out := &slinkyv1beta1.ControllerList{}
