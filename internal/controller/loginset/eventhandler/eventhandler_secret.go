@@ -94,6 +94,7 @@ func (e *SecretEventHandler) enqueueRequest(
 		loginsetList, err := e.refResolver.GetLoginSetsForController(ctx, &controller)
 		if err != nil {
 			logger.Error(err, "failed to list LoginSet CRs")
+			continue
 		}
 
 		for _, loginset := range loginsetList.Items {

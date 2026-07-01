@@ -52,7 +52,7 @@ func (r *RefResolver) GetAccounting(ctx context.Context, ref corev1.LocalObjectR
 func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.NodeSetList, error) {
 	list := &slinkyv1beta1.NodeSetList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.NodeSetList{}, err
 	}
 
 	out := &slinkyv1beta1.NodeSetList{}
@@ -72,7 +72,7 @@ func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *
 func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.LoginSetList, error) {
 	list := &slinkyv1beta1.LoginSetList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.LoginSetList{}, err
 	}
 
 	out := &slinkyv1beta1.LoginSetList{}
@@ -92,7 +92,7 @@ func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller 
 func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.RestApiList, error) {
 	list := &slinkyv1beta1.RestApiList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.RestApiList{}, err
 	}
 
 	out := &slinkyv1beta1.RestApiList{}
@@ -112,7 +112,7 @@ func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *
 func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (*slinkyv1beta1.ControllerList, error) {
 	list := &slinkyv1beta1.ControllerList{}
 	if err := r.reader.List(ctx, list, client.InNamespace(accounting.Namespace)); err != nil {
-		return nil, err
+		return &slinkyv1beta1.ControllerList{}, err
 	}
 
 	out := &slinkyv1beta1.ControllerList{}
