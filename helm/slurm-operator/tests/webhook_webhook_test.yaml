@@ -169,3 +169,121 @@ tests:
           value: Secret
         exists:
           path: data["ca.crt"]
+
+  - it: should generate a self-signed cert and inject the caBundle into every webhook when certManager is disabled
+    set:
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      # caBundle must be present on all validating webhooks, not just the first.
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        notExists:
+          path: webhooks[?(@.clientConfig.caBundle == "")]
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        exists:
+          path: webhooks[5].clientConfig.caBundle
+      # The generated material must be base64-encoded PEM.
+      - documentSelector:
+          path: kind
+          value: Secret
+        matchRegex:
+          path: data["tls.crt"]
+          pattern: ^LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t
+      - documentSelector:
+          path: kind
+          value: Secret
+        matchRegex:
+          path: data["ca.crt"]
+          pattern: ^LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t
+      - documentSelector:
+          path: kind
+          value: Secret
+        matchRegex:
+          path: data["tls.key"]
+          pattern: ^LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVkt
+      # cert-manager annotations must not be present in the native path.
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        notExists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+
+  - it: should not render the native TLS secret nor caBundle when certManager is enabled
+    set:
+      certManager:
+        enabled: true
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - notExists:
+          path: webhooks[*].clientConfig.caBundle
+        documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        exists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+      - hasDocuments:
+          count: 2
+
+  - it: should reuse the existing serving certificate instead of regenerating when certManager is disabled
+    set:
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    kubernetesProvider:
+      scheme:
+        "v1/Secret":
+          gvr:
+            version: v1
+            resource: secrets
+          namespaced: true
+      objects:
+        - kind: Secret
+          apiVersion: v1
+          metadata:
+            name: slurm-operator-webhook-ca
+            namespace: test-namespace
+          data:
+            tls.crt: cmV1c2VkLXRscy1jcnQ=
+            tls.key: cmV1c2VkLXRscy1rZXk=
+            ca.crt: cmV1c2VkLWNhLWNydA==
+    asserts:
+      # The Secret data must be carried over verbatim from the existing Secret.
+      - documentSelector:
+          path: kind
+          value: Secret
+        equal:
+          path: data["tls.crt"]
+          value: cmV1c2VkLXRscy1jcnQ=
+      - documentSelector:
+          path: kind
+          value: Secret
+        equal:
+          path: data["tls.key"]
+          value: cmV1c2VkLXRscy1rZXk=
+      - documentSelector:
+          path: kind
+          value: Secret
+        equal:
+          path: data["ca.crt"]
+          value: cmV1c2VkLWNhLWNydA==
+      # The injected caBundle must match the reused CA, not a freshly generated one.
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: cmV1c2VkLWNhLWNydA==
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].clientConfig.caBundle
+          value: cmV1c2VkLWNhLWNydA==
