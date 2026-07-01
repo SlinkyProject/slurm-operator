@@ -84,6 +84,10 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 		durationStore.Push(key, 30*time.Second)
 	}
 
+	if err := r.applyConfigHashes(ctx, nodeset); err != nil {
+		return err
+	}
+
 	if err := r.adoptOrphanRevisions(ctx, nodeset); err != nil {
 		return err
 	}
