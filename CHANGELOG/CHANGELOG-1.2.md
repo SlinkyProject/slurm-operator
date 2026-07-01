@@ -1,3 +1,9 @@
+## v1.2.0
+
+### Added
+
+- Added optional PodDisruptionBudget for RestAPI.
+
 ## v1.2.0-rc1
 
 ### Added
