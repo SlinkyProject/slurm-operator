@@ -71,6 +71,13 @@ var _ = Describe("LoginSet Controller", func() {
 				g.Expect(ls.DeletionTimestamp.IsZero()).To(BeFalse())
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
+			By("Waiting for the controller's cache to observe the deletionTimestamp")
+			Eventually(func(g Gomega) {
+				ls := &slinkyv1beta1.LoginSet{}
+				g.Expect(k8sManagerClient.Get(ctx, loginsetKey, ls)).To(Succeed())
+				g.Expect(ls.DeletionTimestamp.IsZero()).To(BeFalse())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
 			By("Deleting Deployment child while LoginSet is terminating")
 			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
