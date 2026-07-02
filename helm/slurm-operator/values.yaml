@@ -81,6 +81,12 @@ operator:
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 8080
+  # -- Serve the metrics endpoint securely via HTTPS with authn/authz.
+  # Requires metricsPort to be non-zero. Scraping clients must present a
+  # token authorized to access /metrics (e.g. bound to the metrics-reader
+  # ClusterRole). The endpoint uses a generated self-signed certificate, so
+  # scrapers must skip TLS verification (e.g. insecureSkipVerify).
+  metricsSecure: false
 
 
 # Webhook configurations.
@@ -126,6 +132,12 @@ webhook:
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
   metricsPort: 0
+  # -- Serve the metrics endpoint securely via HTTPS with authn/authz.
+  # Requires metricsPort to be non-zero. Scraping clients must present a
+  # token authorized to access /metrics (e.g. bound to the metrics-reader
+  # ClusterRole). The endpoint uses a generated self-signed certificate, so
+  # scrapers must skip TLS verification (e.g. insecureSkipVerify).
+  metricsSecure: false
 
 #
 # Cert-Manager certificate configurations.

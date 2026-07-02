@@ -49,6 +49,7 @@ Kubernetes: `>= 1.29.0-0`
 | operator.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | operator.loginsetWorkers | int | `4` | Set the max concurrent workers for the LoginSet controller. |
 | operator.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
+| operator.metricsSecure | bool | `false` | Serve the metrics endpoint securely via HTTPS with authn/authz. Requires metricsPort to be non-zero. Scraping clients must present a token authorized to access /metrics (e.g. bound to the metrics-reader ClusterRole). The endpoint uses a generated self-signed certificate, so scrapers must skip TLS verification (e.g. insecureSkipVerify). |
 | operator.nodesetWorkers | int | `4` | Set the max concurrent workers for the NodeSet controller. |
 | operator.replicas | int | `1` | Set the number of replicas to deploy. |
 | operator.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
@@ -66,6 +67,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
+| webhook.metricsSecure | bool | `false` | Serve the metrics endpoint securely via HTTPS with authn/authz. Requires metricsPort to be non-zero. Scraping clients must present a token authorized to access /metrics (e.g. bound to the metrics-reader ClusterRole). The endpoint uses a generated self-signed certificate, so scrapers must skip TLS verification (e.g. insecureSkipVerify). |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.serviceAccount.create | bool | `true` | Allows chart to create the service account. |
