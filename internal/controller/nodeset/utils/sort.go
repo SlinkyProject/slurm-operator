@@ -5,6 +5,7 @@
 package utils
 
 import (
+	"slices"
 	"sort"
 	"time"
 
@@ -173,19 +174,22 @@ func (o PodsByCreationTimestamp) Less(i, j int) bool {
 
 // SplitUnhealthyPods returns lists of healthy and unhealthy pods.
 func SplitUnhealthyPods(pods []*corev1.Pod) (unhealthyPods, healthyPods []*corev1.Pod) {
-	var numUnhealthy int
+	unhealthyPods = make([]*corev1.Pod, 0, len(pods))
+	healthyPods = make([]*corev1.Pod, 0, len(pods))
+
 	for _, pod := range pods {
-		if !podutils.IsHealthy(pod) {
-			numUnhealthy++
+		if podutils.IsHealthy(pod) {
+			healthyPods = append(healthyPods, pod)
+		} else {
+			unhealthyPods = append(unhealthyPods, pod)
 		}
 	}
 
-	unhealthyPods = make([]*corev1.Pod, numUnhealthy)
-	healthyPods = make([]*corev1.Pod, len(pods)-numUnhealthy)
+	unhealthyPods = slices.Clip(unhealthyPods)
+	healthyPods = slices.Clip(healthyPods)
 
-	sort.Sort(PodsByCreationTimestamp(pods))
-	copy(unhealthyPods, pods[:numUnhealthy])
-	copy(healthyPods, pods[numUnhealthy:])
+	sort.Sort(PodsByCreationTimestamp(unhealthyPods))
+	sort.Sort(PodsByCreationTimestamp(healthyPods))
 
 	return unhealthyPods, healthyPods
 }
