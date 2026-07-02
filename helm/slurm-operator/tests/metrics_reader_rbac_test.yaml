@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test metrics-reader rbac
+templates:
+  - metrics-reader-rbac.yaml
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+  - it: should not render by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render when operator metricsSecure is enabled
+    set:
+      operator:
+        metricsSecure: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ClusterRole
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-operator-metrics-reader
+      - contains:
+          path: rules
+          content:
+            nonResourceURLs:
+              - /metrics
+            verbs:
+              - get
+  - it: should render when webhook metricsSecure is enabled
+    set:
+      webhook:
+        metricsSecure: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ClusterRole
+  - it: should not render when components are disabled
+    set:
+      operator:
+        enabled: false
+        metricsSecure: true
+      webhook:
+        enabled: false
+        metricsSecure: true
+    asserts:
+      - hasDocuments:
+          count: 0

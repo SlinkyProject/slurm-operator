@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -158,6 +159,8 @@ func startProfileServer(addr string) (*http.Server, error) {
 
 // +kubebuilder:rbac:groups="",resources=events,verbs=get;list;create;update;patch;watch
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;create;update;patch
+// +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
 func main() {
 	var flags Flags
@@ -213,12 +216,24 @@ func main() {
 		setupLog.Info("propagated node conditions", "propagatedNodeConditions", flags.propagatedNodeConditions)
 	}
 
+	metricsServerOptions := server.Options{
+		BindAddress:   flags.metricsAddr,
+		SecureServing: flags.secureMetrics,
+		TLSOpts:       tlsOpts,
+	}
+	if flags.secureMetrics {
+		if flags.metricsAddr == "0" {
+			setupLog.Info("metrics-secure has no effect because the metrics server is disabled", "metrics-addr", flags.metricsAddr)
+		}
+		// FilterProvider is used to protect the metrics endpoint with authn/authz.
+		// For more information see:
+		// https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/metrics/filters#WithAuthenticationAndAuthorization
+		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			TLSOpts:     tlsOpts,
-			BindAddress: flags.metricsAddr,
-		},
+		Scheme:  scheme,
+		Metrics: metricsServerOptions,
 		Cache: cache.Options{
 			DefaultNamespaces: defaultNamespaces,
 		},
