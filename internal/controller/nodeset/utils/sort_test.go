@@ -182,6 +182,21 @@ func TestSortingActivePods(t *testing.T) {
 			},
 		},
 		{
+			name: "Sort cordon by ordinal",
+			pods: []corev1.Pod{
+				newRunningPod("cordon-0", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon: "True",
+				}),
+				newRunningPod("cordon-1", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon: "True",
+				}),
+			},
+			wantOrder: []string{
+				"cordon-1",
+				"cordon-0",
+			},
+		},
+		{
 			name: "Sort deadlines",
 			pods: []corev1.Pod{
 				newRunningPod("noDeadline", nil),

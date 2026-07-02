@@ -69,7 +69,7 @@ func (o ActivePods) Less(i, j int) bool {
 	// Step: cordon < not cordon
 	podCordon1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordon)
 	podCordon2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	if podCordon1 || podCordon2 {
+	if podCordon1 != podCordon2 {
 		return podCordon1
 	}
 
