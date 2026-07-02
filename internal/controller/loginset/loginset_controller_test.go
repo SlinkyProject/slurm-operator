@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("LoginSet Controller", func() {
 	Context("When reconciling a LoginSet", func() {
-		var name = testutils.GenerateResourceName(5)
+		var name string
 		var loginset *slinkyv1beta1.LoginSet
 		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
@@ -26,6 +26,7 @@ var _ = Describe("LoginSet Controller", func() {
 		var sssdConfSecret *corev1.Secret
 
 		BeforeEach(func() {
+			name = testutils.GenerateResourceName(5)
 			slurmKeyRef := testutils.NewSlurmKeyRef(name)
 			jwtKeyRef := testutils.NewJwtKeyRef(name)
 			slurmKeySecret = testutils.NewSlurmKeySecret(slurmKeyRef)
