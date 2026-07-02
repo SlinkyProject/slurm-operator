@@ -242,3 +242,76 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: image repository is required
+  - it: should not pass --metrics-secure by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-secure
+  - it: should pass --metrics-secure when metricsSecure is enabled
+    set:
+      operator:
+        metricsPort: 8080
+        metricsSecure: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-secure
+  - it: should fail when metricsSecure is enabled without a metrics port
+    set:
+      operator:
+        metricsPort: 0
+        metricsSecure: true
+    asserts:
+      - failedTemplate:
+          errorPattern: operator.metricsSecure requires operator.metricsPort
+  - it: should disable the metrics server when metricsPort is zero
+    set:
+      operator:
+        metricsPort: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[18]
+          value: --metrics-addr
+      - equal:
+          path: spec.template.spec.containers[0].args[19]
+          value: "0"
+  - it: should set the metrics address from metricsPort
+    set:
+      operator:
+        metricsPort: 9090
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[18]
+          value: --metrics-addr
+      - equal:
+          path: spec.template.spec.containers[0].args[19]
+          value: :9090
+  - it: should fail when metricsSecure is enabled with a string zero metrics port
+    set:
+      operator:
+        metricsPort: "0"
+        metricsSecure: true
+    asserts:
+      - failedTemplate:
+          errorPattern: operator.metricsSecure requires operator.metricsPort
+  - it: should fail when metricsPort is not a valid port
+    set:
+      operator:
+        metricsPort: 8O80
+    asserts:
+      - failedTemplate:
+          errorPattern: operator.metricsPort must be an integer between 0 and 65535
+  - it: should fail when metricsPort has a leading zero
+    set:
+      operator:
+        metricsPort: "08080"
+    asserts:
+      - failedTemplate:
+          errorPattern: operator.metricsPort must be an integer between 0 and 65535
+  - it: should fail when metricsPort is out of range
+    set:
+      operator:
+        metricsPort: 70000
+    asserts:
+      - failedTemplate:
+          errorPattern: operator.metricsPort must be an integer between 0 and 65535

@@ -6,10 +6,20 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ## Dependencies
 
+### cel.dev/expr
+- Name: cel.dev/expr
+- Version: v0.25.1
+- License: Apache-2.0
+
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
 - Version: v1.1.0-rc1.0.20260616191021-0dac744e9931
 - License: Apache-2.0
+
+### github.com/antlr4-go/antlr/v4
+- Name: github.com/antlr4-go/antlr/v4
+- Version: v4.13.1
+- License: BSD-3-Clause
 
 ### github.com/apapsch/go-jsonmerge/v2
 - Name: github.com/apapsch/go-jsonmerge/v2
@@ -24,6 +34,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### github.com/blang/semver/v4
 - Name: github.com/blang/semver/v4
 - Version: v4.0.0
+- License: MIT
+
+### github.com/cenkalti/backoff/v5
+- Name: github.com/cenkalti/backoff/v5
+- Version: v5.0.3
 - License: MIT
 
 ### github.com/cert-manager/cert-manager/pkg/apis/meta
@@ -201,6 +216,16 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.1.3
 - License: Apache-2.0
 
+### github.com/google/cel-go
+- Name: github.com/google/cel-go
+- Version: v0.26.0
+- License: Apache-2.0
+
+### github.com/google/cel-go
+- Name: github.com/google/cel-go
+- Version: v0.26.0
+- License: BSD-3-Clause
+
 ### github.com/google/gnostic-models
 - Name: github.com/google/gnostic-models
 - Version: v0.7.1
@@ -215,6 +240,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/gorilla/websocket
 - Version: v1.5.4-0.20250319132907-e064f32e3674
 - License: BSD-2-Clause
+
+### github.com/grpc-ecosystem/grpc-gateway/v2
+- Name: github.com/grpc-ecosystem/grpc-gateway/v2
+- Version: v2.28.0
+- License: BSD-3-Clause
 
 ### github.com/josharian/intern
 - Name: github.com/josharian/intern
@@ -421,10 +451,20 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.9.4
 - License: MIT
 
+### github.com/spf13/cobra
+- Name: github.com/spf13/cobra
+- Version: v1.10.2
+- License: Apache-2.0
+
 ### github.com/spf13/pflag
 - Name: github.com/spf13/pflag
 - Version: v1.0.10
 - License: BSD-3-Clause
+
+### github.com/stoewer/go-strcase
+- Name: github.com/stoewer/go-strcase
+- Version: v1.3.1
+- License: MIT
 
 ### github.com/stretchr/testify
 - Name: github.com/stretchr/testify
@@ -471,6 +511,26 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.43.0
 - License: BSD-3-Clause
 
+### go.opentelemetry.io/otel/exporters/otlp/otlptrace
+- Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace
+- Version: v1.43.0
+- License: Apache-2.0
+
+### go.opentelemetry.io/otel/exporters/otlp/otlptrace
+- Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace
+- Version: v1.43.0
+- License: BSD-3-Clause
+
+### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+- Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+- Version: v1.42.0
+- License: Apache-2.0
+
+### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+- Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
+- Version: v1.42.0
+- License: BSD-3-Clause
+
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
 - Version: v1.43.0
@@ -478,6 +538,16 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
+- Version: v1.43.0
+- License: BSD-3-Clause
+
+### go.opentelemetry.io/otel/sdk
+- Name: go.opentelemetry.io/otel/sdk
+- Version: v1.43.0
+- License: Apache-2.0
+
+### go.opentelemetry.io/otel/sdk
+- Name: go.opentelemetry.io/otel/sdk
 - Version: v1.43.0
 - License: BSD-3-Clause
 
@@ -490,6 +560,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: go.opentelemetry.io/otel/trace
 - Version: v1.43.0
 - License: BSD-3-Clause
+
+### go.opentelemetry.io/proto/otlp
+- Name: go.opentelemetry.io/proto/otlp
+- Version: v1.10.0
+- License: Apache-2.0
 
 ### go.uber.org/multierr
 - Name: go.uber.org/multierr
@@ -516,6 +591,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.52.0
 - License: BSD-3-Clause
 
+### golang.org/x/exp/slices
+- Name: golang.org/x/exp/slices
+- Version: v0.0.0-20250718183923-645b1fa84792
+- License: BSD-3-Clause
+
 ### golang.org/x/net
 - Name: golang.org/x/net
 - Version: v0.55.0
@@ -526,8 +606,8 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.35.0
 - License: BSD-3-Clause
 
-### golang.org/x/sync/errgroup
-- Name: golang.org/x/sync/errgroup
+### golang.org/x/sync
+- Name: golang.org/x/sync
 - Version: v0.20.0
 - License: BSD-3-Clause
 
@@ -554,6 +634,21 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### gomodules.xyz/jsonpatch/v2
 - Name: gomodules.xyz/jsonpatch/v2
 - Version: v2.5.0
+- License: Apache-2.0
+
+### google.golang.org/genproto/googleapis/api
+- Name: google.golang.org/genproto/googleapis/api
+- Version: v0.0.0-20260401024825-9d38bb4040a9
+- License: Apache-2.0
+
+### google.golang.org/genproto/googleapis/rpc
+- Name: google.golang.org/genproto/googleapis/rpc
+- Version: v0.0.0-20260401024825-9d38bb4040a9
+- License: Apache-2.0
+
+### google.golang.org/grpc
+- Name: google.golang.org/grpc
+- Version: v1.80.0
 - License: Apache-2.0
 
 ### google.golang.org/protobuf
@@ -596,8 +691,8 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.35.2
 - License: BSD-3-Clause
 
-### k8s.io/apiserver/pkg
-- Name: k8s.io/apiserver/pkg
+### k8s.io/apiserver
+- Name: k8s.io/apiserver
 - Version: v0.35.2
 - License: Apache-2.0
 
@@ -636,8 +731,23 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.0.0-20260304202019-5b3e3fdb0acf
 - License: BSD-3-Clause
 
+### k8s.io/kube-openapi/pkg/internal/third_party/govalidator
+- Name: k8s.io/kube-openapi/pkg/internal/third_party/govalidator
+- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- License: MIT
+
+### k8s.io/kube-openapi/pkg/validation/errors
+- Name: k8s.io/kube-openapi/pkg/validation/errors
+- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- License: Apache-2.0
+
 ### k8s.io/kube-openapi/pkg/validation/spec
 - Name: k8s.io/kube-openapi/pkg/validation/spec
+- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- License: Apache-2.0
+
+### k8s.io/kube-openapi/pkg/validation/strfmt
+- Name: k8s.io/kube-openapi/pkg/validation/strfmt
 - Version: v0.0.0-20260304202019-5b3e3fdb0acf
 - License: Apache-2.0
 
@@ -660,6 +770,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: k8s.io/utils/internal/third_party/forked/golang
 - Version: v0.0.0-20260210185600-b8788abfbbc2
 - License: BSD-3-Clause
+
+### sigs.k8s.io/apiserver-network-proxy/konnectivity-client
+- Name: sigs.k8s.io/apiserver-network-proxy/konnectivity-client
+- Version: v0.33.0
+- License: Apache-2.0
 
 ### sigs.k8s.io/controller-runtime
 - Name: sigs.k8s.io/controller-runtime
