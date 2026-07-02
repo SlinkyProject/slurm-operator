@@ -1,0 +1,25 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- $operatorMetricsSecure := and .Values.operator.enabled .Values.operator.metricsSecure }}
+{{- $webhookMetricsSecure := and .Values.webhook.enabled .Values.webhook.metricsSecure }}
+{{- if or $operatorMetricsSecure $webhookMetricsSecure }}
+{{- /*
+ClusterRole to allow scraping the secured metrics endpoints. It is
+intentionally not bound to any subject; grant it to your metrics scraper
+(e.g. the Prometheus ServiceAccount) with a ClusterRoleBinding.
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "slurm-operator.fullname" . }}-metrics-reader
+  labels:
+    {{- include "slurm-operator.labels" . | nindent 4 }}
+rules:
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+{{- end }}{{- /* if or $operatorMetricsSecure $webhookMetricsSecure */}}

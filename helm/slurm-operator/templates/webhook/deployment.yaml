@@ -45,10 +45,19 @@ spec:
             - --health-addr
             - {{ printf ":%s" (toString .) | quote }}
             {{- end }}{{- /* with .Values.webhook.healthPort */}}
-            {{- with .Values.webhook.metricsPort }}
+            {{- $metricsPort := int (include "slurm-operator.metricsPort" (list "webhook" .Values.webhook.metricsPort)) }}
             - --metrics-addr
-            - {{ printf ":%s" (toString .) | quote }}
-            {{- end }}{{- /* with .Values.webhook.metricsPort */}}
+            {{- if ne $metricsPort 0 }}
+            - {{ printf ":%d" $metricsPort | quote }}
+            {{- else }}
+            - "0"
+            {{- end }}{{- /* if $metricsPort != 0 */}}
+            {{- if .Values.webhook.metricsSecure }}
+            {{- if eq $metricsPort 0 }}
+            {{- fail "webhook.metricsSecure requires webhook.metricsPort to be non-zero" }}
+            {{- end }}{{- /* if $metricsPort == 0 */}}
+            - --metrics-secure
+            {{- end }}{{- /* if .Values.webhook.metricsSecure */}}
             {{- if .Values.webhook.leaderElection }}
             - --leader-elect
             {{- end }}{{- /* if .Values.webhook.leaderElection */}}
