@@ -31,6 +31,7 @@ import (
 
 var cfg *rest.Config
 var k8sClient client.Client
+var k8sManagerClient client.Client
 var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
@@ -81,7 +82,9 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	err = NewReconciler(k8sManager.GetClient()).SetupWithManager(k8sManager)
+	k8sManagerClient = k8sManager.GetClient()
+
+	err = NewReconciler(k8sManagerClient).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
