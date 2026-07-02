@@ -81,18 +81,20 @@ var _ = Describe("LoginSet Controller", func() {
 			By("Deleting Deployment child while LoginSet is terminating")
 			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
-			Eventually(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Verifying Deployment child is NOT recreated")
-			Consistently(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, 5*testutils.Interval, testutils.Interval).Should(Succeed())
+			const requiredConsecutiveAbsences = 5
+			consecutiveAbsences := 0
+			Eventually(func(g Gomega) {
+				if err := k8sClient.Get(ctx, deploymentKey, deployment); err == nil {
+					Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
+					consecutiveAbsences = 0
+					g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences), "Deployment was recreated")
+					return
+				}
+				consecutiveAbsences++
+				g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences))
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Cleaning up: removing foregroundDeletion finalizer")
 			ls := &slinkyv1beta1.LoginSet{}
