@@ -60,7 +60,7 @@ func (r *NodeSetReconciler) syncStatus(
 	}
 
 	if err := r.syncNodeSetPodStatus(ctx, nodeset, pods); err != nil {
-		return err
+		errors = append(errors, err)
 	}
 
 	return utilerrors.NewAggregate(errors)
