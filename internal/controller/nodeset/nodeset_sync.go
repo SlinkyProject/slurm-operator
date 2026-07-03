@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
+	"unicode"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -308,6 +310,30 @@ func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodese
 	return nil
 }
 
+// maxSlurmReasonLength bounds the length of a Slurm node Reason string derived
+// from untrusted input (e.g. a Kubernetes Node annotation).
+const maxSlurmReasonLength = 256
+
+// sanitizeSlurmReason makes an untrusted string safe to use as a Slurm node Reason
+func sanitizeSlurmReason(reason string) string {
+	sanitized := strings.Map(func(r rune) rune {
+		if r == '\t' || r == '\n' || r == '\r' {
+			return ' '
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, reason)
+	sanitized = strings.TrimSpace(sanitized)
+
+	if runes := []rune(sanitized); len(runes) > maxSlurmReasonLength {
+		sanitized = strings.TrimSpace(string(runes[:maxSlurmReasonLength]))
+	}
+
+	return sanitized
+}
+
 // syncCordon handles propagating cordon/uncordon activity into the NodeSet pods.
 //
 // When the Kubernetes node is cordoned, the NodeSet pods on that node should have their Slurm node drained.
@@ -365,9 +391,10 @@ func (r *NodeSetReconciler) syncCordon(
 				return fmt.Errorf("failed to get node: %w", err)
 			}
 			if value, ok := node.Annotations[slinkyv1beta1.AnnotationNodeCordonReason]; ok {
+				sanitized := sanitizeSlurmReason(value)
 				logger.V(1).Info("Slurm node drain reason overridden by Kubernetes node annotation",
-					"reason", value)
-				reason = value
+					"reason", sanitized)
+				reason = sanitized
 			}
 
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
