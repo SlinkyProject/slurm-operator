@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
@@ -4643,6 +4644,82 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				if err := sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}); err == nil {
 					t.Fatalf("expected Slurm node %q to be pruned, it still exists", name)
 				}
+			}
+		})
+	}
+}
+
+func Test_sanitizeSlurmReason(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "plain reason unchanged",
+			input: "Node was cordoned by admin",
+			want:  "Node was cordoned by admin",
+		},
+		{
+			name:  "leading and trailing whitespace trimmed",
+			input: "  needs maintenance  ",
+			want:  "needs maintenance",
+		},
+		{
+			name:  "newlines replaced with spaces to prevent log spoofing",
+			input: "line1\nline2",
+			want:  "line1 line2",
+		},
+		{
+			name:  "carriage return and tab replaced with spaces",
+			input: "a\r\tb",
+			want:  "a  b",
+		},
+		{
+			name:  "carriage return newline injection is neutralized",
+			input: "drained\r\nFATAL fake log entry",
+			want:  "drained  FATAL fake log entry",
+		},
+		{
+			name:  "control characters stripped",
+			input: "bad\x00\x07reason",
+			want:  "badreason",
+		},
+		{
+			name:  "ansi escape sequence stripped",
+			input: "reason\x1b[31mred\x1b[0m",
+			want:  "reason[31mred[0m",
+		},
+		{
+			name:  "multibyte characters preserved",
+			input: "café draining",
+			want:  "café draining",
+		},
+		{
+			name:  "truncated to max length",
+			input: strings.Repeat("a", maxSlurmReasonLength+50),
+			want:  strings.Repeat("a", maxSlurmReasonLength),
+		},
+		{
+			name:  "truncation does not split multibyte runes",
+			input: strings.Repeat("é", maxSlurmReasonLength+10),
+			want:  strings.Repeat("é", maxSlurmReasonLength),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sanitizeSlurmReason(tt.input)
+			if got != tt.want {
+				t.Errorf("sanitizeSlurmReason() = %q, want %q", got, tt.want)
+			}
+			if utf8.RuneCountInString(got) > maxSlurmReasonLength {
+				t.Errorf("sanitizeSlurmReason() returned %d runes, exceeds max %d",
+					utf8.RuneCountInString(got), maxSlurmReasonLength)
 			}
 		})
 	}
