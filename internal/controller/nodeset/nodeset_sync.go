@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -457,6 +458,33 @@ func (r *NodeSetReconciler) syncClusterWorkerService(ctx context.Context, nodese
 //
 // When the Kubernetes node is cordoned, the NodeSet pods on that node should have their Slurm node drained.
 // Conversely, when the Kubernetes node is uncordoned, the NodeSet pods on that node should have their Slurm node be undrained.
+// maxSlurmReasonLength bounds the length of a Slurm node Reason string derived
+// from untrusted input (e.g. a Kubernetes Node annotation).
+const maxSlurmReasonLength = 256
+
+// sanitizeSlurmReason makes an untrusted string safe to use as a Slurm node
+// Reason. It strips control characters (including newlines/tabs, which could be
+// used for log or reason spoofing), collapses surrounding whitespace, and
+// truncates the result to a bounded length.
+func sanitizeSlurmReason(reason string) string {
+	sanitized := strings.Map(func(r rune) rune {
+		if r == '\t' || r == '\n' || r == '\r' {
+			return ' '
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, reason)
+	sanitized = strings.TrimSpace(sanitized)
+
+	if runes := []rune(sanitized); len(runes) > maxSlurmReasonLength {
+		sanitized = strings.TrimSpace(string(runes[:maxSlurmReasonLength]))
+	}
+
+	return sanitized
+}
+
 // Otherwise the pods' pod-cordon label intent is propagated -- have the Slurm node drained or undrained.
 func (r *NodeSetReconciler) syncCordon(
 	ctx context.Context,
@@ -511,9 +539,13 @@ func (r *NodeSetReconciler) syncCordon(
 			}
 
 			if value, ok := node.Annotations[slinkyv1beta1.AnnotationNodeCordonReason]; ok {
+				// The annotation is user-controlled; anyone able to annotate the
+				// Node could otherwise inject arbitrary/control characters into the
+				// Slurm node Reason. Sanitize and truncate before use.
+				sanitized := sanitizeSlurmReason(value)
 				logger.V(1).Info("Slurm node drain reason overridden by Kubernetes node annotation",
-					"reason", value)
-				reason = value
+					"reason", sanitized)
+				reason = sanitized
 			} else {
 				var reasons []string
 				for _, condType := range r.propagatedNodeConditions {
