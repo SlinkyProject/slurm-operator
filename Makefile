@@ -124,13 +124,15 @@ $(LOCALBIN):
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
-@[ -f $(1) ] || { \
-set -e; \
-package=$(2)@$(3) ;\
-echo "Downloading $${package}" ;\
-GOBIN=$(LOCALBIN) go install $${package} ;\
-mv "$$(echo "$(1)" | $(SED) "s/-$(3)$$//")" $(1) ;\
-}
+@[ -f "$(1)-$(3)" ] || { \
+	set -e; \
+	package=$(2)@$(3) ;\
+	echo "Downloading $${package}" ;\
+	rm -f $(1) || true ;\
+	GOBIN=$(LOCALBIN) go install $${package} ;\
+	mv $(1) $(1)-$(3) ;\
+} ;\
+ln -sf $(1)-$(3) $(1)
 endef
 
 # helm-install-plugin will 'helm plugin install' if missing or wrong version
@@ -165,16 +167,16 @@ endef
 
 ## Tool Binaries
 KUBECTL ?= kubectl
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
-ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
-GOVULNCHECK ?= $(LOCALBIN)/govulncheck-$(GOVULNCHECK_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+GOVULNCHECK ?= $(LOCALBIN)/govulncheck
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
-HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
+HELM_DOCS ?= $(LOCALBIN)/helm-docs
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
-YQ ?= $(LOCALBIN)/yq-$(YQ_VERSION)
+YQ ?= $(LOCALBIN)/yq
 HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
-COSIGN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
+COSIGN ?= $(LOCALBIN)/cosign
 HELM_CONFIG_HOME ?= $(LOCALBIN)/helm-config
 HELM_CACHE_HOME ?= $(LOCALBIN)/helm-cache
 HELM_DATA_HOME ?= $(LOCALBIN)/helm-data
@@ -413,7 +415,7 @@ golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 GO_MODULE ?= $(shell sed -n 's/^module[[:space:]]\{1,\}//p' go.mod)
 GO_LICENSES_VERSION ?= v2.0.1
 GO_LICENSES_PACKAGE ?= github.com/google/go-licenses/v2
-GO_LICENSES ?= $(LOCALBIN)/go-licenses-$(GO_LICENSES_VERSION)
+GO_LICENSES ?= $(LOCALBIN)/go-licenses
 LICENSE_PACKAGE_PATTERN ?= ./...
 LEGAL_GOOS ?= linux
 LEGAL_GOARCH ?= amd64

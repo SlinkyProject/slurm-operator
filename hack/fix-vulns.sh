@@ -31,9 +31,7 @@ HELP OPTIONS:
 	-c, --commit		Commit changes using Git
 
 ENVIRONMENT:
-	GOVULNCHECK         govulncheck binary; defaults to repo-local bin/govulncheck-latest
 	OUTPUT_FILE         File to write commit messages to.
-	PACKAGE_PATTERN     Packages to scan; defaults to ./...
 EOF
 }
 
