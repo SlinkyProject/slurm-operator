@@ -12,7 +12,4 @@ assignees: ''
 
 ______________________________________________________________________
 
-By submitting this issue, you agree to follow our
-[code of conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md)
-and our
-[contributing guidelines](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md).
+By submitting this issue, you agree to follow our [code of conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md) and our [contributing guidelines](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md).

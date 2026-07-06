@@ -15,10 +15,7 @@ Link relevant issues which this addresses (e.g. closes #123).
 
 ## Checklist
 
-- [ ] I have read
-  [CONTRIBUTING.md](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md)
-  and the
-  [Code of Conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md).
+- [ ] I have read the [CONTRIBUTING.md](https://github.com/SlinkyProject/slurm-operator/blob/main/CONTRIBUTING.md) and the [Code of Conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md).
 - [ ] New or existing tests cover these changes (where applicable).
 - [ ] Documentation is updated if user-visible behavior changes.
 
