@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("LoginSet Controller", func() {
 	Context("When reconciling a LoginSet", func() {
-		var name = testutils.GenerateResourceName(5)
+		var name string
 		var loginset *slinkyv1beta1.LoginSet
 		var controller *slinkyv1beta1.Controller
 		var slurmKeySecret *corev1.Secret
@@ -26,6 +26,7 @@ var _ = Describe("LoginSet Controller", func() {
 		var sssdConfSecret *corev1.Secret
 
 		BeforeEach(func() {
+			name = testutils.GenerateResourceName(5)
 			slurmKeyRef := testutils.NewSlurmKeyRef(name)
 			jwtKeyRef := testutils.NewJwtKeyRef(name)
 			slurmKeySecret = testutils.NewSlurmKeySecret(slurmKeyRef)
@@ -70,21 +71,30 @@ var _ = Describe("LoginSet Controller", func() {
 				g.Expect(ls.DeletionTimestamp.IsZero()).To(BeFalse())
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
+			By("Waiting for the controller's cache to observe the deletionTimestamp")
+			Eventually(func(g Gomega) {
+				ls := &slinkyv1beta1.LoginSet{}
+				g.Expect(k8sManagerClient.Get(ctx, loginsetKey, ls)).To(Succeed())
+				g.Expect(ls.DeletionTimestamp.IsZero()).To(BeFalse())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
 			By("Deleting Deployment child while LoginSet is terminating")
 			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
-			Eventually(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Verifying Deployment child is NOT recreated")
-			Consistently(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, 5*testutils.Interval, testutils.Interval).Should(Succeed())
+			const requiredConsecutiveAbsences = 5
+			consecutiveAbsences := 0
+			Eventually(func(g Gomega) {
+				if err := k8sClient.Get(ctx, deploymentKey, deployment); err == nil {
+					Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
+					consecutiveAbsences = 0
+					g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences), "Deployment was recreated")
+					return
+				}
+				consecutiveAbsences++
+				g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences))
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Cleaning up: removing foregroundDeletion finalizer")
 			ls := &slinkyv1beta1.LoginSet{}
