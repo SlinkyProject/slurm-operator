@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,6 +31,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 func newPodControl(client client.Client, recorder record.EventRecorder) *realPodControl {
@@ -628,7 +631,7 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 	pvc := newPVC("datadir-foo-0")
 	type fields struct {
 		Client   client.Client
-		recorder record.EventRecorder
+		recorder *record.FakeRecorder
 	}
 	type args struct {
 		ctx     context.Context
@@ -636,10 +639,11 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 		pod     *corev1.Pod
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name      string
+		fields    fields
+		args      args
+		wantErr   bool
+		wantEvent string
 	}{
 		{
 			name: "Create",
@@ -652,7 +656,8 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
 			},
-			wantErr: false,
+			wantErr:   false,
+			wantEvent: "Normal SuccessfulCreate",
 		},
 		{
 			name: "Already Exists",
@@ -703,7 +708,8 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 				nodeset: nodeset.DeepCopy(),
 				pod:     pod.DeepCopy(),
 			},
-			wantErr: true,
+			wantErr:   true,
+			wantEvent: "Warning FailedCreate",
 		},
 		{
 			name: "Create Error",
@@ -712,6 +718,27 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 					WithInterceptorFuncs(interceptor.Funcs{
 						Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 							return http.ErrServerClosed
+						},
+					}).
+					WithRuntimeObjects(nodeset.DeepCopy()).
+					Build(),
+				recorder: record.NewFakeRecorder(10),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     pod.DeepCopy(),
+			},
+			wantErr:   true,
+			wantEvent: "error: http: Server closed",
+		},
+		{
+			name: "Create Already Exists",
+			fields: fields{
+				Client: fake.NewClientBuilder().
+					WithInterceptorFuncs(interceptor.Funcs{
+						Create: func(ctx context.Context, client client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+							return apierrors.NewAlreadyExists(corev1.Resource("persistentvolumeclaims"), "datadir-foo-0")
 						},
 					}).
 					WithRuntimeObjects(nodeset.DeepCopy()).
@@ -732,6 +759,13 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 			if err := r.createPersistentVolumeClaims(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
 				t.Errorf("realPodControl.createPersistentVolumeClaims() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			if tt.wantEvent != "" {
+				event := testutils.ReadOneEvent(t, tt.fields.recorder)
+				if !strings.Contains(event, tt.wantEvent) {
+					t.Errorf("realPodControl.createPersistentVolumeClaims() event = %v, want substring %q", event, tt.wantEvent)
+				}
+			}
+			testutils.AssertNoEvents(t, tt.fields.recorder)
 		})
 	}
 }
