@@ -296,7 +296,8 @@ func (r *realPodControl) createPersistentVolumeClaims(ctx context.Context, nodes
 		err := r.Get(ctx, pvcId, pvc)
 		switch {
 		case apierrors.IsNotFound(err):
-			if err := r.Create(ctx, &claim); err != nil {
+			err := r.Create(ctx, &claim)
+			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to create PVC %s: %w", claim.Name, err))
 			}
 			if err == nil || !apierrors.IsAlreadyExists(err) {
