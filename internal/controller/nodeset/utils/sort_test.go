@@ -528,6 +528,8 @@ func TestSplitUnhealthyPods(t *testing.T) {
 	type args struct {
 		pods []*corev1.Pod
 	}
+	now := metav1.Now()
+	then := metav1.Time{Time: now.AddDate(0, -1, 0)}
 	tests := []struct {
 		name              string
 		args              args
@@ -570,6 +572,57 @@ func TestSplitUnhealthyPods(t *testing.T) {
 			wantHealthyPods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "pod2"},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+						},
+					},
+				},
+			},
+		},
+		{
+			// Regression: partition by health, not age — a newer unhealthy pod
+			// must still be classified as unhealthy.
+			name: "healthy pod older than unhealthy pod (partition by health, not age)",
+			args: args{
+				pods: []*corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:              "pod-unhealthy",
+							CreationTimestamp: now,
+						},
+						Status: corev1.PodStatus{Phase: corev1.PodPending},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:              "pod-healthy",
+							CreationTimestamp: then,
+						},
+						Status: corev1.PodStatus{
+							Phase: corev1.PodRunning,
+							Conditions: []corev1.PodCondition{
+								{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+							},
+						},
+					},
+				},
+			},
+			wantUnhealthyPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "pod-unhealthy",
+						CreationTimestamp: now,
+					},
+					Status: corev1.PodStatus{Phase: corev1.PodPending},
+				},
+			},
+			wantHealthyPods: []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "pod-healthy",
+						CreationTimestamp: then,
+					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
