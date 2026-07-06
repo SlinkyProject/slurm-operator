@@ -1334,7 +1334,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 
 	_, oldPods := findUpdatedPods(pods, hash)
 
-	unhealthyPods, healthyPods := nodesetutils.SplitUnhealthyPods(oldPods)
+	unhealthyPods, _ := nodesetutils.SplitUnhealthyPods(oldPods)
 	if len(unhealthyPods) > 0 {
 		logger.Info("Delete unhealthy pods for Rolling Update",
 			"unhealthyPods", len(unhealthyPods))
@@ -1343,7 +1343,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 		}
 	}
 
-	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, healthyPods, hash)
+	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
 	if len(podsToDelete) > 0 {
 		logger.Info("Scale-in pods for Rolling Update",
 			"delete", len(podsToDelete))
@@ -1356,6 +1356,9 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 }
 
 // splitUpdatePods returns two pod lists based on UpdateStrategy type.
+// For RollingUpdate, unavailable new pods and replica slots with no live pod
+// count against maxUnavailable, while unhealthy old pods neither consume the
+// budget nor become deletion candidates (callers condemn them separately).
 func (r *NodeSetReconciler) splitUpdatePods(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1369,8 +1372,21 @@ func (r *NodeSetReconciler) splitUpdatePods(
 		fallthrough
 	case slinkyv1beta1.RollingUpdateNodeSetStrategyType:
 		newPods, oldPods := findUpdatedPods(pods, hash)
+		_, healthyOldPods := nodesetutils.SplitUnhealthyPods(oldPods)
 
+		total := int(ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas))
+		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+			total = len(pods)
+		}
+
+		// Replica slots with no live pod at either revision (e.g. a
+		// terminating pod awaiting its replacement) are unavailable capacity.
+		// In daemonset mode the node set is not bounded by Replicas, so
+		// remnants on removed nodes must not consume the budget.
 		var numUnavailable int
+		if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset {
+			numUnavailable = mathutils.Clamp(total-len(newPods)-len(oldPods), 0, total)
+		}
 		now := metav1.Now()
 		for _, pod := range newPods {
 			if !podutil.IsPodAvailable(pod, nodeset.Spec.MinReadySeconds, now) {
@@ -1378,13 +1394,9 @@ func (r *NodeSetReconciler) splitUpdatePods(
 			}
 		}
 
-		total := int(ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas))
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
-			total = len(pods)
-		}
 		maxUnavailable := mathutils.GetScaledValueFromIntOrPercent(nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable, total, true, 1)
 		remainingUnavailable := mathutils.Clamp((maxUnavailable - numUnavailable), 0, maxUnavailable)
-		podsToDelete, remainingOldPods := nodesetutils.SplitActivePods(oldPods, remainingUnavailable)
+		podsToDelete, remainingOldPods := nodesetutils.SplitActivePods(healthyOldPods, remainingUnavailable)
 
 		remainingPods := make([]*corev1.Pod, len(newPods))
 		copy(remainingPods, newPods)
