@@ -33,6 +33,12 @@ rules:
       - patch
       - update
   - apiGroups:
+      - ""
+    resources:
+      - secrets/finalizers
+    verbs:
+      - update
+  - apiGroups:
       - apps
     resources:
       - controllerrevisions
