@@ -103,6 +103,7 @@ tests:
             operator: NotIn
             values:
               - kube-system
+              - kube-node-lease
       - documentSelector:
           path: kind
           value: MutatingWebhookConfiguration
@@ -124,7 +125,70 @@ tests:
             operator: NotIn
             values:
               - kube-system
+              - kube-node-lease
               - test-namespace
+
+  - it: should render the validating namespaceSelector override verbatim and leave the binding webhook scoped
+    values:
+      - values/webhook_namespaceselector.yaml
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector
+          value:
+            matchLabels:
+              kubernetes.io/metadata.name: slurm
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector
+          value:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: NotIn
+                values:
+                  - kube-system
+                  - kube-node-lease
+                  - test-namespace
+
+  - it: should keep the binding webhook scoped via webhook.namespaces when a validating override is set
+    set:
+      webhook:
+        namespaces: slurm,compute
+        validating:
+          namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: slurm
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].namespaceSelector
+          value:
+            matchLabels:
+              kubernetes.io/metadata.name: slurm
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[0].namespaceSelector
+          value:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - slurm
+                  - compute
+              - key: kubernetes.io/metadata.name
+                operator: NotIn
+                values:
+                  - kube-system
+                  - kube-node-lease
+                  - test-namespace
 
   - it: should inject caBundle and render TLS secret when certManager is disabled
     set:

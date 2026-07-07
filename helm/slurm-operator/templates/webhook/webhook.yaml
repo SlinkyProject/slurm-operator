@@ -40,18 +40,7 @@ metadata:
 webhooks:
   - name: accounting-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -81,18 +70,7 @@ webhooks:
     sideEffects: None
   - name: controller-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -122,18 +100,7 @@ webhooks:
     sideEffects: None
   - name: loginset-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -163,18 +130,7 @@ webhooks:
     sideEffects: None
   - name: nodeset-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -204,18 +160,7 @@ webhooks:
     sideEffects: None
   - name: restapi-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -245,18 +190,7 @@ webhooks:
     sideEffects: None
   - name: token-v1beta1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "override" $.Values.webhook.validating.namespaceSelector) | nindent 6 }}
     rules:
       - apiGroups:
           - {{ include "slurm-operator.apiGroup" . }}
@@ -299,19 +233,7 @@ metadata:
 webhooks:
   - name: podsbinding-v1.kb.io
     namespaceSelector:
-      matchExpressions:
-        {{- $namespaceList := nospace .Values.webhook.namespaces | splitList "," -}}
-        {{- if .Values.webhook.namespaces }}
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- $namespaceList | toYaml | nindent 12 }}
-        {{- end }}
-        - key: kubernetes.io/metadata.name
-          operator: NotIn
-          values:
-            - kube-system
-            - {{ include "slurm-operator.namespace" . }}
+      {{- include "slurm-operator.webhook.namespaceSelector" (dict "root" $ "extraExcludes" (list (include "slurm-operator.namespace" $))) | nindent 6 }}
     admissionReviewVersions:
       - v1
     clientConfig:

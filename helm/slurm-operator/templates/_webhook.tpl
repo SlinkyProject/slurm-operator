@@ -49,3 +49,35 @@ Define operator webhook imagePullPolicy
 {{- define "slurm-operator.webhook.imagePullPolicy" -}}
 {{ .Values.webhook.imagePullPolicy | default .Values.imagePullPolicy }}
 {{- end }}
+
+{{/*
+Render a webhook namespaceSelector.
+Args (dict):
+  root          - root context
+  override      - a namespaceSelector to render verbatim (optional)
+  extraExcludes - extra namespaces to add to the NotIn exclusions (optional)
+When override is set it is rendered verbatim. Otherwise the selector is built from
+webhook.namespaces (In) and the kube-system/kube-node-lease exclusions (NotIn), plus
+any extraExcludes.
+*/}}
+{{- define "slurm-operator.webhook.namespaceSelector" -}}
+{{- $root := .root -}}
+{{- $override := .override -}}
+{{- $extraExcludes := .extraExcludes | default list -}}
+{{- if $override -}}
+{{- toYaml $override -}}
+{{- else -}}
+matchExpressions:
+{{- $namespaceList := nospace $root.Values.webhook.namespaces | splitList "," -}}
+{{- if $root.Values.webhook.namespaces }}
+  - key: kubernetes.io/metadata.name
+    operator: In
+    values:
+      {{- $namespaceList | toYaml | nindent 6 }}
+{{- end }}
+  - key: kubernetes.io/metadata.name
+    operator: NotIn
+    values:
+      {{- concat (list "kube-system" "kube-node-lease") $extraExcludes | toYaml | nindent 6 }}
+{{- end -}}
+{{- end -}}
