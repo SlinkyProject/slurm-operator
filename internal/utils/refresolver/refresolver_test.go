@@ -291,7 +291,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				require.NotNil(t, got)
+				require.Nil(t, got)
 				return
 			}
 
@@ -406,7 +406,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				require.NotNil(t, got)
+				require.Nil(t, got)
 				return
 			}
 
@@ -521,7 +521,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				require.NotNil(t, got)
+				require.Nil(t, got)
 				return
 			}
 
@@ -636,7 +636,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
-				require.NotNil(t, got)
+				require.Nil(t, got)
 				return
 			}
 
