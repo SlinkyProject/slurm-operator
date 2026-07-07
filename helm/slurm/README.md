@@ -53,7 +53,8 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.storageConfig.username | string | `"slurm"` | The name of the user used to connect to the database with. Ref: https://slurm.schedmd.com/slurmdbd.conf.html#OPT_StorageUser |
 | asciiArt | bool | `true` | Toggle ASCII art in Helm installation notes. |
 | clusterName | string | `nil` | The cluster name, which uniquely identifies the Slurm cluster. If empty, one will be derived from the Controller CR object. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName |
-| configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
+| configFileRefs | list(corev1.LocalObjectReference | `[]` | ) Extra Slurm config files to be mounted to `/etc/slurm`. WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
+| configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
 | controller.external | bool | `false` | Configures this component as external (not in Kubernetes). |
 | controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmctld host address or IP. |
 | controller.externalConfig.port | string | `nil` | The slurmctld port. Default is 6817. |
