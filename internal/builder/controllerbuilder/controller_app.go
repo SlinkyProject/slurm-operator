@@ -124,7 +124,9 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 		}
 	}
 
-	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
+	size := len(controller.Spec.ConfigFileRefs) +
+		len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) +
+		len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
 	extraConfigMapNames := make([]string, 0, size)
 	for _, ref := range controller.Spec.ConfigFileRefs {
 		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
