@@ -470,3 +470,44 @@ tests:
           path: spec.epilogScriptRefs
           content:
             name: external-epilog-cm
+  - it: should set configFileRefs with name only
+    set:
+      configFileRefs:
+        - name: my-configmap
+    asserts:
+      - contains:
+          path: spec.configFileRefs
+          content:
+            name: my-configmap
+  - it: should include configFiles and configFileRefs in controller spec
+    set:
+      configFiles:
+        cgroup.conf: |
+          CgroupPlugin=cgroup/v2
+      configFileRefs:
+        - name: external-config
+    asserts:
+      - contains:
+          path: spec.configFileRefs
+          content:
+            name: test-release-slurm-config-extra
+      - contains:
+          path: spec.configFileRefs
+          content:
+            name: external-config
+  - it: should pass multiple configFileRefs
+    set:
+      configFileRefs:
+        - name: config-a
+        - name: config-b
+          optional: true
+    asserts:
+      - equal:
+          path: spec.configFileRefs[0].name
+          value: config-a
+      - equal:
+          path: spec.configFileRefs[1].name
+          value: config-b
+      - equal:
+          path: spec.configFileRefs[1].optional
+          value: true
