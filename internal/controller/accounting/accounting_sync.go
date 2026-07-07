@@ -26,7 +26,7 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	accounting := &slinkyv1beta1.Accounting{}
 	if err := r.Get(ctx, req.NamespacedName, accounting); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("Accounting has been deleted", "request", req)
+			logger.Info("Accounting has been deleted")
 			return nil
 		}
 		return err
@@ -35,7 +35,7 @@ func (r *AccountingReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	defaults.SetAccountingDefaults(accounting)
 
 	if !accounting.DeletionTimestamp.IsZero() {
-		logger.Info("Accounting is being deleted, skipping sync", "request", req)
+		logger.Info("Accounting is being deleted, skipping sync")
 		return nil
 	}
 

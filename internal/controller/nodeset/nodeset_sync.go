@@ -62,7 +62,7 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	nodeset := &slinkyv1beta1.NodeSet{}
 	if err := r.Get(ctx, req.NamespacedName, nodeset); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.V(3).Info("NodeSet has been deleted.", "request", req)
+			logger.V(3).Info("NodeSet has been deleted.")
 			r.expectations.DeleteExpectations(logger, req.String())
 			return nil
 		}
@@ -79,7 +79,7 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	}
 
 	if !nodeset.DeletionTimestamp.IsZero() {
-		logger.Info("NodeSet is being deleted, skipping sync", "request", req)
+		logger.Info("NodeSet is being deleted, skipping sync")
 		return nil
 	} else {
 		durationStore.Push(key, 30*time.Second)

@@ -28,7 +28,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	loginset := &slinkyv1beta1.LoginSet{}
 	if err := r.Get(ctx, req.NamespacedName, loginset); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("LoginSet has been deleted", "request", req)
+			logger.Info("LoginSet has been deleted")
 			return nil
 		}
 		return err
@@ -37,7 +37,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	defaults.SetLoginSetDefaults(loginset)
 
 	if !loginset.DeletionTimestamp.IsZero() {
-		logger.Info("LoginSet is being deleted, skipping sync", "request", req)
+		logger.Info("LoginSet is being deleted, skipping sync")
 		return nil
 	}
 
