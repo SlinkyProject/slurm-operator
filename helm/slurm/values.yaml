@@ -79,6 +79,7 @@ jwksKeys:
 clusterName: null
 
 # -- (map[string]string) Extra Slurm config files to be mounted to `/etc/slurm`.
+# WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`.
 # Ref: https://slurm.schedmd.com/man_index.html#configuration_files
 configFiles: {}
   # Ref: https://slurm.schedmd.com/cgroup.conf.html
@@ -109,6 +110,12 @@ configFiles: {}
   # Ref: https://slurm.schedmd.com/topology.yaml.html
   # topology.yaml: |
   #   ---
+
+# -- (list(corev1.LocalObjectReference)) Extra Slurm config files to be mounted to `/etc/slurm`.
+# WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`.
+# Ref: https://slurm.schedmd.com/man_index.html#configuration_files
+configFileRefs: []
+  # - name: my-configmap
 
 # -- (map[string]string) The Slurm PrologSlurmctld scripts run on slurmctld at job allocation.
 # The map key represents the filename; the map value represents the script contents.
