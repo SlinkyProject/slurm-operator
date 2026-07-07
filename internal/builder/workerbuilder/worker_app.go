@@ -201,7 +201,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 			Args: slurmdArgs(nodeset, controller),
 			Env: []corev1.EnvVar{
 				{
-					Name: "POD_TOPOLOGY",
+					Name: "SLINKY_TOPOLOGY",
 					ValueFrom: &corev1.EnvVarSource{
 						FieldRef: &corev1.ObjectFieldSelector{
 							FieldPath: fmt.Sprintf("metadata.annotations['%s']", slinkyv1beta1.AnnotationNodeTopologySpec),
@@ -292,6 +292,7 @@ func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
 	name := common.GetSlurmNodeSetName(nodeset)
 	confMap := map[string]string{
 		"Features": name,
+		"Topology": "'\"$SLINKY_TOPOLOGY\"'",
 	}
 	for _, item := range extraConf {
 		pair := strings.SplitN(item, "=", 2)
