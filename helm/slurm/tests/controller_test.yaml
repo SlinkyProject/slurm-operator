@@ -358,3 +358,115 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should leave script refs empty when no inline, vendor, or ref scripts are set
+    asserts:
+      - isNullOrEmpty:
+          path: spec.prologScriptRefs
+      - isNullOrEmpty:
+          path: spec.epilogScriptRefs
+      - isNullOrEmpty:
+          path: spec.prologSlurmctldScriptRefs
+      - isNullOrEmpty:
+          path: spec.epilogSlurmctldScriptRefs
+  - it: should reference existing ConfigMaps when *ScriptRefs are set
+    set:
+      prologScriptRefs:
+        - name: external-prolog-cm
+      epilogScriptRefs:
+        - name: external-epilog-cm
+      prologSlurmctldScriptRefs:
+        - name: external-prolog-slurmctld-cm
+      epilogSlurmctldScriptRefs:
+        - name: external-epilog-slurmctld-cm
+    asserts:
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: external-prolog-cm
+      - contains:
+          path: spec.epilogScriptRefs
+          content:
+            name: external-epilog-cm
+      - contains:
+          path: spec.prologSlurmctldScriptRefs
+          content:
+            name: external-prolog-slurmctld-cm
+      - contains:
+          path: spec.epilogSlurmctldScriptRefs
+          content:
+            name: external-epilog-slurmctld-cm
+  - it: should append multiple ConfigMap refs to script refs
+    set:
+      prologScriptRefs:
+        - name: external-prolog-cm-1
+        - name: external-prolog-cm-2
+    asserts:
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: external-prolog-cm-1
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: external-prolog-cm-2
+  - it: should combine inline scripts and ConfigMap refs additively
+    set:
+      prologScripts:
+        00-setup.sh: |
+          #!/usr/bin/env bash
+          exit 0
+      prologScriptRefs:
+        - name: external-prolog-cm
+    asserts:
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: test-release-slurm-prolog-scripts
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: external-prolog-cm
+  - it: should combine inline slurmctld scripts and ConfigMap refs additively
+    set:
+      prologSlurmctldScripts:
+        00-pre-alloc.sh: |
+          #!/usr/bin/env bash
+          exit 0
+      prologSlurmctldScriptRefs:
+        - name: external-prolog-slurmctld-cm
+    asserts:
+      - contains:
+          path: spec.prologSlurmctldScriptRefs
+          content:
+            name: test-release-slurm-prolog-slurmctld-scripts
+      - contains:
+          path: spec.prologSlurmctldScriptRefs
+          content:
+            name: external-prolog-slurmctld-cm
+  - it: should combine vendor (DCGM) and ConfigMap refs additively
+    set:
+      vendor:
+        nvidia:
+          dcgm:
+            enabled: true
+      prologScriptRefs:
+        - name: external-prolog-cm
+      epilogScriptRefs:
+        - name: external-epilog-cm
+    asserts:
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: test-release-slurm-prolog-dcgm
+      - contains:
+          path: spec.prologScriptRefs
+          content:
+            name: external-prolog-cm
+      - contains:
+          path: spec.epilogScriptRefs
+          content:
+            name: test-release-slurm-epilog-dcgm
+      - contains:
+          path: spec.epilogScriptRefs
+          content:
+            name: external-epilog-cm
