@@ -59,7 +59,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 	case *monitoringv1.ServiceMonitor:
 		oldObj = &monitoringv1.ServiceMonitor{}
 	default:
-		return errors.New("unhandled object, this is a bug")
+		return errors.New("unhandled object type, this is a bug")
 	}
 
 	key := client.ObjectKeyFromObject(newObj)
@@ -88,7 +88,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 
 	// If the object is being deleted, do not update it
 	if !oldObj.GetDeletionTimestamp().IsZero() {
-		logger.V(1).Info(fmt.Sprintf("%s is being deleted. Skipping...", key))
+		logger.V(1).Info(fmt.Sprintf("%s is being deleted. Skipping sync...", key))
 		return nil
 	}
 
@@ -101,7 +101,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 	case *corev1.ConfigMap:
 		obj := oldObj.(*corev1.ConfigMap)
 		if ptr.Deref(obj.Immutable, false) {
-			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping...", key))
+			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping sync...", key))
 			return nil
 		}
 		patchErr = PatchObject(c, ctx, obj, func(obj *corev1.ConfigMap) error {
@@ -117,7 +117,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 	case *corev1.Secret:
 		obj := oldObj.(*corev1.Secret)
 		if ptr.Deref(obj.Immutable, false) {
-			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping...", key))
+			logger.V(1).Info(fmt.Sprintf("%s is immutable. Skipping sync...", key))
 			return nil
 		}
 		patchErr = PatchObject(c, ctx, obj, func(obj *corev1.Secret) error {
@@ -275,7 +275,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 			return nil
 		})
 	default:
-		return errors.New("unhandled patch object, this is a bug")
+		return errors.New("unhandled patch object type, this is a bug")
 	}
 	if patchErr != nil {
 		if eventRecorder != nil {
