@@ -93,7 +93,7 @@ func (r *ControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				logger.Info("Finished syncing Controller", "duration", time.Since(startTime))
 			}
 		} else {
-			logger.Info("Finished syncing Controller", "duration", time.Since(startTime), "error", retErr)
+			logger.Error(retErr, "Failed syncing controller", "duration", time.Since(startTime))
 		}
 		// clean the duration store
 		_ = durationStore.Pop(req.Namespace)

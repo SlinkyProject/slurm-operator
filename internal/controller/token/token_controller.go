@@ -82,7 +82,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res 
 				logger.Info("Finished syncing Token", "duration", time.Since(startTime))
 			}
 		} else {
-			logger.Info("Finished syncing Token", "duration", time.Since(startTime), "error", retErr)
+			logger.Error(retErr, "Failed syncing Token", "duration", time.Since(startTime))
 		}
 		// clean the duration store
 		_ = durationStore.Pop(req.Namespace)

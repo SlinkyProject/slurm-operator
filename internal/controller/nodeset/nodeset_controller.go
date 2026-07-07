@@ -134,7 +134,7 @@ func (r *NodeSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 				logger.Info("Finished syncing NodeSet", "duration", time.Since(startTime))
 			}
 		} else {
-			logger.Info("Finished syncing NodeSet", "duration", time.Since(startTime), "error", retErr)
+			logger.Error(retErr, "Failed syncing NodeSet", "duration", time.Since(startTime))
 		}
 		// clean the duration store
 		_ = durationStore.Pop(req.String())
