@@ -2,37 +2,26 @@
 
 ## Table of Contents
 
-<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=1 -->
-
-- [Workload Isolation](#workload-isolation)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Pre-requisites](#pre-requisites)
-  - [Taints and Tolerations](#taints-and-tolerations)
-  - [Pod Anti-Affinity](#pod-anti-affinity)
-
-<!-- mdformat-toc end -->
+* [Workload Isolation](workload-isolation.md#workload-isolation)
+  * [Table of Contents](workload-isolation.md#table-of-contents)
+  * [Overview](workload-isolation.md#overview)
+  * [Pre-requisites](workload-isolation.md#pre-requisites)
+  * [Taints and Tolerations](workload-isolation.md#taints-and-tolerations)
+  * [Pod Anti-Affinity](workload-isolation.md#pod-anti-affinity)
 
 ## Overview
 
-When running Slinky in certain environments, it may be necessary to isolate the
-nodes running Slurm NodeSets from other Kubernetes workloads.
+When running Slinky in certain environments, it may be necessary to isolate the nodes running Slurm NodeSets from other Kubernetes workloads.
 
-This document provides an example of how this can be done manually using
-[taints and tolerations].
+This document provides an example of how this can be done manually using [taints and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/).
 
 ## Pre-requisites
 
-This guide assumes that the user has access to a functional Kubernetes cluster
-running `slurm-operator`. See the [quickstart guide] for details on setting up
-`slurm-operator` on a Kubernetes cluster.
+This guide assumes that the user has access to a functional Kubernetes cluster running `slurm-operator`. See the [quickstart guide](../) for details on setting up `slurm-operator` on a Kubernetes cluster.
 
 ## Taints and Tolerations
 
-Taints are a mechanism that Kubernetes provides that allows a node to repel a
-set of pods that lack a matching toleration. Tolerations are the mechanism that
-Kubernetes provides that allow the scheduler to schedule pods on nodes with
-matching taints.
+Taints are a mechanism that Kubernetes provides that allows a node to repel a set of pods that lack a matching toleration. Tolerations are the mechanism that Kubernetes provides that allow the scheduler to schedule pods on nodes with matching taints.
 
 Apply a taint to the nodes that will only run Slurm pods:
 
@@ -55,11 +44,7 @@ kind-worker4: slinky.slurm.net/slurm=:NoExecute
 kind-worker5: slinky.slurm.net/slurm=:NoExecute
 ```
 
-Next, configure the tolerations on the `slurm-operator` components. Each of the
-components of `slurm-operator` can have their `tolerations` set from within
-`values.yaml`. Update the `tolerations` section of all components to match the
-`taint` that you applied in step 1. This will need to be done for all components
-in both the `slurm` and `slurm-operator` Helm charts.
+Next, configure the tolerations on the `slurm-operator` components. Each of the components of `slurm-operator` can have their `tolerations` set from within `values.yaml`. Update the `tolerations` section of all components to match the `taint` that you applied in step 1. This will need to be done for all components in both the `slurm` and `slurm-operator` Helm charts.
 
 ```yaml
   # -- Tolerations for pod assignment.
@@ -72,11 +57,7 @@ in both the `slurm` and `slurm-operator` Helm charts.
 
 ## Pod Anti-Affinity
 
-In some cases [anti-affinity] must be configured in order to prevent multiple
-NodeSet pods (slurmd) from being scheduled on the same node. Pod [anti-affinity]
-can be configured under the `affinity` section of a NodeSet. To ensure that
-multiple NodeSet pods cannot be scheduled on the same node, add the following to
-the `affinity` section:
+In some cases [anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) must be configured in order to prevent multiple NodeSet pods (slurmd) from being scheduled on the same node. Pod [anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) can be configured under the `affinity` section of a NodeSet. To ensure that multiple NodeSet pods cannot be scheduled on the same node, add the following to the `affinity` section:
 
 ```yaml
 nodesets:
@@ -99,15 +80,8 @@ nodesets:
               - slurmd
 ```
 
-After applying the Helm chart with `affinity` set in `values.yaml`, the
-`affinity` section can be observed in the `NodeSet` by running:
+After applying the Helm chart with `affinity` set in `values.yaml`, the `affinity` section can be observed in the `NodeSet` by running:
 
 ```bash
 kubectl describe NodeSet --namespace slurm
 ```
-
-<!-- links -->
-
-[anti-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
-[quickstart guide]: ../installation.md
-[taints and tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
