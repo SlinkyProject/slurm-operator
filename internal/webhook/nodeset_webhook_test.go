@@ -76,6 +76,24 @@ var _ = Describe("NodeSet Webhook", func() {
 			_, err := nodeSetWebhook.ValidateCreate(ctx, nodeset)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("Should deny malformed extraConf", func(ctx SpecContext) {
+			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			nodeset := testutils.NewNodeset("test-nodeset", controller, 1)
+			nodeset.Spec.ExtraConf = "Weight10"
+
+			_, err := nodeSetWebhook.ValidateCreate(ctx, nodeset)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("Should admit valid extraConf", func(ctx SpecContext) {
+			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			nodeset := testutils.NewNodeset("test-nodeset", controller, 1)
+			nodeset.Spec.ExtraConf = "Feature=a Weight=5"
+
+			_, err := nodeSetWebhook.ValidateCreate(ctx, nodeset)
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("When Updating a NodeSet with Validating Webhook", func() {
