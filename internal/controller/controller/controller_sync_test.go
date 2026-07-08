@@ -5,7 +5,6 @@ package controller
 
 import (
 	"context"
-	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -57,11 +56,6 @@ func TestControllerReconciler_sync(t *testing.T) {
 		},
 	}
 
-	tolerableErrors := []string{
-		"[failed \"ServiceMonitor\" step: failed to delete object (slurm-controller): error getting /slurm-controller: no kind is registered for the type v1.ServiceMonitor in scheme \"pkg/runtime/scheme.go:111\", failed status syncFn: error updating Controller(slurm) status: controllers.slinky.slurm.net \"slurm\" not found]",
-		"[failed \"ServiceMonitor\" step: no kind is registered for the type v1.ServiceMonitor in scheme \"pkg/runtime/scheme.go:111\", failed status syncFn: error updating Controller(slurm) status: controllers.slinky.slurm.net \"slurm\" not found]",
-	}
-
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -99,7 +93,7 @@ func TestControllerReconciler_sync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newControllerController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.Sync(tt.args.ctx, tt.args.request); (err != nil) != tt.wantErr && !slices.Contains(tolerableErrors, err.Error()) {
+			if err := r.Sync(tt.args.ctx, tt.args.request); (err != nil) != tt.wantErr {
 				t.Errorf("ControllerReconciler.sync() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -107,11 +101,6 @@ func TestControllerReconciler_sync(t *testing.T) {
 }
 
 func BenchmarkControllerReconciler_sync(b *testing.B) {
-	tolerableErrors := []string{
-		"[failed \"ServiceMonitor\" step: failed to delete object (slurm-controller): error getting /slurm-controller: no kind is registered for the type v1.ServiceMonitor in scheme \"pkg/runtime/scheme.go:111\", failed status syncFn: error updating Controller(slurm) status: controllers.slinky.slurm.net \"slurm\" not found]",
-		"[failed \"ServiceMonitor\" step: no kind is registered for the type v1.ServiceMonitor in scheme \"pkg/runtime/scheme.go:111\", failed status syncFn: error updating Controller(slurm) status: controllers.slinky.slurm.net \"slurm\" not found]",
-	}
-
 	benchmarks := []struct {
 		name    string
 		wantErr bool
@@ -141,7 +130,7 @@ func BenchmarkControllerReconciler_sync(b *testing.B) {
 				r := newControllerController(kubeClient, clientMap)
 				b.StartTimer()
 
-				if err := r.Sync(context.TODO(), request); (err != nil) != bb.wantErr && !slices.Contains(tolerableErrors, err.Error()) {
+				if err := r.Sync(context.TODO(), request); (err != nil) != bb.wantErr {
 					b.Errorf("ControllerReconciler.sync() error = %v, wantErr %v", err, bb.wantErr)
 				}
 			}

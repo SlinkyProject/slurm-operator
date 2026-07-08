@@ -115,7 +115,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		return err
 	}
 
-	newStatus := &slinkyv1beta1.NodeSetStatus{
+	newStatus := slinkyv1beta1.NodeSetStatus{
 		Replicas:            replicaStatus.Replicas,
 		UpdatedReplicas:     replicaStatus.Updated,
 		ReadyReplicas:       replicaStatus.Ready,
@@ -144,7 +144,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		return nil
 	}
 
-	if err := r.updateNodeSetStatus(ctx, nodeset, newStatus); err != nil {
+	if err := r.updateNodeSetStatus(ctx, nodeset, &newStatus); err != nil {
 		return err
 	}
 

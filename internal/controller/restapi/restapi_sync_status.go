@@ -25,7 +25,7 @@ func (r *RestapiReconciler) syncStatus(
 ) error {
 	logger := log.FromContext(ctx)
 
-	newStatus := &slinkyv1beta1.RestApiStatus{
+	newStatus := slinkyv1beta1.RestApiStatus{
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, restapi.Status.Conditions...)
@@ -36,7 +36,7 @@ func (r *RestapiReconciler) syncStatus(
 		return nil
 	}
 
-	if err := r.updateStatus(ctx, restapi, newStatus); err != nil {
+	if err := r.updateStatus(ctx, restapi, &newStatus); err != nil {
 		return fmt.Errorf("error updating Restapi(%s) status: %w",
 			klog.KObj(restapi), err)
 	}
