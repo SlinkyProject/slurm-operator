@@ -12,27 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/events"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
-
-func readOneEvent(t *testing.T, rec *events.FakeRecorder) string {
-	t.Helper()
-	select {
-	case ev := <-rec.Events:
-		return ev
-	default:
-		t.Fatal("expected one event on channel")
-		return ""
-	}
-}
-
-func assertNoEvents(t *testing.T, rec *events.FakeRecorder) {
-	t.Helper()
-	select {
-	case ev := <-rec.Events:
-		t.Fatalf("unexpected event: %q", ev)
-	default:
-	}
-}
 
 func TestSync_AllStepsSucceed_ReturnsNil(t *testing.T) {
 	t.Parallel()
@@ -46,7 +28,8 @@ func TestSync_AllStepsSucceed_ReturnsNil(t *testing.T) {
 	if err := Sync(ctx, rec, obj, steps); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	assertNoEvents(t, rec)
+	testutils.AssertNoEvents(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
 
 func TestSync_EmptySteps_ReturnsNil(t *testing.T) {
@@ -57,7 +40,7 @@ func TestSync_EmptySteps_ReturnsNil(t *testing.T) {
 	if err := Sync(ctx, rec, obj, nil); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	assertNoEvents(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
 
 func TestSync_SingleFailure_OneEventAndWrappedError(t *testing.T) {
@@ -80,11 +63,11 @@ func TestSync_SingleFailure_OneEventAndWrappedError(t *testing.T) {
 	if !strings.Contains(err.Error(), `failed "bad" step`) {
 		t.Fatalf("error text: %v", err)
 	}
-	ev := readOneEvent(t, rec)
+	ev := testutils.ReadOneEvent(t, rec)
 	if !strings.Contains(ev, "Warning") || !strings.Contains(ev, failedReason) || !strings.Contains(ev, `Failed "bad" step`) {
 		t.Fatalf("event: %q", ev)
 	}
-	assertNoEvents(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
 
 func TestSync_TwoFailuresWithoutStop_BothRecordedAndContinues(t *testing.T) {
@@ -113,10 +96,10 @@ func TestSync_TwoFailuresWithoutStop_BothRecordedAndContinues(t *testing.T) {
 	if !thirdRan {
 		t.Fatal("expected third step to Sync when StopOnError is false")
 	}
-	readOneEvent(t, rec)
-	readOneEvent(t, rec)
-	readOneEvent(t, rec)
-	assertNoEvents(t, rec)
+	testutils.ReadOneEvent(t, rec)
+	testutils.ReadOneEvent(t, rec)
+	testutils.ReadOneEvent(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
 
 func TestSync_StopOnError_SkipsFollowingSteps(t *testing.T) {
@@ -144,8 +127,8 @@ func TestSync_StopOnError_SkipsFollowingSteps(t *testing.T) {
 	if !ok || len(agg.Errors()) != 1 {
 		t.Fatalf("want single error in aggregate, got %v", err)
 	}
-	readOneEvent(t, rec)
-	assertNoEvents(t, rec)
+	testutils.ReadOneEvent(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
 
 func TestSync_NilRecorder_NoPanicStillAggregates(t *testing.T) {
@@ -174,6 +157,6 @@ func TestSync_FirstSucceedsSecondFails_OneError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	readOneEvent(t, rec)
-	assertNoEvents(t, rec)
+	testutils.ReadOneEvent(t, rec)
+	testutils.AssertNoEvents(t, rec)
 }
