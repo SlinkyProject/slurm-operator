@@ -17,6 +17,17 @@ const (
 	// AnnotationPodCordon indicates NodeSet Pods that should be DRAIN[ING|ED] in Slurm.
 	AnnotationPodCordon = NodeSetPrefix + "pod-cordon"
 
+	// AnnotationPodRegistrationHash identifies the inputs used by slurmd to
+	// register its dynamic Slurm node record.
+	// NOTE: Set by the NodeSet controller.
+	AnnotationPodRegistrationHash = NodeSetPrefix + "registration-hash"
+
+	// AnnotationNodeSetPendingNodeRecordRefresh stores the Slurm node names
+	// whose pods must stop before their dynamic node records are deleted and
+	// recreated during a NodeSet update.
+	// NOTE: Set by the NodeSet controller.
+	AnnotationNodeSetPendingNodeRecordRefresh = NodeSetPrefix + "pending-node-record-refresh"
+
 	// LabelPodDeletionCost can be used to set to an int32 that represent the cost of deleting a pod compared to other
 	// pods belonging to the same ReplicaSet. Pods with lower deletion cost are preferred to be deleted before pods
 	// with higher deletion cost.

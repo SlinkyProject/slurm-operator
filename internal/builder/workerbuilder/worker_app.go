@@ -6,6 +6,7 @@ package workerbuilder
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -81,7 +82,52 @@ func (b *WorkerBuilder) BuildWorkerPodTemplate(nodeset *slinkyv1beta1.NodeSet, c
 		Merge: template.PodSpec,
 	}
 
-	return b.CommonBuilder.BuildPodTemplate(opts)
+	podTemplate := b.CommonBuilder.BuildPodTemplate(opts)
+	if podTemplate.Annotations == nil {
+		podTemplate.Annotations = make(map[string]string)
+	}
+	delete(podTemplate.Annotations, slinkyv1beta1.AnnotationNodeSetPendingNodeRecordRefresh)
+	podTemplate.Annotations[slinkyv1beta1.AnnotationPodRegistrationHash] = registrationHash(podTemplate.Spec)
+	return podTemplate
+}
+
+// registrationHash returns a stable digest of the pod inputs that affect the
+// dynamic node record created by slurmd -Z. Deliberately excluded fields such
+// as the image and probes can roll without rebuilding the Slurm node record.
+func registrationHash(podSpec corev1.PodSpec) string {
+	type registrationInputs struct {
+		Args            []string                  `json:"args,omitempty"`
+		Env             []corev1.EnvVar           `json:"env,omitempty"`
+		ContainerLimits corev1.ResourceList       `json:"containerLimits,omitempty"`
+		PodLimits       corev1.ResourceList       `json:"podLimits,omitempty"`
+		ResourceClaims  []corev1.PodResourceClaim `json:"resourceClaims,omitempty"`
+	}
+
+	inputs := registrationInputs{
+		ResourceClaims: podSpec.ResourceClaims,
+	}
+	if podSpec.Resources != nil {
+		inputs.PodLimits = podSpec.Resources.Limits
+	}
+	for _, container := range podSpec.Containers {
+		if container.Name != labels.WorkerApp {
+			continue
+		}
+		inputs.Args = container.Args
+		inputs.ContainerLimits = container.Resources.Limits
+		for _, env := range container.Env {
+			if env.Name == "POD_CPUS" || env.Name == "POD_MEMORY" {
+				inputs.Env = append(inputs.Env, env)
+			}
+		}
+		break
+	}
+
+	data, err := json.Marshal(inputs)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal slurmd registration inputs: %v", err))
+	}
+	return crypto.CheckSum(data)
 }
 
 func nodesetVolumes(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []corev1.Volume {

@@ -4,6 +4,12 @@
 
 - Added optional PodDisruptionBudget for RestAPI.
 
+### Fixed
+
+- Recreate dynamic Slurm node records when registration-derived NodeSet
+  parameters change, preventing stale values such as `MemSpecLimit` after a
+  rolling update.
+
 ## v1.2.0-rc1
 
 ### Added

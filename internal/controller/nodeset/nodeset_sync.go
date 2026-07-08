@@ -395,6 +395,14 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
+			Name: "SlurmNodeRecordRefreshes",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncPendingNodeRecordRefreshes(ctx, nodeset, pods)
+			},
+			// A replacement must not start against the stale record if deletion fails.
+			StopOnError: true,
+		},
+		{
 			Name: "NodeSetPods",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncNodeSetPods(ctx, nodeset, pods, hash)
@@ -1529,6 +1537,11 @@ func (r *NodeSetReconciler) syncUpdate(
 	pods []*corev1.Pod,
 	hash string,
 ) error {
+	_, oldPods := findUpdatedPods(pods, hash)
+	if err := r.markPendingNodeRecordRefreshes(ctx, nodeset, oldPods, hash); err != nil {
+		return err
+	}
+
 	switch nodeset.Spec.UpdateStrategy.Type {
 	default:
 		fallthrough

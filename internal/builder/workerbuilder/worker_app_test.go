@@ -90,6 +90,60 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 	}
 }
 
+func TestRegistrationHash(t *testing.T) {
+	base := corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  labels.WorkerApp,
+				Image: "slurmd:v1",
+				Args:  []string{"-Z", "--conf", "RealMemory=1024"},
+				Env: []corev1.EnvVar{
+					{Name: "POD_CPUS", Value: "4"},
+					{Name: "POD_MEMORY", Value: "1024"},
+				},
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("ignores image-only changes", func(t *testing.T) {
+		changed := base.DeepCopy()
+		changed.Containers[0].Image = "slurmd:v2"
+		require.Equal(t, registrationHash(base), registrationHash(*changed))
+	})
+
+	t.Run("ignores request-only changes", func(t *testing.T) {
+		changed := base.DeepCopy()
+		changed.Containers[0].Resources.Requests = corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse("512Mi"),
+		}
+		require.Equal(t, registrationHash(base), registrationHash(*changed))
+	})
+
+	t.Run("changes with memory registration inputs", func(t *testing.T) {
+		changed := base.DeepCopy()
+		changed.Containers[0].Env[1].Value = "2048"
+		changed.Containers[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("2Gi")
+		require.NotEqual(t, registrationHash(base), registrationHash(*changed))
+	})
+
+	t.Run("changes with slurmd conf", func(t *testing.T) {
+		changed := base.DeepCopy()
+		changed.Containers[0].Args[2] = "RealMemory=2048"
+		require.NotEqual(t, registrationHash(base), registrationHash(*changed))
+	})
+
+	t.Run("changes with device resources", func(t *testing.T) {
+		changed := base.DeepCopy()
+		changed.Containers[0].Resources.Limits[corev1.ResourceName("nvidia.com/gpu")] = resource.MustParse("1")
+		require.NotEqual(t, registrationHash(base), registrationHash(*changed))
+	})
+}
+
 func BenchmarkBuilder_BuildWorkerPodTemplate(b *testing.B) {
 	type fields struct {
 		client client.Client

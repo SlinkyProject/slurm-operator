@@ -62,6 +62,8 @@ const (
 	SlurmNodeNotRegisteredReason = "SlurmNodeNotRegistered"
 	// DefunctSlurmNodePrunedReason is added to an event when a defunct Slurm node is pruned.
 	DefunctSlurmNodePrunedReason = "DefunctSlurmNodePruned"
+	// SlurmNodeRecordRefreshReason is added to an event when a dynamic Slurm node record is refreshed for an update.
+	SlurmNodeRecordRefreshReason = "SlurmNodeRecordRefresh"
 	// RollingUpdateReason is added to an event when pods are being replaced during a rolling update.
 	RollingUpdateReason = "RollingUpdate"
 	// ControllerRefFailedReason is added to an event when the referenced Controller CR cannot be fetched.

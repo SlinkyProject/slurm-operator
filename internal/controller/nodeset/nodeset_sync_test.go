@@ -2657,7 +2657,8 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	const hash = "12345"
@@ -2683,7 +2684,7 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
-			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
+			k8sclient := fake.NewFakeClient(controller, nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
 					{
@@ -2724,7 +2725,7 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			}
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
-			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
+			k8sclient := fake.NewFakeClient(controller, nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
 					{
@@ -2767,7 +2768,7 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			}
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
-			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
+			k8sclient := fake.NewFakeClient(controller, nodeset, pod1, pod2)
 			slurmNodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
 					{
