@@ -5,6 +5,7 @@ package refresolver
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -17,6 +18,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var scheme = runtime.NewScheme()
@@ -257,6 +259,30 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -265,6 +291,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				require.Nil(t, got)
 				return
 			}
 
@@ -347,6 +374,30 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -355,6 +406,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				require.Nil(t, got)
 				return
 			}
 
@@ -437,6 +489,30 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -445,6 +521,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				require.Nil(t, got)
 				return
 			}
 
@@ -527,6 +604,30 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -535,6 +636,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				require.Nil(t, got)
 				return
 			}
 
