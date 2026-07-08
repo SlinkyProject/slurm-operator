@@ -26,10 +26,11 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 		restapi *slinkyv1beta1.RestApi
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		wantErr  bool
+		wantArgs []string
 	}{
 		{
 			name: "default",
@@ -54,6 +55,37 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 					},
 				},
 			},
+			wantArgs: []string{"-s", "openapi/slurmctld", "0.0.0.0:6820"},
+		},
+		{
+			name: "with accounting",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: &corev1.LocalObjectReference{
+								Name: "slurm",
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+			wantArgs: []string{"0.0.0.0:6820"},
 		},
 		{
 			name: "failure",
@@ -88,6 +120,7 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 			require.Equal(t, labels.RestapiApp, got.Spec.Template.Spec.Containers[0].Name)
 			require.Equal(t, labels.RestapiApp, got.Spec.Template.Spec.Containers[0].Ports[0].Name)
 			require.Equal(t, int32(SlurmrestdPort), got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+			require.Equal(t, tt.wantArgs, got.Spec.Template.Spec.Containers[0].Args)
 		})
 	}
 }
