@@ -10,6 +10,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
@@ -25,10 +26,11 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 		restapi *slinkyv1beta1.RestApi
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		wantErr  bool
+		wantArgs []string
 	}{
 		{
 			name: "default",
@@ -53,6 +55,37 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 					},
 				},
 			},
+			wantArgs: []string{"-s", "openapi/slurmctld", "0.0.0.0:6820"},
+		},
+		{
+			name: "with accounting",
+			fields: fields{
+				client: fake.NewClientBuilder().
+					WithObjects(&slinkyv1beta1.Controller{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "slurm",
+						},
+						Spec: slinkyv1beta1.ControllerSpec{
+							AccountingRef: &corev1.LocalObjectReference{
+								Name: "slurm",
+							},
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				restapi: &slinkyv1beta1.RestApi{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.RestApiSpec{
+						ControllerRef: corev1.LocalObjectReference{
+							Name: "slurm",
+						},
+					},
+				},
+			},
+			wantArgs: []string{"0.0.0.0:6820"},
 		},
 		{
 			name: "failure",
@@ -108,7 +141,11 @@ func TestBuilder_BuildRestapi(t *testing.T) {
 			case got.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort != SlurmrestdPort:
 				t.Errorf("Template.Spec.Containers[0].Ports[0].ContainerPort = %v , want = %v",
 					got.Spec.Template.Spec.Containers[0].Ports[0].Name, SlurmrestdPort)
+
+			case !apiequality.Semantic.DeepEqual(got.Spec.Template.Spec.Containers[0].Args, tt.wantArgs):
+				t.Errorf("Template.Spec.Containers[0].Args = %v , want = %v", got.Spec.Template.Spec.Containers[0].Args, tt.wantArgs)
 			}
+
 		})
 	}
 }
