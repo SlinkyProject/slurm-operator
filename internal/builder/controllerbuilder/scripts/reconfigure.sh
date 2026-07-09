@@ -8,7 +8,11 @@ SLURM_DIR="/etc/slurm"
 INTERVAL="5"
 
 function getHash() {
-	echo "$(find "$SLURM_DIR" -type f -exec sha256sum {} \; | sort -k2 | sha256sum)"
+	# Ignore kubelet's hidden projected-volume generation directories (..data, ..20xx_*)
+	# and hash only the stable top-level logical config files.
+	find "$SLURM_DIR" -maxdepth 1 \( -type f -o -type l \) ! -name '..*' -exec sha256sum {} \; |
+		sort -k2 |
+		sha256sum
 }
 
 function reconfigure() {
