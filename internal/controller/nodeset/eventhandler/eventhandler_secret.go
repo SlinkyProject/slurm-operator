@@ -94,6 +94,7 @@ func (e *SecretEventHandler) enqueueRequest(
 		nodesetList, err := e.refResolver.GetNodeSetsForController(ctx, &controller)
 		if err != nil {
 			logger.Error(err, "failed to list NodeSet CRs")
+			continue
 		}
 
 		for _, nodeset := range nodesetList.Items {

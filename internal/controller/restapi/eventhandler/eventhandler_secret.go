@@ -93,7 +93,8 @@ func (e *SecretEventHandler) enqueueRequest(
 
 		restapiList, err := e.refResolver.GetRestapisForController(ctx, &controller)
 		if err != nil {
-			logger.Error(err, "failed to list LoginSet CRs")
+			logger.Error(err, "failed to list RestApi CRs")
+			continue
 		}
 
 		for _, restapi := range restapiList.Items {
