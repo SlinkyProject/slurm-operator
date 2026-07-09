@@ -88,6 +88,13 @@ done
 
 log_info "Running fix vulns..."
 
+# Extract the 'go 1.XX' line from go.mod and compare it to the current environment's Go version
+GO_VER=$(awk '/^go [0-9]/ {print $2}' "$REPO_ROOT"/go.mod)
+go install golang.org/dl/go"${GO_VER}"@latest
+go"${GO_VER}" download
+PATH=$(go"${GO_VER}" env GOROOT)/bin:$PATH
+export PATH
+
 /bin/bash "$REPO_ROOT"/hack/govulncheck-report.sh -o "$GOVULNCHECK_REPORT" || true
 
 write_commit_message
