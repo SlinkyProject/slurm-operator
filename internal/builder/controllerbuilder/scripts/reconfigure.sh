@@ -8,8 +8,10 @@ SLURM_DIR="/etc/slurm"
 INTERVAL="5"
 
 # Returns the canonical checksum hash of all Slurm configuration files.
+#
+# Avoids kubelet projected-volume directories (..data, ..YYYY_MM_DD_*).
 function getHash() {
-	echo "$(find "$SLURM_DIR" -type f -exec sha256sum {} \; | sort -k2 | sha256sum)"
+	find "$SLURM_DIR" -path '*/..*' -prune -o \( -type f -o -type l \) -exec sha256sum {} \; | sort -k2 | sha256sum
 }
 
 # Issues a cluster reconfigure request with retry.
