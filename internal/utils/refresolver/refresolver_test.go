@@ -5,6 +5,7 @@ package refresolver
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -17,6 +18,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var scheme = runtime.NewScheme()
@@ -249,6 +251,30 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -258,7 +284,7 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 				t.Errorf("RefResolver.GetNodeSetsForController() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(got.Items) != tt.want {
+			if got != nil && len(got.Items) != tt.want {
 				t.Errorf("RefResolver.GetNodeSetsForController() = %v, want %v", len(got.Items), tt.want)
 			}
 		})
@@ -338,6 +364,30 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -347,7 +397,7 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 				t.Errorf("RefResolver.GetLoginSetsForController() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(got.Items) != tt.want {
+			if got != nil && len(got.Items) != tt.want {
 				t.Errorf("RefResolver.GetLoginSetsForController() = %v, want %v", len(got.Items), tt.want)
 			}
 		})
@@ -427,6 +477,30 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				controller: &slinkyv1beta1.Controller{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -436,7 +510,7 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 				t.Errorf("RefResolver.GetRestapisForController() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(got.Items) != tt.want {
+			if got != nil && len(got.Items) != tt.want {
 				t.Errorf("RefResolver.GetRestapisForController() = %v, want %v", len(got.Items), tt.want)
 			}
 		})
@@ -516,6 +590,30 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 			},
 			want: 1,
 		},
+		{
+			name: "list error",
+			fields: fields{
+				reader: fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
+							return errors.New("list failed")
+						},
+					}).
+					Build(),
+			},
+			args: args{
+				ctx: context.TODO(),
+				accounting: &slinkyv1beta1.Accounting{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slurm",
+						Namespace: metav1.NamespaceDefault,
+					},
+				},
+			},
+			want:    0,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -525,7 +623,7 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 				t.Errorf("RefResolver.GetControllersForAccounting() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(got.Items) != tt.want {
+			if got != nil && len(got.Items) != tt.want {
 				t.Errorf("RefResolver.GetControllersForAccounting() = %v, want %v", len(got.Items), tt.want)
 			}
 		})
