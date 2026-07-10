@@ -77,11 +77,60 @@ type SlurmControlInterface interface {
 	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error)
 	// DeleteNode deletes a Slurm node by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
+	// IsNodeSetSafeToDelete reports whether a NodeSet can be safely deleted without leaving Slurm job state references.
+	IsNodeSetSafeToDelete(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (bool, time.Duration, error)
 }
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
 	clientMap *clientmap.ClientMap
+}
+
+const (
+	// defaultMinJobAge is the default wait time before a deleting NodeSet is considered safe to remove.
+	defaultMinJobAge = 5 * time.Minute
+
+	// nodeSetDeleteRetryAfter is the retry interval when NodeSet deletion is not yet safe.
+	nodeSetDeleteRetryAfter = 30 * time.Second
+)
+
+// IsNodeSetSafeToDelete reports whether a NodeSet can be safely removed from the Slurm configuration.
+func (r *realSlurmControl) IsNodeSetSafeToDelete(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+) (bool, time.Duration, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do IsNodeSetSafeToDelete()")
+		return false, nodeSetDeleteRetryAfter, nil
+	}
+
+	partitionName := common.GetSlurmNodeSetName(nodeset)
+
+	jobList := &slurmtypes.V0044JobInfoList{}
+	if err := slurmClient.List(ctx, jobList); err != nil {
+		return false, nodeSetDeleteRetryAfter, err
+	}
+
+	for _, job := range jobList.Items {
+		if ptr.Deref(job.Partition, "") == partitionName {
+			return false, nodeSetDeleteRetryAfter, nil
+		}
+	}
+
+	if nodeset.DeletionTimestamp == nil {
+		return false, nodeSetDeleteRetryAfter, nil
+	}
+
+	now := time.Now()
+	waitUntil := nodeset.DeletionTimestamp.Time.Add(defaultMinJobAge)
+	if now.Before(waitUntil) {
+		return false, waitUntil.Sub(now), nil
+	}
+
+	return true, 0, nil
 }
 
 // RefreshNodeCache implements SlurmControlInterface.

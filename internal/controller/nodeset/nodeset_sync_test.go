@@ -382,6 +382,35 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 	}
 }
 
+func TestNodeSetReconciler_syncJobStateProtectionFinalizer(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+
+	ctx := context.Background()
+
+	nodeset := newNodeSet("foo", controller.Name, 2)
+
+	client := fake.NewFakeClient(controller.DeepCopy(), nodeset.DeepCopy())
+	r := newNodeSetController(client, nil)
+
+	err := r.syncJobStateProtectionFinalizer(ctx, nodeset)
+	if err != nil {
+		t.Errorf("syncJobStateProtectionFinalizer() error = %v", err)
+		return
+	}
+
+	if !slices.Contains(nodeset.Finalizers, slinkyv1beta1.FinalizerNodeSetJobStateProtection) {
+		t.Errorf("expected %q finalizer to be added, got %v",
+			slinkyv1beta1.FinalizerNodeSetJobStateProtection,
+			nodeset.Finalizers,
+		)
+	}
+}
+
 func TestNodeSetReconciler_adoptOrphanRevisions(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{

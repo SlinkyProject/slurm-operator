@@ -93,5 +93,6 @@ const (
 const (
 	// FinalizerNodeSetReservation
 	// NOTE: Set by the NodeSet controller.
-	FinalizerNodeSetReservation = NodeSetPrefix + "reservation"
+	FinalizerNodeSetReservation        = NodeSetPrefix + "reservation"
+	FinalizerNodeSetJobStateProtection = NodeSetPrefix + "job-state-protection"
 )

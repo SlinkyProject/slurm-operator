@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
@@ -307,6 +308,10 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 		return nodesetList.Items[i].Name < nodesetList.Items[j].Name
 	})
 	for _, nodeset := range nodesetList.Items {
+		if !shouldIncludeNodeSetInSlurmConf(nodeset) {
+			continue
+		}
+
 		name := common.GetSlurmNodeSetName(&nodeset)
 		nodesetLine := []string{
 			fmt.Sprintf("NodeSet=%v", name),
@@ -328,6 +333,17 @@ func buildNodeSetConf(nodesetList *slinkyv1beta1.NodeSetList) string {
 	}
 
 	return conf.WithFinalNewline(false).Build()
+}
+
+func shouldIncludeNodeSetInSlurmConf(nodeset slinkyv1beta1.NodeSet) bool {
+	if nodeset.DeletionTimestamp.IsZero() {
+		return true
+	}
+
+	return controllerutil.ContainsFinalizer(
+		&nodeset,
+		slinkyv1beta1.FinalizerNodeSetJobStateProtection,
+	)
 }
 
 // https://slurm.schedmd.com/cgroup.conf.html

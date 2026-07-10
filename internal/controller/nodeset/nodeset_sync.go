@@ -131,9 +131,45 @@ type SyncFinalizer struct {
 	Sync func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 }
 
+func (r *NodeSetReconciler) syncJobStateProtectionFinalizer(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+) error {
+	if nodeset.DeletionTimestamp.IsZero() {
+		if !controllerutil.ContainsFinalizer(nodeset, slinkyv1beta1.FinalizerNodeSetJobStateProtection) {
+			finalizers := slices.Concat(nodeset.Finalizers, []string{
+				slinkyv1beta1.FinalizerNodeSetJobStateProtection,
+			})
+			return r.updateNodeSetFinalizers(ctx, nodeset, finalizers)
+		}
+		return nil
+	}
+
+	safe, requeueAfter, err := r.slurmControl.IsNodeSetSafeToDelete(ctx, nodeset)
+	if err != nil {
+		return err
+	}
+
+	if !safe {
+		durationStore.Push(objectutils.KeyFunc(nodeset), requeueAfter)
+		return nil
+	}
+
+	current := set.New(nodeset.Finalizers...)
+	remove := set.New(slinkyv1beta1.FinalizerNodeSetJobStateProtection)
+	keep := current.Difference(remove).SortedList()
+	return r.updateNodeSetFinalizers(ctx, nodeset, keep)
+}
+
 // syncFinalizers implements control logic for synchronizing a NodeSet's finalizers
 func (r *NodeSetReconciler) syncFinalizers(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 	syncSteps := []SyncFinalizer{
+		{
+			Name: "JobStateProtection",
+			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncJobStateProtectionFinalizer(ctx, nodeset)
+			},
+		},
 		{
 			Name: "Reservation",
 			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
