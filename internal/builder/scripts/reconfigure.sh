@@ -7,12 +7,13 @@ set -euo pipefail
 SLURM_DIR="/etc/slurm"
 INTERVAL="5"
 
+# Returns the canonical checksum hash of all Slurm configuration files.
 function getHash() {
 	echo "$(find "$SLURM_DIR" -type f -exec sha256sum {} \; | sort -k2 | sha256sum)"
 }
 
+# Issues a cluster reconfigure request with retry.
 function reconfigure() {
-	# Issue cluster reconfigure request
 	echo "[$(date)] Reconfiguring Slurm..."
 	until scontrol reconfigure; do
 		echo "[$(date)] Failed to reconfigure, try again..."
