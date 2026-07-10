@@ -614,7 +614,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
-	logger := log.FromContext(ctx)
+	mainLogger := log.FromContext(ctx)
 
 	switch nodeset.Spec.ScalingMode {
 	default:
@@ -644,13 +644,15 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 				return err
 			}
 
+			logger := mainLogger.WithValues("slurmNode", defunctNode.Name, "pod", podKey)
+
 			if defunctNode.PodInfo.Node == "" {
-				logger.V(2).Info("Skipping defunct Slurm node deletion because PodInfo does not include a Kubernetes node",
-					"node", defunctNode.Name, "pod", podKey)
+				logger.V(2).Info("Skipping defunct Slurm node deletion because PodInfo does not include a Kubernetes node")
 				return nil
 			}
 
 			kubeNodeKey := types.NamespacedName{Name: defunctNode.PodInfo.Node}
+			logger = logger.WithValues("kubeNode", kubeNodeKey.Name)
 			kubeNode := &corev1.Node{}
 			switch err := r.Get(ctx, kubeNodeKey, kubeNode); {
 			case apierrors.IsNotFound(err):
@@ -661,15 +663,13 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 				override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 				expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
 				if expected == defunctNode.Name {
-					logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it",
-						"node", defunctNode.Name, "pod", podKey, "kubeNode", kubeNodeKey.Name)
+					logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it")
 					return nil
 				}
 			}
 
 			// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
-			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node",
-				"slurmNode", defunctNode.Name, "pod", podKey, "node", kubeNodeKey.Name)
+			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
 					defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
@@ -933,7 +933,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 	nodeset *slinkyv1beta1.NodeSet,
 ) (nodesNeedingDaemonPods []string, podsToDelete []*corev1.Pod) {
 
-	logger := log.FromContext(ctx)
+	mainLogger := log.FromContext(ctx)
 	shouldRun, shouldContinueRunning := r.NodeShouldRunDaemonPod(ctx, node, nodeset)
 	daemonPods, exists := nodeToDaemonPods[node.Name]
 
@@ -951,6 +951,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				continue
 
 			case pod.Status.Phase == corev1.PodFailed:
+				logger := mainLogger.WithValues("pod", klog.KObj(pod), "node", klog.KObj(node))
 				// This is a critical place where the controller often fights with kubelet that rejects pods.
 				// We need to avoid hot looping and backoff.
 				backoffKey := failedPodsBackoffKey(nodeset, node.Name)
@@ -960,7 +961,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				if inBackoff {
 					delay := failedPodsBackoff.Get(backoffKey)
 					logger.V(4).Info("Deleting failed pod on node has been limited by backoff",
-						"pod", klog.KObj(pod), "node", klog.KObj(node), "currentDelay", delay)
+						"currentDelay", delay)
 					r.EnqueueNodeSetAfter(nodeset, delay)
 					continue
 				}
@@ -968,14 +969,14 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				failedPodsBackoff.Next(backoffKey, now)
 
 				msg := fmt.Sprintf("Found failed daemon pod %s/%s on node %s, will try to kill it", pod.Namespace, pod.Name, node.Name)
-				logger.V(2).Info("Found failed daemon pod on node, will try to kill it", "pod", klog.KObj(pod), "node", klog.KObj(node))
+				logger.V(2).Info("Found failed daemon pod on node, will try to kill it")
 				// Emit an event so that it's discoverable to users.
 				r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeWarning, FailedDaemonPodReason, "Info", msg)
 				podsToDelete = append(podsToDelete, pod)
 
 			case pod.Status.Phase == corev1.PodSucceeded:
 				msg := fmt.Sprintf("Found succeeded daemon pod %s/%s on node %s, will try to delete it", pod.Namespace, pod.Name, node.Name)
-				logger.V(2).Info("Found succeeded daemon pod on node, will try to delete it", "pod", klog.KObj(pod), "node", klog.KObj(node))
+				mainLogger.V(2).Info("Found succeeded daemon pod on node, will try to delete it", "pod", klog.KObj(pod), "node", klog.KObj(node))
 				// Emit an event so that it's discoverable to users.
 				r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, SucceededDaemonPodReason, "Info", msg)
 				podsToDelete = append(podsToDelete, pod)
@@ -984,7 +985,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 				expectedHostname := nodesetutils.GetDaemonSetPodHostname(node.Name, hostnameOverride)
 				if pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] != expectedHostname {
-					logger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
+					mainLogger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
 						"pod", klog.KObj(pod), "node", klog.KObj(node),
 						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
 					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
