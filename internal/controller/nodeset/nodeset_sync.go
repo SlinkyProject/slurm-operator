@@ -1338,8 +1338,8 @@ func (r *NodeSetReconciler) processCondemned(
 	condemned []*corev1.Pod,
 	i int,
 ) error {
-	logger := klog.FromContext(ctx)
 	pod := condemned[i]
+	logger := klog.FromContext(ctx).WithValues("pod", klog.KObj(pod))
 
 	podKey := client.ObjectKeyFromObject(pod)
 	if err := r.Get(ctx, podKey, pod); err != nil {
@@ -1347,8 +1347,7 @@ func (r *NodeSetReconciler) processCondemned(
 	}
 
 	if podutils.IsTerminating(pod) {
-		logger.V(3).Info("NodeSet Pod is terminating, skipping further processing",
-			"pod", klog.KObj(pod))
+		logger.V(3).Info("NodeSet Pod is terminating, skipping further processing")
 		return nil
 	}
 
@@ -1358,8 +1357,7 @@ func (r *NodeSetReconciler) processCondemned(
 	}
 
 	if !isDrained {
-		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in",
-			"pod", klog.KObj(pod))
+		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in")
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
 		// We must wait until fully drained to terminate the pod.
 		nodesetKey := objectutils.KeyFunc(nodeset)
@@ -1369,8 +1367,7 @@ func (r *NodeSetReconciler) processCondemned(
 		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true)
 	}
 
-	logger.V(2).Info("NodeSet Pod is terminating for scale-in",
-		"pod", klog.KObj(pod))
+	logger.V(2).Info("NodeSet Pod is terminating for scale-in")
 	if err := r.podControl.DeleteNodeSetPod(ctx, nodeset, pod); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return err
@@ -1548,12 +1545,12 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 
 // syncPodUncordon handles uncordoning with Kubernetes and Slurm node state synchronization
 func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("pod", klog.KObj(pod))
 
 	// The Kubernetes nodes which the pod is on may have been cordoned
 	if r.isNodeCordoned(ctx, pod) {
 		logger.V(1).Info("Skipping uncordon for pod on externally cordoned node",
-			"pod", klog.KObj(pod), "node", pod.Spec.NodeName)
+			"node", pod.Spec.NodeName)
 		return nil // Skip
 	}
 
@@ -1561,8 +1558,7 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 	if ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod); err != nil {
 		return err
 	} else if !ok {
-		logger.V(1).Info("Skipping uncordon for pod which has an externally set reason",
-			"pod", klog.KObj(pod))
+		logger.V(1).Info("Skipping uncordon for pod which has an externally set reason")
 		return nil // Skip
 	}
 
