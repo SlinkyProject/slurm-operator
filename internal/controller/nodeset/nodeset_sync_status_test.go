@@ -33,6 +33,7 @@ import (
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeSetReconciler_syncStatus(t *testing.T) {
@@ -167,9 +168,13 @@ func TestNodeSetReconciler_syncStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision, tt.args.collisionCount, tt.args.hash, tt.args.errors...); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision, tt.args.collisionCount, tt.args.hash, tt.args.errors...)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -239,9 +244,13 @@ func TestNodeSetReconciler_syncSlurmStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncSlurmStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncSlurmStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncSlurmStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -397,15 +406,16 @@ func TestNodeSetReconciler_syncNodeSetStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision, tt.args.collisionCount, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncNodeSetStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision, tt.args.collisionCount, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			got := &slinkyv1beta1.NodeSet{}
 			key := client.ObjectKeyFromObject(tt.args.nodeset)
 			if err := r.Get(tt.args.ctx, key, got); err == nil {
-				if diff := cmp.Diff(tt.wantStatus, &got.Status); diff != "" {
-					t.Errorf("unexpected status (-want,+got):\n%s", diff)
-				}
+				require.Equal(t, tt.wantStatus, &got.Status)
 			}
 		})
 	}
@@ -537,16 +547,14 @@ func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
 			}
 			r := newNodeSetController(c, nil)
 			got, err := r.calculateReplicaStatus(context.TODO(), tt.args.nodeset, tt.args.pods, tt.args.currentRevision, tt.args.updateRevision)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.calculateReplicaStatus() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("unexpected status (-want,+got):\n%s", diff)
-			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -658,15 +666,13 @@ func Test_applySlurmPodConditions(t *testing.T) {
 			applySlurmPodConditions(status, tt.desired)
 
 			gotSlurm := slurmPodConditions(status)
-			if diff := cmp.Diff(tt.wantSlurm, gotSlurm, cmpOpts); diff != "" {
-				t.Errorf("unexpected slurm conditions (-want,+got):\n%s", diff)
-			}
+			diff := cmp.Diff(tt.wantSlurm, gotSlurm, cmpOpts)
+			require.Empty(t, diff)
 
 			if tt.wantNonSlurmOnly {
 				gotNonSlurm := nonSlurmPodConditions(status)
-				if diff := cmp.Diff(tt.wantNonSlurm, gotNonSlurm, cmpOpts); diff != "" {
-					t.Errorf("unexpected non-slurm conditions (-want,+got):\n%s", diff)
-				}
+				diff := cmp.Diff(tt.wantNonSlurm, gotNonSlurm, cmpOpts)
+				require.Empty(t, diff)
 			}
 		})
 	}
@@ -796,16 +802,12 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			r.slurmControl = slurmcontrol.NewSlurmControl(newSlurmClientMap(tt.nodeset.Spec.ControllerRef.Name, tt.slurmclient))
 
 			got, err := r.calculateReservationCondition(context.TODO(), tt.nodeset, tt.nodeset.Status.Conditions)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.calculateReservationCondition() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("unexpected status (-want,+got):\n%s", diff)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1125,15 +1127,16 @@ func TestNodeSetReconciler_updateNodeSetStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.updateNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.newStatus); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.updateNodeSetStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.updateNodeSetStatus(tt.args.ctx, tt.args.nodeset, tt.args.newStatus)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			got := &slinkyv1beta1.NodeSet{}
 			key := client.ObjectKeyFromObject(tt.args.nodeset)
 			if err := r.Get(tt.args.ctx, key, got); err == nil {
-				if diff := cmp.Diff(tt.args.newStatus, &got.Status); diff != "" {
-					t.Errorf("unexpected status (-want,+got):\n%s", diff)
-				}
+				require.Equal(t, tt.args.newStatus, &got.Status)
 			}
 		})
 	}
@@ -1349,8 +1352,10 @@ func Test_calculateOrdinalToNode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.client, nil)
 			got, err := r.calculateOrdinalToNode(context.TODO(), tt.args.nodeset, tt.args.pods)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.calculateNodeToOrdinal() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			if diff := cmp.Diff(tt.want, got); !apiequality.Semantic.DeepEqual(got, tt.want) && diff != "" {
 				t.Errorf("NodeSetReconciler.calculateNodeToOrdinal() mismatch (-want +got):\n%s", diff)

@@ -18,6 +18,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeSetReconciler_truncateHistory(t *testing.T) {
@@ -134,9 +135,14 @@ func TestNodeSetReconciler_truncateHistory(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.truncateHistory(tt.args.ctx, tt.args.nodeset, tt.args.revisions, tt.args.current, tt.args.update); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.truncateHistory() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.truncateHistory(tt.args.ctx, tt.args.nodeset, tt.args.revisions, tt.args.current, tt.args.update)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -251,9 +257,10 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
 			got, got1, got2, err := r.getNodeSetRevisions(tt.args.nodeset, tt.args.revisions)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.getNodeSetRevisions() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got = %v, want %v", got, tt.want)
@@ -261,9 +268,7 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 			if !apiequality.Semantic.DeepEqual(got1, tt.want1) {
 				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got1 = %v, want %v", got1, tt.want1)
 			}
-			if got2 != tt.want2 {
-				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got2 = %v, want %v", got2, tt.want2)
-			}
+			require.Equal(t, tt.want2, got2)
 		})
 	}
 }

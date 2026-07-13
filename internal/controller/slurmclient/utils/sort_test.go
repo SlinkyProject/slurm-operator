@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRestapisByCreationTimestamp(t *testing.T) {
@@ -62,9 +62,8 @@ func TestRestapisByCreationTimestamp(t *testing.T) {
 			for i := range tt.restapis {
 				got[i] = tt.restapis[i].Name
 			}
-			if diff := cmp.Diff(tt.want, got); diff != "" {
-				t.Errorf("RestapisByCreationTimestamp names (-want +got):\n%s", diff)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

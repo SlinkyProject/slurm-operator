@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -117,9 +118,7 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewControllerEventHandler(tt.fields.Reader)
 			h.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("ControllerEventHandler.Create() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -225,9 +224,7 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewControllerEventHandler(tt.fields.Reader)
 			h.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("ControllerEventHandler.Delete() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -264,9 +261,7 @@ func Test_ControllerEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewControllerEventHandler(tt.fields.Reader)
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("ControllerEventHandler.Generic() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -376,9 +371,7 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewControllerEventHandler(tt.fields.Reader)
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("ControllerEventHandler.Update() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }

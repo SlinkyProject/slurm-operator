@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
@@ -61,9 +62,7 @@ func Test_NodeSetEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewNodeSetEventHandler(tt.fields.Reader)
 			h.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("NodeSetEventHandler.Create() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -110,9 +109,7 @@ func Test_NodeSetEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewNodeSetEventHandler(tt.fields.Reader)
 			h.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("NodeSetEventHandler.Delete() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -150,9 +147,7 @@ func Test_NodeSetEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewNodeSetEventHandler(tt.fields.Reader)
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("NodeSetEventHandler.Generic() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -200,9 +195,7 @@ func Test_NodeSetEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewNodeSetEventHandler(tt.fields.Reader)
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("NodeSetEventHandler.Update() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }

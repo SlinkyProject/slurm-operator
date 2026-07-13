@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -90,9 +91,7 @@ func Test_RestApiEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewRestApiEventHandler(tt.fields.client)
 			e.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -226,9 +225,7 @@ func Test_RestApiEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewRestApiEventHandler(tt.fields.client)
 			e.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("Update() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -306,9 +303,7 @@ func Test_RestApiEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewRestApiEventHandler(tt.fields.client)
 			e.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("Delete() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -345,9 +340,7 @@ func Test_RestApiEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewRestApiEventHandler(tt.fields.client)
 			e.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("Generic() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
