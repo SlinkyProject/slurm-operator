@@ -105,6 +105,10 @@ clean: ## Clean executable files.
 	rm -f $(BAKE_METADATA_FILE)
 	- $(CONTAINER_TOOL) buildx rm $(BUILDER)
 
+.PHONY: debug
+debug: values-dev ## Run Delve-enabled slurm-operator components and forward debug ports.
+	cd helm/slurm-operator && skaffold debug -p debug --auto-build=true --auto-deploy=true --port-forward=user --tail
+
 ##@ Deployment
 
 ifndef ignore-not-found
@@ -180,8 +184,7 @@ COSIGN ?= $(LOCALBIN)/cosign
 HELM_CONFIG_HOME ?= $(LOCALBIN)/helm-config
 HELM_CACHE_HOME ?= $(LOCALBIN)/helm-cache
 HELM_DATA_HOME ?= $(LOCALBIN)/helm-data
-HELM_PLUGINS ?= $(LOCALBIN)/helm-plugins
-export HELM_CONFIG_HOME HELM_CACHE_HOME HELM_DATA_HOME HELM_PLUGINS
+export HELM_CONFIG_HOME HELM_CACHE_HOME HELM_DATA_HOME
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.20.1
@@ -312,7 +315,7 @@ helm-unittest-update: helm-unittest-bin ## Update helm-unittest snapshots.
 
 .PHONY: helm-unittest-bin
 helm-unittest-bin: helm-bin ## Download helm-unittest plugin locally if necessary.
-	@mkdir -p "$(HELM_CONFIG_HOME)" "$(HELM_CACHE_HOME)" "$(HELM_DATA_HOME)" "$(HELM_PLUGINS)"
+	@mkdir -p "$(HELM_CONFIG_HOME)" "$(HELM_CACHE_HOME)" "$(HELM_DATA_HOME)/plugins"
 	$(call helm-install-plugin,unittest,https://github.com/helm-unittest/helm-unittest,$(HELM_UNITTEST_VERSION))
 
 

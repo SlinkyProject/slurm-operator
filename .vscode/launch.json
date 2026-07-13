@@ -25,6 +25,28 @@
       ],
       "preLaunchTask": "Setup Webhook Debugging",
       "postDebugTask": "Revert Webhook Debugging"
+    },
+    {
+      "name": "Debug Operator",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "127.0.0.1",
+      "port": 40003,
+      "substitutePath": [
+        { "from": "${workspaceFolder}", "to": "/workspace" }
+      ]
+    },
+    {
+      "name": "Debug Webhook",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "host": "127.0.0.1",
+      "port": 40004,
+      "substitutePath": [
+        { "from": "${workspaceFolder}", "to": "/workspace" }
+      ]
     }
   ]
 }
