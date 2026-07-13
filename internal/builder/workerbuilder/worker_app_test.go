@@ -5,7 +5,6 @@ package workerbuilder
 
 import (
 	_ "embed"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -363,15 +362,12 @@ func TestParseExtraConf(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ParseExtraConf(tc.input)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("ParseExtraConf() err = %v, wantErr = %v", err, tc.wantErr)
-			}
 			if tc.wantErr {
+				require.Error(t, err)
 				return
 			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("ParseExtraConf() = %v, want %v", got, tc.want)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -449,9 +445,7 @@ func TestBaselineFeatures(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := baselineFeatures(tc.nodesetFn())
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("baselineFeatures() = %v, want %v", got, tc.want)
-			}
+			require.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -517,9 +511,7 @@ func TestSlurmdConfArgs(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := slurmdConfArgs(tc.nodeset)
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("slurmdConfArgs() = %v, want %v", got, tc.want)
-			}
+			require.Equal(t, tc.want, got)
 		})
 	}
 }

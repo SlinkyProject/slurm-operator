@@ -1157,8 +1157,8 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1211,8 +1211,8 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
 						},
 					},
 				},
@@ -1438,8 +1438,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1464,8 +1464,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1485,8 +1485,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1505,8 +1505,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name: new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{
+							Name: ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{
 								slurmapi.V0044NodeStateIDLE,
 								slurmapi.V0044NodeStateDRAIN,
 							}),
@@ -1528,9 +1528,9 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:   new(slurmNodeName),
-							State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-							Reason: new("manual operator drain outside slurm-operator"),
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Reason: ptr.To("manual operator drain outside slurm-operator"),
 						},
 					},
 				},
@@ -1549,9 +1549,9 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:   new(slurmNodeName),
-							State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN}),
-							Reason: new("Not responding to ping"),
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN}),
+							Reason: ptr.To("Not responding to ping"),
 						},
 					},
 				},
@@ -1580,8 +1580,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1618,8 +1618,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1653,8 +1653,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1685,8 +1685,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -1722,8 +1722,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Items: []slurmtypes.V0044Node{
 					{
 						V0044Node: slurmapi.V0044Node{
-							Name:  new(slurmNodeName),
-							State: new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 						},
 					},
 				},
@@ -2120,12 +2120,12 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 						Items: []slurmtypes.V0044Node{
 							{
 								V0044Node: slurmapi.V0044Node{
-									Name: new(nodesetutils.GetSlurmNodeName(pod)),
-									State: new([]slurmapi.V0044NodeState{
+									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+									State: ptr.To([]slurmapi.V0044NodeState{
 										slurmapi.V0044NodeStateIDLE,
 										slurmapi.V0044NodeStateDRAIN,
 									}),
-									Reason: new("preserve me"),
+									Reason: ptr.To("preserve me"),
 								},
 							},
 						},
@@ -2153,12 +2153,12 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 						Items: []slurmtypes.V0044Node{
 							{
 								V0044Node: slurmapi.V0044Node{
-									Name: new(nodesetutils.GetSlurmNodeName(pod)),
-									State: new([]slurmapi.V0044NodeState{
+									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+									State: ptr.To([]slurmapi.V0044NodeState{
 										slurmapi.V0044NodeStateIDLE,
 										slurmapi.V0044NodeStateDRAIN,
 									}),
-									Reason: new("override me"),
+									Reason: ptr.To("override me"),
 								},
 							},
 						},
@@ -4922,12 +4922,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		},
 	}
 
-	defunctNodeState := new([]slurmapi.V0044NodeState{
+	defunctNodeState := ptr.To([]slurmapi.V0044NodeState{
 		slurmapi.V0044NodeStateDOWN,
 		slurmapi.V0044NodeStateNOTRESPONDING,
 	})
 	podInfo := func(ns *slinkyv1beta1.NodeSet, podName, node string) *string {
-		return new((&podinfo.PodInfo{
+		return ptr.To((&podinfo.PodInfo{
 			Namespace:   corev1.NamespaceDefault,
 			PodName:     podName,
 			Node:        node,
@@ -5193,13 +5193,9 @@ func Test_sanitizeSlurmReason(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sanitizeSlurmReason(tt.input)
-			if got != tt.want {
-				t.Errorf("sanitizeSlurmReason() = %q, want %q", got, tt.want)
-			}
-			if utf8.RuneCountInString(got) > maxSlurmReasonLength {
-				t.Errorf("sanitizeSlurmReason() returned %d runes, exceeds max %d",
-					utf8.RuneCountInString(got), maxSlurmReasonLength)
-			}
+
+			require.Equal(t, tt.want, got)
+			require.LessOrEqual(t, utf8.RuneCountInString(got), maxSlurmReasonLength)
 		})
 	}
 }

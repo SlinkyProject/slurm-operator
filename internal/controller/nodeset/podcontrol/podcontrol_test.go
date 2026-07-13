@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -775,9 +773,7 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 			}
 			if tt.wantEvent != "" {
 				event := testutils.ReadOneEvent(t, tt.fields.recorder)
-				if !strings.Contains(event, tt.wantEvent) {
-					t.Errorf("realPodControl.createPersistentVolumeClaims() event = %v, want substring %q", event, tt.wantEvent)
-				}
+				require.Contains(t, event, tt.wantEvent)
 			}
 			testutils.AssertNoEvents(t, tt.fields.recorder)
 		})
