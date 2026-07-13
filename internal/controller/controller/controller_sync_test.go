@@ -16,13 +16,13 @@ import (
 
 	clientfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/controllerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -93,8 +93,12 @@ func TestControllerReconciler_sync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newControllerController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.Sync(tt.args.ctx, tt.args.request); (err != nil) != tt.wantErr {
-				t.Errorf("ControllerReconciler.sync() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.Sync(tt.args.ctx, tt.args.request)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

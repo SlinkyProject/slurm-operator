@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
+	"github.com/stretchr/testify/require"
 )
 
 func newSignedToken(signingKey []byte) string {
@@ -49,18 +50,18 @@ func TestToken_NewSignedToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tr := tt.fields.token
 			got, err := tr.NewSignedToken()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Token.NewSignedToken() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			ok, err := VerifyToken(got, tr.signingKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("VerifyToken() = %v", err)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if ok != tt.wantOk {
-				t.Errorf("VerifyToken() ok = %v, wantOk %v", ok, tt.wantOk)
-			}
+			require.Equal(t, tt.wantOk, ok)
 		})
 	}
 }
@@ -95,9 +96,10 @@ func TestParseTokenClaims(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseTokenClaims(tt.args.tokenString, tt.args.signingKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseTokenClaims() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -143,13 +145,12 @@ func TestVerifyToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ok, err := VerifyToken(tt.args.tokenString, tt.args.signingKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("VerifyToken() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if ok != tt.wantOk {
-				t.Errorf("VerifyToken() ok = %v, wantOk %v", ok, tt.wantOk)
-			}
+			require.Equal(t, tt.wantOk, ok)
 		})
 	}
 }

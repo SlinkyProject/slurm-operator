@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -25,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/klog/v2"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
@@ -52,6 +50,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) *NodeSetReconciler {
@@ -238,9 +237,7 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 
 	// Configure times for testing
 	now, err := time.Parse(time.RFC3339, "2026-03-04T00:00:00Z")
-	if err != nil {
-		t.Errorf("Failed to initialize test. Failed to parse time: %v", err)
-	}
+	require.NoError(t, err)
 	startTime := now.Unix()
 	endTime := now.Add(time.Hour).Unix()
 
@@ -363,21 +360,17 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 			r := newNodeSetController(client, nil)
 			r.slurmControl = tt.fields.slurmControl
 			err := r.syncReservationFinalizer(ctx, tt.args.nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("TestNodeSetReconciler_syncReservationFinalizer() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 
 			gotFinalizers := slices.Clone(tt.args.nodeset.Finalizers)
 			slices.Sort(gotFinalizers)
 			want := slices.Clone(tt.wantFinalizers)
 			slices.Sort(want)
-			if diff := cmp.Diff(want, gotFinalizers); diff != "" {
-				t.Errorf("finalizers mismatch (-want +got):\n%s", diff)
-			}
+			require.Equal(t, want, gotFinalizers)
 		})
 	}
 }
@@ -435,8 +428,11 @@ func TestNodeSetReconciler_adoptOrphanRevisions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.adoptOrphanRevisions(tt.args.ctx, tt.args.nodeset); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.adoptOrphanRevisions() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.adoptOrphanRevisions(tt.args.ctx, tt.args.nodeset)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -505,8 +501,11 @@ func TestNodeSetReconciler_doAdoptOrphanRevisions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.doAdoptOrphanRevisions(tt.args.nodeset, tt.args.revisions); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.doAdoptOrphanRevisions() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.doAdoptOrphanRevisions(tt.args.nodeset, tt.args.revisions)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -590,10 +589,11 @@ func TestNodeSetReconciler_listRevisions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
 			got, err := r.listRevisions(tt.args.nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.listRevisions() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("NodeSetReconciler.listRevisions() = %v, want %v", got, tt.want)
 			}
@@ -646,17 +646,16 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
 			got, err := r.getNodeSetPods(tt.args.ctx, tt.args.nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.getNodeSetPods() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 			gotPodNames := make([]string, len(got))
 			for i, pod := range got {
 				gotPodNames[i] = klog.KObj(pod).String()
 			}
-			if diff := cmp.Diff(tt.want, gotPodNames); diff != "" {
-				t.Errorf("NodeSetReconciler.getNodeSetPods() (-want,+got):\n%s", diff)
-			}
+			require.Equal(t, tt.want, gotPodNames)
 		})
 	}
 }
@@ -742,9 +741,13 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.sync(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.sync() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.sync(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -911,34 +914,34 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncNodeSetPods(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncNodeSetPods() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncNodeSetPods(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			podList := &corev1.PodList{}
 			optsList := &client.ListOptions{
 				Namespace: tt.args.nodeset.Namespace,
 			}
-			err := tt.fields.Client.List(ctx, podList, optsList)
-			if err != nil {
-				t.Errorf("Failed to list pods for NodeSet error = %v", err)
-			}
+			err = tt.fields.Client.List(ctx, podList, optsList)
+			require.NoError(t, err)
 
 			// If we are not scaling down, podList.Items should reflect current state
 			if len(tt.args.pods) <= tt.wantPods {
-				if len(podList.Items) != tt.wantPods {
-					t.Errorf("syncNodeSetPods() failed: expected pod count = %v, got pod count = %v", tt.wantPods, len(podList.Items))
-				}
+				require.Equal(t, tt.wantPods, len(podList.Items))
 			}
 
 			// If we are scaling down, we need to sync again
 			if len(tt.args.pods) > tt.wantPods {
-				if err := r.syncNodeSetPods(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-					t.Errorf("NodeSetReconciler.syncNodeSetPods() error = %v, wantErr %v", err, tt.wantErr)
+				err = r.syncNodeSetPods(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
 				}
-				err := tt.fields.Client.List(ctx, podList, optsList)
-				if err != nil {
-					t.Errorf("Failed to list pods for NodeSet error = %v", err)
-				}
+				err = tt.fields.Client.List(ctx, podList, optsList)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -1362,8 +1365,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.processCondemned(tt.args.ctx, tt.args.nodeset, tt.args.condemned, tt.args.i); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.processCondemned() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.processCondemned(tt.args.ctx, tt.args.nodeset, tt.args.condemned, tt.args.i)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			pod := tt.args.condemned[tt.args.i]
 			if isDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, pod); err != nil {
@@ -1372,11 +1378,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				t.Errorf("slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
 			}
 			key := client.ObjectKeyFromObject(pod)
-			err := r.Get(tt.args.ctx, key, pod)
-			podStillExists := err == nil
-			podGone := apierrors.IsNotFound(err)
-			if err != nil && !podGone {
-				t.Errorf("Client.Get() error = %v", err)
+			getErr := r.Get(tt.args.ctx, key, pod)
+			podStillExists := getErr == nil
+			podGone := apierrors.IsNotFound(getErr)
+			if getErr != nil && !podGone {
+				t.Errorf("Client.Get() error = %v", getErr)
 			}
 			if tt.wantPodDeleted && !podGone {
 				t.Errorf("expected pod to be deleted from the API server")
@@ -1737,14 +1743,15 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			k8sClient := fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy(), tt.kubeNode.DeepCopy())
 			r := newNodeSetControllerWithPropagatedNodeConditions(k8sClient, clientMap, tt.propagatedNodeConditions)
 
-			if err := r.syncCordon(context.Background(), nodeset.DeepCopy(), []*corev1.Pod{pod}); (err != nil) != tt.wantErr {
-				t.Fatalf("syncCordon() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncCordon(context.Background(), nodeset.DeepCopy(), []*corev1.Pod{pod})
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
 			gotPod := &corev1.Pod{}
-			if err := r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod); err != nil {
-				t.Fatalf("Get pod: %v", err)
-			}
+			require.NoError(t, r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod))
 			if got, want := podutils.IsPodCordon(gotPod), tt.wantPodCordoned; got != want {
 				t.Errorf("IsPodCordon() = %v, want %v", got, want)
 			}
@@ -1755,12 +1762,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Name:      nodeset.Spec.ControllerRef.Name,
 			}
 			sc := r.ClientMap.Get(mapKey)
-			if sc == nil {
-				t.Fatal("ClientMap.Get() returned nil")
-			}
-			if err := sc.Get(context.Background(), slurmclient.ObjectKey(slurmNodeName), gotNode); err != nil {
-				t.Fatalf("slurm Get node: %v", err)
-			}
+			require.NotNil(t, sc)
+			require.NoError(t, sc.Get(context.Background(), slurmclient.ObjectKey(slurmNodeName), gotNode))
 			if got, want := gotNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN), tt.wantSlurmDrain; got != want {
 				t.Errorf("Slurm node DRAIN = %v, want %v", got, want)
 			}
@@ -1902,8 +1905,11 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.doPodProcessing(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.podsToDelete, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.doPodProcessing() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.doPodProcessing(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.podsToDelete, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -2040,19 +2046,22 @@ func TestNodeSetReconciler_processNodeSetPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.processNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.processNodeSetPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.processNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			gotPod := &corev1.Pod{}
-			err := tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod)
+			getErr := tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod)
 			if tt.wantDelete {
-				if err == nil {
+				if getErr == nil {
 					t.Errorf("expected pod to be deleted, but it still exists")
-				} else if !apierrors.IsNotFound(err) {
-					t.Errorf("Client.Get() unexpected error = %v", err)
+				} else if !apierrors.IsNotFound(getErr) {
+					t.Errorf("Client.Get() unexpected error = %v", getErr)
 				}
-			} else if err != nil && !apierrors.IsNotFound(err) {
-				t.Errorf("Client.Get() unexpected error = %v", err)
+			} else if getErr != nil && !apierrors.IsNotFound(getErr) {
+				t.Errorf("Client.Get() unexpected error = %v", getErr)
 			}
 		})
 	}
@@ -2283,40 +2292,36 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				Namespace: nodeset.Namespace,
 				Name:      nodeset.Spec.ControllerRef.Name,
 			}
-			if err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.makePodCordonAndDrain() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
 			// Check Pod Annotations
 			gotPod := &corev1.Pod{}
-			if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("client.Get() error = %v", err)
+			if getErr := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); getErr != nil {
+				if !apierrors.IsNotFound(getErr) {
+					t.Errorf("client.Get() error = %v", getErr)
 				}
-			} else if !tt.wantErr {
+			} else {
 				if ok := podutils.IsPodCordon(gotPod); !ok {
 					t.Errorf("IsPodCordon() = %v", ok)
 				}
 			}
-			if tt.wantErr {
-				return
-			}
 			sc := r.ClientMap.Get(mapKey)
-			if sc == nil {
-				t.Error("ClientMap.Get() is nil")
-			}
+			require.NotNil(t, sc)
 			gotSlurmNode := &slurmtypes.V0044Node{}
-			if err := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); err != nil {
-				if err.Error() != http.StatusText(http.StatusNotFound) {
-					t.Errorf("slurmclient.Get() error = %v", err)
+			if getErr := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); getErr != nil {
+				if getErr.Error() != http.StatusText(http.StatusNotFound) {
+					t.Errorf("slurmclient.Get() error = %v", getErr)
 				}
 			}
 			if ok := gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN); !ok {
 				t.Errorf("SlurmNode Has DRAIN = %v", ok)
 			}
 			gotNodeReason := ptr.Deref(gotSlurmNode.Reason, "")
-			if gotNodeReason != tt.wantNodeReason {
-				t.Fatalf("MakeNodeDrain() reason = '%s', want = '%s'", gotNodeReason, tt.wantNodeReason)
-			}
+			require.Equal(t, tt.wantNodeReason, gotNodeReason)
 		})
 	}
 }
@@ -2387,14 +2392,17 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.makePodCordon(tt.args.ctx, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.makePodCordon() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.makePodCordon(tt.args.ctx, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			// Check Pod Annotations
 			gotPod := &corev1.Pod{}
-			if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("client.Get() error = %v", err)
+			if getErr := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); getErr != nil {
+				if !apierrors.IsNotFound(getErr) {
+					t.Errorf("client.Get() error = %v", getErr)
 				}
 			} else if !tt.wantErr {
 				if ok := podutils.IsPodCordon(gotPod); !ok {
@@ -2535,14 +2543,17 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.makePodUncordonAndUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.makePodUncordonAndUndrain() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.makePodUncordonAndUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			// Check Pod Annotations
 			gotPod := &corev1.Pod{}
-			if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("client.Get() error = %v", err)
+			if getErr := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); getErr != nil {
+				if !apierrors.IsNotFound(getErr) {
+					t.Errorf("client.Get() error = %v", getErr)
 				}
 			} else if !tt.wantErr {
 				if ok := podutils.IsPodCordon(gotPod); ok {
@@ -2556,12 +2567,10 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 				Name:      nodeset.Spec.ControllerRef.Name,
 			}
 			sc := r.ClientMap.Get(mapKey)
-			if sc == nil {
-				t.Error("ClientMap.Get() is nil")
-			}
-			if err := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); err != nil {
-				if err.Error() != http.StatusText(http.StatusNotFound) {
-					t.Errorf("slurmclient.Get() error = %v", err)
+			require.NotNil(t, sc)
+			if getErr := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); getErr != nil {
+				if getErr.Error() != http.StatusText(http.StatusNotFound) {
+					t.Errorf("slurmclient.Get() error = %v", getErr)
 				}
 			} else if !tt.wantErr {
 				if ok := gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN); ok {
@@ -2636,14 +2645,17 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.makePodUncordon(tt.args.ctx, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.makePodUncordon() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.makePodUncordon(tt.args.ctx, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			// Check Pod Annotations
 			gotPod := &corev1.Pod{}
-			if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("client.Get() error = %v", err)
+			if getErr := r.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); getErr != nil {
+				if !apierrors.IsNotFound(getErr) {
+					t.Errorf("client.Get() error = %v", getErr)
 				}
 			} else if !tt.wantErr {
 				if ok := podutils.IsPodCordon(gotPod); ok {
@@ -2815,8 +2827,11 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -3088,9 +3103,13 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncRollingUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncRollingUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncRollingUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
+
 			for _, pod := range tt.wantCordoned {
 				gotPod := &corev1.Pod{}
 				if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod); err != nil {
@@ -3312,9 +3331,13 @@ func TestNodeSetReconciler_syncScheduledUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncScheduledUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncScheduledUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncScheduledUpdate(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -3650,12 +3673,8 @@ func TestNodeSetReconciler_splitUpdatePods(t *testing.T) {
 
 			slices.Sort(gotPodsToDeleteOrdered)
 			slices.Sort(gotPodsToKeepOrdered)
-			if diff := cmp.Diff(tt.wantPodsToDelete, gotPodsToDeleteOrdered); diff != "" {
-				t.Errorf("gotPodsToDelete (-want,+got):\n%s", diff)
-			}
-			if diff := cmp.Diff(tt.wantPodsToKeep, gotPodsToKeepOrdered); diff != "" {
-				t.Errorf("gotPodsToKeep (-want,+got):\n%s", diff)
-			}
+			require.Equal(t, tt.wantPodsToDelete, gotPodsToDeleteOrdered)
+			require.Equal(t, tt.wantPodsToKeep, gotPodsToKeepOrdered)
 		})
 	}
 }
@@ -3717,12 +3736,8 @@ func Test_findUpdatedPods(t *testing.T) {
 
 			slices.Sort(gotNewPodsOrdered)
 			slices.Sort(gotOldPodsOrdered)
-			if diff := cmp.Diff(tt.wantNewPods, gotNewPodsOrdered); diff != "" {
-				t.Errorf("gotNewPods (-want,+got):\n%s", diff)
-			}
-			if diff := cmp.Diff(tt.wantOldPods, gotOldPodsOrdered); diff != "" {
-				t.Errorf("gotOldPods (-want,+got):\n%s", diff)
-			}
+			require.Equal(t, tt.wantNewPods, gotNewPodsOrdered)
+			require.Equal(t, tt.wantOldPods, gotOldPodsOrdered)
 		})
 	}
 }
@@ -3761,9 +3776,13 @@ func TestNodeSetReconciler_syncClusterWorkerService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if err := r.syncClusterWorkerService(tt.args.ctx, tt.args.nodeset); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncClusterWorkerService() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncClusterWorkerService(tt.args.ctx, tt.args.nodeset)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }
@@ -3907,9 +3926,8 @@ func Test_isNodeCordoned(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, nil)
-			if got := r.isNodeCordoned(tt.args.ctx, tt.args.pod); got != tt.want {
-				t.Errorf("isNodeCordoned() = %v, want %v", got, tt.want)
-			}
+			got := r.isNodeCordoned(tt.args.ctx, tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -4104,22 +4122,21 @@ func Test_syncPodUncordon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncPodUncordon(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("syncPodUncordon() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncPodUncordon(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
 			gotPod := &corev1.Pod{}
-			if err := tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod); err != nil {
-				t.Fatalf("Get() pod failed: %v", err)
-			}
+			require.NoError(t, tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod))
 			if got := podutils.IsPodCordon(gotPod); got != tt.wantPodCordoned {
 				t.Errorf("pod cordon state after syncPodUncordon() = %v, want %v", got, tt.wantPodCordoned)
 			}
 
-			gotDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if err != nil {
-				t.Fatalf("IsNodeDrain() failed: %v", err)
-			}
+			gotDrain, drainErr := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			require.NoError(t, drainErr)
 			if gotDrain != tt.wantSlurmNodeDrained {
 				t.Errorf("slurm node DRAIN state after syncPodUncordon() = %v, want %v", gotDrain, tt.wantSlurmNodeDrained)
 			}
@@ -4194,15 +4211,11 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 			ctx := context.Background()
 			r := newNodeSetController(tt.client, tt.clientMap)
 			gotErr := r.syncSlurmTopology(context.Background(), tt.nodeset, tt.pods)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("syncSlurmTopology() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("syncSlurmTopology() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 			for _, pod := range tt.pods {
 				checkPod := &corev1.Pod{}
 				if err := tt.client.Get(ctx, client.ObjectKeyFromObject(pod), checkPod); err != nil {
@@ -4938,20 +4951,14 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			ctx := context.Background()
 			r := NewReconciler(tt.kclient, tt.clientMap, nil)
 			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("syncSlurmNodes() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("syncSlurmNodes() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 			scontrol := slurmcontrol.NewSlurmControl(tt.clientMap)
 			slurmNodeNames, ok, err := scontrol.GetNodesForPods(ctx, tt.nodeset, tt.pods)
-			if err != nil {
-				t.Fatalf("slurmControl failed to get Slurm node names: %v", err)
-			}
+			require.NoError(t, err)
 			if !ok {
 				if ok != tt.wantOk {
 					t.Fatal("slurmControl used a client unexpectedly")
@@ -4959,9 +4966,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 				return
 			}
 			podList := &corev1.PodList{}
-			if err := tt.kclient.List(ctx, podList); err != nil {
-				t.Fatalf("kclient failed to list pods: %v", err)
-			}
+			require.NoError(t, tt.kclient.List(ctx, podList))
 			if len(podList.Items) != len(slurmNodeNames) {
 				t.Errorf("syncSlurmNodes() unregistered Slurm node but healthy pod was not deleted")
 			}
@@ -5172,19 +5177,18 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			clientMap := newClientMap(controller.Name, sclient)
 			r := NewReconciler(kclient, clientMap, nil)
 
-			if err := r.syncSlurmNodeRecords(context.Background(), nodeset); (err != nil) != tt.wantErr {
-				t.Fatalf("syncSlurmNodeRecords() error = %v", err)
+			err := r.syncSlurmNodeRecords(context.Background(), nodeset)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 
 			for _, name := range stillExist {
-				if err := sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}); err != nil {
-					t.Fatalf("expected Slurm node %q to remain, got: %v", name, err)
-				}
+				require.NoError(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}), "expected Slurm node %q to remain", name)
 			}
 			for _, name := range pruned {
-				if err := sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}); err == nil {
-					t.Fatalf("expected Slurm node %q to be pruned, it still exists", name)
-				}
+				require.Error(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}), "expected Slurm node %q to be pruned", name)
 			}
 		})
 	}

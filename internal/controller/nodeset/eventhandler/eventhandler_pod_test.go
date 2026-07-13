@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -69,9 +70,7 @@ func Test_PodEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewPodEventHandler(tt.fields.Reader, tt.fields.expectations)
 			h.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -128,9 +127,7 @@ func Test_PodEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewPodEventHandler(tt.fields.Reader, tt.fields.expectations)
 			h.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Delete() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -187,9 +184,7 @@ func Test_PodEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewPodEventHandler(tt.fields.Reader, tt.fields.expectations)
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Generic() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -252,9 +247,7 @@ func Test_PodEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewPodEventHandler(tt.fields.Reader, tt.fields.expectations)
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Update() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }

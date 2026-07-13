@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -24,6 +23,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 	"github.com/puttsk/hostlist"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,13 +151,16 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.UpdateNodeWithPodInfo(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateNodeWithPodInfo() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.UpdateNodeWithPodInfo(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			checkNode := &types.V0044Node{}
-			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
-				if !tolerateError(err) {
-					t.Fatalf("client.Get() err = %v", err)
+			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
+				if !tolerateError(getErr) {
+					require.NoError(t, getErr)
 				}
 			}
 			checkPodInfo := podinfo.PodInfo{}
@@ -267,23 +270,22 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason); (err != nil) != tt.wantErr {
-				t.Errorf("MakeNodeDrain() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			checkNode := &types.V0044Node{}
-			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
-				if !tolerateError(err) {
-					t.Fatalf("client.Get() err = %v", err)
+			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
+				if !tolerateError(getErr) {
+					require.NoError(t, getErr)
 				}
 			}
 			isDrain := checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
-			if !isDrain {
-				t.Fatalf("MakeNodeDrain() failed to DRAIN the node")
-			}
+			require.True(t, isDrain, "MakeNodeDrain() failed to DRAIN the node")
 			nodeReason := ptr.Deref(checkNode.Reason, "")
-			if nodeReason != tt.wantReason {
-				t.Fatalf("MakeNodeDrain() reason = '%s', want = '%s'", nodeReason, tt.wantReason)
-			}
+			require.Equal(t, tt.wantReason, nodeReason)
 		})
 	}
 }
@@ -360,19 +362,20 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.MakeNodeUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason); (err != nil) != tt.wantErr {
-				t.Errorf("MakeNodeUndrain() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.MakeNodeUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			checkNode := &types.V0044Node{}
-			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
-				if !tolerateError(err) {
-					t.Fatalf("client.Get() = %v", err)
+			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
+				if !tolerateError(getErr) {
+					require.NoError(t, getErr)
 				}
 			}
 			isUndrain := !checkNode.GetStateAsSet().Has(api.V0044NodeStateDRAIN)
-			if isUndrain != tt.wantUndrain {
-				t.Fatalf("MakeNodeUndrain() = %v", isUndrain)
-			}
+			require.Equal(t, tt.wantUndrain, isUndrain)
 		})
 	}
 }
@@ -445,18 +448,21 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologySpec); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateNodeTopology() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologySpec)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			checkNode := &types.V0044Node{}
-			if err := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); err != nil {
-				if !tolerateError(err) {
-					t.Fatalf("client.Get() = %v", err)
+			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
+				if !tolerateError(getErr) {
+					require.NoError(t, getErr)
 				}
 			}
 			got := ptr.Deref(checkNode.Topology, "")
 			if !apiequality.Semantic.DeepEqual(got, tt.args.topologySpec) {
-				t.Fatalf("UpdateNodeTopology() topologySpec = %v", got)
+				t.Errorf("UpdateNodeTopology() topologySpec = %v", got)
 			}
 		})
 	}
@@ -701,13 +707,12 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 				clientMap: tt.fields.clientMap,
 			}
 			got, err := r.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.IsNodeDrain() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("realSlurmControl.IsNodeDrain() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -986,12 +991,12 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				clientMap: tt.fields.clientMap,
 			}
 			got, err := r.IsNodeDrained(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.IsNodeDrained() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("realSlurmControl.IsNodeDrained() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1342,12 +1347,12 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				clientMap: tt.fields.clientMap,
 			}
 			got, err := r.IsNodeDownForUnresponsive(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.IsNodeDownForUnresponsive() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("realSlurmControl.IsNodeDownForUnresponsive() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1454,12 +1459,12 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 				clientMap: tt.fields.clientMap,
 			}
 			got, err := r.IsNodeReasonOurs(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.IsNodeReasonOurs() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("realSlurmControl.IsNodeReasonOurs() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -2207,8 +2212,10 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				clientMap: tt.fields.clientMap,
 			}
 			got, err := r.CalculateNodeStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realSlurmControl.CalculateNodeStatus() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
@@ -2362,15 +2369,14 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
 			got, err := r.GetNodeDeadlines(tt.args.ctx, tt.args.nodeset, tt.args.pods)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetNodeDeadlines() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			for _, node := range tt.fields.nodeList.Items {
-				if ts := got.Peek(ptr.Deref(node.Name, "")); !ts.After(now) {
-					t.Errorf("timestamp = %v, after = %v", ts, ts.After(now))
-				}
-
+				ts := got.Peek(ptr.Deref(node.Name, ""))
+				require.True(t, ts.After(now), "timestamp = %v, after = %v", ts, ts.After(now))
 			}
 		})
 	}
@@ -2454,19 +2460,19 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
 			got, ok, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetNodesForPods() failed: %v", gotErr)
+				if tt.wantErr {
+					require.Error(t, gotErr)
+				} else {
+					require.NoError(t, gotErr)
 				}
 				return
 			}
 			if !ok {
-				if ok != tt.wantOk {
-					t.Fatalf("GetNodesForPods() ok %v, want %v", ok, tt.wantOk)
-				}
+				require.Equal(t, tt.wantOk, ok)
 				return
 			}
 			if tt.wantErr {
-				t.Fatal("GetNodesForPods() succeeded unexpectedly")
+				require.NoError(t, gotErr, "GetNodesForPods() succeeded unexpectedly")
 			}
 			slices.Sort(got)
 			slices.Sort(tt.want)
@@ -2480,9 +2486,7 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 	// Configure times for testing
 	now, err := time.Parse(time.RFC3339, "2026-03-04T00:00:00Z")
-	if err != nil {
-		t.Errorf("Failed to initialize test. Failed to parse time: %v", err)
-	}
+	require.NoError(t, err)
 	startTime := now.Unix()
 	endTime := now.Add(time.Hour).Unix()
 
@@ -2558,18 +2562,12 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
 
 			got, gotErr := r.CheckReservationForNodeSet(context.Background(), tt.nodeset)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("CheckReservationForNodeSet() error = %v, wantErr %v", gotErr, tt.wantErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatalf("CheckReservationForNodeSet() error = %v, wantErr %v", gotErr, tt.wantErr)
+				require.Error(t, gotErr)
+			} else {
+				require.NoError(t, gotErr)
 			}
-			if got != tt.want {
-				t.Fatalf("CheckReservationForNodeSet() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -2584,9 +2582,7 @@ func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 
 	// Configure times for testing
 	future, err := time.Parse(time.RFC3339, "2099-03-04T00:00:00Z")
-	if err != nil {
-		t.Errorf("Failed to initialize test. Failed to parse time: %v", err)
-	}
+	require.NoError(t, err)
 	startTimeFuture := future.Unix()
 	endTimeFuture := future.Add(time.Hour).Unix()
 
@@ -2755,15 +2751,11 @@ func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
 
 			got, gotErr := r.GetPodsUnderReservation(context.Background(), tt.nodeset, tt.pods)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetReservation() failed: %v", gotErr)
-				}
+			if tt.wantErr {
+				require.Error(t, gotErr)
 				return
 			}
-			if tt.wantErr {
-				t.Fatal("GetReservation() succeeded unexpectedly")
-			}
+			require.NoError(t, gotErr)
 			if !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("UpdateNodeWithPodInfo() got = %v, want %v", got, tt.want)
 			}
@@ -2774,9 +2766,7 @@ func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 	// Configure times for testing
 	now, err := time.Parse(time.RFC3339, "2026-03-04T00:00:00Z")
-	if err != nil {
-		t.Errorf("Failed to initialize test. Failed to parse time: %v", err)
-	}
+	require.NoError(t, err)
 	startTime := now.Unix()
 	endTime := now.Add(time.Hour).Unix()
 
@@ -2864,14 +2854,10 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
 
 			gotErr := r.DeleteReservationForNodeSet(context.Background(), tt.nodeset)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("GetReservation() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("GetReservation() succeeded unexpectedly")
+				require.Error(t, gotErr)
+			} else {
+				require.NoError(t, gotErr)
 			}
 		})
 	}
@@ -3406,14 +3392,10 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
 
 			gotErr := r.SyncReservationForNodeSet(context.Background(), tt.nodeset, tt.pods)
-			if gotErr != nil {
-				if !tt.wantErr {
-					t.Errorf("SyncReservationForNodeSet() failed: %v", gotErr)
-				}
-				return
-			}
 			if tt.wantErr {
-				t.Fatal("SyncReservationForNodeSet() succeeded unexpectedly")
+				require.Error(t, gotErr)
+			} else {
+				require.NoError(t, gotErr)
 			}
 		})
 	}
@@ -3466,9 +3448,8 @@ func Test_tolerateError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tolerateError(tt.args.err); got != tt.want {
-				t.Errorf("tolerateError() = %v, want %v", got, tt.want)
-			}
+			got := tolerateError(tt.args.err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -3550,9 +3531,8 @@ func Test_nodeState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := nodeState(tt.args.node, tt.args.state); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("nodeState() = %v, want %v", got, tt.want)
-			}
+			got := nodeState(tt.args.node, tt.args.state)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -3670,15 +3650,13 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 
 			r := &realSlurmControl{clientMap: clientMap}
 			got, ok, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("GetDefunctNodesForNodeSet() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if ok != tt.wantOk {
-				t.Fatalf("GetDefunctNodesForNodeSet() ok = %v, want %v", ok, tt.wantOk)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("GetDefunctNodesForNodeSet() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.wantOk, ok)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -3703,13 +3681,10 @@ func Test_realSlurmControl_DeleteNode(t *testing.T) {
 	sclient := fake.NewClientBuilder().WithObjects(node).Build()
 	r := &realSlurmControl{clientMap: newSlurmClientMap(controller.Name, sclient)}
 
-	if err := r.DeleteNode(ctx, nodeset, "foo-0"); err != nil {
-		t.Fatalf("DeleteNode() error = %v", err)
-	}
+	err := r.DeleteNode(ctx, nodeset, "foo-0")
+	require.NoError(t, err)
 
 	checkNode := &types.V0044Node{}
-	err := sclient.Get(ctx, node.GetKey(), checkNode)
-	if !tolerateError(err) {
-		t.Fatalf("DeleteNode() node still exists: %v", err)
-	}
+	getErr := sclient.Get(ctx, node.GetKey(), checkNode)
+	require.True(t, tolerateError(getErr), "DeleteNode() node still exists: %v", getErr)
 }
