@@ -916,6 +916,20 @@ vendor:
     #     - vpc6
     #     - vpc7
     #     - vpc8
+    # -- A3 Ultra configurations. List of objects corresponding to nodesets.
+    a3ultra: []
+    # - targetNodeSet: a3-ultra-compute
+    #   nodePool: "a3-ultra-compute-nodepool"
+    #   networks:
+    #     - default
+    #     - rdma-0
+    #     - rdma-1
+    #     - rdma-2
+    #     - rdma-3
+    #     - rdma-4
+    #     - rdma-5
+    #     - rdma-6
+    #     - rdma-7
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.

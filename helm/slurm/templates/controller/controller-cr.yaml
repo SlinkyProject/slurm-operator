@@ -60,6 +60,9 @@ spec:
     {{- if and (include "slurm.vendor.google.a3mega.enabled" .) (not $hasGresConf) }}
     - name: {{ include "slurm.vendor.google.a3mega.configName" . }}
     {{- end }}{{- /* and (include "slurm.vendor.google.a3mega.enabled" .) (not $hasGresConf) */}}
+    {{- if and (include "slurm.vendor.google.a3ultra.enabled" .) (not $hasGresConf) }}
+    - name: {{ include "slurm.vendor.google.a3ultra.configName" . }}
+    {{- end }}{{- /* and (include "slurm.vendor.google.a3ultra.enabled" .) (not $hasGresConf) */}}
   prologScriptRefs:
     {{- if .Values.prologScripts }}
     - name: {{ include "slurm.controller.prologName" . }}
