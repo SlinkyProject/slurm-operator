@@ -158,24 +158,16 @@ func TestWorkerBuilder_getResourceLimits(t *testing.T) {
 
 	// Create values to test resource requirements with
 	cpu1, err := resource.ParseQuantity("1")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	mem1g, err := resource.ParseQuantity("1Gi")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	cpu4, err := resource.ParseQuantity("4")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	mem2g, err := resource.ParseQuantity("2Gi")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	type limits struct {
 		cpu    int64

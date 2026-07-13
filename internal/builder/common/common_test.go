@@ -152,14 +152,10 @@ func TestCommonBuilder_GetContainerResourceLimits(t *testing.T) {
 	client := fake.NewFakeClient()
 
 	cpu1, err := resource.ParseQuantity("1")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	mem1g, err := resource.ParseQuantity("1Gi")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name string // description of this test case
@@ -203,14 +199,10 @@ func TestCommonBuilder_GetPodResourceLimits(t *testing.T) {
 	client := fake.NewFakeClient()
 
 	cpu1, err := resource.ParseQuantity("1")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	mem1g, err := resource.ParseQuantity("1Gi")
-	if err != nil {
-		t.Fatalf("Failed to call resource.ParseQuantity")
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name  string // description of this test case
