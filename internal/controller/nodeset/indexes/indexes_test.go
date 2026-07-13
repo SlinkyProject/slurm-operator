@@ -42,9 +42,7 @@ func Test_getPodNodeName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getPodNodeName(tt.o)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("getPodNodeName() = %v, want %v", got, tt.want)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "getPodNodeName() = %v, want %v", got, tt.want)
 		})
 	}
 }

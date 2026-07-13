@@ -262,12 +262,8 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got = %v, want %v", got, tt.want)
-			}
-			if !apiequality.Semantic.DeepEqual(got1, tt.want1) {
-				t.Errorf("NodeSetReconciler.getNodeSetRevisions() got1 = %v, want %v", got1, tt.want1)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "NodeSetReconciler.getNodeSetRevisions() got = %v, want %v", got, tt.want)
+			require.True(t, apiequality.Semantic.DeepEqual(got1, tt.want1), "NodeSetReconciler.getNodeSetRevisions() got1 = %v, want %v", got1, tt.want1)
 			require.Equal(t, tt.want2, got2)
 		})
 	}
