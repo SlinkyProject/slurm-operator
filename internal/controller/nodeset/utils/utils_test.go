@@ -890,9 +890,8 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPersistentVolumeClaims(tt.args.nodeset, tt.args.pod); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("GetPersistentVolumeClaims() = %v, want %v", got, tt.want)
-			}
+			got := GetPersistentVolumeClaims(tt.args.nodeset, tt.args.pod)
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "GetPersistentVolumeClaims() = %v, want %v", got, tt.want)
 		})
 	}
 }

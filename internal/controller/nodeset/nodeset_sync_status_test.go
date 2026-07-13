@@ -1018,17 +1018,12 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 				Client: tt.fields.Client,
 			}
 			err := r.updateNodeSetPodConditions(tt.args.ctx, tt.args.pods, tt.args.nodeStatus)
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("NodeSetReconciler.updateNodeSetPodConditions() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			require.ErrorIs(t, err, tt.wantErr)
 			for key, ns := range tt.args.nodeStatus.NodeStates {
 				// Verify the correct conditions are present in the correct pod
 				pod := &corev1.Pod{}
 				err = r.Get(tt.args.ctx, client.ObjectKey{Name: key, Namespace: "default"}, pod)
-				if err != nil {
-					t.Errorf("NodeSetReconciler.updateNodeSetPodConditions() error = %v", err)
-					return
-				}
+				require.NoError(t, err)
 				var slurmCondCount int
 				for _, condition := range pod.Status.Conditions {
 					if strings.HasPrefix(string(condition.Type), slurmconditions.PodStatePrefix) {
@@ -1040,16 +1035,10 @@ func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
 								found = true
 							}
 						}
-						if !found {
-							t.Errorf(`NodeSetReconciler.updateNodeSetPodConditions() could not find a pod (%v) condition
-							as a Slurm node state (%v)`, condition, ns)
-						}
+						require.True(t, found, "NodeSetReconciler.updateNodeSetPodConditions() could not find a pod (%v) condition as a Slurm node state (%v)", condition, ns)
 					}
 				}
-				if slurmCondCount != len(ns) {
-					t.Errorf("NodeSetReconciler.updateNodeSetPodConditions() SlurmNodeState condition count = %d, want %d",
-						slurmCondCount, len(ns))
-				}
+				require.Equal(t, len(ns), slurmCondCount, "NodeSetReconciler.updateNodeSetPodConditions() SlurmNodeState condition count = %d, want %d", slurmCondCount, len(ns))
 			}
 		})
 	}
@@ -1357,9 +1346,7 @@ func Test_calculateOrdinalToNode(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			if diff := cmp.Diff(tt.want, got); !apiequality.Semantic.DeepEqual(got, tt.want) && diff != "" {
-				t.Errorf("NodeSetReconciler.calculateNodeToOrdinal() mismatch (-want +got):\n%s", diff)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "NodeSetReconciler.calculateNodeToOrdinal() mismatch (-want +got):\n%s", cmp.Diff(tt.want, got))
 		})
 	}
 }

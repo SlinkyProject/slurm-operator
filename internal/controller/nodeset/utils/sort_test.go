@@ -627,12 +627,8 @@ func TestSplitUnhealthyPods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotUnhealthyPods, gotHealthyPods := SplitUnhealthyPods(tt.args.pods)
-			if !apiequality.Semantic.DeepEqual(gotUnhealthyPods, tt.wantUnhealthyPods) {
-				t.Errorf("SplitUnhealthyPods() gotUnhealthyPods = %v, want %v", gotUnhealthyPods, tt.wantUnhealthyPods)
-			}
-			if !apiequality.Semantic.DeepEqual(gotHealthyPods, tt.wantHealthyPods) {
-				t.Errorf("SplitUnhealthyPods() gotHealthyPods = %v, want %v", gotHealthyPods, tt.wantHealthyPods)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(gotUnhealthyPods, tt.wantUnhealthyPods), "SplitUnhealthyPods() gotUnhealthyPods = %v, want %v", gotUnhealthyPods, tt.wantUnhealthyPods)
+			require.True(t, apiequality.Semantic.DeepEqual(gotHealthyPods, tt.wantHealthyPods), "SplitUnhealthyPods() gotHealthyPods = %v, want %v", gotHealthyPods, tt.wantHealthyPods)
 		})
 	}
 }

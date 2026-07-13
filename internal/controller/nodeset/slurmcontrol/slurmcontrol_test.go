@@ -165,9 +165,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			}
 			checkPodInfo := podinfo.PodInfo{}
 			_ = podinfo.ParseIntoPodInfo(checkNode.Comment, &checkPodInfo)
-			if !apiequality.Semantic.DeepEqual(checkPodInfo, tt.wantPodInfo) {
-				t.Errorf("UpdateNodeWithPodInfo() podInfo = %v, want %v", checkPodInfo, tt.wantPodInfo)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(checkPodInfo, tt.wantPodInfo), "UpdateNodeWithPodInfo() podInfo = %v, want %v", checkPodInfo, tt.wantPodInfo)
 		})
 	}
 }
@@ -461,9 +459,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 				}
 			}
 			got := ptr.Deref(checkNode.Topology, "")
-			if !apiequality.Semantic.DeepEqual(got, tt.args.topologySpec) {
-				t.Errorf("UpdateNodeTopology() topologySpec = %v", got)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.args.topologySpec), "UpdateNodeTopology() topologySpec = %v", got)
 		})
 	}
 }
@@ -2217,9 +2213,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
 		})
 	}
 }
@@ -2476,9 +2470,7 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 			}
 			slices.Sort(got)
 			slices.Sort(tt.want)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("GetNodesForPods() = %v, want %v", got, tt.want)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "GetNodesForPods() = %v, want %v", got, tt.want)
 		})
 	}
 }
@@ -2756,9 +2748,7 @@ func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 				return
 			}
 			require.NoError(t, gotErr)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("UpdateNodeWithPodInfo() got = %v, want %v", got, tt.want)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "UpdateNodeWithPodInfo() got = %v, want %v", got, tt.want)
 		})
 	}
 }
