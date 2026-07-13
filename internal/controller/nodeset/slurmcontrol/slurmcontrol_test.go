@@ -222,12 +222,12 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			fields: fields{
 				node: &types.V0044Node{
 					V0044Node: api.V0044Node{
-						Name: new(nodesetutils.GetSlurmNodeName(pod)),
-						State: new([]api.V0044NodeState{
+						Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateIDLE,
 							api.V0044NodeStateDRAIN,
 						}),
-						Reason: new("already drained"),
+						Reason: ptr.To("already drained"),
 					},
 				},
 			},
@@ -244,12 +244,12 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			fields: fields{
 				node: &types.V0044Node{
 					V0044Node: api.V0044Node{
-						Name: new(nodesetutils.GetSlurmNodeName(pod)),
-						State: new([]api.V0044NodeState{
+						Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateIDLE,
 							api.V0044NodeStateDRAIN,
 						}),
-						Reason: new("already drained"),
+						Reason: ptr.To("already drained"),
 					},
 				},
 			},
@@ -589,21 +589,24 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			sclient := builder.Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
-			if err := r.UpdateNodeFeatures(tt.args.ctx, tt.args.nodeset, tt.args.pod, prefix, tt.args.features); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateNodeFeatures() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.UpdateNodeFeatures(tt.args.ctx, tt.args.nodeset, tt.args.pod, prefix, tt.args.features)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
-			if tt.wantSkip && updates != 0 {
-				t.Errorf("UpdateNodeFeatures() issued %d update(s), want 0 (already in sync)", updates)
+			require.NoError(t, err)
+			if tt.wantSkip {
+				require.Zero(t, updates, "UpdateNodeFeatures() issued %d update(s), want 0 (already in sync)", updates)
 			}
 			// The Slurm node feature set is only well-defined on the success path; for
 			// the tolerated-404 and error cases there is nothing to assert.
-			if tt.notRegistered || tt.wantErr {
+			if tt.notRegistered {
 				return
 			}
 			checkNode := &types.V0044Node{}
-			if err := sclient.Get(ctx, tt.node.GetKey(), checkNode); err != nil {
-				if !tolerateError(err) {
-					t.Fatalf("client.Get() = %v", err)
+			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {
+				if !tolerateError(getErr) {
+					require.NoError(t, getErr)
 				}
 			}
 			gotAvail := ptr.Deref(checkNode.Features, api.V0044CsvString{})
@@ -614,12 +617,8 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			wantActive := slices.Clone(tt.wantActive)
 			slices.Sort(wantAvail)
 			slices.Sort(wantActive)
-			if !slices.Equal(gotAvail, wantAvail) {
-				t.Errorf("UpdateNodeFeatures() available = %v, want %v", gotAvail, wantAvail)
-			}
-			if !slices.Equal(gotActive, wantActive) {
-				t.Errorf("UpdateNodeFeatures() active = %v, want %v", gotActive, wantActive)
-			}
+			require.Equal(t, wantAvail, gotAvail, "UpdateNodeFeatures() available features mismatch")
+			require.Equal(t, wantActive, gotActive, "UpdateNodeFeatures() active features mismatch")
 		})
 	}
 }
@@ -1409,7 +1408,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 						State: ptr.To([]api.V0044NodeState{
 							api.V0044NodeStateDOWN,
 						}),
-						Reason: new(FormatNodeReason("foo")),
+						Reason: ptr.To(FormatNodeReason("foo")),
 					},
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
