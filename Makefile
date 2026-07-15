@@ -123,9 +123,27 @@ clean: ## Clean executable files.
 
 ##@ Deployment
 
-ifndef ignore-not-found
-  ignore-not-found = false
-endif
+KIND_CLUSTER_NAME ?= slurm-operator-dev
+
+.PHONY: kind-start
+kind-start: ## Create a Kind cluster and deploy the Slurm Operator stack.
+	./hack/kind.sh --core $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-stop
+kind-stop: ## Delete the development Kind cluster.
+	./hack/kind.sh --delete $(KIND_CLUSTER_NAME)
+
+.PHONY: deploy-crds
+deploy-crds:
+	cd helm/slurm-operator-crds && skaffold run
+
+.PHONY: deploy
+deploy: values-dev deploy-crds ## Build and deploy the Slurm Operator to the current Kubernetes context.
+	cd helm/slurm-operator && skaffold run
+
+.PHONY: debug
+debug: values-dev deploy-crds ## Run Delve-enabled Slurm Operator components and forward debug ports.
+	cd helm/slurm-operator && skaffold debug -p debug --auto-build=true --auto-deploy=true --cleanup=false --port-forward=user --tail
 
 ##@ Build Dependencies
 
