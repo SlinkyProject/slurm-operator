@@ -7,6 +7,9 @@ apiVersion: skaffold/v4beta13
 kind: Config
 deploy:
   helm:
+    flags:
+      upgrade:
+        - --reset-values
     releases:
       - name: slurm
         chartPath: ./

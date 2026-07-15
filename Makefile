@@ -262,8 +262,11 @@ helm-dependency-update: ## Update Helm chart dependencies.
 	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm dependency update
 
 .PHONY: values-dev
-values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
-	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
+values-dev: ## Initialize sparse values-dev.yaml overrides for Helm charts.
+	find "helm/" -type f -name "values.yaml" | while read -r file; do \
+		dev="$${file%.yaml}-dev.yaml"; \
+		test -f "$$dev" || printf '{}\n' > "$$dev"; \
+	done
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
