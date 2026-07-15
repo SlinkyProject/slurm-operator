@@ -61,6 +61,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-accounting
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -91,6 +95,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-controller
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -121,6 +129,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-loginset
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -151,6 +163,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-nodeset
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -181,6 +197,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-restapi
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -211,6 +231,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /validate-slinky-slurm-net-v1beta1-token
     failurePolicy: {{ .Values.webhook.validating.failurePolicy }}
+    {{- with .Values.webhook.validating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.validating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.validating.matchPolicy }}
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
@@ -245,6 +269,10 @@ webhooks:
         name: {{ include "slurm-operator.webhook.name" . }}
         path: /mutate--v1-binding
     failurePolicy: {{ .Values.webhook.mutating.failurePolicy }}
+    {{- with .Values.webhook.mutating.matchConditions }}
+    matchConditions:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}{{- /* with .Values.webhook.mutating.matchConditions */}}
     matchPolicy: {{ .Values.webhook.mutating.matchPolicy }}
     rules:
       - apiGroups:

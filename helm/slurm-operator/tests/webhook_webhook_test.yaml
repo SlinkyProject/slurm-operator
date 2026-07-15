@@ -233,3 +233,64 @@ tests:
           value: Secret
         exists:
           path: data["ca.crt"]
+
+  - it: should not render matchConditions when not set
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        notExists:
+          path: webhooks[0].matchConditions
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        notExists:
+          path: webhooks[0].matchConditions
+
+  - it: should apply matchConditions to all validating webhooks when set
+    set:
+      webhook:
+        enabled: true
+        validating:
+          matchConditions:
+            - name: rbac
+              expression: 'request.resource.group != "rbac.authorization.k8s.io"'
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: ValidatingWebhookConfiguration
+        equal:
+          path: webhooks[*].matchConditions
+          value:
+            - name: rbac
+              expression: 'request.resource.group != "rbac.authorization.k8s.io"'
+
+  - it: should apply matchConditions to all mutating webhooks when set
+    set:
+      webhook:
+        enabled: true
+        mutating:
+          matchConditions:
+            - name: rbac
+              expression: 'request.resource.group != "rbac.authorization.k8s.io"'
+      certManager:
+        enabled: false
+        secretName: slurm-operator-webhook-ca
+    asserts:
+      - documentSelector:
+          path: kind
+          value: MutatingWebhookConfiguration
+        equal:
+          path: webhooks[*].matchConditions
+          value:
+            - name: rbac
+              expression: 'request.resource.group != "rbac.authorization.k8s.io"'

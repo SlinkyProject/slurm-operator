@@ -81,6 +81,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
 | webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.mutating.failurePolicy | string | `"Ignore"` | Action taken when the mutating admission webhook is unreachable or returns an error. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
+| webhook.mutating.matchConditions | list | `[]` | List of MatchConditions, which represents a condition which must by fulfilled for a request to be sent to a webhook. Ref: https://kubernetes.io/docs/reference/kubernetes-api/definitions/match-condition-v1-admissionregistration/ |
 | webhook.mutating.matchPolicy | string | `"Equivalent"` | How the rules listed in the mutating webhook are matched against incoming requests. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
 | webhook.namespaces | string | `""` | Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched. |
 | webhook.nodeSelector | object | `{}` | Node label selector for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector |
@@ -98,6 +99,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | webhook.topologySpreadConstraints | list | `[]` | Topology spread constraints for pod assignment. Prefer scheduling replicas across failure domains (nodes, zones, ...) when running in HA. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/ |
 | webhook.validating.failurePolicy | string | `"Fail"` | Action taken when the validating admission webhook is unreachable or returns an error. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
+| webhook.validating.matchConditions | list | `[]` | List of MatchConditions, which represents a condition which must by fulfilled for a request to be sent to a webhook. Ref: https://kubernetes.io/docs/reference/kubernetes-api/definitions/match-condition-v1-admissionregistration/ |
 | webhook.validating.matchPolicy | string | `"Equivalent"` | How the rules listed in the validating webhook are matched against incoming requests. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
 | webhook.validating.namespaceSelector | object | `{}` | Full override for the validating webhooks' namespaceSelector, rendered verbatim when set. Replaces `webhook.namespaces` and the default kube-system/kube-node-lease exclusions for these webhooks. |
 
