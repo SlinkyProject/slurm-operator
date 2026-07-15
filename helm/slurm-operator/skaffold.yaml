@@ -21,7 +21,6 @@ build:
     inputDigest: {}
   local:
     useDockerCLI: true
-    push: false
 deploy:
   helm:
     releases:
