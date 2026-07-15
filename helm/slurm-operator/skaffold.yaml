@@ -25,6 +25,9 @@ build:
     useDockerCLI: true
 deploy:
   helm:
+    flags:
+      upgrade:
+        - --reset-values
     releases:
       - name: slurm-operator
         chartPath: ./
