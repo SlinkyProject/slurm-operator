@@ -523,7 +523,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/sync/errgroup
 - Name: golang.org/x/sync/errgroup
-- Version: v0.20.0
+- Version: v0.22.0
 - License: BSD-3-Clause
 
 ### golang.org/x/sys/unix
