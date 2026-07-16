@@ -3,7 +3,7 @@ module github.com/SlinkyProject/slurm-operator
 go 1.26.4
 
 require (
-	github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260616191021-0dac744e9931
+	github.com/SlinkyProject/slurm-client v1.2.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
