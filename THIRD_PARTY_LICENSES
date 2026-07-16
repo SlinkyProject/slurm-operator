@@ -8,7 +8,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
-- Version: v1.1.0-rc1.0.20260616191021-0dac744e9931
+- Version: v1.2.0
 - License: Apache-2.0
 
 ### github.com/apapsch/go-jsonmerge/v2
