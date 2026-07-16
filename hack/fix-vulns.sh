@@ -35,6 +35,15 @@ ENVIRONMENT:
 EOF
 }
 
+use_go_version_from_mod() {
+	local go_version
+	go_version=$(awk '/^go [0-9]/ {print $2}' "$REPO_ROOT"/go.mod)
+	go install golang.org/dl/go"${go_version}"@latest
+	go"${go_version}" download
+	PATH=$(go"${go_version}" env GOROOT)/bin:$PATH
+	export PATH
+}
+
 write_commit_message() {
 	if ! eval "$(grep -Ev "no fix exists|fixed_in_version" "$GOVULNCHECK_REPORT" | tr -d '"' | cut -d ',' -f 1 | tr '\n' ' ' | fold -w 60 -s | sed -e 's/^/ /')"; then
 		{
@@ -56,6 +65,7 @@ fix_vulnerabilities() {
 	go_version="$(grep -Ev "no fix exists|fixed_in_version" "$GOVULNCHECK_REPORT" | tr -d '"' | awk -F, '$2 == "stdlib" { sub(/^(go|v)/, "", $3); print $3 }' | sort -V -r | head -n 1 || true)"
 	if [ -n "$go_version" ]; then
 		go mod edit -go="$go_version"
+		use_go_version_from_mod
 	fi
 
 	versions="$(grep -Ev "no fix exists|fixed_in_version|stdlib" "$GOVULNCHECK_REPORT" | cut -d ',' -f 2- | tr -d '"' | sort -V -r | sort -u -V -t, -k1,1 | awk -F "," '{print $1"@"$2}' || true)"
@@ -88,12 +98,7 @@ done
 
 log_info "Running fix vulns..."
 
-# Extract the 'go 1.XX' line from go.mod and compare it to the current environment's Go version
-GO_VER=$(awk '/^go [0-9]/ {print $2}' "$REPO_ROOT"/go.mod)
-go install golang.org/dl/go"${GO_VER}"@latest
-go"${GO_VER}" download
-PATH=$(go"${GO_VER}" env GOROOT)/bin:$PATH
-export PATH
+use_go_version_from_mod
 
 /bin/bash "$REPO_ROOT"/hack/govulncheck-report.sh -o "$GOVULNCHECK_REPORT" || true
 
