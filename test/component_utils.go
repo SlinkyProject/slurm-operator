@@ -122,6 +122,10 @@ func DoSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		helm.WithNamespace(SlurmNamespace),
 		helm.WithChart(Basepath+"helm/slurm"),
 		helm.WithArgs(setValuesFile),
+		// enabling the slinky nodeset, its partition, and a default partition expected by the e2e assertions
+		helm.WithArgs("--set 'nodesets.slinky.enabled=true'"),
+		helm.WithArgs("--set 'nodesets.slinky.partition.enabled=true'"),
+		helm.WithArgs("--set 'partitions.all.enabled=true'"),
 		helm.WithWait(),
 		helm.WithTimeout("10m"),
 	)
