@@ -15,14 +15,15 @@ function kind::prerequisites() {
 }
 
 function sys::check() {
+	local require_build="${1:-true}"
 	local fail=false
-	if ! command -v docker >/dev/null 2>&1 && ! command -v podman >/dev/null 2>&1; then
+	if $require_build && ! command -v docker >/dev/null 2>&1 && ! command -v podman >/dev/null 2>&1; then
 		echo "'docker' or 'podman' is required:"
 		echo "docker: https://www.docker.com/"
 		echo "podman: https://podman.io/"
 		fail=true
 	fi
-	if ! command -v go >/dev/null 2>&1; then
+	if $require_build && ! command -v go >/dev/null 2>&1; then
 		echo "'go' is required: https://go.dev/"
 		fail=true
 	fi
@@ -30,18 +31,19 @@ function sys::check() {
 		echo "'helm' is required: https://helm.sh/"
 		fail=true
 	fi
-	if ! command -v skaffold >/dev/null 2>&1; then
+	if $require_build && ! command -v skaffold >/dev/null 2>&1; then
 		echo "'skaffold' is required: https://skaffold.dev/"
 		fail=true
 	fi
-	if ! command -v yq >/dev/null 2>&1; then
+	if $require_build && ! command -v yq >/dev/null 2>&1; then
 		echo "'yq' is required: https://github.com/mikefarah/yq"
 		fail=true
 	fi
 	if ! command -v kubectl >/dev/null 2>&1; then
-		echo "'kubectl' is recommended: https://kubernetes.io/docs/reference/kubectl/"
+		echo "'kubectl' is required: https://kubernetes.io/docs/reference/kubectl/"
+		fail=true
 	fi
-	if [[ $OSTYPE == 'linux'* ]]; then
+	if $require_build && [[ $OSTYPE == 'linux'* ]]; then
 		if [ "$(sysctl -n kernel.keys.maxkeys)" -lt 2000 ]; then
 			echo "Recommended to increase 'kernel.keys.maxkeys':"
 			echo "  $ sudo sysctl -w kernel.keys.maxkeys=2000"
@@ -96,7 +98,18 @@ function helm::find() {
 }
 
 function kind::delete() {
+	local cluster_name="${1:-kind}"
 	kind delete cluster --name "$cluster_name"
+}
+
+function cluster::use_existing() {
+	local context
+	context="$(kubectl config current-context)"
+	echo "Using current kubectl context: $context"
+	if $OPT_OPERATOR && [ -z "$OPT_REGISTRY" ]; then
+		echo "WARNING: no --registry or SKAFFOLD_DEFAULT_REPO was provided; local images will only be available if Skaffold can load them into a Kind context." >&2
+	fi
+	kubectl cluster-info
 }
 
 function slurm-operator-crds::install() {
@@ -195,14 +208,17 @@ function main::help() {
 	cat <<EOF
 $(basename "$0") - Manage a kind cluster for local testing/development
 
-	usage: $(basename "$0") [--config=KIND_CONFIG_PATH]
+	usage: $(basename "$0") [--config=KIND_CONFIG_PATH] [--existing-cluster]
 	        [--recreate|--delete]
-	        [--core][--extras][--all]
+	        [--core|--prereqs][--extras][--all] [--registry=REPO]
 	        [--crds][--operator][--slurm]
 	        [-h|--help] [KIND_CLUSTER_NAME]
 
 KIND OPTIONS:
 	--config=PATH       Use the specified Kind config when creating.
+	--existing-cluster  Use the current kubectl context instead of creating or switching to a Kind cluster.
+	--registry=REPO     Push locally built images to REPO with Skaffold before deploying.
+	                    Can also be set with SKAFFOLD_DEFAULT_REPO.
 	--recreate          Delete the Kind cluster and continue.
 	--delete            Delete the Kind cluster and exit.
 
@@ -210,6 +226,7 @@ HELM OPTIONS:
 	--all               Equivalent of: --core --extras
 	--extras            Install extra charts (e.g. prometheus, keda, OpenLDAP, etc..).
 	--core              Equivalent of: --crds --operator --slurm
+	--prereqs           Install operator prerequisites only (cert-manager).
 	--crds              Install the operator CRDs chart.
 	--operator          Install the operator chart.
 	--slurm             Install the slurm chart.
@@ -221,17 +238,32 @@ HELP OPTIONS:
 EOF
 }
 
+function main::validate_options() {
+	if $OPT_EXISTING_CLUSTER && { $OPT_DELETE || $OPT_RECREATE; }; then
+		echo "--existing-cluster cannot be used with --delete or --recreate." >&2
+		exit 1
+	fi
+	if $OPT_CORE && $OPT_PREREQS; then
+		echo "--core and --prereqs cannot be used together." >&2
+		exit 1
+	fi
+}
+
 OPT_DEBUG=false
 OPT_RECREATE=false
 OPT_CONFIG="$ROOT_DIR/hack/kind.yaml"
 OPT_DELETE=false
+OPT_EXISTING_CLUSTER=false
+OPT_CORE=false
+OPT_PREREQS=false
+OPT_REGISTRY="${SKAFFOLD_DEFAULT_REPO:-}"
 OPT_OPERATOR_CRDS=false
 OPT_OPERATOR=false
 OPT_SLURM=false
 OPT_EXTRAS=false
 
 SHORT="+h"
-LONG="debug,config:,recreate,delete,crds,operator,slurm,all,extras,core,help"
+LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,core,prereqs,help"
 OPTS="$(getopt -a --options "$SHORT" --longoptions "$LONG" -- "$@")"
 eval set -- "${OPTS}"
 while :; do
@@ -252,6 +284,19 @@ while :; do
 		OPT_DELETE=true
 		shift
 		;;
+	--existing-cluster)
+		OPT_EXISTING_CLUSTER=true
+		shift
+		;;
+	--registry)
+		OPT_REGISTRY="$2"
+		if [ -z "$OPT_REGISTRY" ]; then
+			echo "--registry requires a non-empty REPO" >&2
+			exit 1
+		fi
+		export SKAFFOLD_DEFAULT_REPO="$OPT_REGISTRY"
+		shift 2
+		;;
 	--crds)
 		OPT_OPERATOR_CRDS=true
 		shift
@@ -265,6 +310,7 @@ while :; do
 		shift
 		;;
 	--all)
+		OPT_CORE=true
 		OPT_OPERATOR_CRDS=true
 		OPT_OPERATOR=true
 		OPT_SLURM=true
@@ -276,9 +322,14 @@ while :; do
 		shift
 		;;
 	--core)
+		OPT_CORE=true
 		OPT_OPERATOR_CRDS=true
 		OPT_OPERATOR=true
 		OPT_SLURM=true
+		shift
+		;;
+	--prereqs)
+		OPT_PREREQS=true
 		shift
 		;;
 	-h | --help)
@@ -301,15 +352,31 @@ function main() {
 	if $OPT_DEBUG; then
 		set -x
 	fi
+	main::validate_options
 	local cluster_name="${1:-"kind"}"
 	if $OPT_DELETE || $OPT_RECREATE; then
 		kind::delete "$cluster_name"
 		$OPT_DELETE && return
 	fi
 
-	kind::start "$cluster_name" "$OPT_CONFIG"
+	if $OPT_EXISTING_CLUSTER; then
+		if $OPT_OPERATOR_CRDS || $OPT_OPERATOR || $OPT_SLURM; then
+			sys::check
+		else
+			sys::check false
+		fi
+		cluster::use_existing
+	else
+		kind::start "$cluster_name" "$OPT_CONFIG"
+	fi
 
-	make -C "$ROOT_DIR" values-dev || true
+	if $OPT_OPERATOR_CRDS || $OPT_OPERATOR || $OPT_SLURM; then
+		make -C "$ROOT_DIR" values-dev || true
+	fi
+
+	if $OPT_PREREQS; then
+		slurm-operator::prerequisites
+	fi
 
 	if $OPT_EXTRAS; then
 		extras::install

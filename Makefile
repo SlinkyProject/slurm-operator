@@ -124,6 +124,10 @@ kind-start: ## Create a Kind cluster and deploy the Slurm Operator stack.
 kind-stop: ## Delete the development Kind cluster.
 	./hack/kind.sh --delete $(KIND_CLUSTER_NAME)
 
+.PHONY: prereqs
+prereqs: ## Install prerequisites into the current Kubernetes context.
+	./hack/kind.sh --existing-cluster --prereqs
+
 .PHONY: deploy-crds
 deploy-crds:
 	cd helm/slurm-operator-crds && skaffold run
