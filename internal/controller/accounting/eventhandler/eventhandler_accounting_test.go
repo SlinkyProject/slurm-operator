@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -78,9 +79,7 @@ func Test_AccountingEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewAccountingEventHandler(tt.fields.client)
 			e.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -151,9 +150,7 @@ func Test_AccountingEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewAccountingEventHandler(tt.fields.client)
 			e.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -219,9 +216,7 @@ func Test_AccountingEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewAccountingEventHandler(tt.fields.client)
 			e.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }
@@ -258,9 +253,7 @@ func Test_AccountingEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := NewAccountingEventHandler(tt.fields.client)
 			e.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got > tt.want {
-				t.Errorf("Create() = %v, want %v", got, tt.want)
-			}
+			require.LessOrEqual(t, tt.args.q.Len(), tt.want)
 		})
 	}
 }

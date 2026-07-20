@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSortingActivePods(t *testing.T) {
@@ -301,9 +301,7 @@ func TestSortingActivePods(t *testing.T) {
 					gotOrder[i] = randomizedPods[i].Name
 				}
 
-				if diff := cmp.Diff(test.wantOrder, gotOrder); diff != "" {
-					t.Errorf("Sorted active pod names (-want,+got):\n%s", diff)
-				}
+				require.Equal(t, test.wantOrder, gotOrder)
 			}
 		})
 	}
@@ -370,9 +368,8 @@ func Test_afterOrZero(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := afterOrZero(tt.args.t1, tt.args.t2); got != tt.want {
-				t.Errorf("afterOrZero() = %v, want %v", got, tt.want)
-			}
+			got := afterOrZero(tt.args.t1, tt.args.t2)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -447,12 +444,8 @@ func TestSplitActivePods(t *testing.T) {
 				gotPods2Names[i] = gotPods2[i].Name
 			}
 
-			if diff := cmp.Diff(tt.wantPods1Names, gotPods1Names); diff != "" {
-				t.Errorf("Sorted active pod names (-want,+got):\n%s", diff)
-			}
-			if diff := cmp.Diff(tt.wantPods2Names, gotPods2Names); diff != "" {
-				t.Errorf("Sorted active pod names (-want,+got):\n%s", diff)
-			}
+			require.Equal(t, tt.wantPods1Names, gotPods1Names)
+			require.Equal(t, tt.wantPods2Names, gotPods2Names)
 		})
 	}
 }
@@ -517,9 +510,7 @@ func TestExcludePods(t *testing.T) {
 			for i := range got {
 				gotNames[i] = got[i].Name
 			}
-			if diff := cmp.Diff(tt.wantNames, gotNames); diff != "" {
-				t.Errorf("ExcludePods() names (-want,+got):\n%s", diff)
-			}
+			require.Equal(t, tt.wantNames, gotNames)
 		})
 	}
 }
@@ -636,12 +627,8 @@ func TestSplitUnhealthyPods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotUnhealthyPods, gotHealthyPods := SplitUnhealthyPods(tt.args.pods)
-			if !apiequality.Semantic.DeepEqual(gotUnhealthyPods, tt.wantUnhealthyPods) {
-				t.Errorf("SplitUnhealthyPods() gotUnhealthyPods = %v, want %v", gotUnhealthyPods, tt.wantUnhealthyPods)
-			}
-			if !apiequality.Semantic.DeepEqual(gotHealthyPods, tt.wantHealthyPods) {
-				t.Errorf("SplitUnhealthyPods() gotHealthyPods = %v, want %v", gotHealthyPods, tt.wantHealthyPods)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(gotUnhealthyPods, tt.wantUnhealthyPods), "SplitUnhealthyPods() gotUnhealthyPods = %v, want %v", gotUnhealthyPods, tt.wantUnhealthyPods)
+			require.True(t, apiequality.Semantic.DeepEqual(gotHealthyPods, tt.wantHealthyPods), "SplitUnhealthyPods() gotHealthyPods = %v, want %v", gotHealthyPods, tt.wantHealthyPods)
 		})
 	}
 }

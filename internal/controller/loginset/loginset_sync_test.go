@@ -16,6 +16,7 @@ import (
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/loginbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -72,9 +73,14 @@ func TestLoginsetReconciler_sync(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newLoginsetController(tt.fields.Client)
-			if err := r.Sync(tt.args.ctx, tt.args.request); (err != nil) != tt.wantErr {
-				t.Errorf("LoginReconciler.sync() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.Sync(tt.args.ctx, tt.args.request)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
+
+			require.NoError(t, err)
 		})
 	}
 }

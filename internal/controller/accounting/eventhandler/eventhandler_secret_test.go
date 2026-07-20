@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -85,9 +86,7 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewSecretEventHandler(tt.fields.Reader)
 			h.Create(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("SecretEventHandler.Create() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -160,9 +159,7 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewSecretEventHandler(tt.fields.Reader)
 			h.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("SecretEventHandler.Delete() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -199,9 +196,7 @@ func Test_SecretEventHandler_Generic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewSecretEventHandler(tt.fields.Reader)
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("SecretEventHandler.Generic() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }
@@ -276,9 +271,7 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h := NewSecretEventHandler(tt.fields.Reader)
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
-			if got := tt.args.q.Len(); got != tt.want {
-				t.Errorf("SecretEventHandler.Update() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.args.q.Len())
 		})
 	}
 }

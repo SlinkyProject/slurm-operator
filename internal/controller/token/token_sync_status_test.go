@@ -15,14 +15,13 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenReconciler_syncStatus(t *testing.T) {
 	signingKey := crypto.NewSigningKey()
 	signedToken, err := slurmjwt.NewToken(signingKey).NewSignedToken()
-	if err != nil {
-		t.Fatalf("failed to create signed token: %v", err)
-	}
+	require.NoError(t, err)
 
 	jwtKeySecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -137,8 +136,12 @@ func TestTokenReconciler_syncStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewReconciler(tt.fields.Client)
-			if err := r.syncStatus(tt.args.ctx, tt.args.token); (err != nil) != tt.wantErr {
-				t.Errorf("TokenReconciler.syncStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncStatus(tt.args.ctx, tt.args.token)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -201,8 +204,12 @@ func TestTokenReconciler_updateStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewReconciler(tt.fields.Client)
-			if err := r.updateStatus(tt.args.ctx, tt.args.token, tt.args.newStatus); (err != nil) != tt.wantErr {
-				t.Errorf("TokenReconciler.updateStatus() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.updateStatus(tt.args.ctx, tt.args.token, tt.args.newStatus)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

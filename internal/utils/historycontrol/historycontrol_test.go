@@ -36,9 +36,8 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 		},
 	}
 	selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	revision := &appsv1.ControllerRevision{
 		TypeMeta:   rs.TypeMeta,
 		ObjectMeta: rs.ObjectMeta,

@@ -25,6 +25,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
+	"github.com/stretchr/testify/require"
 )
 
 func newNodeSet(name string) *slinkyv1beta1.NodeSet {
@@ -270,9 +271,8 @@ func TestIsPodFromNodeSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsPodFromNodeSet(tt.args.nodeset, tt.args.pod); got != tt.want {
-				t.Errorf("IsPodFromNodeSet() = %v, want %v", got, tt.want)
-			}
+			got := IsPodFromNodeSet(tt.args.nodeset, tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -308,9 +308,8 @@ func TestGetOrdinal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetOrdinal(tt.args.pod); got != tt.want {
-				t.Errorf("GetOrdinal() = %v, want %v", got, tt.want)
-			}
+			got := GetOrdinal(tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -350,12 +349,8 @@ func TestGetParentNameAndOrdinal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := GetParentNameAndOrdinal(tt.args.pod)
-			if got != tt.want {
-				t.Errorf("GetParentNameAndOrdinal() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("GetParentNameAndOrdinal() got1 = %v, want %v", got1, tt.want1)
-			}
+			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want1, got1)
 		})
 	}
 }
@@ -389,9 +384,8 @@ func TestOrdinalGetPodName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetOrdinalPodName(tt.args.nodeset, tt.args.ordinal); got != tt.want {
-				t.Errorf("GetOrdinalPodName() = %v, want %v", got, tt.want)
-			}
+			got := GetOrdinalPodName(tt.args.nodeset, tt.args.ordinal)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -427,9 +421,8 @@ func TestGetSlurmNodeName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetSlurmNodeName(tt.args.pod); got != tt.want {
-				t.Errorf("GetSlurmNodeName() = %v, want %v", got, tt.want)
-			}
+			got := GetSlurmNodeName(tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -523,9 +516,8 @@ func TestIsIdentityMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsIdentityMatch(tt.args.nodeset, tt.args.pod); got != tt.want {
-				t.Errorf("IsIdentityMatch() = %v, want %v", got, tt.want)
-			}
+			got := IsIdentityMatch(tt.args.nodeset, tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -596,40 +588,22 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pod := NewNodeSetDaemonSetPod(client, nodeset, controller, tt.args.nodeName, tt.args.hostnameOverride, tt.args.revisionHash)
-			if pod == nil {
-				t.Fatal("NewNodeSetDaemonSetPod() returned nil")
-			}
+			require.NotNil(t, pod)
 			if tt.checkIdentity {
 				wantHostname := GetDaemonSetPodHostname(tt.args.nodeName, tt.args.hostnameOverride)
-				if pod.GenerateName != nodeset.Name+"-" {
-					t.Errorf("GenerateName = %q, want %q", pod.GenerateName, nodeset.Name+"-")
-				}
-				if pod.Name != "" {
-					t.Errorf("Name = %q, want %q", pod.Name, "")
-				}
-				if pod.Namespace != nodeset.Namespace {
-					t.Errorf("Namespace = %q, want %q", pod.Namespace, nodeset.Namespace)
-				}
-				if pod.Spec.Hostname != wantHostname {
-					t.Errorf("Spec.Hostname = %q, want %q", pod.Spec.Hostname, wantHostname)
-				}
-				if pod.Spec.NodeName != "" {
-					t.Errorf("Spec.NodeName = %q, want empty", pod.Spec.NodeName)
-				}
-				if got := pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]; got != wantHostname {
-					t.Errorf("Labels[%s] = %q, want %q", slinkyv1beta1.LabelNodeSetPodHostname, got, wantHostname)
-				}
-				if got := pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode]; got != string(slinkyv1beta1.ScalingModeDaemonset) {
-					t.Errorf("Labels[%s] = %q, want %q", slinkyv1beta1.LabelNodeSetScalingMode, got, string(slinkyv1beta1.ScalingModeDaemonset))
-				}
-				if len(pod.OwnerReferences) != 1 || pod.OwnerReferences[0].Kind != slinkyv1beta1.NodeSetKind || pod.OwnerReferences[0].Name != nodeset.Name {
-					t.Errorf("OwnerReferences = %+v, want single ref to NodeSet %q", pod.OwnerReferences, nodeset.Name)
-				}
+				require.Equal(t, nodeset.Name+"-", pod.GenerateName)
+				require.Equal(t, "", pod.Name)
+				require.Equal(t, nodeset.Namespace, pod.Namespace)
+				require.Equal(t, wantHostname, pod.Spec.Hostname)
+				require.Equal(t, "", pod.Spec.NodeName)
+				require.Equal(t, wantHostname, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+				require.Equal(t, string(slinkyv1beta1.ScalingModeDaemonset), pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode])
+				require.Equal(t, 1, len(pod.OwnerReferences))
+				require.Equal(t, slinkyv1beta1.NodeSetKind, pod.OwnerReferences[0].Kind)
+				require.Equal(t, nodeset.Name, pod.OwnerReferences[0].Name)
 			}
 			if tt.wantRevision != nil {
-				if got := historycontrol.GetRevision(pod.Labels); got != *tt.wantRevision {
-					t.Errorf("revision label = %q, want %q", got, *tt.wantRevision)
-				}
+				require.Equal(t, *tt.wantRevision, historycontrol.GetRevision(pod.Labels))
 			}
 			if tt.checkVolumes {
 				claimNames := make(map[string]bool)
@@ -642,9 +616,7 @@ func TestNewNodeSetDaemonSetPod(t *testing.T) {
 				for i := range nodeset.Spec.VolumeClaimTemplates {
 					claim := &nodeset.Spec.VolumeClaimTemplates[i]
 					wantName := GetPersistentVolumeClaimNameNodeName(nodeset, claim, podHostname)
-					if !claimNames[wantName] {
-						t.Errorf("missing volume with ClaimName %q", wantName)
-					}
+					require.True(t, claimNames[wantName], "missing volume with ClaimName %q", wantName)
 				}
 			}
 		})
@@ -677,33 +649,23 @@ func TestNewNodeSetSimulatedPod(t *testing.T) {
 		nodeset.Spec.Template.PodSpecWrapper.Affinity = userAffinity
 
 		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-1")
-		switch {
-		case pod == nil:
-			t.Fatal("NewNodeSetSimulatedPod() returned nil")
-		case pod.Spec.NodeName != "node-1":
-			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-1")
-		case pod.Spec.Affinity == nil || pod.Spec.Affinity.NodeAffinity == nil ||
-			pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil:
-			t.Fatal("user node affinity was not preserved")
-		}
+		require.NotNil(t, pod)
+		require.Equal(t, "node-1", pod.Spec.NodeName)
+		require.NotNil(t, pod.Spec.Affinity)
+		require.NotNil(t, pod.Spec.Affinity.NodeAffinity)
+		require.NotNil(t, pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution)
 		terms := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
-		if len(terms) != 1 {
-			t.Fatalf("expected 1 NodeSelectorTerm, got %d", len(terms))
-		}
-		if len(terms[0].MatchExpressions) != 1 || terms[0].MatchExpressions[0].Key != "gpu" {
-			t.Errorf("user MatchExpressions not preserved: %+v", terms[0].MatchExpressions)
-		}
+		require.Equal(t, 1, len(terms))
+		require.Equal(t, 1, len(terms[0].MatchExpressions))
+		require.Equal(t, "gpu", terms[0].MatchExpressions[0].Key)
 	})
 
 	t.Run("Works without user affinity", func(t *testing.T) {
 		nodeset := newNodeSetDaemonset("foo", "")
 
 		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-2")
-		if pod == nil {
-			t.Fatal("NewNodeSetSimulatedPod() returned nil")
-		} else if pod.Spec.NodeName != "node-2" {
-			t.Errorf("Spec.NodeName = %q, want %q", pod.Spec.NodeName, "node-2")
-		}
+		require.NotNil(t, pod)
+		require.Equal(t, "node-2", pod.Spec.NodeName)
 	})
 
 	t.Run("Preserves nodeSelector", func(t *testing.T) {
@@ -711,11 +673,8 @@ func TestNewNodeSetSimulatedPod(t *testing.T) {
 		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"disk": "ssd"}
 
 		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-3")
-		if pod == nil {
-			t.Fatal("NewNodeSetSimulatedPod() returned nil")
-		} else if pod.Spec.NodeSelector["disk"] != "ssd" {
-			t.Errorf("nodeSelector not preserved: got %v", pod.Spec.NodeSelector)
-		}
+		require.NotNil(t, pod)
+		require.Equal(t, "ssd", pod.Spec.NodeSelector["disk"])
 	})
 
 	t.Run("Preserves tolerations", func(t *testing.T) {
@@ -725,20 +684,15 @@ func TestNewNodeSetSimulatedPod(t *testing.T) {
 		}
 
 		pod := NewNodeSetSimulatedPod(client, nodeset, controller, "node-4")
-		if pod == nil {
-			t.Fatal("NewNodeSetSimulatedPod() returned nil")
-			return
-		}
+		require.NotNil(t, pod)
 		found := false
-		for _, t := range pod.Spec.Tolerations {
-			if t.Key == "gpu" {
+		for _, tol := range pod.Spec.Tolerations {
+			if tol.Key == "gpu" {
 				found = true
 				break
 			}
 		}
-		if !found {
-			t.Errorf("user toleration not preserved: got %v", pod.Spec.Tolerations)
-		}
+		require.True(t, found, "user toleration not preserved: got %v", pod.Spec.Tolerations)
 	})
 }
 
@@ -799,9 +753,8 @@ func TestGetDaemonSetPodHostname(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetDaemonSetPodHostname(tt.nodeName, tt.hostnameOverride); got != tt.want {
-				t.Errorf("GetDaemonSetPodHostname() = %q, want %q", got, tt.want)
-			}
+			got := GetDaemonSetPodHostname(tt.nodeName, tt.hostnameOverride)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -868,9 +821,8 @@ func TestIsStorageMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsStorageMatch(tt.args.nodeset, tt.args.pod); got != tt.want {
-				t.Errorf("IsStorageMatch() = %v, want %v", got, tt.want)
-			}
+			got := IsStorageMatch(tt.args.nodeset, tt.args.pod)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -938,9 +890,8 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPersistentVolumeClaims(tt.args.nodeset, tt.args.pod); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("GetPersistentVolumeClaims() = %v, want %v", got, tt.want)
-			}
+			got := GetPersistentVolumeClaims(tt.args.nodeset, tt.args.pod)
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "GetPersistentVolumeClaims() = %v, want %v", got, tt.want)
 		})
 	}
 }
@@ -987,9 +938,8 @@ func TestGetPersistentVolumeClaimNameOrdinal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPersistentVolumeClaimNameOrdinal(tt.args.nodeset, tt.args.claim, tt.args.paddedOrdinal); got != tt.want {
-				t.Errorf("GetPersistentVolumeClaimNameOrdinal() = %v, want %v", got, tt.want)
-			}
+			got := GetPersistentVolumeClaimNameOrdinal(tt.args.nodeset, tt.args.claim, tt.args.paddedOrdinal)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1022,9 +972,8 @@ func TestGetPersistentVolumeClaimNameNodeName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetPersistentVolumeClaimNameNodeName(tt.args.nodeset, tt.args.claim, tt.args.nodeName); got != tt.want {
-				t.Errorf("GetPersistentVolumeClaimNameNodeName() = %v, want %v", got, tt.want)
-			}
+			got := GetPersistentVolumeClaimNameNodeName(tt.args.nodeset, tt.args.claim, tt.args.nodeName)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -1123,24 +1072,16 @@ func TestSetOwnerReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			err := SetOwnerReferences(tt.client, ctx, tt.object, tt.clusterName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SetOwnerReferences() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
 			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
+			require.NoError(t, err)
 			refs := tt.object.GetOwnerReferences()
-			if len(refs) != tt.wantRefs {
-				t.Errorf("SetOwnerReferences() owner refs count = %v, want %v", len(refs), tt.wantRefs)
-			}
+			require.Equal(t, tt.wantRefs, len(refs))
 			for _, ref := range refs {
-				if ref.Controller != nil && *ref.Controller {
-					t.Errorf("SetOwnerReferences() set controller=true; expected non-controller owner ref")
-				}
-				if ref.BlockOwnerDeletion == nil || !*ref.BlockOwnerDeletion {
-					t.Errorf("SetOwnerReferences() expected BlockOwnerDeletion=true")
-				}
+				require.False(t, ref.Controller != nil && *ref.Controller, "SetOwnerReferences() set controller=true; expected non-controller owner ref")
+				require.True(t, ref.BlockOwnerDeletion != nil && *ref.BlockOwnerDeletion, "SetOwnerReferences() expected BlockOwnerDeletion=true")
 			}
 		})
 	}

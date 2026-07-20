@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +30,7 @@ import (
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -203,8 +202,11 @@ func Test_realPodControl_CreateNodeSetPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewPodControl(tt.fields.Client, tt.fields.recorder)
-			if err := r.CreateNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.CreateNodeSetPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.CreateNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -263,8 +265,11 @@ func Test_realPodControl_DeleteNodeSetPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewPodControl(tt.fields.Client, tt.fields.recorder)
-			if err := r.DeleteNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.DeleteNodeSetPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.DeleteNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -345,8 +350,11 @@ func Test_realPodControl_UpdateNodeSetPod(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewPodControl(tt.fields.Client, tt.fields.recorder)
-			if err := r.UpdateNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.UpdateNodeSetPod() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.UpdateNodeSetPod(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -431,13 +439,12 @@ func Test_realPodControl_PodPVCsMatchRetentionPolicy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewPodControl(tt.fields.Client, tt.fields.recorder)
 			got, err := r.PodPVCsMatchRetentionPolicy(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.PodPVCsMatchRetentionPolicy() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("realPodControl.PodPVCsMatchRetentionPolicy() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -502,8 +509,11 @@ func Test_realPodControl_UpdatePodPVCsForRetentionPolicy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewPodControl(tt.fields.Client, tt.fields.recorder)
-			if err := r.UpdatePodPVCsForRetentionPolicy(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.UpdatePodPVCsForRetentionPolicy() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.UpdatePodPVCsForRetentionPolicy(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -614,9 +624,8 @@ func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
 		r := NewPodControl(c, events.NewFakeRecorder(10))
 		expected := tc.expected
 		// Note that the error isn't / can't be tested.
-		if stale, _ := r.IsPodPVCsStale(context.TODO(), &nodeset, &pod); stale != expected {
-			t.Errorf("unexpected stale for %s", tc.name)
-		}
+		stale, _ := r.IsPodPVCsStale(context.TODO(), &nodeset, &pod)
+		require.Equal(t, expected, stale, "unexpected stale for %s", tc.name)
 	}
 }
 
@@ -756,14 +765,15 @@ func Test_realPodControl_createPersistentVolumeClaims(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newPodControl(tt.fields.Client, tt.fields.recorder)
-			if err := r.createPersistentVolumeClaims(tt.args.ctx, tt.args.nodeset, tt.args.pod); (err != nil) != tt.wantErr {
-				t.Errorf("realPodControl.createPersistentVolumeClaims() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.createPersistentVolumeClaims(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 			if tt.wantEvent != "" {
 				event := testutils.ReadOneEvent(t, tt.fields.recorder)
-				if !strings.Contains(event, tt.wantEvent) {
-					t.Errorf("realPodControl.createPersistentVolumeClaims() event = %v, want substring %q", event, tt.wantEvent)
-				}
+				require.Contains(t, event, tt.wantEvent)
 			}
 			testutils.AssertNoEvents(t, tt.fields.recorder)
 		})
@@ -874,9 +884,7 @@ func Test_isClaimOwnerUpToDate(t *testing.T) {
 					}
 					claim.SetOwnerReferences(claimRefs)
 					shouldMatch := setPodRef == tc.needsPodRef && setSetRef == tc.needsSetRef
-					if isClaimOwnerUpToDate(logger, &claim, &nodeset, &pod) != shouldMatch {
-						t.Errorf("Bad match for %s with pod=%v,nodeset=%v,others=%v", tc.name, setPodRef, setSetRef, useOtherRefs)
-					}
+					require.Equal(t, shouldMatch, isClaimOwnerUpToDate(logger, &claim, &nodeset, &pod), "Bad match for %s with pod=%v,nodeset=%v,others=%v", tc.name, setPodRef, setSetRef, useOtherRefs)
 				}
 			}
 		}
@@ -1059,9 +1067,7 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = tc.policy
 		claim.SetOwnerReferences(tc.ownerRefs)
 		got := isClaimOwnerUpToDate(logger, &claim, &nodeset, &pod)
-		if got != tc.shouldMatch {
-			t.Errorf("Unexpected match for %s, got %t expected %t", tc.name, got, tc.shouldMatch)
-		}
+		require.Equal(t, tc.shouldMatch, got, "Unexpected match for %s", tc.name)
 	}
 }
 
@@ -1241,9 +1247,7 @@ func Test_hasUnexpectedController(t *testing.T) {
 		pod := &corev1.Pod{}
 		pod.SetName("pod")
 		pod.SetUID("pod-uid")
-		if hasUnexpectedController(target, nodeset, pod) {
-			t.Errorf("Any controller should be allowed when no retention policy (retain behavior) is specified. Incorrectly identified unexpected controller at %s", tc.name)
-		}
+		require.False(t, hasUnexpectedController(target, nodeset, pod), "Any controller should be allowed when no retention policy (retain behavior) is specified. Incorrectly identified unexpected controller at %s", tc.name)
 		const retainPolicy = slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType
 		const deletePolicy = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
 		for _, policy := range []slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
@@ -1254,9 +1258,7 @@ func Test_hasUnexpectedController(t *testing.T) {
 		} {
 			nodeset.Spec.PersistentVolumeClaimRetentionPolicy = policy
 			got := hasUnexpectedController(target, nodeset, pod)
-			if got != tc.shouldReportUnexpectedController {
-				t.Errorf("Unexpected controller mismatch at %s (policy %v)", tc.name, policy)
-			}
+			require.Equal(t, tc.shouldReportUnexpectedController, got, "Unexpected controller mismatch at %s (policy %v)", tc.name, policy)
 		}
 	}
 }
@@ -1443,9 +1445,7 @@ func Test_hasNonControllerOwner(t *testing.T) {
 		nodeset.SetName("set")
 		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
 		got := hasNonControllerOwner(&claim, &nodeset, &pod)
-		if got != tc.nonController {
-			t.Errorf("Failed %s: got %t, expected %t", tc.name, got, tc.nonController)
-		}
+		require.Equal(t, tc.nonController, got, "Failed %s", tc.name)
 	}
 }
 
@@ -1582,12 +1582,8 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 				}
 				return false
 			}
-			if check(&claim, &pod) != tc.needsPodRef {
-				t.Errorf("Bad pod ref for %s hasPodRef=%v hasSetRef=%v", tc.name, hasPodRef, hasSetRef)
-			}
-			if check(&claim, &nodeset) != tc.needsSetRef {
-				t.Errorf("Bad nodeset ref for %s hasPodRef=%v hasSetRef=%v", tc.name, hasPodRef, hasSetRef)
-			}
+			require.Equal(t, tc.needsPodRef, check(&claim, &pod), "Bad pod ref for %s hasPodRef=%v hasSetRef=%v", tc.name, hasPodRef, hasSetRef)
+			require.Equal(t, tc.needsSetRef, check(&claim, &nodeset), "Bad nodeset ref for %s hasPodRef=%v hasSetRef=%v", tc.name, hasPodRef, hasSetRef)
 		}
 	}
 }
@@ -1624,9 +1620,7 @@ func Test_hasOwnerRef(t *testing.T) {
 		owner := corev1.Pod{}
 		owner.GetObjectMeta().SetUID(tc.uid)
 		got := hasOwnerRef(&target, &owner)
-		if got != tc.hasRef {
-			t.Errorf("Expected %t for %s, got %t", tc.hasRef, tc.uid, got)
-		}
+		require.Equal(t, tc.hasRef, got, "Expected %t for %s", tc.hasRef, tc.uid)
 	}
 }
 
@@ -1644,14 +1638,12 @@ func Test_getPersistentVolumeClaimRetentionPolicy(t *testing.T) {
 	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
 	nodeset.Spec.PersistentVolumeClaimRetentionPolicy = retainPolicy
 	got := getPersistentVolumeClaimRetentionPolicy(&nodeset)
-	if got.WhenScaled != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
-		t.Errorf("Expected retain policy")
-	}
+	require.Equal(t, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, got.WhenScaled)
+	require.Equal(t, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, got.WhenDeleted)
 	nodeset.Spec.PersistentVolumeClaimRetentionPolicy = scaledownPolicy
 	got = getPersistentVolumeClaimRetentionPolicy(&nodeset)
-	if got.WhenScaled != slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType || got.WhenDeleted != slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType {
-		t.Errorf("Expected scaledown policy")
-	}
+	require.Equal(t, slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType, got.WhenScaled)
+	require.Equal(t, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, got.WhenDeleted)
 }
 
 func Test_hasStaleOwnerRef(t *testing.T) {
@@ -1669,15 +1661,9 @@ func Test_hasStaleOwnerRef(t *testing.T) {
 	ownerC := corev1.Pod{}
 	ownerC.Name = "yvonne"
 	ownerC.SetUID("345")
-	if hasStaleOwnerRef(&target, &ownerA, podGVK) {
-		t.Error("ownerA should not be stale")
-	}
-	if !hasStaleOwnerRef(&target, &ownerB, podGVK) {
-		t.Error("ownerB should be stale")
-	}
-	if hasStaleOwnerRef(&target, &ownerC, podGVK) {
-		t.Error("ownerC should not be stale")
-	}
+	require.False(t, hasStaleOwnerRef(&target, &ownerA, podGVK), "ownerA should not be stale")
+	require.True(t, hasStaleOwnerRef(&target, &ownerB, podGVK), "ownerB should be stale")
+	require.False(t, hasStaleOwnerRef(&target, &ownerC, podGVK), "ownerC should not be stale")
 }
 
 func Test_matchesRef(t *testing.T) {
@@ -1751,9 +1737,7 @@ func Test_matchesRef(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		got := matchesRef(&tc.ref, &tc.obj, tc.schema)
-		if got != tc.shouldMatch {
-			t.Errorf("Failed %s: got %t, expected %t", tc.name, got, tc.shouldMatch)
-		}
+		require.Equal(t, tc.shouldMatch, got, "Failed %s", tc.name)
 	}
 }
 
@@ -1796,9 +1780,8 @@ func Test_addControllerRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := addControllerRef(tt.args.refs, tt.args.owner, tt.args.gvk); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("addControllerRef() = %v, want %v", got, tt.want)
-			}
+			got := addControllerRef(tt.args.refs, tt.args.owner, tt.args.gvk)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
