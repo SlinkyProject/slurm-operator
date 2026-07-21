@@ -30,6 +30,14 @@ crds:
 operator:
   # -- Enables the operator.
   enabled: true
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the operator.
+    enabled: true
+    # -- Extra ingress rules appended to the operator NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the operator NetworkPolicy.
+    extraEgress: []
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.
@@ -132,6 +140,14 @@ operator:
 webhook:
   # -- Enable the webhook.
   enabled: true
+  # NetworkPolicy settings for this component.
+  networkPolicy:
+    # -- Enable NetworkPolicy for the webhook.
+    enabled: true
+    # -- Extra ingress rules appended to the webhook NetworkPolicy.
+    extraIngress: []
+    # -- Extra egress rules appended to the webhook NetworkPolicy.
+    extraEgress: []
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.
@@ -264,6 +280,16 @@ certManager:
 # Ref: https://kubernetes.io/docs/reference/node/node-status/#condition
 propagatedNodeConditions: []
   # - KubeletUnhealthy
+
+# Configure Kubernetes NetworkPolicies for slurm-operator components.
+# Ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+networkPolicy:
+  # -- Enable NetworkPolicy resources for all slurm-operator components.
+  enabled: false
+  # -- Extra ingress rules appended to every NetworkPolicy.
+  extraIngress: []
+  # -- Extra egress rules appended to every NetworkPolicy.
+  extraEgress: []
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.
