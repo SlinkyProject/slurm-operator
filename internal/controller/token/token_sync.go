@@ -24,6 +24,21 @@ import (
 	jwt "github.com/golang-jwt/jwt/v5"
 )
 
+// tokenRefreshRequeueFloor bounds the token refresh requeue to a positive
+// value. controller-runtime treats a Result.RequeueAfter <= 0 as "do not
+// requeue", so an unbounded refreshTime.Sub(now) that reaches zero silently
+// stops the periodic refresh and lets the JWT expire (#240).
+const tokenRefreshRequeueFloor = 1 * time.Second
+
+// refreshRequeueAfter floors d to a positive minimum so the token controller
+// always re-enqueues itself for the next refresh.
+func refreshRequeueAfter(d time.Duration) time.Duration {
+	if d < tokenRefreshRequeueFloor {
+		return tokenRefreshRequeueFloor
+	}
+	return d
+}
+
 // Sync implements control logic for synchronizing a Token.
 func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error {
 	logger := log.FromContext(ctx)
@@ -42,16 +57,11 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	if !token.DeletionTimestamp.IsZero() {
 		logger.Info("Token is being deleted, skipping sync", "request", req)
 		return nil
-	} else {
-		now := time.Now()
-		key := objectutils.KeyFunc(token)
-		expirationTime, err := r.getExpTime(ctx, token)
-		if err != nil {
-			durationStore.Push(key, 30*time.Second)
-		} else {
-			refreshTime := expirationTime.Add(-token.Lifetime() * 1 / 5)
-			durationStore.Push(key, refreshTime.Sub(now))
-		}
+	} else if _, err := r.getExpTime(ctx, token); err != nil {
+		// Could not read the current token expiration; retry shortly. The
+		// refresh requeue itself is armed by the "Refresh" sync step below so
+		// that it is computed from the freshly-minted token (#240).
+		durationStore.Push(objectutils.KeyFunc(token), 30*time.Second)
 	}
 
 	steps := []syncsteps.Step[*slinkyv1beta1.Token]{
@@ -85,14 +95,15 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 					}
 				}
 
+				key := objectutils.KeyFunc(token)
 				refreshTime := now
 				if !expirationTime.IsZero() {
 					refreshTime = expirationTime.Add(-token.Lifetime() * 1 / 5)
-					key := objectutils.KeyFunc(token)
-					durationStore.Push(key, refreshTime.Sub(now))
 				}
 
 				if now.Before(refreshTime) {
+					// Not near expiration yet: re-enqueue at the refresh instant.
+					durationStore.Push(key, refreshRequeueAfter(refreshTime.Sub(now)))
 					logger.V(2).Info("token is not near expiration time yet, skipping...", "expirationTime", expirationTime)
 					return nil
 				}
@@ -104,6 +115,12 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, token, object, true); err != nil {
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
 				}
+
+				// Arm the next refresh from the freshly-minted token rather than
+				// relying on the Owns(Secret) watch follow-up, which can be
+				// coalesced/dropped (#240). The new token expires at
+				// now+Lifetime, so the next refresh is due after Lifetime*4/5.
+				durationStore.Push(key, refreshRequeueAfter(token.Lifetime()-token.Lifetime()/5))
 
 				return nil
 			},
