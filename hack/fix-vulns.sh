@@ -113,7 +113,9 @@ done
 
 go mod tidy
 
-git add go.mod go.sum
+make legal
+
+git add go.mod go.sum THIRD_PARTY_LICENSES NOTICE
 
 if [[ $COMMIT == 'true' ]]; then
 	git commit -F "$OUTPUT_FILE"
