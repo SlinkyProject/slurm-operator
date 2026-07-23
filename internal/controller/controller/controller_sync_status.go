@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -20,6 +21,18 @@ import (
 
 // syncStatus handles determining and updating the status.
 func (r *ControllerReconciler) syncStatus(
+	ctx context.Context,
+	controller *slinkyv1beta1.Controller,
+	errors ...error,
+) error {
+	if err := r.syncControllerStatus(ctx, controller); err != nil {
+		errors = append(errors, err)
+	}
+
+	return utilerrors.NewAggregate(errors)
+}
+
+func (r *ControllerReconciler) syncControllerStatus(
 	ctx context.Context,
 	controller *slinkyv1beta1.Controller,
 ) error {
