@@ -11,7 +11,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -78,7 +77,7 @@ func (b *RestapiBuilder) restapiPodTemplate(restapi *slinkyv1beta1.RestApi) (cor
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	hasAccounting := !apiequality.Semantic.DeepEqual(controller.Spec.AccountingRef, corev1.LocalObjectReference{})
+	hasAccounting := controller.Spec.AccountingRef != nil
 
 	objectMeta := metadata.NewBuilder(key).
 		WithAnnotations(restapi.Annotations).
