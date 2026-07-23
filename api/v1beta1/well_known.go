@@ -29,6 +29,12 @@ const (
 	// workload by. Pods with an earlier deadline are preferred to be deleted before pods with a later deadline.
 	// NOTE: this is honored on a best-effort basis, and does not offer guarantees on pod deletion order.
 	AnnotationPodDeadline = NodeSetPrefix + "pod-deadline"
+
+	// AnnotationReloadOnChange, when set to "true" on a NodeSet, enables
+	// tracking of the Secrets and ConfigMaps mounted by the NodeSet's worker
+	// pods. A content change in any tracked resource updates per-resource
+	// checksum annotations on the pod template, which triggers a rolling update.
+	AnnotationReloadOnChange = SlinkyPrefix + "reload-on-change"
 )
 
 // Well Known Annotations for Objects of type corev1.Node

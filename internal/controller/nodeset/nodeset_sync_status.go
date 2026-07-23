@@ -130,6 +130,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		NodeSetHash:         hash,
 		CollisionCount:      &collisionCount,
 		OrdinalToNode:       ordinalToNode,
+		ConfigHashes:        configHashesFromTemplate(nodeset),
 		Selector:            selector.String(),
 		Conditions:          []metav1.Condition{},
 	}
