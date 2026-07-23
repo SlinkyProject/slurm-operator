@@ -32,6 +32,7 @@ func getFeaturesFromConfig(install bool, test bool, config test.SlurmInstallatio
 	if test {
 
 		steps = append(steps, testSlurmController())
+		steps = append(steps, testSlurmRestAPI(config.Accounting))
 		steps = append(steps, testSlurmNodeSet())
 
 		if config.Accounting {
@@ -112,6 +113,37 @@ func testSlurmController() types.Feature {
 			cleanup_args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
 
 			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+
+			return ctx
+		}).Feature()
+}
+
+func testSlurmRestAPI(withAccounting bool) types.Feature {
+	return features.New("Assess the functionality of the Slurm RestAPI").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
+		Assess("slurmrestd container args match expectations", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"get", "deployment", "-n", "slurm", "slurm-restapi", "-o", `jsonpath="{.spec.template.spec.containers[0].args}"`}
+			var wants string
+			if withAccounting {
+				wants = `"["0.0.0.0:6820"]"`
+			} else {
+				wants = `"["-s","openapi/slurmctld","0.0.0.0:6820"]"`
+			}
+
+			cmd := exec.Command(command, args...)
+			output, err := cmd.Output()
+
+			got := strings.TrimSpace(string(output))
+			if err != nil {
+				t.Fatalf("failed running %v %v", command, args)
+			}
+			if got != wants {
+				t.Fatalf("wants: %v, got: %v", wants, got)
+			}
 
 			return ctx
 		}).Feature()
