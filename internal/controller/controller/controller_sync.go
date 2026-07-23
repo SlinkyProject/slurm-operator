@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,10 +42,13 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	}
 	controller = controller.DeepCopy()
 	defaults.SetControllerDefaults(controller)
+	key := objectutils.KeyFunc(controller)
 
 	if !controller.DeletionTimestamp.IsZero() {
 		logger.Info("Controller is being deleted, skipping sync")
 		return nil
+	} else {
+		durationStore.Push(key, 30*time.Second)
 	}
 
 	steps := []syncsteps.Step[*slinkyv1beta1.Controller]{

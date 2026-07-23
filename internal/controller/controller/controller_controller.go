@@ -25,6 +25,7 @@ import (
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/controllerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/eventhandler"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/slurmcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
@@ -60,6 +61,7 @@ type ControllerReconciler struct {
 	builder       *builder.ControllerBuilder
 	refResolver   *refresolver.RefResolver
 	eventRecorder events.EventRecorder
+	slurmControl  slurmcontrol.SlurmControlInterface
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch;create;update;patch;delete
@@ -70,6 +72,7 @@ type ControllerReconciler struct {
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;patch
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
@@ -137,5 +140,6 @@ func NewReconciler(c client.Client, cm *clientmap.ClientMap) *ControllerReconcil
 		builder:       builder.New(c),
 		refResolver:   refresolver.New(c),
 		eventRecorder: events.NewFakeRecorder(100),
+		slurmControl:  slurmcontrol.NewSlurmControl(cm),
 	}
 }

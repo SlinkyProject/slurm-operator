@@ -35,7 +35,7 @@ func TestConfiglessArgs(t *testing.T) {
 			},
 			want: []string{
 				"--conf-server",
-				"slurm-controller-0.slurm-controller-internal.slurm:6817",
+				"slurm-controller.slurm:6817",
 			},
 		},
 		{
@@ -55,9 +55,7 @@ func TestConfiglessArgs(t *testing.T) {
 			want: []string{
 				"--conf-server",
 				strings.Join([]string{
-					"slurm-controller-0.slurm-controller-internal.slurm:6817",
-					"slurm-controller-1.slurm-controller-internal.slurm:6817",
-					"slurm-controller-2.slurm-controller-internal.slurm:6817",
+					"slurm-controller.slurm:6817",
 				}, ","),
 			},
 		},

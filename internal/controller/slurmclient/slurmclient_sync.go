@@ -16,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
+	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/restapibuilder"
@@ -82,11 +84,16 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 		return nil
 	}
 
+	opts := &slurmclient.ClientOptions{
+		DisableFor: []slurmobject.Object{
+			&slurmtypes.V0044ControllerPing{},
+		},
+	}
 	config := &slurmclient.Config{
 		Server:    server,
 		AuthToken: authToken,
 	}
-	slurmClient, err := slurmclient.NewClient(config)
+	slurmClient, err := slurmclient.NewClient(config, opts)
 	if err != nil {
 		return fmt.Errorf("failed to create slurm client: %w", err)
 	}

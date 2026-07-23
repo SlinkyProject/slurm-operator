@@ -145,6 +145,10 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 			if tt.want != nil {
 				require.Equal(t, tt.want.Spec, got.Spec)
 			}
+
+			if tt.args.controller.Spec.HighAvailability.Enabled {
+				require.Equal(t, "true", got.Spec.Selector[slinkyv1beta1.LabelControllerActive])
+			}
 		})
 	}
 }
