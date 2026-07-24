@@ -9,6 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_getPodNodeName(t *testing.T) {
@@ -40,9 +42,7 @@ func Test_getPodNodeName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getPodNodeName(tt.o)
-			if !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("getPodNodeName() = %v, want %v", got, tt.want)
-			}
+			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "getPodNodeName() = %v, want %v", got, tt.want)
 		})
 	}
 }
@@ -58,9 +58,7 @@ func TestNewFakeClientBuilderWithIndexes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewFakeClientBuilderWithIndexes()
-			if got == nil {
-				t.Errorf("NewFakeClientBuilderWithIndexes() = %v", got)
-			}
+			require.NotNil(t, got)
 		})
 	}
 }

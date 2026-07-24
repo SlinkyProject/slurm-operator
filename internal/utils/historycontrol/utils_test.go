@@ -51,10 +51,8 @@ func TestSetRevision(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			SetRevision(tt.args.labels, tt.args.revision)
+			require.Empty(t, cmp.Diff(tt.want, tt.args.labels), "unexpected encoded configuration")
 		})
-		if diff := cmp.Diff(tt.want, tt.args.labels); diff != "" {
-			t.Errorf("unexpected encoded configuration: (-want,+got)\n%s", diff)
-		}
 	}
 }
 
