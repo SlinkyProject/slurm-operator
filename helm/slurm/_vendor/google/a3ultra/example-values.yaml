@@ -1,25 +1,25 @@
 ---
-# Example configuration for Google Cloud GKE A3 Mega node topology
+# Example configuration for Google Cloud GKE A3 Ultra node topology
 
 vendor:
   google:
-    a3mega:
-      - targetNodeSet: a3-mega-nodes
-        nodePool: "a3-mega-nodepool"
+    a3ultra:
+      - targetNodeSet: a3-ultra-nodes
+        nodePool: "a3-ultra-nodepool"
         networks:
           - default
-          - vpc1
-          - vpc2
-          - vpc3
-          - vpc4
-          - vpc5
-          - vpc6
-          - vpc7
-          - vpc8
+          - rdma-0
+          - rdma-1
+          - rdma-2
+          - rdma-3
+          - rdma-4
+          - rdma-5
+          - rdma-6
+          - rdma-7
 
 # The GPU nodeset that matches targetNodeSet
 nodesets:
-  a3-mega-nodes:
+  a3-ultra-nodes:
     enabled: true
     replicas: 1
     image:
