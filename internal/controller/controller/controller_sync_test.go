@@ -83,7 +83,8 @@ func TestControllerReconciler_sync(t *testing.T) {
 				ctx: context.TODO(),
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name: "slurm",
+						Namespace: corev1.NamespaceDefault,
+						Name:      "slurm",
 					},
 				},
 			},
