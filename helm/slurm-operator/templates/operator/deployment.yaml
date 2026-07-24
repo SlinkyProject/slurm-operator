@@ -67,10 +67,19 @@ spec:
             - --health-addr
             - {{ printf ":%s" (toString .) | quote }}
             {{- end }}{{- /* with .Values.operator.healthPort */}}
-            {{- with .Values.operator.metricsPort }}
+            {{- $metricsPort := int (include "slurm-operator.metricsPort" (list "operator" .Values.operator.metricsPort)) }}
             - --metrics-addr
-            - {{ printf ":%s" (toString .) | quote }}
-            {{- end }}{{- /* with .Values.operator.metricsPort */}}
+            {{- if ne $metricsPort 0 }}
+            - {{ printf ":%d" $metricsPort | quote }}
+            {{- else }}
+            - "0"
+            {{- end }}{{- /* if $metricsPort != 0 */}}
+            {{- if .Values.operator.metricsSecure }}
+            {{- if eq $metricsPort 0 }}
+            {{- fail "operator.metricsSecure requires operator.metricsPort to be non-zero" }}
+            {{- end }}{{- /* if $metricsPort == 0 */}}
+            - --metrics-secure
+            {{- end }}{{- /* if .Values.operator.metricsSecure */}}
             {{- with .Values.operator.profile }}
             - --profile
             {{- end }}{{- /* with .Values.operator.profile */}}

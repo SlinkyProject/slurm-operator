@@ -191,3 +191,59 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: registry.example.com/org/slurm-webhook@sha256:abcdef0123456789
+  - it: should not pass --metrics-secure by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-secure
+  - it: should pass --metrics-secure when metricsSecure is enabled
+    set:
+      webhook:
+        metricsPort: 8443
+        metricsSecure: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-secure
+  - it: should fail when metricsSecure is enabled without a metrics port
+    set:
+      webhook:
+        metricsPort: 0
+        metricsSecure: true
+    asserts:
+      - failedTemplate:
+          errorPattern: webhook.metricsSecure requires webhook.metricsPort
+  - it: should disable the metrics server when metricsPort is zero
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[6]
+          value: --metrics-addr
+      - equal:
+          path: spec.template.spec.containers[0].args[7]
+          value: "0"
+  - it: should set the metrics address from metricsPort
+    set:
+      webhook:
+        metricsPort: 9090
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[6]
+          value: --metrics-addr
+      - equal:
+          path: spec.template.spec.containers[0].args[7]
+          value: :9090
+  - it: should fail when metricsSecure is enabled with a string zero metrics port
+    set:
+      webhook:
+        metricsPort: "0"
+        metricsSecure: true
+    asserts:
+      - failedTemplate:
+          errorPattern: webhook.metricsSecure requires webhook.metricsPort
+  - it: should fail when metricsPort is not a valid port
+    set:
+      webhook:
+        metricsPort: 8O80
+    asserts:
+      - failedTemplate:
+          errorPattern: webhook.metricsPort must be an integer between 0 and 65535
