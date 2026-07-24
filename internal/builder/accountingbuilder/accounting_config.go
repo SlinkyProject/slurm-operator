@@ -5,6 +5,7 @@ package accountingbuilder
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,12 @@ func (b *AccountingBuilder) BuildAccountingConfig(accounting *slinkyv1beta1.Acco
 		},
 	}
 
-	return b.CommonBuilder.BuildSecret(opts, accounting)
+	secret, err := b.CommonBuilder.BuildSecret(opts, accounting)
+	if err != nil {
+		return secret, fmt.Errorf("failed to build secret: %w", err)
+	}
+
+	return secret, nil
 }
 
 // https://slurm.schedmd.com/slurmdbd.conf.html
