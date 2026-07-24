@@ -190,9 +190,7 @@ func buildSlurmConf(
 		}
 		conf.AddProperty(config.NewProperty("SlurmctldPort", common.SlurmctldPort))
 	}
-	if controller.Spec.HighAvailability.Enabled {
-		conf.AddProperty(config.NewProperty("SlurmctldAddr", controller.ServiceFQDNShort()))
-	}
+	conf.AddProperty(config.NewProperty("SlurmctldAddr", controller.ServiceFQDNShort()))
 	conf.AddProperty(config.NewProperty("StateSaveLocation", clusterSpoolDir(controller.ClusterName())))
 	conf.AddProperty(config.NewProperty("SlurmdUser", common.SlurmdUser))
 	conf.AddProperty(config.NewProperty("SlurmdPort", common.SlurmdPort))
