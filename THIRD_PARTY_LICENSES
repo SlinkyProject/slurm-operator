@@ -353,22 +353,22 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.43.0
+- Version: v1.44.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.43.0
+- Version: v1.44.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.43.0
+- Version: v1.44.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.43.0
+- Version: v1.44.0
 - License: BSD-3-Clause
 
 ### go.uber.org/multierr
