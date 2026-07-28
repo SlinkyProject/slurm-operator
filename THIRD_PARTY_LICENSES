@@ -258,27 +258,27 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/klauspost/compress
 - Name: github.com/klauspost/compress
-- Version: v1.18.5
+- Version: v1.18.7
 - License: Apache-2.0
 
 ### github.com/klauspost/compress
 - Name: github.com/klauspost/compress
-- Version: v1.18.5
+- Version: v1.18.7
 - License: BSD-3-Clause
 
 ### github.com/klauspost/compress
 - Name: github.com/klauspost/compress
-- Version: v1.18.5
+- Version: v1.18.7
 - License: MIT
 
 ### github.com/klauspost/compress/internal/snapref
 - Name: github.com/klauspost/compress/internal/snapref
-- Version: v1.18.5
+- Version: v1.18.7
 - License: BSD-3-Clause
 
 ### github.com/klauspost/compress/zstd/internal/xxhash
 - Name: github.com/klauspost/compress/zstd/internal/xxhash
-- Version: v1.18.5
+- Version: v1.18.7
 - License: MIT
 
 ### github.com/mailru/easyjson/jlexer
@@ -598,7 +598,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/oauth2
 - Name: golang.org/x/oauth2
-- Version: v0.35.0
+- Version: v0.36.0
 - License: BSD-3-Clause
 
 ### golang.org/x/sync
@@ -633,17 +633,17 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### google.golang.org/genproto/googleapis/api
 - Name: google.golang.org/genproto/googleapis/api
-- Version: v0.0.0-20260401024825-9d38bb4040a9
+- Version: v0.0.0-20260414002931-afd174a4e478
 - License: Apache-2.0
 
 ### google.golang.org/genproto/googleapis/rpc
 - Name: google.golang.org/genproto/googleapis/rpc
-- Version: v0.0.0-20260401024825-9d38bb4040a9
+- Version: v0.0.0-20260414002931-afd174a4e478
 - License: Apache-2.0
 
 ### google.golang.org/grpc
 - Name: google.golang.org/grpc
-- Version: v1.80.0
+- Version: v1.82.1
 - License: Apache-2.0
 
 ### google.golang.org/protobuf
