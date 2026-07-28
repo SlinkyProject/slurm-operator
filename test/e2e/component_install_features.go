@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/SlinkyProject/slurm-operator/test"
@@ -14,6 +15,7 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
+	"sigs.k8s.io/e2e-framework/third_party/helm"
 )
 
 // Dependency Validation
@@ -93,7 +95,7 @@ func testSlurmOperator() types.Feature {
 func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 	return features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.DoSlurmInstall(ctx, t, config, slurmConfig)
+			return doSlurmInstall(ctx, t, config, slurmConfig)
 		}).
 		Assess("Slurm Cluster Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
@@ -116,6 +118,50 @@ func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 
 			return ctx
 		}).Feature()
+}
+
+func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, slurmConfig test.SlurmInstallationConfig) context.Context {
+	manager := helm.New(config.KubeconfigFile())
+
+	setValuesFile := fmt.Sprintf("--values %s/helm/slurm/values.yaml", test.Basepath)
+	enableNodeset := "--set nodesets.slinky.enabled=true"
+	enablePartition := "--set partitions.all.enabled=true"
+
+	opts := []helm.Option{}
+	opts = append(
+		opts,
+		helm.WithName("slurm"),
+		helm.WithNamespace(test.SlurmNamespace),
+		helm.WithChart(test.Basepath+"helm/slurm"),
+		helm.WithArgs(setValuesFile, enableNodeset, enablePartition),
+		helm.WithWait(),
+		helm.WithTimeout("10m"),
+	)
+
+	if slurmConfig.Accounting {
+		opts = append(opts, helm.WithArgs("--set 'accounting.enabled=true'"))
+	}
+
+	if slurmConfig.Login || slurmConfig.Pyxis {
+		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.enabled=true'"))
+	}
+
+	if slurmConfig.Metrics {
+		opts = append(opts, helm.WithArgs("--set 'controller.metrics.enabled=true'"))
+		opts = append(opts, helm.WithArgs("--set 'controller.metrics.serviceMonitor.enabled=true'"))
+	}
+
+	if slurmConfig.Pyxis {
+		opts = append(opts, helm.WithArgs(`--set-json 'configFiles={"plugstack.conf":"include /usr/share/pyxis/*"}'`))
+		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.login.image.repository=ghcr.io/slinkyproject/login-pyxis'"))
+		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.securityContext.privileged=true'"))
+		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository=ghcr.io/slinkyproject/slurmd-pyxis'"))
+	}
+
+	err := manager.RunInstall(opts...)
+	require.NoError(t, err, "failed to invoke helm install operation due to an error")
+
+	return ctx
 }
 
 // Uninstall Slurm Components

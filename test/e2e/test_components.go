@@ -20,40 +20,91 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/e2e-framework/klient"
+
+	"sigs.k8s.io/e2e-framework/klient/k8s"
+	"sigs.k8s.io/e2e-framework/klient/wait"
+	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 )
 
-func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstallationConfig, beforeSteps []types.Feature) []types.Feature {
-	steps := beforeSteps
+// Dependency Component Health Checks
 
-	if install {
-		steps = append(steps, installSlurm(config))
+func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+	// Get MariaDB CR
+
+	mariadb := &mariadbv1alpha1.MariaDB{}
+
+	mariadbKey := crclient.ObjectKey{
+		Namespace: test.SlurmNamespace,
+		Name:      "mariadb",
 	}
-	if runTests {
 
-		steps = append(steps, testSlurmController())
-		steps = append(steps, testSlurmRestAPI(config.Accounting))
-		steps = append(steps, testSlurmNodeSet())
-		if config == (test.SlurmInstallationConfig{}) {
-			steps = append(steps, testSlurmJWTKeyRotation())
+	err := crClient.Get(ctx, mariadbKey, mariadb)
+	require.NoError(t, err, "failed to Get() mariadb using controller-runtime client")
+
+	// Get every StatefulSet
+	statefulSetList := appsv1.StatefulSetList{}
+	err = crClient.List(ctx, &statefulSetList)
+	require.NoError(t, err, "failed to List() StatefulSets using controller-runtime client")
+
+	// Build a list of StatefulSets owned by this MariaDB CR
+	ownedStatefulSets := appsv1.StatefulSetList{}
+	for _, statefulSet := range statefulSetList.Items {
+		for _, owner := range statefulSet.OwnerReferences {
+			if owner.UID == mariadb.UID {
+				ownedStatefulSets.Items = append(ownedStatefulSets.Items, statefulSet)
+			}
 		}
-
-		if config.Accounting {
-			steps = append(steps, testSlurmAccounting())
-		}
 	}
 
-	if install {
-		steps = append(steps, uninstallSlurm())
-
+	// Get MariaDB StatefulSet using CR
+	for _, statefulSet := range ownedStatefulSets.Items {
+		err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(&statefulSet, func(object k8s.Object) int32 {
+			return object.(*appsv1.StatefulSet).Status.ReadyReplicas
+		}, *statefulSet.Spec.Replicas))
+		require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
 	}
 
-	return steps
+	return ctx
+}
+
+// Slinky Component Health Checks
+
+// Controller tests
+
+func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	// Get Controller CR
+	controller := &slinkyv1beta1.Controller{}
+
+	controllerKey := crclient.ObjectKey{
+		Namespace: test.SlurmNamespace,
+		Name:      "slurm",
+	}
+
+	err := crClient.Get(ctx, controllerKey, controller)
+	require.NoError(t, err, "failed to Get() controller using controller-runtime client")
+
+	controllerUID := controller.UID
+
+	// Get Controller StatefulSet using controller CR
+	statefulSetKey := controller.Key()
+	statefulSet := &appsv1.StatefulSet{}
+	err = crClient.Get(ctx, statefulSetKey, statefulSet)
+	require.NoError(t, err, "failed to Get() statefulset using controller-runtime client")
+
+	// Confirm ownership of controller statefulset
+	for _, owner := range statefulSet.OwnerReferences {
+		require.Equal(t, controllerUID, owner.UID, "dubious ownership of statefulset: %v", statefulSet)
+	}
+
+	// Wait for controller statefulset to become ready
+	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(statefulSet, func(object k8s.Object) int32 {
+		return object.(*appsv1.StatefulSet).Status.ReadyReplicas
+	}, *statefulSet.Spec.Replicas))
+	require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
 }
 
 func testSlurmController() types.Feature {
@@ -126,6 +177,40 @@ func testSlurmController() types.Feature {
 		}).Feature()
 }
 
+// RestAPI tests
+
+func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	// Get RestAPI CR
+	restapi := &slinkyv1beta1.RestApi{}
+
+	restapiKey := crclient.ObjectKey{
+		Namespace: test.SlurmNamespace,
+		Name:      "slurm",
+	}
+
+	err := crClient.Get(ctx, restapiKey, restapi)
+	require.NoError(t, err, "failed to Get() restapi using controller-runtime client")
+
+	restapiUID := restapi.UID
+
+	// Get RestAPI Deployment using RestAPI CR
+	deploymentKey := restapi.Key()
+	deployment := &appsv1.Deployment{}
+	err = crClient.Get(ctx, deploymentKey, deployment)
+	require.NoError(t, err, "failed to Get() deployment using controller-runtime client")
+
+	// Confirm ownership of RestAPI deployment
+	for _, owner := range deployment.OwnerReferences {
+		require.Equal(t, restapiUID, owner.UID, "dubious ownership of deployment: %v", deployment)
+	}
+
+	// Check whether RestAPI deployment is healthy
+	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
+		return object.(*appsv1.Deployment).Status.ReadyReplicas
+	}, *deployment.Spec.Replicas))
+	require.NoError(t, err, "timed out waiting for Deployment %v to reach a ready state", deployment.Name)
+}
+
 func testSlurmRestAPI(withAccounting bool) types.Feature {
 	return features.New("Assess the functionality of the Slurm RestAPI").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -152,6 +237,28 @@ func testSlurmRestAPI(withAccounting bool) types.Feature {
 
 			return ctx
 		}).Feature()
+}
+
+// NodeSet tests
+
+func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, nodesetKey crclient.ObjectKey) {
+	nodeset := &slinkyv1beta1.NodeSet{}
+
+	for retry := range 16 {
+
+		err := crClient.Get(ctx, nodesetKey, nodeset)
+		require.NoError(t, err, "failed to Get() NodeSet using controller-runtime client")
+
+		if *nodeset.Spec.Replicas == nodeset.Status.AvailableReplicas {
+			break
+		}
+
+		if retry == 15 {
+			t.Fatalf("Timed out waiting for NodeSet replicas to become ready. \nDesired replicas: %d \nReady replicas: %d", *nodeset.Spec.Replicas, nodeset.Status.AvailableReplicas)
+		}
+
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func testSlurmNodeSet() types.Feature {
@@ -384,6 +491,39 @@ func podReady(pod *corev1.Pod) bool {
 	return false
 }
 
+// Accounting tests
+
+func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	// Get Accounting CR
+	accounting := &slinkyv1beta1.Accounting{}
+
+	accountingKey := crclient.ObjectKey{
+		Namespace: test.SlurmNamespace,
+		Name:      "slurm",
+	}
+
+	err := crClient.Get(ctx, accountingKey, accounting)
+	require.NoError(t, err, "failed to Get() accounting using accounting-runtime client")
+
+	accountingUID := accounting.UID
+
+	// Get Accounting StatefulSet using accounting CR
+	statefulSetKey := accounting.Key()
+	statefulSet := &appsv1.StatefulSet{}
+	err = crClient.Get(ctx, statefulSetKey, statefulSet)
+	require.NoError(t, err, "failed to Get() statefulset using controller-runtime client")
+
+	// Confirm ownership of controller statefulset
+	for _, owner := range statefulSet.OwnerReferences {
+		require.Equal(t, accountingUID, owner.UID, "dubious ownership of statefulset: %v", statefulSet)
+	}
+
+	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(statefulSet, func(object k8s.Object) int32 {
+		return object.(*appsv1.StatefulSet).Status.ReadyReplicas
+	}, *statefulSet.Spec.Replicas))
+	require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
+}
+
 func testSlurmAccounting() types.Feature {
 	return features.New("Assess the functionality of the Slurm Accounting").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -468,25 +608,36 @@ func testSlurmAccounting() types.Feature {
 		}).Feature()
 }
 
-func GetControllerRuntimeClient(config *envconf.Config) (crclient.Client, error) {
-	var scheme = k8sruntime.NewScheme()
-	err := slinkyv1beta1.AddToScheme(scheme)
-	if err != nil {
-		return nil, err
-	}
-	err = appsv1.AddToScheme(scheme)
-	if err != nil {
-		return nil, err
-	}
-	err = corev1.AddToScheme(scheme)
-	if err != nil {
-		return nil, err
+// LoginSet tests
+
+func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	// Get LoginSet CR
+	loginSet := &slinkyv1beta1.LoginSet{}
+
+	loginSetKey := crclient.ObjectKey{
+		Namespace: test.SlurmNamespace,
+		Name:      "slurm-login-slinky",
 	}
 
-	err = mariadbv1alpha1.AddToScheme(scheme)
-	if err != nil {
-		return nil, err
+	err := crClient.Get(ctx, loginSetKey, loginSet)
+	require.NoError(t, err, "failed to Get() loginSet using controller-runtime client")
+
+	loginSetUID := loginSet.UID
+
+	// Get loginSet Deployment using loginSet CR
+	deploymentKey := loginSet.Key()
+	deployment := &appsv1.Deployment{}
+	err = crClient.Get(ctx, deploymentKey, deployment)
+	require.NoError(t, err, "failed to Get() deployment using controller-runtime client")
+
+	// Confirm ownership of loginSet deployment
+	for _, owner := range deployment.OwnerReferences {
+		require.Equal(t, loginSetUID, owner.UID, "dubious ownership of deployment: %v", deployment)
 	}
 
-	return klient.NewControllerRuntimeClient(config.Client().RESTConfig(), scheme)
+	// Check whether loginSet deployment is healthy
+	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
+		return object.(*appsv1.Deployment).Status.ReadyReplicas
+	}, *deployment.Spec.Replicas))
+	require.NoError(t, err, "timed out waiting for Deployment %v to reach a ready state", deployment.Name)
 }
