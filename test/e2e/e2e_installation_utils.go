@@ -5,7 +5,6 @@ package e2e
 
 import (
 	"context"
-	"os/exec"
 	"testing"
 
 	"github.com/SlinkyProject/slurm-operator/test"
@@ -17,11 +16,13 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/types"
 )
 
-// Dependency Installation
+// Dependency Validation
 
-func installCertMgr() types.Feature {
-	return features.New("Helm install cert-manager").
-		Setup(test.DoCertMgrInstall).
+func testCertMgr() types.Feature {
+	return features.New("Ensure cert-manager is installed").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
 		Assess("cert-manager Deployment Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return test.CheckDeploymentStatus(ctx, t, config, "cert-manager", "cert-manager")
 		}).
@@ -33,9 +34,11 @@ func installCertMgr() types.Feature {
 		}).Feature()
 }
 
-func installMariadbOperator() types.Feature {
-	return features.New("Helm install mariadb-operator").
-		Setup(test.DoMariaDBInstall).
+func testMariadbOperator() types.Feature {
+	return features.New("Ensure mariadb-operator is installed").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
 		Assess("mariadb-operator deployment Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return test.CheckDeploymentStatus(ctx, t, config, "mariadb-operator", "mariadb")
 		}).
@@ -48,14 +51,8 @@ func installMariadbOperator() types.Feature {
 }
 
 func applyMariaDBYaml() types.Feature {
-	return features.New("Create MariaDB instance for Slurm").
+	return features.New("Ensure MariaDB instance exists for Slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			path := test.Basepath + "/hack/resources/mariadb.yaml"
-
-			cmd := exec.Command("kubectl", "apply", "-f", path)
-			_, err := cmd.Output()
-			require.NoError(t, err, "failed running 'kubectl apply -f %s /hack/resources/mariadb.yaml'", test.Basepath)
-
 			return ctx
 		}).
 		Assess("Pod mariadb-0 running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -68,11 +65,26 @@ func applyMariaDBYaml() types.Feature {
 		}).Feature()
 }
 
-func installPrometheus() types.Feature {
-	return features.New("Helm install prometheus").
-		Setup(test.DoPrometheusInstall).
+func testPrometheus() types.Feature {
+	return features.New("Ensure prometheus is installed").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
 		Assess("prometheus deployment Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return test.CheckDeploymentStatus(ctx, t, config, "prometheus-kube-prometheus-operator", "prometheus")
+		}).Feature()
+}
+
+func testSlurmOperator() types.Feature {
+	return features.New("Ensure Slurm-operator is installed").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return ctx
+		}).
+		Assess("Deployment slurm-operator running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return test.CheckDeploymentStatus(ctx, t, config, "slurm-operator", test.SlinkyNamespace)
+		}).
+		Assess("Deployment slurm-operator-webhook running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			return test.CheckDeploymentStatus(ctx, t, config, "slurm-operator-webhook", test.SlinkyNamespace)
 		}).Feature()
 }
 
@@ -106,41 +118,11 @@ func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 		}).Feature()
 }
 
-func installSlurmOperatorCRDS() types.Feature {
-	return features.New("Helm install slurm-operator-crds").
-		Setup(test.DoSlurmOperatorCRDInstall).Feature()
-}
-
-func installSlurmOperator() types.Feature {
-	return features.New("Helm install slurm-operator").
-		Setup(test.DoSlurmOperatorInstall).
-		Assess("Deployment slurm-operator running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.CheckDeploymentStatus(ctx, t, config, "slurm-operator", test.SlinkyNamespace)
-		}).
-		Assess("Deployment slurm-operator-webhook running successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.CheckDeploymentStatus(ctx, t, config, "slurm-operator-webhook", test.SlinkyNamespace)
-		}).Feature()
-}
-
 // Uninstall Slurm Components
 
 func uninstallSlurm() types.Feature {
 	return features.New("Helm uninstall slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return test.DoUninstallHelmChart(ctx, t, config, "slurm", test.SlurmNamespace)
-		}).Feature()
-}
-
-func uninstallSlurmOperator() types.Feature {
-	return features.New("Helm uninstall slurm-operator").
-		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.DoUninstallHelmChart(ctx, t, config, "slurm-operator", test.SlinkyNamespace)
-		}).Feature()
-}
-
-func uninstallSlurmOperatorCRDs() types.Feature {
-	return features.New("Helm uninstall slurm-operator-crds").
-		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.DoUninstallHelmChart(ctx, t, config, "slurm-operator-crds", test.SlinkyNamespace)
 		}).Feature()
 }
