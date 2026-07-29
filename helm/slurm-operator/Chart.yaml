@@ -10,6 +10,7 @@ version: 1.3.0-rc1
 
 annotations:
   license: Apache-2.0
+  slinky.slurm.net/minimum-slurm-version: "26.05"
 
 home: https://slinky.schedmd.com/
 icon: https://raw.githubusercontent.com/SlinkyProject/docs/refs/heads/main/docs/_static/images/slinky.svg
