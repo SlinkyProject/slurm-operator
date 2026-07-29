@@ -289,7 +289,7 @@ func (r *NodeSetReconciler) doAdoptOrphanRevisions(
 func (r *NodeSetReconciler) listRevisions(nodeset *slinkyv1beta1.NodeSet) ([]*appsv1.ControllerRevision, error) {
 	selectorLabels := labels.NewBuilder().WithWorkerSelectorLabels(nodeset).Build()
 	selector := k8slabels.SelectorFromSet(k8slabels.Set(selectorLabels))
-	return r.historyControl.ListControllerRevisions(nodeset, selector)
+	return r.historyControl.ListControllerRevisions(nodeset, slinkyv1beta1.NodeSetGVK, selector)
 }
 
 // getNodeSetPods returns nodeset pods owned by the given nodeset.

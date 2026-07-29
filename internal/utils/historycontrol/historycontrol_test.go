@@ -37,6 +37,7 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 	}
 	selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
 	require.NoError(t, err)
+	parentKind := appsv1.SchemeGroupVersion.WithKind("ReplicaSet")
 
 	revision := &appsv1.ControllerRevision{
 		TypeMeta:   rs.TypeMeta,
@@ -48,8 +49,9 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 		Client client.Client
 	}
 	type args struct {
-		parent   metav1.Object
-		selector labels.Selector
+		parent     metav1.Object
+		parentKind schema.GroupVersionKind
+		selector   labels.Selector
 	}
 	tests := []struct {
 		name    string
@@ -64,8 +66,9 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 				Client: fake.NewFakeClient(),
 			},
 			args: args{
-				parent:   rs,
-				selector: selector,
+				parent:     rs,
+				parentKind: parentKind,
+				selector:   selector,
 			},
 			want:    nil,
 			wantErr: false,
@@ -76,8 +79,9 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 				Client: fake.NewClientBuilder().WithObjects(rs, revision).Build(),
 			},
 			args: args{
-				parent:   rs,
-				selector: selector,
+				parent:     rs,
+				parentKind: parentKind,
+				selector:   selector,
 			},
 			want:    []*appsv1.ControllerRevision{revision},
 			wantErr: false,
@@ -88,7 +92,7 @@ func Test_realHistory_ListControllerRevisions(t *testing.T) {
 			rh := &realHistory{
 				Client: tt.fields.Client,
 			}
-			got, err := rh.ListControllerRevisions(tt.args.parent, tt.args.selector)
+			got, err := rh.ListControllerRevisions(tt.args.parent, tt.args.parentKind, tt.args.selector)
 
 			if tt.wantErr {
 				require.Error(t, err)

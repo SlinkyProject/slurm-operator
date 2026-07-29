@@ -41,6 +41,7 @@ func NewHistoryControl(client client.Client) HistoryControlInterface {
 
 func (rh *realHistory) ListControllerRevisions(
 	parent metav1.Object,
+	_ schema.GroupVersionKind,
 	selector labels.Selector,
 ) ([]*appsv1.ControllerRevision, error) {
 	// List all revisions in the namespace that match the selector
