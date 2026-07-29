@@ -68,7 +68,7 @@ func TestSlowStartBatch(t *testing.T) {
 	for _, test := range tests {
 		callCnt = 0
 		callLimit = test.callLimit
-		successes, err := SlowStartBatch(test.count, 1, test.fn)
+		successes, err := SlowStartBatch(test.count, SlowStartInitialBatchSize, test.fn)
 
 		require.Equal(t, test.expectedSuccesses, successes, "%s: unexpected processed batch size", test.name)
 		require.ErrorIs(t, err, test.expectedErr, "%s: unexpected error", test.name)

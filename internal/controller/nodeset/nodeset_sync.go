@@ -592,7 +592,7 @@ func (r *NodeSetReconciler) syncCordon(
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncCordonFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncCordonFn); err != nil {
 		return err
 	}
 
@@ -732,7 +732,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 				defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
 			return nil
 		}
-		if _, err := utils.SlowStartBatch(len(defunctNodes), utils.SlowStartInitialBatchSize, syncSlurmNodeRecordsFn); err != nil {
+		if _, err := utils.SlowStartBatchDefault(len(defunctNodes), syncSlurmNodeRecordsFn); err != nil {
 			return err
 		}
 
@@ -777,7 +777,7 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmNodesFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncSlurmNodesFn); err != nil {
 		return err
 	}
 
@@ -817,7 +817,7 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmDeadlineFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncSlurmDeadlineFn); err != nil {
 		return err
 	}
 
@@ -869,7 +869,7 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmTopologyFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncSlurmTopologyFn); err != nil {
 		return err
 	}
 
@@ -921,7 +921,7 @@ func (r *NodeSetReconciler) syncSlurmFeatures(
 
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmFeaturesFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncSlurmFeaturesFn); err != nil {
 		return err
 	}
 
@@ -1235,7 +1235,7 @@ func (r *NodeSetReconciler) doPodScale(
 		pod := podsToKeep[i]
 		return r.syncPodUncordon(ctx, nodeset, pod)
 	}
-	if _, err := utils.SlowStartBatch(len(podsToKeep), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(podsToKeep), uncordonFn); err != nil {
 		return err
 	}
 
@@ -1259,7 +1259,7 @@ func (r *NodeSetReconciler) doPodScale(
 		}
 		return nil
 	}
-	successfulCreations, err := utils.SlowStartBatch(numCreate, utils.SlowStartInitialBatchSize, createPodFn)
+	successfulCreations, err := utils.SlowStartBatchDefault(numCreate, createPodFn)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -1287,7 +1287,7 @@ func (r *NodeSetReconciler) doPodScale(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(podsToDelete), utils.SlowStartInitialBatchSize, fixPodPVCsFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(podsToDelete), fixPodPVCsFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1305,7 +1305,7 @@ func (r *NodeSetReconciler) doPodScale(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(numDelete, utils.SlowStartInitialBatchSize, deletePodFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(numDelete, deletePodFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1402,7 +1402,7 @@ func getPodKeys(pods []*corev1.Pod) []string {
 }
 
 // processCondemned will gracefully terminate the condemned NodeSet pod.
-// NOTE: intended to be used by utils.SlowStartBatch().
+// NOTE: intended to be used by utils.SlowStartBatchDefault().
 func (r *NodeSetReconciler) processCondemned(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1469,7 +1469,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		pod := podsToKeep[i]
 		return r.syncPodUncordon(ctx, nodeset, pod)
 	}
-	if _, err := utils.SlowStartBatch(len(podsToKeep), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(podsToKeep), uncordonFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1487,7 +1487,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(podsToDelete), utils.SlowStartInitialBatchSize, deletePodFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(podsToDelete), deletePodFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1495,7 +1495,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		pod := pods[i]
 		return r.processNodeSetPod(ctx, nodeset, pod)
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, processNodeSetPodFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), processNodeSetPodFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1503,7 +1503,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 }
 
 // processNodeSetPod will ensure the NodeSet pod can be scheduled and cleanup errant pods.
-// NOTE: intended to be used by utils.SlowStartBatch().
+// NOTE: intended to be used by utils.SlowStartBatchDefault().
 func (r *NodeSetReconciler) processNodeSetPod(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
