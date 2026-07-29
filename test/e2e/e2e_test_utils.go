@@ -5,6 +5,8 @@ package e2e
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"os/exec"
 	"strings"
 	"testing"
@@ -16,6 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient"
@@ -24,17 +28,20 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/types"
 )
 
-func getFeaturesFromConfig(install bool, test bool, config test.SlurmInstallationConfig, beforeSteps []types.Feature) []types.Feature {
+func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstallationConfig, beforeSteps []types.Feature) []types.Feature {
 	steps := beforeSteps
 
 	if install {
 		steps = append(steps, installSlurm(config))
 	}
-	if test {
+	if runTests {
 
 		steps = append(steps, testSlurmController())
 		steps = append(steps, testSlurmRestAPI(config.Accounting))
 		steps = append(steps, testSlurmNodeSet())
+		if config == (test.SlurmInstallationConfig{}) {
+			steps = append(steps, testSlurmJWTKeyRotation())
+		}
 
 		if config.Accounting {
 			steps = append(steps, testSlurmAccounting())
@@ -261,6 +268,120 @@ func testSlurmNodeSet() types.Feature {
 
 			return ctx
 		}).Feature()
+}
+
+func testSlurmJWTKeyRotation() types.Feature {
+	return features.New("Assess Slurm JWT signing key rotation").
+		Assess("referenced JWT Secret updates refresh the Slurm client", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			controller := &slinkyv1beta1.Controller{}
+			controllerKey := crclient.ObjectKey{
+				Namespace: test.SlurmNamespace,
+				Name:      "slurm",
+			}
+			require.NoError(t, crClient.Get(ctx, controllerKey, controller), "failed to get Controller")
+
+			jwtKeyRef := controller.AuthJwtRef()
+			secretKey := crclient.ObjectKey{
+				Namespace: controller.Namespace,
+				Name:      jwtKeyRef.Name,
+			}
+			jwtSecret := &corev1.Secret{}
+			require.NoError(t, crClient.Get(ctx, secretKey, jwtSecret), "failed to get JWT Secret")
+
+			// The chart-generated Secret is immutable. Recreate it once with the
+			// same data so the test can exercise a real Secret Update event.
+			if jwtSecret.Immutable != nil && *jwtSecret.Immutable {
+				mutableSecret := jwtSecret.DeepCopy()
+				mutableSecret.ResourceVersion = ""
+				mutableSecret.UID = ""
+				mutableSecret.CreationTimestamp = metav1.Time{}
+				mutableSecret.DeletionTimestamp = nil
+				mutableSecret.DeletionGracePeriodSeconds = nil
+				mutableSecret.ManagedFields = nil
+				mutableSecret.Immutable = nil
+
+				require.NoError(t, crClient.Delete(ctx, jwtSecret), "failed to delete immutable JWT Secret")
+				require.Eventually(t, func() bool {
+					current := &corev1.Secret{}
+					return apierrors.IsNotFound(crClient.Get(ctx, secretKey, current))
+				}, 30*time.Second, 500*time.Millisecond, "timed out waiting for immutable JWT Secret deletion")
+				require.NoError(t, crClient.Create(ctx, mutableSecret), "failed to recreate mutable JWT Secret")
+			}
+
+			// Capture the current slurmctld pod. Updating the key should replace it
+			// so Slurm and the operator both begin using the new signing key.
+			controllerPodKey := crclient.ObjectKey{
+				Namespace: test.SlurmNamespace,
+				Name:      "slurm-controller-0",
+			}
+			oldControllerPod := &corev1.Pod{}
+			require.NoError(t, crClient.Get(ctx, controllerPodKey, oldControllerPod), "failed to get slurmctld pod")
+
+			randomKey := make([]byte, 64)
+			_, err = rand.Read(randomKey)
+			require.NoError(t, err, "failed to generate rotated JWT signing key")
+
+			jwtSecret = &corev1.Secret{}
+			require.NoError(t, crClient.Get(ctx, secretKey, jwtSecret), "failed to get mutable JWT Secret")
+			jwtSecret.Data[jwtKeyRef.Key] = []byte(hex.EncodeToString(randomKey))
+			require.NoError(t, crClient.Update(ctx, jwtSecret), "failed to update JWT Secret")
+
+			require.Eventually(t, func() bool {
+				current := &corev1.Pod{}
+				if err := crClient.Get(ctx, controllerPodKey, current); err != nil {
+					return false
+				}
+				return current.UID != oldControllerPod.UID && podReady(current)
+			}, 2*time.Minute, 2*time.Second, "timed out waiting for slurmctld to adopt the rotated JWT key")
+
+			// NodeSet reconciliation performs authenticated Slurm REST requests.
+			// Without the JWT Secret watch, the old token is rejected here and
+			// the NodeSet cannot complete its scale-up.
+			nodesetKey := crclient.ObjectKey{
+				Namespace: test.SlurmNamespace,
+				Name:      "slurm-worker-slinky",
+			}
+			nodeset := &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+
+			var replicas int32 = 2
+			nodeset.Spec.Replicas = &replicas
+			require.NoError(t, crClient.Update(ctx, nodeset), "failed to scale NodeSet after JWT key rotation")
+			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+
+			test.RetryCommand(
+				ctx,
+				t,
+				"kubectl",
+				[]string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sinfo", "-N", "-n", "slinky-1", "--Format=StateLong", "-h"},
+				"idle",
+				"",
+				nil,
+				16,
+				5*time.Second,
+			)
+
+			nodeset = &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get scaled NodeSet")
+			replicas = 1
+			nodeset.Spec.Replicas = &replicas
+			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restore NodeSet replicas")
+			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+
+			return ctx
+		}).Feature()
+}
+
+func podReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
 }
 
 func testSlurmAccounting() types.Feature {
