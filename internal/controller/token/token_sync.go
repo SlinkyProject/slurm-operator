@@ -31,7 +31,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	token := &slinkyv1beta1.Token{}
 	if err := r.Get(ctx, req.NamespacedName, token); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("Token has been deleted", "request", req)
+			logger.Info("Token has been deleted")
 			return nil
 		}
 		return err
@@ -40,7 +40,7 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	defaults.SetTokenDefaults(token)
 
 	if !token.DeletionTimestamp.IsZero() {
-		logger.Info("Token is being deleted, skipping sync", "request", req)
+		logger.Info("Token is being deleted, skipping sync")
 		return nil
 	} else {
 		now := time.Now()

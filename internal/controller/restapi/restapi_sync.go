@@ -26,7 +26,7 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	restapi := &slinkyv1beta1.RestApi{}
 	if err := r.Get(ctx, req.NamespacedName, restapi); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("Restapi has been deleted", "request", req)
+			logger.Info("Restapi has been deleted")
 			return nil
 		}
 		return err
@@ -35,7 +35,7 @@ func (r *RestapiReconciler) Sync(ctx context.Context, req reconcile.Request) err
 	defaults.SetRestApiDefaults(restapi)
 
 	if !restapi.DeletionTimestamp.IsZero() {
-		logger.Info("Restapi is being deleted, skipping sync", "request", req)
+		logger.Info("Restapi is being deleted, skipping sync")
 		return nil
 	}
 

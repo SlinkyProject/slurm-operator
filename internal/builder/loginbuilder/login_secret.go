@@ -76,5 +76,10 @@ func (b *LoginBuilder) BuildLoginSshHostKeys(loginset *slinkyv1beta1.LoginSet) (
 
 	opts.Metadata.Labels = structutils.MergeMaps(opts.Metadata.Labels, labels.NewBuilder().WithLoginLabels(loginset).Build())
 
-	return b.CommonBuilder.BuildSecret(opts, loginset)
+	secret, err := b.CommonBuilder.BuildSecret(opts, loginset)
+	if err != nil {
+		return secret, fmt.Errorf("failed to build secret: %w", err)
+	}
+
+	return secret, nil
 }

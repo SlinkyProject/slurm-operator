@@ -37,7 +37,7 @@ func (b *CommonBuilder) BuildSecret(opts SecretOpts, owner metav1.Object) (*core
 	}
 
 	if owner == nil {
-		return nil, fmt.Errorf("failed to specify an owner")
+		return nil, fmt.Errorf("an owner must be specified")
 	}
 
 	if owner.GetNamespace() == out.GetNamespace() {

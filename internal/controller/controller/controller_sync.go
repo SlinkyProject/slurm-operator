@@ -30,7 +30,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	controller := &slinkyv1beta1.Controller{}
 	if err := r.Get(ctx, req.NamespacedName, controller); err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("Controller has been deleted", "request", req)
+			logger.Info("Controller has been deleted")
 			return nil
 		}
 		return err
@@ -39,7 +39,7 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	defaults.SetControllerDefaults(controller)
 
 	if !controller.DeletionTimestamp.IsZero() {
-		logger.Info("Controller is being deleted, skipping sync", "request", req)
+		logger.Info("Controller is being deleted, skipping sync")
 		return nil
 	}
 
