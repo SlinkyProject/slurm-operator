@@ -15,6 +15,10 @@ const (
 	SlowStartInitialBatchSize = kubecontroller.SlowStartInitialBatchSize
 )
 
+func SlowStartBatchDefault(count int, fn func(index int) error) (int, error) {
+	return SlowStartBatch(count, SlowStartInitialBatchSize, fn)
+}
+
 // SlowStartBatch tries to call the provided function a total of 'count' times,
 // starting slow to check for errors, then speeding up if calls succeed.
 //

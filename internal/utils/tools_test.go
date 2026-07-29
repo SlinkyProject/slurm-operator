@@ -5,10 +5,11 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSlowStartBatch(t *testing.T) {
@@ -67,13 +68,10 @@ func TestSlowStartBatch(t *testing.T) {
 	for _, test := range tests {
 		callCnt = 0
 		callLimit = test.callLimit
-		successes, err := SlowStartBatch(test.count, 1, test.fn)
-		if successes != test.expectedSuccesses {
-			t.Errorf("%s: unexpected processed batch size, expected %d, got %d", test.name, test.expectedSuccesses, successes)
-		}
-		if !errors.Is(err, test.expectedErr) {
-			t.Errorf("%s: unexpected processed batch size, expected %v, got %v", test.name, test.expectedErr, err)
-		}
+		successes, err := SlowStartBatch(test.count, SlowStartInitialBatchSize, test.fn)
+
+		require.Equal(t, test.expectedSuccesses, successes, "%s: unexpected processed batch size", test.name)
+		require.ErrorIs(t, err, test.expectedErr, "%s: unexpected error", test.name)
 		// verify that slowStartBatch stops trying more calls after a batch fails
 		if callCnt != test.expectedCallCnt {
 			t.Errorf("%s: slowStartBatch() still tries calls after a batch fails, expected %d calls, got %d", test.name, test.expectedCallCnt, callCnt)
