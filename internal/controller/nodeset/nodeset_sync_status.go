@@ -79,7 +79,7 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 		}
 		return r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod)
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmStatusFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncSlurmStatusFn); err != nil {
 		return err
 	}
 
@@ -329,7 +329,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncPodPDBLabelsFn); err != nil {
+	if _, err := utils.SlowStartBatchDefault(len(pods), syncPodPDBLabelsFn); err != nil {
 		return err
 	}
 
