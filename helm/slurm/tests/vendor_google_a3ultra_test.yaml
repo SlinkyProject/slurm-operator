@@ -1,0 +1,242 @@
+---
+suite: test vendor google gke a3ultra
+templates:
+  - nodeset/nodeset-cr.yaml
+  - controller/controller-cr.yaml
+  - vendor/google/a3ultra/config-configmap.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should not inject A3 Ultra configuration when disabled
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3ultra: []
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations
+      - notExists:
+          path: spec.template.spec.containers
+      - equal:
+          path: spec.template.spec.initContainers
+          value: []
+      - equal:
+          path: spec.template.spec.volumes
+          value: []
+
+  - it: should inject A3 Ultra configuration when enabled and targeting nodeset
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+              networks: ["default", "rdma-0", "rdma-1", "rdma-2", "rdma-3", "rdma-4", "rdma-5", "rdma-6", "rdma-7"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      # Node Pool Selector
+      - equal:
+          path: spec.template.spec.nodeSelector["cloud.google.com/gke-nodepool"]
+          value: "a3-ultra-nodepool"
+      # Automatic GPU limits/requests injection
+      - equal:
+          path: spec.slurmd.resources.limits["nvidia.com/gpu"]
+          value: 8
+      - equal:
+          path: spec.slurmd.resources.requests["nvidia.com/gpu"]
+          value: 8
+      # Annotations
+      - equal:
+          path: spec.template.metadata.annotations["networking.gke.io/default-interface"]
+          value: "eth0"
+      - equal:
+          path: spec.template.metadata.annotations["networking.gke.io/interfaces"]
+          value: |
+            [
+              {"interfaceName":"eth0","network":"default"},
+              {"interfaceName":"eth2","network":"rdma-0"},
+              {"interfaceName":"eth3","network":"rdma-1"},
+              {"interfaceName":"eth4","network":"rdma-2"},
+              {"interfaceName":"eth5","network":"rdma-3"},
+              {"interfaceName":"eth6","network":"rdma-4"},
+              {"interfaceName":"eth7","network":"rdma-5"},
+              {"interfaceName":"eth8","network":"rdma-6"},
+              {"interfaceName":"eth9","network":"rdma-7"}
+            ]
+      # Volumes
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: library-dir-host
+            hostPath:
+              path: /home/kubernetes/bin/nvidia
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: gib
+            hostPath:
+              path: /home/kubernetes/bin/gib
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: sys
+            hostPath:
+              path: /sys
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: proc-sys
+            hostPath:
+              path: /proc/sys
+      # slurmd container volume mounts
+      - contains:
+          path: spec.slurmd.volumeMounts
+          content:
+            name: library-dir-host
+            mountPath: /usr/local/nvidia
+      - contains:
+          path: spec.slurmd.volumeMounts
+          content:
+            name: gib
+            mountPath: /usr/local/gib
+      # slurmd container environment variables
+      - contains:
+          path: spec.slurmd.env
+          content:
+            name: LD_LIBRARY_PATH
+            value: /usr/local/nvidia/lib64
+      - contains:
+          path: spec.slurmd.env
+          content:
+            name: PATH
+            value: /usr/local/nvidia/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      # Automatic extraConfMap Gres injection
+      - equal:
+          path: spec.extraConf
+          value: "gres=gpu:nvidia_h200:8"
+
+  - it: should inject AutoDetect=nvidia in gres.conf when A3 Ultra is enabled
+    template: vendor/google/a3ultra/config-configmap.yaml
+    set:
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+              networks: ["default", "rdma-0", "rdma-1", "rdma-2", "rdma-3", "rdma-4", "rdma-5", "rdma-6", "rdma-7"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ConfigMap
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-config-a3ultra
+      - equal:
+          path: data["gres.conf"]
+          value: "AutoDetect=nvidia\n"
+
+  - it: should not override gres.conf if already provided in configFiles when A3 Ultra is enabled
+    template: vendor/google/a3ultra/config-configmap.yaml
+    set:
+      configFiles:
+        gres.conf: |
+          AutoDetect=off
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+              networks: ["default", "rdma-0", "rdma-1", "rdma-2", "rdma-3", "rdma-4", "rdma-5", "rdma-6", "rdma-7"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should include configFileRefs in controller spec when A3 Ultra is enabled
+    template: controller/controller-cr.yaml
+    set:
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+              networks: ["default", "rdma-0", "rdma-1", "rdma-2", "rdma-3", "rdma-4", "rdma-5", "rdma-6", "rdma-7"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - contains:
+          path: spec.configFileRefs
+          any: true
+          content:
+            name: test-release-slurm-config-a3ultra
+
+  - it: should fail if exactly 9 networks are not specified
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+              networks: ["default", "rdma-0"]
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Ultra requires exactly 9 networks, but 2 were specified.
+
+  - it: should fail if networks are completely missing
+    template: nodeset/nodeset-cr.yaml
+    set:
+      vendor:
+        google:
+          a3ultra:
+            - targetNodeSet: "slinky"
+              nodePool: "a3-ultra-nodepool"
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            image:
+              tag: v1.2.3
+    asserts:
+      - failedTemplate:
+          errorMessage: Google Cloud GKE A3 Ultra requires exactly 9 networks, but 0 were specified.

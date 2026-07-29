@@ -1,0 +1,49 @@
+---
+slurmd:
+  env:
+    - name: LD_LIBRARY_PATH
+      value: /usr/local/nvidia/lib64
+    - name: PATH
+      value: /usr/local/nvidia/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  volumeMounts:
+    - name: library-dir-host
+      mountPath: /usr/local/nvidia
+    - name: gib
+      mountPath: /usr/local/gib
+  resources:
+    requests:
+      nvidia.com/gpu: 8
+    limits:
+      nvidia.com/gpu: 8
+extraConfMap:
+  gres: "gpu:nvidia_h200:8"
+metadata:
+  annotations:
+    networking.gke.io/default-interface: 'eth0'
+    networking.gke.io/interfaces: |
+      [
+      {{- $networkCount := len .a3ultraConfig.networks -}}
+      {{- range $index, $network := .a3ultraConfig.networks }}
+        {{- $ifName := printf "eth%d" $index -}}
+        {{- if gt $index 0 -}}
+          {{- $ifName = printf "eth%d" (add $index 1) -}}
+        {{- end }}
+        {"interfaceName":{{ $ifName | quote }},"network":{{ $network | quote }}}{{ if ne (add $index 1) $networkCount }},{{ end }}
+      {{- end }}
+      ]
+podSpec:
+  nodeSelector:
+    cloud.google.com/gke-nodepool: '{{ .a3ultraConfig.nodePool }}'
+  volumes:
+    - name: library-dir-host
+      hostPath:
+        path: /home/kubernetes/bin/nvidia
+    - name: gib
+      hostPath:
+        path: /home/kubernetes/bin/gib
+    - name: sys
+      hostPath:
+        path: /sys
+    - name: proc-sys
+      hostPath:
+        path: /proc/sys

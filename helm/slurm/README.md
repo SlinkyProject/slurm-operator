@@ -204,6 +204,7 @@ Kubernetes: `>= 1.29.0-0`
 | sssd.conf | string | `"[sssd]\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nid_provider = proxy\nproxy_lib_name = files\nauth_provider = proxy\nproxy_pam_target = sssd-shadowutils\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
 | sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes presence over `conf` if not empty. |
 | vendor.google.a3mega | list | `[]` | A3 Mega configurations. List of objects corresponding to nodesets. |
+| vendor.google.a3ultra | list | `[]` | A3 Ultra configurations. List of objects corresponding to nodesets. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |
 | vendor.nvidia.dcgm.jobMappingDir | string | `"/var/lib/dcgm-exporter/job-mapping"` | Directory path where GPU-to-job mapping files will be stored |
 | vendor.nvidia.dcgm.scriptPriority | string | `"90"` | Script execution priority (lower numbers run first) |
