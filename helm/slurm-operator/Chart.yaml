@@ -5,11 +5,12 @@ kubeVersion: ">= 1.29.0-0"
 name: slurm-operator
 description: Slurm Operator
 type: application
-appVersion: "25.11"
+appVersion: "1.0.4"
 version: 1.0.4
 
 annotations:
   license: Apache-2.0
+  slinky.slurm.net/minimum-slurm-version: "25.11"
 
 home: https://slinky.schedmd.com/
 icon: https://raw.githubusercontent.com/SlinkyProject/docs/refs/heads/main/docs/_static/images/slinky.svg
