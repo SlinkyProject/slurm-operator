@@ -50,12 +50,19 @@ version: ## Show current version.
 	@echo VERSION=$(VERSION)
 
 .PHONY: version-match
-version-match: version ## Check if versions are consistent.
+version-match: version ## Sync chart versions with VERSION.
 	@if [ -z "$$(echo $(VERSION) | grep -Eo "^[[:digit:]]+\.[[:digit:]]+\.[[:digit:]](-[[:alpha:]][[:alnum:]]*(\.[[:digit:]]+)?)?$$")" ]; then \
 		echo "VERSION is not semver: $(VERSION)" ;\
 		exit 1 ;\
 	fi
-	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), $(SED) -i -E 's/version:[[:space:]]+.+$$/version: $(VERSION)/g' ${chart} ;)
+	$(foreach chart, $(wildcard ./helm/**/Chart.yaml), \
+		$(SED) -i -E \
+			-e 's/^([[:space:]]*)version:[[:space:]]+.*$$/\1version: $(VERSION)/' \
+			${chart} ;)
+	# The Slurm chart appVersion tracks Slurm itself, not the operator release.
+	$(SED) -i -E \
+		-e 's/^appVersion:[[:space:]]+.*$$/appVersion: "$(VERSION)"/' \
+		./helm/slurm-operator/Chart.yaml
 
 ##@ Build
 
