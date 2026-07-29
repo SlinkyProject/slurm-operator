@@ -11,8 +11,8 @@ github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lpr
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
-github.com/SlinkyProject/slurm-client v1.0.4 h1:Z2Qp8wUbwAr6vvfdMWI3QQgZLDVeHToOEUF9z2jhtuo=
-github.com/SlinkyProject/slurm-client v1.0.4/go.mod h1:ewXjzzjfbrlp3oXLeCvkTdozo+QBIsrZa6fpFoe3BqI=
+github.com/SlinkyProject/slurm-client v1.0.5 h1:4kg4Q/KImWHGGKs0xK2vIEQu/+D7Ovd8IS2e9oo9fm4=
+github.com/SlinkyProject/slurm-client v1.0.5/go.mod h1:tB7L+31Jk0/S9LjBL9jzFMFC9Cfvc4fy8Ld/KL9ZrD8=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat636LX7Bqt5lYEZ27JNDcqxfjdBQuJ/MM4CN/Lzo=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=
@@ -38,8 +38,8 @@ github.com/containerd/console v1.0.5 h1:R0ymNeydRqH2DmakFNdmjR2k0t7UPuiOV/N/27/q
 github.com/containerd/console v1.0.5/go.mod h1:YynlIjWYF8myEu6sdkwKIvGQq+cOckRm6So2avqoYAk=
 github.com/containerd/containerd/api v1.10.0 h1:5n0oHYVBwN4VhoX9fFykCV9dF1/BvAXeg2F8W6UYq1o=
 github.com/containerd/containerd/api v1.10.0/go.mod h1:NBm1OAk8ZL+LG8R0ceObGxT5hbUYj7CzTmR3xh0DlMM=
-github.com/containerd/containerd/v2 v2.2.2 h1:mjVQdtfryzT7lOqs5EYUFZm8ioPVjOpkSoG1GJPxEMY=
-github.com/containerd/containerd/v2 v2.2.2/go.mod h1:5Jhevmv6/2J+Iu/A2xXAdUIdI5Ah/hfyO7okJ4AFIdY=
+github.com/containerd/containerd/v2 v2.2.5 h1:KTFzB02LviYmmfRmz8r9UFd+n6YlddVFK+5lbgQXUTU=
+github.com/containerd/containerd/v2 v2.2.5/go.mod h1:5t2+xFv2dGd/iDYp9Z8DXB4cmWrWQi1XqxGJPS2gBzU=
 github.com/containerd/continuity v0.4.5 h1:ZRoN1sXq9u7V6QoHMcVWGhOwDFqZ4B9i5H6un1Wh0x4=
 github.com/containerd/continuity v0.4.5/go.mod h1:/lNJvtJKUQStBzpVQ1+rasXO1LAWtUQssk28EZvJ3nE=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=

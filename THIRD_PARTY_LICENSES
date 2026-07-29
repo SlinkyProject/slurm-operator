@@ -11,70 +11,10 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.25.1
 - License: Apache-2.0
 
-### github.com/SlinkyProject/slurm-client/api/v0041
-- Name: github.com/SlinkyProject/slurm-client/api/v0041
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/api/v0042
-- Name: github.com/SlinkyProject/slurm-client/api/v0042
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/api/v0043
-- Name: github.com/SlinkyProject/slurm-client/api/v0043
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/api/v0044
-- Name: github.com/SlinkyProject/slurm-client/api/v0044
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/client
-- Name: github.com/SlinkyProject/slurm-client/pkg/client
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/client/api/v0041
-- Name: github.com/SlinkyProject/slurm-client/pkg/client/api/v0041
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/client/api/v0042
-- Name: github.com/SlinkyProject/slurm-client/pkg/client/api/v0042
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/client/api/v0043
-- Name: github.com/SlinkyProject/slurm-client/pkg/client/api/v0043
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/client/api/v0044
-- Name: github.com/SlinkyProject/slurm-client/pkg/client/api/v0044
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/event
-- Name: github.com/SlinkyProject/slurm-client/pkg/event
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/object
-- Name: github.com/SlinkyProject/slurm-client/pkg/object
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/types
-- Name: github.com/SlinkyProject/slurm-client/pkg/types
-- Version: v1.0.4
-- License: Unknown
-
-### github.com/SlinkyProject/slurm-client/pkg/utils
-- Name: github.com/SlinkyProject/slurm-client/pkg/utils
-- Version: v1.0.4
-- License: Unknown
+### github.com/SlinkyProject/slurm-client
+- Name: github.com/SlinkyProject/slurm-client
+- Version: v1.0.5
+- License: Apache-2.0
 
 ### github.com/antlr4-go/antlr/v4
 - Name: github.com/antlr4-go/antlr/v4
