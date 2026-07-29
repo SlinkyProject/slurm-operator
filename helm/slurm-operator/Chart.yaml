@@ -5,7 +5,7 @@ kubeVersion: ">= 1.29.0-0"
 name: slurm-operator
 description: Slurm Operator
 type: application
-appVersion: "25.11"
+appVersion: "1.0.4"
 version: 1.0.4
 
 annotations:
