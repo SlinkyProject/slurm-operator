@@ -4,6 +4,7 @@
 package e2e
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -14,8 +15,16 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/types"
 )
 
+func parseE2EFlags(imageConfig *test.SlurmImageConfig) {
+	flag.StringVar(&imageConfig.Repo, "e2e-image-repo", "ghcr.io/slinkyproject", "container registry + repo providing Slurm container images")
+	flag.StringVar(&imageConfig.Tag, "e2e-image-tag", "26.05-ubuntu26.04", "image tag to use for Slurm images")
+	flag.Parse()
+}
+
 // TestMain configures the environment within which all e2e-tests are run
 func TestMain(m *testing.M) {
+	parseE2EFlags(&test.SlurmImage)
+
 	path := conf.ResolveKubeConfigFile()
 	cfg := envconf.NewWithKubeConfig(path)
 	test.Testenv = env.NewWithConfig(cfg)

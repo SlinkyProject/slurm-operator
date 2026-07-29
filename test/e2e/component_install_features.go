@@ -153,9 +153,27 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 
 	if slurmConfig.Pyxis {
 		opts = append(opts, helm.WithArgs(`--set-json 'configFiles={"plugstack.conf":"include /usr/share/pyxis/*"}'`))
-		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.login.image.repository=ghcr.io/slinkyproject/login-pyxis'"))
+		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.login.image.repository="+test.SlurmImage.Repo+"/login-pyxis'"))
 		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.securityContext.privileged=true'"))
-		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository=ghcr.io/slinkyproject/slurmd-pyxis'"))
+		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository="+test.SlurmImage.Repo+"/slurmd-pyxis'"))
+	}
+
+	if test.SlurmImage.Repo != "" {
+		opts = append(opts, helm.WithArgs("--set 'controller.slurmctld.image.repository="+test.SlurmImage.Repo+"/slurmctld'"))
+		opts = append(opts, helm.WithArgs("--set 'controller.reconfigure.image.repository="+test.SlurmImage.Repo+"/slurmctld'"))
+		opts = append(opts, helm.WithArgs("--set 'restapi.slurmrestd.image.repository="+test.SlurmImage.Repo+"/slurmrestd'"))
+		opts = append(opts, helm.WithArgs("--set 'accounting.slurmdbd.image.repository="+test.SlurmImage.Repo+"/slurmdbd'"))
+		opts = append(opts, helm.WithArgs("--set 'loginsetDefaults.login.image.repository="+test.SlurmImage.Repo+"/login'"))
+		opts = append(opts, helm.WithArgs("--set 'nodesetDefaults.slurmd.image.repository="+test.SlurmImage.Repo+"/slurmd'"))
+	}
+
+	if test.SlurmImage.Tag != "" {
+		opts = append(opts, helm.WithArgs("--set 'controller.slurmctld.image.tag="+test.SlurmImage.Tag+"'"))
+		opts = append(opts, helm.WithArgs("--set 'controller.reconfigure.image.tag="+test.SlurmImage.Tag+"'"))
+		opts = append(opts, helm.WithArgs("--set 'restapi.slurmrestd.image.tag="+test.SlurmImage.Tag+"'"))
+		opts = append(opts, helm.WithArgs("--set 'accounting.slurmdbd.image.tag="+test.SlurmImage.Tag+"'"))
+		opts = append(opts, helm.WithArgs("--set 'loginsetDefaults.login.image.tag="+test.SlurmImage.Tag+"'"))
+		opts = append(opts, helm.WithArgs("--set 'nodesetDefaults.slurmd.image.tag="+test.SlurmImage.Tag+"'"))
 	}
 
 	err := manager.RunInstall(opts...)
