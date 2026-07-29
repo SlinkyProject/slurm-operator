@@ -211,11 +211,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v5.3.1
 - License: MIT
 
-### github.com/google/btree
-- Name: github.com/google/btree
-- Version: v1.1.3
-- License: Apache-2.0
-
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
 - Version: v0.26.0
@@ -349,11 +344,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### github.com/munnerz/goautoneg
 - Name: github.com/munnerz/goautoneg
 - Version: v0.0.0-20191010083416-a7dc8b61c822
-- License: BSD-3-Clause
-
-### github.com/mxk/go-flowrate/flowrate
-- Name: github.com/mxk/go-flowrate/flowrate
-- Version: v0.0.0-20140419014527-cca7078d478f
 - License: BSD-3-Clause
 
 ### github.com/oapi-codegen/runtime
@@ -493,12 +483,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
 - Name: go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
-- Version: v0.67.0
+- Version: v0.68.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
 - Name: go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
-- Version: v0.67.0
+- Version: v0.68.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel
@@ -523,12 +513,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
-- Version: v1.42.0
+- Version: v1.43.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
-- Version: v1.42.0
+- Version: v1.43.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/metric
@@ -578,7 +568,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.yaml.in/yaml/v2
 - Name: go.yaml.in/yaml/v2
-- Version: v2.4.3
+- Version: v2.4.4
 - License: Apache-2.0
 
 ### go.yaml.in/yaml/v3
@@ -593,7 +583,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/exp/slices
 - Name: golang.org/x/exp/slices
-- Version: v0.0.0-20250718183923-645b1fa84792
+- Version: v0.0.0-20251219203646-944ab1f22d93
 - License: BSD-3-Clause
 
 ### golang.org/x/net
@@ -653,7 +643,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### google.golang.org/protobuf
 - Name: google.golang.org/protobuf
-- Version: v1.36.11
+- Version: v1.36.12-0.20260120151049-f2248ac996af
 - License: BSD-3-Clause
 
 ### gopkg.in/evanphx/json-patch.v4
@@ -673,47 +663,47 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### k8s.io/api
 - Name: k8s.io/api
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/apiextensions-apiserver/pkg
 - Name: k8s.io/apiextensions-apiserver/pkg
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/apimachinery/pkg
 - Name: k8s.io/apimachinery/pkg
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/apimachinery/third_party/forked/golang
 - Name: k8s.io/apimachinery/third_party/forked/golang
-- Version: v0.35.2
+- Version: v0.36.2
 - License: BSD-3-Clause
 
 ### k8s.io/apiserver
 - Name: k8s.io/apiserver
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/client-go
 - Name: k8s.io/client-go
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/component-base
 - Name: k8s.io/component-base
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/component-helpers
 - Name: k8s.io/component-helpers
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/controller-manager/pkg/features
 - Name: k8s.io/controller-manager/pkg/features
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/klog/v2
@@ -723,42 +713,47 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### k8s.io/kube-openapi/pkg
 - Name: k8s.io/kube-openapi/pkg
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
 - Name: k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: BSD-3-Clause
 
 ### k8s.io/kube-openapi/pkg/internal/third_party/govalidator
 - Name: k8s.io/kube-openapi/pkg/internal/third_party/govalidator
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: MIT
 
 ### k8s.io/kube-openapi/pkg/validation/errors
 - Name: k8s.io/kube-openapi/pkg/validation/errors
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/validation/spec
 - Name: k8s.io/kube-openapi/pkg/validation/spec
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/validation/strfmt
 - Name: k8s.io/kube-openapi/pkg/validation/strfmt
-- Version: v0.0.0-20260304202019-5b3e3fdb0acf
+- Version: v0.0.0-20260317180543-43fb72c5454a
 - License: Apache-2.0
 
 ### k8s.io/kubelet/pkg/apis
 - Name: k8s.io/kubelet/pkg/apis
-- Version: v0.35.2
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/kubernetes/pkg
 - Name: k8s.io/kubernetes/pkg
-- Version: v1.35.2
+- Version: v1.36.2
+- License: Apache-2.0
+
+### k8s.io/streaming/pkg
+- Name: k8s.io/streaming/pkg
+- Version: v0.36.2
 - License: Apache-2.0
 
 ### k8s.io/utils
@@ -771,14 +766,19 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.0.0-20260210185600-b8788abfbbc2
 - License: BSD-3-Clause
 
+### k8s.io/utils/third_party/forked/golang/btree
+- Name: k8s.io/utils/third_party/forked/golang/btree
+- Version: v0.0.0-20260210185600-b8788abfbbc2
+- License: Apache-2.0
+
 ### sigs.k8s.io/apiserver-network-proxy/konnectivity-client
 - Name: sigs.k8s.io/apiserver-network-proxy/konnectivity-client
-- Version: v0.33.0
+- Version: v0.34.0
 - License: Apache-2.0
 
 ### sigs.k8s.io/controller-runtime
 - Name: sigs.k8s.io/controller-runtime
-- Version: v0.23.3
+- Version: v0.24.0
 - License: Apache-2.0
 
 ### sigs.k8s.io/e2e-framework
