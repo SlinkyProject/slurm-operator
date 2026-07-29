@@ -6,7 +6,7 @@ name: slurm
 description: Slurm Cluster
 type: application
 appVersion: "26.05"
-version: 1.2.0
+version: 1.2.1
 
 annotations:
   license: Apache-2.0
