@@ -186,7 +186,3 @@ type ControllerList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Controller `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&Controller{}, &ControllerList{})
-}

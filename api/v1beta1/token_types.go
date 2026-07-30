@@ -87,7 +87,3 @@ type TokenList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Token `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&Token{}, &TokenList{})
-}
