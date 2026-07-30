@@ -79,7 +79,3 @@ type RestApiList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []RestApi `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&RestApi{}, &RestApiList{})
-}
