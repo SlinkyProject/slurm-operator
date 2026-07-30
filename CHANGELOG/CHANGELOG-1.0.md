@@ -1,3 +1,48 @@
+## v1.0.5
+
+### Added
+
+- Annotation describing Slinky minimum supported Slurm version.
+
+### Fixed
+
+- Fixed logfile containers blocking quick terminating of the pod.
+- Fixed cases where slurmctld would get blocked by fifo_open on an unlinked
+  inode from logfile sidecar.
+- Fixed case where the node reason would be overwritten on subsequent reconcile
+  despite already being drained for a different reason.
+- Do not emit error when service monitor GVK is not registered.
+- Fixed cases where status updates would cause continuous reconciles under
+  certain conditions.
+- Fixed NodeSet pod deletion ordering so equally cordoned pods are ordered by
+  the remaining tiebreakers instead of arbitrarily.
+- Fixed NodeSet rolling and scheduled updates that could delete healthy old pods
+  instead of unhealthy ones, by partitioning pods on health rather than creation
+  timestamp.
+- Aggregate syncNodeSetPodStatus errors in syncStatus.
+- Grant secrets/finalizers RBAC to token-controller.
+- Fixed NodeSet PVC creation events reporting a misleading not found failure for
+  successfully created claims.
+- Adds sanitization when setting Slurm node drain reason from Node annotation.
+- Fixed NodeSet rolling updates condemning old pods past maxUnavailable while
+  replacement pods were still unavailable, which could drain a NodeSet to zero
+  available workers on a slow or broken image pull.
+- Fixed a panic in the NodeSet, RestApi, and LoginSet event handlers when
+  listing referenced CRs failed.
+- Fix security vulnerabilities.
+- GO-2026-4970 GO-2026-5856.
+- GO-2026-5942 GO-2026-5970.
+- Fixed slurmrestd not being restricted to the slurmctld openapi plugin when the
+  Controller has no accountingRef.
+- Fixed slurmrestd not being restricted to the slurmctld openapi plugin when the
+  Controller has no accountingRef.
+- GO-2026-5158.
+- Fixed the metrics-secure flag being accepted but never applied; setting it now
+  serves metrics via HTTPS with authentication and authorization. Also fixed
+  metricsPort 0 not disabling the operator metrics endpoint.
+- Align Helm AppVersion and Version with Slinky Version.
+- GO-2026-6061.
+
 ## v1.0.4
 
 ### Added
