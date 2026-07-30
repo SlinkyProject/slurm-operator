@@ -518,7 +518,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/oauth2
 - Name: golang.org/x/oauth2
-- Version: v0.35.0
+- Version: v0.36.0
 - License: BSD-3-Clause
 
 ### golang.org/x/sync
@@ -553,17 +553,17 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### google.golang.org/genproto/googleapis/api
 - Name: google.golang.org/genproto/googleapis/api
-- Version: v0.0.0-20260401024825-9d38bb4040a9
+- Version: v0.0.0-20260414002931-afd174a4e478
 - License: Apache-2.0
 
 ### google.golang.org/genproto/googleapis/rpc
 - Name: google.golang.org/genproto/googleapis/rpc
-- Version: v0.0.0-20260401024825-9d38bb4040a9
+- Version: v0.0.0-20260414002931-afd174a4e478
 - License: Apache-2.0
 
 ### google.golang.org/grpc
 - Name: google.golang.org/grpc
-- Version: v1.80.0
+- Version: v1.82.1
 - License: Apache-2.0
 
 ### google.golang.org/protobuf
