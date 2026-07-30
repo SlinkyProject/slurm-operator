@@ -13,7 +13,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
-- Version: v1.2.0
+- Version: v1.2.1
 - License: Apache-2.0
 
 ### github.com/antlr4-go/antlr/v4
@@ -613,7 +613,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/time/rate
 - Name: golang.org/x/time/rate
-- Version: v0.14.0
+- Version: v0.15.0
 - License: BSD-3-Clause
 
 ### gomodules.xyz/jsonpatch/v2
@@ -703,32 +703,32 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### k8s.io/kube-openapi/pkg
 - Name: k8s.io/kube-openapi/pkg
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
 - Name: k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: BSD-3-Clause
 
 ### k8s.io/kube-openapi/pkg/internal/third_party/govalidator
 - Name: k8s.io/kube-openapi/pkg/internal/third_party/govalidator
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: MIT
 
 ### k8s.io/kube-openapi/pkg/validation/errors
 - Name: k8s.io/kube-openapi/pkg/validation/errors
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/validation/spec
 - Name: k8s.io/kube-openapi/pkg/validation/spec
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: Apache-2.0
 
 ### k8s.io/kube-openapi/pkg/validation/strfmt
 - Name: k8s.io/kube-openapi/pkg/validation/strfmt
-- Version: v0.0.0-20260317180543-43fb72c5454a
+- Version: v0.0.0-20260319004828-5883c5ee87b9
 - License: Apache-2.0
 
 ### k8s.io/kubelet/pkg/apis
@@ -748,17 +748,17 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### k8s.io/utils
 - Name: k8s.io/utils
-- Version: v0.0.0-20260210185600-b8788abfbbc2
+- Version: v0.0.0-20260319190234-28399d86e0b5
 - License: Apache-2.0
 
 ### k8s.io/utils/internal/third_party/forked/golang
 - Name: k8s.io/utils/internal/third_party/forked/golang
-- Version: v0.0.0-20260210185600-b8788abfbbc2
+- Version: v0.0.0-20260319190234-28399d86e0b5
 - License: BSD-3-Clause
 
 ### k8s.io/utils/third_party/forked/golang/btree
 - Name: k8s.io/utils/third_party/forked/golang/btree
-- Version: v0.0.0-20260210185600-b8788abfbbc2
+- Version: v0.0.0-20260319190234-28399d86e0b5
 - License: Apache-2.0
 
 ### sigs.k8s.io/apiserver-network-proxy/konnectivity-client
