@@ -7,8 +7,7 @@ NOTICE linguist-generated merge=ours
 THIRD_PARTY_LICENSES linguist-generated merge=ours
 
 # Golang
-go.mod linguist-generated merge=union
-go.sum linguist-generated merge=ours
+go.sum linguist-generated merge=union
 *.pb.go linguist-generated merge=ours
 vendor/* linguist-vendored
 
