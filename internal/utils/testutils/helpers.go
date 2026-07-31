@@ -4,17 +4,47 @@
 package testutils
 
 import (
+	"context"
 	"time"
 
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 const Timeout = 30 * time.Second
 const Interval = 2 * time.Second
+
+// ExpectNotRecreated asserts that a controller does not recreate obj, deleting
+// it again whenever it reappears until it has stayed absent for several polls.
+//
+// A reconcile that read the owner before its deletionTimestamp was visible can
+// still be in flight and recreate obj once, and how long that straggler takes
+// varies by runner speed, so a fixed window is inherently flaky. Draining
+// stragglers instead still fails on a genuine regression, where obj is
+// recreated for as long as the timeout allows.
+func ExpectNotRecreated(ctx context.Context, c client.Client, obj client.Object) {
+	ginkgo.GinkgoHelper()
+	const absencesRequired = 5
+	key := client.ObjectKeyFromObject(obj)
+	absences := 0
+	gomega.Eventually(func(g gomega.Gomega) {
+		err := c.Get(ctx, key, obj)
+		if err == nil {
+			g.Expect(c.Delete(ctx, obj)).To(gomega.Succeed())
+			absences = 0
+		} else {
+			g.Expect(client.IgnoreNotFound(err)).To(gomega.Succeed())
+			absences++
+		}
+		g.Expect(absences).To(gomega.BeNumerically(">=", absencesRequired), "%s keeps being recreated", key)
+	}, Timeout, Interval).Should(gomega.Succeed())
+}
 
 func NewController(name string, slurmKeyRef, jwtKeyRef corev1.SecretKeySelector, accounting *slinkyv1beta1.Accounting) *slinkyv1beta1.Controller {
 	var accountingRef *corev1.LocalObjectReference
