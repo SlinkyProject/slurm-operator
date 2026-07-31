@@ -91,18 +91,9 @@ var _ = Describe("RestApi Controller", func() {
 			By("Deleting Deployment child while RestApi is terminating")
 			Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
-			Eventually(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Verifying Deployment child is NOT recreated")
-			Consistently(func(g Gomega) {
-				err := k8sClient.Get(ctx, deploymentKey, deployment)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, 5*testutils.Interval, testutils.Interval).Should(Succeed())
+			testutils.ExpectNotRecreated(ctx, k8sClient, deployment)
 
 			By("Cleaning up: removing foregroundDeletion finalizer")
 			restapi := &slinkyv1beta1.RestApi{}
