@@ -76,8 +76,10 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 						},
 					},
 					Selector: map[string]string{
-						"app.kubernetes.io/instance": "slurm",
-						"app.kubernetes.io/name":     "slurmctld",
+						"app.kubernetes.io/component":       "controller",
+						"app.kubernetes.io/instance":        "slurm",
+						"app.kubernetes.io/name":            "slurmctld",
+						slinkyv1beta1.LabelControllerActive: "true",
 					},
 				},
 			},
@@ -115,8 +117,10 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 						},
 					},
 					Selector: map[string]string{
-						"app.kubernetes.io/instance": "slurm",
-						"app.kubernetes.io/name":     "slurmctld",
+						"app.kubernetes.io/component":       "controller",
+						"app.kubernetes.io/instance":        "slurm",
+						"app.kubernetes.io/name":            "slurmctld",
+						slinkyv1beta1.LabelControllerActive: "true",
 					},
 				},
 			},
@@ -137,7 +141,7 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 			got2, err := b.BuildController(tt.args.controller)
 
 			require.NoError(t, err)
-			require.True(t, set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector).UnsortedList()...))
+			require.True(t, set.KeySet(got2.Labels).HasAll(set.KeySet(got.Spec.Selector).Delete(slinkyv1beta1.LabelControllerActive).UnsortedList()...))
 			require.True(t,
 				got.Spec.Ports[0].TargetPort.String() == got2.Spec.Template.Spec.Containers[0].Ports[0].Name ||
 					got.Spec.Ports[0].TargetPort.IntValue() == int(got2.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort))
@@ -146,9 +150,7 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 				require.Equal(t, tt.want.Spec, got.Spec)
 			}
 
-			if tt.args.controller.Spec.HighAvailability.Enabled {
-				require.Equal(t, "true", got.Spec.Selector[slinkyv1beta1.LabelControllerActive])
-			}
+			require.Equal(t, "true", got.Spec.Selector[slinkyv1beta1.LabelControllerActive])
 		})
 	}
 }
