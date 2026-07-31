@@ -441,7 +441,3 @@ type NodeSetList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []NodeSet `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&NodeSet{}, &NodeSetList{})
-}
