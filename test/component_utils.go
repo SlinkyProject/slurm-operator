@@ -114,6 +114,8 @@ func DoSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 	manager := helm.New(config.KubeconfigFile())
 
 	setValuesFile := fmt.Sprintf("--values %s/helm/slurm/values.yaml", Basepath)
+	enableNodeset := "--set nodesets.slinky.enabled=true"
+	enablePartition := "--set partitions.all.enabled=true"
 
 	opts := []helm.Option{}
 	opts = append(
@@ -121,7 +123,7 @@ func DoSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		helm.WithName("slurm"),
 		helm.WithNamespace(SlurmNamespace),
 		helm.WithChart(Basepath+"helm/slurm"),
-		helm.WithArgs(setValuesFile),
+		helm.WithArgs(setValuesFile, enableNodeset, enablePartition),
 		helm.WithWait(),
 		helm.WithTimeout("10m"),
 	)
