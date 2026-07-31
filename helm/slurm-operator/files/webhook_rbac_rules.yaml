@@ -4,6 +4,7 @@ rules:
     resources:
       - configmaps
       - nodes
+      - persistentvolumeclaims
       - pods/binding
     verbs:
       - get

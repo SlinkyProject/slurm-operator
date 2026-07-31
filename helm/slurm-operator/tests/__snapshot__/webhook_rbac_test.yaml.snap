@@ -32,6 +32,7 @@ manifest should match snapshot:
         resources:
           - configmaps
           - nodes
+          - persistentvolumeclaims
           - pods/binding
         verbs:
           - get

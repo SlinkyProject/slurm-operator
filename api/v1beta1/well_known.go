@@ -7,10 +7,11 @@ package v1beta1
 const (
 	SlinkyPrefix = "slinky.slurm.net/"
 
-	NodeSetPrefix  = "nodeset." + SlinkyPrefix
-	LoginSetPrefix = "loginset." + SlinkyPrefix
-	TopologyPrefix = "topology." + SlinkyPrefix
-	FeaturesPrefix = "features." + SlinkyPrefix
+	ControllerPrefix = "controller." + SlinkyPrefix
+	NodeSetPrefix    = "nodeset." + SlinkyPrefix
+	LoginSetPrefix   = "loginset." + SlinkyPrefix
+	TopologyPrefix   = "topology." + SlinkyPrefix
+	FeaturesPrefix   = "features." + SlinkyPrefix
 )
 
 // Well Known Annotations
@@ -67,6 +68,11 @@ const (
 
 // Well Known Labels
 const (
+	// LabelControllerActive indicates whether a Controller pod is the active Slurm controller.
+	// Only one Slurm controller can be active at a time (in High Availability mode).
+	// NOTE: Set by the Controller controller.
+	LabelControllerActive = ControllerPrefix + "active"
+
 	// LabelNodeSetPodName indicates the pod name.
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetPodName = NodeSetPrefix + "pod-name"

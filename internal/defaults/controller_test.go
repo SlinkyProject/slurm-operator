@@ -20,18 +20,25 @@ func TestSetControllerDefaults(t *testing.T) {
 	t.Run("zero value spec gets defaults", func(t *testing.T) {
 		c := &slinkyv1beta1.Controller{}
 		SetControllerDefaults(c)
-
-		require.Equal(t, ptr.To(DefaultControllerPersistenceEnabled), c.Spec.Persistence.Enabled)
+		require.Equal(t, new(DefaultControllerPersistenceEnabled), c.Spec.Persistence.Enabled)
+		if c.Spec.HighAvailability.Enabled {
+			require.Equal(t, new(DefaultControllerHighAvailabilityBackups), c.Spec.HighAvailability.Backups)
+		}
 	})
 
 	t.Run("explicit values are not overridden", func(t *testing.T) {
 		c := &slinkyv1beta1.Controller{}
 		c.Spec.Persistence.Enabled = ptr.To(true)
+		c.Spec.HighAvailability.Enabled = true
+		const HABackups int32 = 2
+		c.Spec.HighAvailability.Backups = ptr.To(HABackups)
 		SetControllerDefaults(c)
-		require.Equal(t, ptr.To(true), c.Spec.Persistence.Enabled)
-
+		require.Equal(t, new(true), c.Spec.Persistence.Enabled)
+		if c.Spec.HighAvailability.Enabled {
+			require.Equal(t, new(HABackups), c.Spec.HighAvailability.Backups)
+		}
 		c.Spec.Persistence.Enabled = ptr.To(false)
 		SetControllerDefaults(c)
-		require.Equal(t, ptr.To(false), c.Spec.Persistence.Enabled)
+		require.Equal(t, new(false), c.Spec.Persistence.Enabled)
 	})
 }

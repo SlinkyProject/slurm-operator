@@ -8,6 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
@@ -78,6 +80,39 @@ var _ = Describe("Controller Webhook", func() {
 
 			_, err := controllerWebhook.ValidateUpdate(ctx, oldController, newController)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("Should reject disable of controller.ha.enabled", func(ctx SpecContext) {
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: metav1.NamespaceDefault,
+					Name:      "statesave",
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("4Gi"),
+						},
+					},
+					AccessModes: []corev1.PersistentVolumeAccessMode{
+						corev1.ReadWriteOnce,
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, pvc)).To(Succeed())
+
+			oldController := testutils.NewController("cluster", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			oldController.Spec.HighAvailability.Enabled = false
+			oldController.Spec.Persistence.Enabled = new(true)
+			oldController.Spec.Persistence.ExistingClaim = pvc.Name
+
+			newController := oldController.DeepCopy()
+			newController.Spec.HighAvailability.Enabled = true
+
+			_, err := controllerWebhook.ValidateUpdate(ctx, oldController, newController)
+			Expect(err).To(HaveOccurred())
+
+			_ = k8sClient.Delete(ctx, pvc)
 		})
 
 		It("Should admit if changes pass validation", func(ctx SpecContext) {

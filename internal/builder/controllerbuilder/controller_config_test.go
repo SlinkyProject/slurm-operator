@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -292,6 +293,68 @@ ignoresystemd=yes`,
 	}
 }
 
+func TestControllerBuilder_BuildControllerConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		c          client.Client
+		controller *slinkyv1beta1.Controller
+		wantLine   []string
+		wantErr    bool
+	}{
+		{
+			name: "singleton",
+			c:    fake.NewFakeClient(),
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slurm",
+					Namespace: "slurm",
+				},
+			},
+			wantLine: []string{
+				"SlurmctldHost=slurm-controller-0(slurm-controller-0.slurm-controller-internal.slurm)",
+			},
+		},
+		{
+			name: "high availability",
+			c:    fake.NewFakeClient(),
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slurm",
+					Namespace: "slurm",
+				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					HighAvailability: slinkyv1beta1.ControllerHighAvailability{
+						Enabled: true,
+						Backups: ptr.To[int32](1),
+					},
+				},
+			},
+			wantLine: []string{
+				"SlurmctldHost=slurm-controller-0(slurm-controller-0.slurm-controller-internal.slurm)",
+				"SlurmctldHost=slurm-controller-1(slurm-controller-1.slurm-controller-internal.slurm)",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := New(tt.c)
+			got, gotErr := b.BuildControllerConfig(tt.controller)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("BuildControllerConfig() failed: %v", gotErr)
+				}
+				return
+			}
+			conf := got.Data[SlurmConfFile]
+			for _, host := range tt.wantLine {
+				if !strings.Contains(conf, host) {
+					t.Errorf("BuildControllerConfig() = %v \n want to find = %s", conf, host)
+				}
+			}
+		})
+	}
+}
+
 func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -307,10 +370,17 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "slurm",
 				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					External: true,
+					ExternalConfig: slinkyv1beta1.ExternalConfig{
+						Host: "my-controller",
+						Port: 6817,
+					},
+				},
 			},
 			want: &corev1.ConfigMap{
 				Data: map[string]string{
-					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
+					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=my-controller\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
 				},
 			},
 			wantErr: false,
@@ -323,6 +393,11 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 					Name: "slurm",
 				},
 				Spec: slinkyv1beta1.ControllerSpec{
+					External: true,
+					ExternalConfig: slinkyv1beta1.ExternalConfig{
+						Host: "my-controller",
+						Port: 6817,
+					},
 					ExtraConf: strings.Join([]string{
 						"MinJobAge=2",
 					}, "\n"),
@@ -330,7 +405,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 			},
 			want: &corev1.ConfigMap{
 				Data: map[string]string{
-					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
+					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=my-controller\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/none\n",
 				},
 			},
 			wantErr: false,
@@ -392,6 +467,11 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 					Name: "slurm",
 				},
 				Spec: slinkyv1beta1.ControllerSpec{
+					External: true,
+					ExternalConfig: slinkyv1beta1.ExternalConfig{
+						Host: "my-controller",
+						Port: 6817,
+					},
 					AccountingRef: &corev1.LocalObjectReference{
 						Name: "slurm",
 					},
@@ -402,7 +482,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 			},
 			want: &corev1.ConfigMap{
 				Data: map[string]string{
-					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=slurm-controller-0\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/slurmdbd\nAccountingStorageHost=slurm-accounting\nAccountingStoragePort=6819\n",
+					SlurmConfFile: "#\n### GENERAL ###\nClusterName=_slurm\nSlurmUser=slurm\nSlurmctldHost=my-controller\nSlurmctldPort=6817\n#\n### PLUGINS & PARAMETERS ###\nAuthType=auth/slurm\nCredType=cred/slurm\nAuthAltTypes=auth/jwt\n#\n### ACCOUNTING ###\nAccountingStorageType=accounting_storage/slurmdbd\nAccountingStorageHost=slurm-accounting\nAccountingStoragePort=6819\n",
 				},
 			},
 			wantErr: false,

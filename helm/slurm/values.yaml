@@ -243,6 +243,14 @@ controller:
       # requests:
       #   cpu: 500m
       #   memory: 128Mi
+  # Slurm High Availability (HA) configuration.
+  # Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+  ha:
+    # -- Indicates if HA mode should be used.
+    # When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required.
+    enabled: false
+    # -- Indicates how may secondary (backup) controllers to deploy.
+    backups: 1
   # Enable persistence using Persistent Volume Claims.
   # Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   persistence:
@@ -324,7 +332,8 @@ controller:
       # - key: key1
       #   operator: Exists
       #   effect: NoSchedule
-  # -- The service configuration.
+  # -- The service configuration. Type/port/nodePort overrides apply only with
+  # `replicas: 1`; with more, the controller Service is operator-managed.
   service:
     # -- Labels and annotations.
     # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/

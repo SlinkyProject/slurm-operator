@@ -14,6 +14,9 @@ manifest should match snapshot:
       configFileRefs: null
       epilogScriptRefs: null
       epilogSlurmctldScriptRefs: null
+      ha:
+        backups: 1
+        enabled: false
       inplaceReconfigure: false
       jwtKeyRef:
         key: jwt.key

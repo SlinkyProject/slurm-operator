@@ -7,13 +7,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -37,13 +42,32 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 	}
 	controller = controller.DeepCopy()
 	defaults.SetControllerDefaults(controller)
+	key := objectutils.KeyFunc(controller)
 
 	if !controller.DeletionTimestamp.IsZero() {
 		logger.Info("Controller is being deleted, skipping sync")
 		return nil
+	} else {
+		durationStore.Push(key, 30*time.Second)
 	}
 
 	steps := []syncsteps.Step[*slinkyv1beta1.Controller]{
+		{
+			Name: "Internal Service",
+			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
+				if controller.Spec.External {
+					return nil
+				}
+				object, err := r.builder.BuildControllerServiceInternal(controller)
+				if err != nil {
+					return fmt.Errorf("failed to build: %w", err)
+				}
+				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, controller, object, false); err != nil {
+					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
+				}
+				return nil
+			},
+		},
 		{
 			Name: "Service",
 			SyncFn: func(ctx context.Context, controller *slinkyv1beta1.Controller) error {
@@ -85,10 +109,38 @@ func (r *ControllerReconciler) Sync(ctx context.Context, req reconcile.Request) 
 				if controller.Spec.External {
 					return nil
 				}
+				if controller.Spec.HighAvailability.Enabled {
+					pvc := &corev1.PersistentVolumeClaim{}
+					pvcKey := types.NamespacedName{
+						Namespace: controller.Namespace,
+						Name:      controller.Spec.Persistence.ExistingClaim,
+					}
+					if err := r.Get(ctx, pvcKey, pvc); err != nil {
+						if !apierrors.IsNotFound(err) {
+							return err
+						}
+					} else if !slices.Contains(pvc.Spec.AccessModes, corev1.ReadWriteMany) {
+						return fmt.Errorf("slurm high availability (HA) mode requires given PVC (%s) to have access mode 'ReadWriteMany'", klog.KObj(pvc))
+					}
+				}
 				object, err := r.builder.BuildController(controller)
 				if err != nil {
 					return fmt.Errorf("failed to build: %w", err)
 				}
+
+				statefulset := &appsv1.StatefulSet{}
+				statefulsetKey := client.ObjectKeyFromObject(object)
+				if err := r.Get(ctx, statefulsetKey, statefulset); err != nil {
+					if !apierrors.IsNotFound(err) {
+						return fmt.Errorf("failed to get object (%s): %w", klog.KObj(object), err)
+					}
+				}
+				if statefulset.Spec.ServiceName != controller.ServiceInternalKey().Name {
+					if err := objectutils.DeleteObject(r.Client, ctx, r.eventRecorder, controller, object); err != nil {
+						return fmt.Errorf("failed to delete object (%s): %w", klog.KObj(object), err)
+					}
+				}
+
 				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, controller, object, true); err != nil {
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
 				}

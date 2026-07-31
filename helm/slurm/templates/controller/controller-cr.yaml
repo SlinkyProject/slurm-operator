@@ -108,6 +108,10 @@ spec:
     {{- $_ := set $logfile "imagePullPolicy" (get $logfile "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
     {{- include "slurm.format-container" $logfile | nindent 4 }}
   {{- include "slurm.format-podTemplate" $podTemplate | nindent 2 }}
+  {{- with .Values.controller.ha }}
+  ha:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with .Values.controller.ha */}}
   {{- with .Values.controller.persistence }}
   {{- $persistence := fromYaml (include "slurm.toYaml-set-storageClassName" .) }}
   persistence:

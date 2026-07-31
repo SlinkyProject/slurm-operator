@@ -67,11 +67,8 @@ For additional information about Slurm, see the [slurm][slurm-docs] docs.
 The Slurm control-plane is responsible for scheduling Slurm workload onto its
 worker nodes and managing their states.
 
-Slurm [High Availability (HA)][slurm-ha] is effectively achieved though
-Kubernetes regenerating the Slurm controller pod if it crashes. This is
-generally faster than the time it takes for a backup controller to assume
-control if the primary crashes. Because Slurm's version of HA is not being used,
-a shared filesystem is not required for this.
+Slurm High Availability (HA) can be enabled by setting `ha.enabled=true` and
+`persistence.existingClaim` to a PVC with ReadWriteMany (RWX) access mode.
 
 Changes to the Slurm configuration files are automatically detected and the
 Slurm cluster is reconfigured seamlessly with zero downtime of the Slurm
@@ -333,7 +330,6 @@ specific language governing permissions and limitations under the License.
 [slurm-docs]: ./docs/concepts/slurm.md
 [slurm-drain]: https://slurm.schedmd.com/scontrol.html#OPT_DRAIN
 [slurm-fairshare]: https://slurm.schedmd.com/fair_tree.html
-[slurm-ha]: https://slurm.schedmd.com/quickstart_admin.html#HA
 [slurm-healthcheck]: https://slurm.schedmd.com/slurm.conf.html#OPT_HealthCheckProgram
 [slurm-lifecycle]: https://slurm.schedmd.com/upgrades.html#compatibility_window
 [slurm-mpi]: https://slurm.schedmd.com/mpi_guide.html

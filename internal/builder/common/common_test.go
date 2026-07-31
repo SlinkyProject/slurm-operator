@@ -6,13 +6,67 @@ package common
 import (
 	_ "embed"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
+
+func TestConfiglessArgs(t *testing.T) {
+	tests := []struct {
+		name       string
+		controller *slinkyv1beta1.Controller
+		want       []string
+	}{
+		{
+			name: "singleton",
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slurm",
+					Namespace: "slurm",
+				},
+			},
+			want: []string{
+				"--conf-server",
+				"slurm-controller.slurm:6817",
+			},
+		},
+		{
+			name: "high availability",
+			controller: &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "slurm",
+					Namespace: "slurm",
+				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					HighAvailability: slinkyv1beta1.ControllerHighAvailability{
+						Enabled: true,
+						Backups: ptr.To[int32](2),
+					},
+				},
+			},
+			want: []string{
+				"--conf-server",
+				strings.Join([]string{
+					"slurm-controller.slurm:6817",
+				}, ","),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ConfiglessArgs(tt.controller)
+			require.Equal(t, got, tt.want)
+		})
+	}
+}
 
 func Test_mergeEnvVar(t *testing.T) {
 	type args struct {

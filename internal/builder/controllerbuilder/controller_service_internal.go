@@ -13,28 +13,22 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
-func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Controller) (*corev1.Service, error) {
-	spec := controller.Spec.Service
-	selector := labels.NewBuilder().WithControllerSelectorLabels(controller).Build()
-	if controller.Spec.HighAvailability.Enabled {
-		selector[slinkyv1beta1.LabelControllerActive] = "true"
-	}
+func (b *ControllerBuilder) BuildControllerServiceInternal(controller *slinkyv1beta1.Controller) (*corev1.Service, error) {
 	opts := common.ServiceOpts{
-		Key: controller.ServiceKey(),
+		Key: controller.ServiceInternalKey(),
 		Metadata: slinkyv1beta1.Metadata{
-			Annotations: structutils.MergeMaps(controller.Annotations, spec.Metadata.Annotations),
-			Labels:      structutils.MergeMaps(controller.Labels, spec.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
+			Annotations: controller.Annotations,
+			Labels:      structutils.MergeMaps(controller.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
 		},
-		ServiceSpec: spec.ServiceSpecWrapper.ServiceSpec,
-		Selector:    selector,
+		Selector: labels.NewBuilder().WithControllerSelectorLabels(controller).Build(),
+		Headless: true,
 	}
 
 	port := corev1.ServicePort{
 		Name:       labels.ControllerApp,
 		Protocol:   corev1.ProtocolTCP,
-		Port:       common.DefaultPort(int32(spec.Port), common.SlurmctldPort),
+		Port:       common.SlurmctldPort,
 		TargetPort: intstr.FromString(labels.ControllerApp),
-		NodePort:   int32(spec.NodePort),
 	}
 	opts.Ports = append(opts.Ports, port)
 

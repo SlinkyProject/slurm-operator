@@ -21,6 +21,7 @@ var (
 // +kubebuilder:validation:XValidation:rule="!self.external ? has(self.slurmKeyRef) : true", message="slurmKeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="!self.external ? has(self.jwtKeyRef) || has(self.jwtHs256KeyRef) : true", message="jwtKeyRef or jwtHs256KeyRef must be set when external is false"
 // +kubebuilder:validation:XValidation:rule="self.external ? has(self.externalConfig) : true", message="externalConfig must be set when external is true"
+// +kubebuilder:validation:XValidation:rule="has(self.ha) && self.ha.enabled ? has(self.persistence) && self.persistence.enabled && self.persistence.existingClaim.size() > 0 : true", message="slurm high availability (HA) mode requires existing PVC with an access mode of ReadWriteMany"
 type ControllerSpec struct {
 	// The Slurm ClusterName, which uniquely identifies the Slurm Cluster to
 	// itself and accounting.
@@ -59,6 +60,11 @@ type ControllerSpec struct {
 	// ExternalConfig describes how to communicate with this external component.
 	// +optional
 	ExternalConfig ExternalConfig `json:"externalConfig,omitzero"`
+
+	// High Availability configuration.
+	// Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+	// +optional
+	HighAvailability ControllerHighAvailability `json:"ha,omitempty"`
 
 	// The slurmctld container configuration.
 	// See corev1.Container spec.
@@ -139,8 +145,22 @@ type ControllerSpec struct {
 	Metrics Metrics `json:"metrics,omitzero"`
 }
 
+// High Availability configuration.
+type ControllerHighAvailability struct {
+	// Enabled indicates if Slurm High Availability (HA) is enabled.
+	// Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+	// +default:=false
+	Enabled bool `json:"enabled"`
+
+	// Backups indicate the number of backup controllers to deploy.
+	// +kubebuilder:validation:Minimum=1
+	// +default:=1
+	// +optional
+	Backups *int32 `json:"backups,omitempty"`
+}
+
 type ControllerPersistence struct {
-	// Enabled controls if the optional accounting subsystem is enabled.
+	// Enabled controls if persistent storage is enabled.
 	// +default:=true
 	Enabled *bool `json:"enabled"`
 

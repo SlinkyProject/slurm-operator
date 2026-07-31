@@ -18,6 +18,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/controllerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/slurmcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/events"
@@ -34,6 +35,7 @@ func newControllerController(client client.Client, clientMap *clientmap.ClientMa
 		builder:       builder.New(client),
 		refResolver:   refresolver.New(client),
 		eventRecorder: events.NewFakeRecorder(10),
+		slurmControl:  slurmcontrol.NewSlurmControl(clientMap),
 	}
 
 	return r
@@ -83,7 +85,8 @@ func TestControllerReconciler_sync(t *testing.T) {
 				ctx: context.TODO(),
 				request: reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name: "slurm",
+						Namespace: corev1.NamespaceDefault,
+						Name:      "slurm",
 					},
 				},
 			},

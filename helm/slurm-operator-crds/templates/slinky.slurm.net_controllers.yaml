@@ -158,6 +158,27 @@ spec:
                   ExtraConf is appended onto the end of the `slurm.conf` file.
                   Ref: https://slurm.schedmd.com/slurm.conf.html
                 type: string
+              ha:
+                description: |-
+                  High Availability configuration.
+                  Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+                properties:
+                  backups:
+                    default: 1
+                    description: Backups indicate the number of backup controllers
+                      to deploy.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  enabled:
+                    default: false
+                    description: |-
+                      Enabled indicates if Slurm High Availability (HA) is enabled.
+                      Ref: https://slurm.schedmd.com/quickstart_admin.html#HA
+                    type: boolean
+                required:
+                - enabled
+                type: object
               inplaceReconfigure:
                 default: false
                 description: |-
@@ -413,8 +434,7 @@ spec:
                     type: object
                   enabled:
                     default: true
-                    description: Enabled controls if the optional accounting subsystem
-                      is enabled.
+                    description: Enabled controls if persistent storage is enabled.
                     type: boolean
                   existingClaim:
                     description: |-
@@ -706,6 +726,10 @@ spec:
                 : true'
             - message: externalConfig must be set when external is true
               rule: 'self.external ? has(self.externalConfig) : true'
+            - message: slurm high availability (HA) mode requires existing PVC with
+                an access mode of ReadWriteMany
+              rule: 'has(self.ha) && self.ha.enabled ? has(self.persistence) && self.persistence.enabled
+                && self.persistence.existingClaim.size() > 0 : true'
           status:
             description: ControllerStatus defines the observed state of Controller
             properties:
