@@ -21,10 +21,18 @@ tests:
     asserts:
       - matchSnapshot: {}
 
+  - it: should generate pods/binding webhook when podsBinding is set to true
+    set:
+      webhook:
+        podsBinding: true
+    asserts:
+      - matchSnapshot: {}
+
   - it: should honor overridden validating and mutating failurePolicy and matchPolicy values
     set:
       webhook:
         enabled: true
+        podsBinding: true
         validating:
           failurePolicy: Ignore
           matchPolicy: Exact
@@ -63,6 +71,7 @@ tests:
   - it: should honor overridden timeoutSeconds
     set:
       webhook:
+        podsBinding: true
         timeoutSeconds: 30
     asserts:
       - documentSelector:
@@ -79,6 +88,9 @@ tests:
           value: 30
 
   - it: should scope webhooks to configured namespaces
+    set:
+      webhook:
+        podsBinding: true
     values:
       - values/webhook_namespaces.yaml
     asserts:
@@ -129,6 +141,9 @@ tests:
               - test-namespace
 
   - it: should render the validating namespaceSelector override verbatim and leave the binding webhook scoped
+    set:
+      webhook:
+        podsBinding: true
     values:
       - values/webhook_namespaceselector.yaml
     asserts:
@@ -157,6 +172,7 @@ tests:
   - it: should keep the binding webhook scoped via webhook.namespaces when a validating override is set
     set:
       webhook:
+        podsBinding: true
         namespaces: slurm,compute
         validating:
           namespaceSelector:
@@ -192,6 +208,8 @@ tests:
 
   - it: should inject caBundle and render TLS secret when certManager is disabled
     set:
+      webhook:
+        podsBinding: true
       certManager:
         enabled: false
         secretName: slurm-operator-webhook-ca
@@ -238,6 +256,7 @@ tests:
     set:
       webhook:
         enabled: true
+        podsBinding: true
       certManager:
         enabled: false
         secretName: slurm-operator-webhook-ca
@@ -278,6 +297,7 @@ tests:
     set:
       webhook:
         enabled: true
+        podsBinding: true
         mutating:
           matchConditions:
             - name: rbac

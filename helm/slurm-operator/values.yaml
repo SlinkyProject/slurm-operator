@@ -138,6 +138,8 @@ operator:
 webhook:
   # -- Enable the webhook.
   enabled: true
+  # -- Enable the pods/binding webhook.
+  podsBinding: false
   # -- Set the number of replicas to deploy.
   replicas: 1
   # -- Set the image pull policy.

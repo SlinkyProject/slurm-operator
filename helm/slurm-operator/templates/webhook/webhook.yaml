@@ -243,6 +243,7 @@ webhooks:
       - v1beta1
     sideEffects: None
 ---
+{{- if .Values.webhook.podsBinding }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
@@ -287,4 +288,5 @@ webhooks:
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
     sideEffects: None
+{{- end }}{{- /* if .Values.webhook.podsBinding */}}
 {{- end }}{{- /* if .Values.webhook.enabled */}}

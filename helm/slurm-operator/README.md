@@ -91,6 +91,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.pdb.maxUnavailable | string | `nil` | Maximum pods that may be unavailable (int or quoted percent). Rendered only when set, and takes precedence over `minAvailable`. |
 | webhook.pdb.minAvailable | int | `1` | Minimum pods that must remain available after eviction (int or quoted percent). |
 | webhook.podSecurityContext | object | `{}` | Pod-level security context for the webhook pod. Applied to all containers in the pod. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ |
+| webhook.podsBinding | bool | `false` | Enable the pods/binding webhook. |
 | webhook.replicas | int | `1` | Set the number of replicas to deploy. |
 | webhook.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | webhook.securityContext | object | `{}` | Container-level security context for the webhook container. Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container |
