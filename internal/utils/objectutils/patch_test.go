@@ -5,6 +5,7 @@ package objectutils
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -20,8 +21,10 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 func init() {
@@ -790,6 +793,73 @@ func TestSyncObject(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSyncObject_EventReferences(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	parent := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "controller"}}
+
+	t.Run("CreateSucceeded", func(t *testing.T) {
+		t.Parallel()
+		child := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "config"}}
+		recorder := testutils.NewEventRecorder(1)
+
+		require.NoError(t, SyncObject(fake.NewFakeClient(), ctx, recorder, parent, child, true))
+
+		event := testutils.ReadOneRecordedEvent(t, recorder)
+		require.Equal(t, parent, event.Regarding)
+		require.Equal(t, child, event.Related)
+		require.Equal(t, ReasonCreateSucceeded, event.Reason)
+		require.Equal(t, "Create", event.Action)
+	})
+
+	t.Run("CreateFailed", func(t *testing.T) {
+		t.Parallel()
+		child := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "config"}}
+		recorder := testutils.NewEventRecorder(1)
+		createErr := errors.New("create failed")
+		c := fake.NewClientBuilder().WithInterceptorFuncs(interceptor.Funcs{
+			Create: func(context.Context, client.WithWatch, client.Object, ...client.CreateOption) error {
+				return createErr
+			},
+		}).Build()
+
+		require.ErrorIs(t, SyncObject(c, ctx, recorder, parent, child, true), createErr)
+
+		event := testutils.ReadOneRecordedEvent(t, recorder)
+		require.Equal(t, child, event.Related)
+		require.Equal(t, ReasonCreateFailed, event.Reason)
+		require.Equal(t, "Create", event.Action)
+	})
+
+	t.Run("PatchFailed", func(t *testing.T) {
+		t.Parallel()
+		existing := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "config", UID: "existing-uid"},
+			Data:       map[string]string{"key": "old"},
+		}
+		desired := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "config"},
+			Data:       map[string]string{"key": "new"},
+		}
+		recorder := testutils.NewEventRecorder(1)
+		patchErr := errors.New("patch failed")
+		c := fake.NewClientBuilder().WithObjects(existing).WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+				return patchErr
+			},
+		}).Build()
+
+		require.ErrorIs(t, SyncObject(c, ctx, recorder, parent, desired, true), patchErr)
+
+		event := testutils.ReadOneRecordedEvent(t, recorder)
+		related := event.Related.(*corev1.ConfigMap)
+		require.Equal(t, types.UID("existing-uid"), related.UID)
+		require.Equal(t, ReasonPatchFailed, event.Reason)
+		require.Equal(t, "Patch", event.Action)
+	})
 }
 
 func TestPatchObject_Pod(t *testing.T) {

@@ -74,13 +74,13 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 				}
 			} else {
 				if eventRecorder != nil {
-					eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
+					eventRecorder.Eventf(eventObj, newObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
 				}
 				return fmt.Errorf("error creating %s: %w", key, err)
 			}
 		} else {
 			if eventRecorder != nil {
-				eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
+				eventRecorder.Eventf(eventObj, newObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
 			}
 			return nil
 		}
@@ -279,7 +279,7 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 	}
 	if patchErr != nil {
 		if eventRecorder != nil {
-			eventRecorder.Eventf(eventObj, newObj, corev1.EventTypeWarning, ReasonPatchFailed, "Patch", "Error patching %T: %s: %v", newObj, key, patchErr)
+			eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonPatchFailed, "Patch", "Error patching %T: %s: %v", newObj, key, patchErr)
 		}
 		return fmt.Errorf("error patching %s: %w", key, patchErr)
 	}
