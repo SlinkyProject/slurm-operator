@@ -1269,14 +1269,8 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			podsToCreate[i] = pod
 		}
 		if len(podsToDelete) > 0 || len(podsToCreate) > 0 {
-			if len(podsToCreate) > 0 {
-				r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingUpReason, "ScaleUp",
-					"Creating %d daemon Pod(s)", len(podsToCreate))
-			}
-			if len(podsToDelete) > 0 {
-				r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingDownReason, "ScaleDown",
-					"Deleting %d daemon Pod(s)", len(podsToDelete))
-			}
+			logger.V(2).Info("Scaling daemon NodeSet pods",
+				"creating", len(podsToCreate), "deleting", len(podsToDelete))
 			// Don't uncordon existing pods during scale; syncRollingUpdate may be
 			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, podsToDelete, podsToCreate)
@@ -1312,8 +1306,6 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 				podsToCreate[i] = pod
 			}
 			logger.V(2).Info("Too few NodeSet pods", "need", replicaCount, "creating", diff)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingUpReason, "ScaleUp",
-				"Creating %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
 			// Don't uncordon existing pods during scale-up; syncRollingUpdate may be
 			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, nil, podsToCreate)
@@ -1322,8 +1314,6 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			// doPodScale only deletes burstReplicas per pass, so pass no more than that.
 			diff = min(diff, burstReplicas)
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingDownReason, "ScaleDown",
-				"Deleting %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
 			podsToDelete, _ := nodesetutils.SplitActivePods(activePods, diff)
 			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
 			// cordoned pods for deletion, but if more pods are already cordoned/draining
@@ -1838,10 +1828,8 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 
 	unhealthyPods, _ := nodesetutils.SplitUnhealthyPods(oldPods)
 	if len(unhealthyPods) > 0 {
-		logger.Info("Delete unhealthy pods for Rolling Update",
+		logger.V(1).Info("Delete unhealthy pods for Rolling Update",
 			"unhealthyPods", len(unhealthyPods))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, RollingUpdateReason, "RollingUpdate",
-			"Rolling update: deleting %d unhealthy old pod(s)", len(unhealthyPods))
 		if err := r.doPodScale(ctx, nodeset, unhealthyPods, nil); err != nil {
 			return err
 		}
@@ -1849,10 +1837,8 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 
 	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
 	if len(podsToDelete) > 0 {
-		logger.Info("Scale-in pods for Rolling Update",
+		logger.V(1).Info("Scale-in pods for Rolling Update",
 			"delete", len(podsToDelete))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, RollingUpdateReason, "RollingUpdate",
-			"Rolling update: replacing %d old pod(s) with updated revision", len(podsToDelete))
 		if err := r.doPodScale(ctx, nodeset, podsToDelete, nil); err != nil {
 			return err
 		}
@@ -2014,10 +2000,8 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	// Replace all unhealthy pods
 	unhealthyPods, _ := nodesetutils.SplitUnhealthyPods(oldPods)
 	if len(unhealthyPods) > 0 {
-		logger.Info("Delete unhealthy pods for Scheduled Update",
+		logger.V(1).Info("Delete unhealthy pods for Scheduled Update",
 			"unhealthyPods", len(unhealthyPods))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, "Scheduled Update", "ScheduledUpdate",
-			"Scheduled update: deleting %d unhealthy old pod(s)", len(unhealthyPods))
 		if err := r.doPodScale(ctx, nodeset, unhealthyPods, nil); err != nil {
 			return err
 		}
@@ -2028,10 +2012,8 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 
 	// Handle pod scale-down
 	if len(podsToDelete) > 0 {
-		logger.Info("Scale-in pods for Scheduled Update",
+		logger.V(1).Info("Scale-in pods for Scheduled Update",
 			"delete", len(podsToDelete))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, "Scheduled Update", "ScheduledUpdate",
-			"Scheduled update: replacing %d old pod(s) with updated revision", len(podsToDelete))
 		if err := r.doPodScale(ctx, nodeset, podsToDelete, nil); err != nil {
 			return err
 		}
