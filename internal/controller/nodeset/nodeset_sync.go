@@ -571,12 +571,11 @@ func (r *NodeSetReconciler) syncCordon(
 				}
 			}
 
-			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
-				"Cordoning Pod %s: Kubernetes node %s was cordoned", klog.KObj(pod), name)
-
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
 				return err
 			}
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
+				"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), name)
 
 		// If pod is cordoned, drain the Slurm node
 		case podIsCordoned:
@@ -905,13 +904,14 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 
 		logger.Info("Deleting NodeSet pod, Slurm node is not registered but pod is healthy",
 			"pod", klog.KObj(pod))
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
-			"Deleting Pod %s: Slurm node is not registered but pod is healthy", klog.KObj(pod))
 		if err := r.Delete(ctx, pod); err != nil {
-			if !apierrors.IsNotFound(err) {
-				return err
+			if apierrors.IsNotFound(err) {
+				return nil
 			}
+			return err
 		}
+		r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
+			"Deleted Pod %s because its Slurm node was not registered while the Pod was healthy", klog.KObj(pod))
 		return nil
 	}
 	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodesFn); err != nil {

@@ -1613,12 +1613,32 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		kubeNode                 *corev1.Node
 		pod                      *corev1.Pod
 		slurmNodeList            *slurmapi.V0044NodeObjectList
+		slurmUpdateErr           error
 		propagatedNodeConditions []corev1.NodeConditionType
 		wantErr                  bool
 		wantPodCordoned          bool
 		wantSlurmDrain           bool
 		wantReasonSub            string
+		wantEvent                bool
 	}{
+		{
+			name: "cordon failure does not report success event",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:  ptr.To(slurmNodeName),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+				}},
+			},
+			slurmUpdateErr:  http.ErrAbortHandler,
+			wantErr:         true,
+			wantPodCordoned: true,
+			wantSlurmDrain:  false,
+		},
 		{
 			name: "kubernetes node cordoned cordons pod and drains slurm",
 			kubeNode: &corev1.Node{
@@ -1637,6 +1657,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned: true,
 			wantSlurmDrain:  true,
 			wantReasonSub:   "kube-node-1",
+			wantEvent:       true,
 		},
 		{
 			name: "kubernetes node cordon reason annotation is propagated to slurm",
@@ -1661,6 +1682,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned: true,
 			wantSlurmDrain:  true,
 			wantReasonSub:   "custom maintenance window",
+			wantEvent:       true,
 		},
 		{
 			name: "cordoned pod on schedulable node drains slurm",
@@ -1795,6 +1817,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned:          true,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "(KubeletHasDiskPressure: POD has insufficient ephemeral storage)",
+			wantEvent:                true,
 		},
 		{
 			name: "multiple propagated node conditions join with semicolon",
@@ -1834,6 +1857,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned: true,
 			wantSlurmDrain:  true,
 			wantReasonSub:   "(KubeletHasInsufficientMemory: Memory pressure); (KubeletHasDiskPressure: Disk pressure)",
+			wantEvent:       true,
 		},
 		{
 			name: "propagated type not true falls back to default cordon reason",
@@ -1864,6 +1888,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned:          true,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "kube-node-1",
+			wantEvent:                true,
 		},
 		{
 			name: "node condition not in propagated list uses default cordon reason",
@@ -1894,6 +1919,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned:          true,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "kube-node-1",
+			wantEvent:                true,
 		},
 		{
 			name: "node cordon reason annotation overrides propagated conditions",
@@ -1929,21 +1955,38 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantPodCordoned:          true,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "annotation overrides conditions",
+			wantEvent:                true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pod := tt.pod.DeepCopy()
-			slurmClient := newFakeClientList(sinterceptor.Funcs{}, tt.slurmNodeList)
+			interceptorFuncs := sinterceptor.Funcs{}
+			if tt.slurmUpdateErr != nil {
+				interceptorFuncs.Update = func(context.Context, slurmobject.Object, any, ...slurmclient.UpdateOption) error {
+					return tt.slurmUpdateErr
+				}
+			}
+			slurmClient := newFakeClientList(interceptorFuncs, tt.slurmNodeList)
 			clientMap := newClientMap(controller.Name, slurmClient)
 			k8sClient := fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy(), tt.kubeNode.DeepCopy())
 			r := newNodeSetControllerWithPropagatedNodeConditions(k8sClient, clientMap, tt.propagatedNodeConditions)
+			recorder := testutils.NewEventRecorder(1)
+			r.eventRecorder = recorder
 
 			err := r.syncCordon(context.Background(), nodeset.DeepCopy(), []*corev1.Pod{pod})
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+			}
+			if tt.wantEvent {
+				event := testutils.ReadOneRecordedEvent(t, recorder)
+				require.Equal(t, NodeCordonReason, event.Reason)
+				require.Equal(t, "Cordon", event.Action)
+				require.Equal(t, pod, event.Related)
+			} else {
+				testutils.AssertNoRecordedEvents(t, recorder)
 			}
 
 			gotPod := &corev1.Pod{}
@@ -4936,13 +4979,14 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 		},
 	}
 	type testCase struct {
-		name      string
-		kclient   client.Client
-		clientMap *clientmap.ClientMap
-		nodeset   *slinkyv1beta1.NodeSet
-		pods      []*corev1.Pod
-		wantPods  []*corev1.Pod
-		wantErr   bool
+		name       string
+		kclient    client.Client
+		clientMap  *clientmap.ClientMap
+		nodeset    *slinkyv1beta1.NodeSet
+		pods       []*corev1.Pod
+		wantPods   []*corev1.Pod
+		wantErr    bool
+		wantEvents []*corev1.Pod
 	}
 	tests := []testCase{
 		{
@@ -4999,7 +5043,8 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
-				wantPods: nil,
+				wantPods:   nil,
+				wantEvents: []*corev1.Pod{pod0, pod1},
 			}
 		}(),
 		func() testCase {
@@ -5028,12 +5073,23 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
 			r := NewReconciler(tt.kclient, tt.clientMap, nil)
+			recorder := testutils.NewEventRecorder(len(tt.pods) + 1)
+			r.eventRecorder = recorder
 			gotErr := r.syncSlurmNodes(ctx, tt.nodeset, tt.pods)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 			} else {
 				require.NoError(t, gotErr)
 			}
+			gotEvents := make([]*corev1.Pod, 0, len(tt.wantEvents))
+			for range tt.wantEvents {
+				event := testutils.ReadOneRecordedEvent(t, recorder)
+				require.Equal(t, SlurmNodeNotRegisteredReason, event.Reason)
+				require.Equal(t, "Delete", event.Action)
+				gotEvents = append(gotEvents, event.Related.(*corev1.Pod))
+			}
+			require.ElementsMatch(t, tt.wantEvents, gotEvents)
+			testutils.AssertNoRecordedEvents(t, recorder)
 			podList := &corev1.PodList{}
 			require.NoError(t, tt.kclient.List(ctx, podList))
 			gotNames := make([]string, len(podList.Items))

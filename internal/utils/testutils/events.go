@@ -53,6 +53,15 @@ func ReadOneRecordedEvent(t *testing.T, recorder *EventRecorder) RecordedEvent {
 	}
 }
 
+func AssertNoRecordedEvents(t *testing.T, recorder *EventRecorder) {
+	t.Helper()
+	select {
+	case event := <-recorder.Events:
+		t.Fatalf("unexpected event: %#v", event)
+	default:
+	}
+}
+
 // ReadOneEvent returns the next event buffered on rec, failing t if there is none.
 func ReadOneEvent(t *testing.T, rec *events.FakeRecorder) string {
 	t.Helper()
