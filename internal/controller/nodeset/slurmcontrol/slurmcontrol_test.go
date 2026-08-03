@@ -3712,7 +3712,7 @@ func Test_realSlurmControl_DeleteNodeAlreadyGone(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
 	nodeset := newNodeSet("foo", controller.Name, 1)
 	sclient := fake.NewClientBuilder().Build()
-	r := &realSlurmControl{clientMap: newSlurmClientMap(controller.Name, sclient)}
+	r := &realSlurmControl{clientMap: testutils.NewClientMap(controller.Name, nodeset.Namespace, sclient)}
 
 	err := r.DeleteNode(context.Background(), nodeset, "foo-0")
 

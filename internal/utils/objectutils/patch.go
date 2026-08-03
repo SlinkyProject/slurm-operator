@@ -20,13 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-)
-
-const (
-	ReasonCreateSucceeded = "CreateSucceeded"
-	ReasonCreateFailed    = "CreateFailed"
-	ReasonPatchFailed     = "PatchFailed"
 )
 
 func SyncObject(c client.Client, ctx context.Context, eventRecorder events.EventRecorder, eventObj client.Object, newObj client.Object, shouldUpdate bool) error {
@@ -73,15 +68,13 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 					return fmt.Errorf("error getting %s: %w", key, err)
 				}
 			} else {
-				if eventRecorder != nil {
-					eventRecorder.Eventf(eventObj, newObj, corev1.EventTypeWarning, ReasonCreateFailed, "Create", "Error creating %T: %s: %v", newObj, key, err)
-				}
+				eventutils.Warning(eventRecorder, eventObj, newObj, eventutils.ReasonFailedCreate, eventutils.ActionCreate,
+					"Error creating %T: %s: %v", newObj, key, err)
 				return fmt.Errorf("error creating %s: %w", key, err)
 			}
 		} else {
-			if eventRecorder != nil {
-				eventRecorder.Eventf(eventObj, newObj, corev1.EventTypeNormal, ReasonCreateSucceeded, "Create", "Created %T: %s", newObj, key)
-			}
+			eventutils.Normal(eventRecorder, eventObj, newObj, eventutils.ReasonSuccessfulCreate, eventutils.ActionCreate,
+				"Created %T: %s", newObj, key)
 			return nil
 		}
 	}
@@ -278,9 +271,8 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 		return errors.New("unhandled patch object type, this is a bug")
 	}
 	if patchErr != nil {
-		if eventRecorder != nil {
-			eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonPatchFailed, "Patch", "Error patching %T: %s: %v", newObj, key, patchErr)
-		}
+		eventutils.Warning(eventRecorder, eventObj, oldObj, eventutils.ReasonFailedPatch, eventutils.ActionPatch,
+			"Error patching %T: %s: %v", newObj, key, patchErr)
 		return fmt.Errorf("error patching %s: %w", key, patchErr)
 	}
 	return nil

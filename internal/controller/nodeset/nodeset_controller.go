@@ -41,30 +41,6 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
-// Reasons for NodeSet events
-const (
-	// SelectingAllReason is added to an event when a NodeSet selects all Pods.
-	SelectingAllReason = "SelectingAll"
-	// FailedPlacementReason is added to an event when a NodeSet cannot schedule a Pod to a specified node.
-	FailedPlacementReason = "FailedPlacement"
-	// FailedNodeSetPodReason is added to an event when the status of a Pod of a NodeSet is 'Failed'.
-	FailedNodeSetPodReason = "FailedNodeSetPod"
-	// SyncFailedReason is added to an event when a sync sub-step fails.
-	SyncFailedReason = "SyncFailed"
-	// SyncFinalizerFailedReason is added to an event when a sync finalizer sub-step fails.
-	SyncFinalizerFailedReason = "SyncFinalizerFailed"
-	// NodeCordonReason is added to an event when a pod is cordoned due to its Kubernetes node being cordoned.
-	NodeCordonReason = "NodeCordon"
-	// SlurmnodeInvalidRegReason is added to an event when a pod is deleted because its Slurm node has INVALID_REG state
-	SlurmNodeInvalidRegReason = "SlurmNodeInvalidReg"
-	// SlurmNodeNotRegisteredReason is added to an event when a pod is deleted because its Slurm node is not registered.
-	SlurmNodeNotRegisteredReason = "SlurmNodeNotRegistered"
-	// DefunctSlurmNodePrunedReason is added to an event when a defunct Slurm node is pruned.
-	DefunctSlurmNodePrunedReason = "DefunctSlurmNodePruned"
-	// ControllerRefFailedReason is added to an event when the referenced Controller CR cannot be fetched.
-	ControllerRefFailedReason = "ControllerRefFailed"
-)
-
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "nodeset-workers", maxConcurrentReconciles, "Max concurrent workers for NodeSet controller.")
 }

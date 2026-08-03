@@ -49,6 +49,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
@@ -1982,7 +1983,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			}
 			if tt.wantEvent {
 				event := testutils.ReadOneRecordedEvent(t, recorder)
-				require.Equal(t, NodeCordonReason, event.Reason)
+				require.Equal(t, string(eventutils.ReasonNodeCordon), event.Reason)
 				require.Equal(t, "Cordon", event.Action)
 				require.Equal(t, pod, event.Related)
 			} else {
@@ -5084,7 +5085,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			gotEvents := make([]*corev1.Pod, 0, len(tt.wantEvents))
 			for range tt.wantEvents {
 				event := testutils.ReadOneRecordedEvent(t, recorder)
-				require.Equal(t, SlurmNodeNotRegisteredReason, event.Reason)
+				require.Equal(t, string(eventutils.ReasonSlurmNodeNotRegistered), event.Reason)
 				require.Equal(t, "Delete", event.Action)
 				gotEvents = append(gotEvents, event.Related.(*corev1.Pod))
 			}

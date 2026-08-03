@@ -18,11 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-)
-
-const (
-	ReasonDeleteSucceeded = "DeleteSucceeded"
-	ReasonDeleteFailed    = "DeleteFailed"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 )
 
 func DeleteObject(c client.Client, ctx context.Context, eventRecorder events.EventRecorder, eventObj client.Object, newObj client.Object) error {
@@ -73,14 +69,12 @@ func DeleteObject(c client.Client, ctx context.Context, eventRecorder events.Eve
 	}
 
 	if err := c.Delete(ctx, oldObj); err != nil {
-		if eventRecorder != nil {
-			eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeWarning, ReasonDeleteFailed, "Delete", "Error deleting: %T %s: %v", oldObj, key, err)
-		}
+		eventutils.Warning(eventRecorder, eventObj, oldObj, eventutils.ReasonFailedDelete, eventutils.ActionDelete,
+			"Error deleting: %T %s: %v", oldObj, key, err)
 		return fmt.Errorf("error deleting %s: %w", key, err)
 	}
 
-	if eventRecorder != nil {
-		eventRecorder.Eventf(eventObj, oldObj, corev1.EventTypeNormal, ReasonDeleteSucceeded, "Delete", "Deleted %T: %s", oldObj, key)
-	}
+	eventutils.Normal(eventRecorder, eventObj, oldObj, eventutils.ReasonSuccessfulDelete, eventutils.ActionDelete,
+		"Deleted %T: %s", oldObj, key)
 	return nil
 }

@@ -39,6 +39,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/batch"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
@@ -56,11 +57,6 @@ const (
 	// DaemonSet uses a value of 250.
 	// ReplicaSet uses a value of 500.
 	burstReplicas = 256
-
-	// FailedDaemonPodReason is added to an event when the status of a Pod of a DaemonSet is 'Failed'.
-	FailedDaemonPodReason = "FailedDaemonPod"
-	// SucceededDaemonPodReason is added to an event when the status of a Pod of a DaemonSet is 'Succeeded'.
-	SucceededDaemonPodReason = "SucceededDaemonPod"
 )
 
 // Sync implements control logic for synchronizing a NodeSet and its derived Pods.
@@ -150,7 +146,7 @@ func (r *NodeSetReconciler) syncFinalizers(ctx context.Context, nodeset *slinkyv
 	for _, s := range syncSteps {
 		if err := s.Sync(ctx, nodeset); err != nil {
 			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SyncFinalizerFailedReason, "SyncFinalizer", msg)
+			eventutils.Warning(r.eventRecorder, nodeset, nil, eventutils.ReasonSyncFinalizerFailed, eventutils.ActionSyncFinalizer, msg)
 			return fmt.Errorf("failed %q step: %w", s.Name, err)
 		}
 	}
@@ -574,7 +570,7 @@ func (r *NodeSetReconciler) syncCordon(
 			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
 				return err
 			}
-			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
+			eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonNodeCordon, eventutils.ActionCordon,
 				"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), name)
 
 		// If pod is cordoned, drain the Slurm node
@@ -724,7 +720,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForNodeNotFound(
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
 					defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
 			}
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
+			eventutils.Normal(r.eventRecorder, nodeset, nil, eventutils.ReasonDefunctSlurmNodePruned, eventutils.ActionDelete,
 				"Deleted defunct Slurm node %s: backing Pod %s/%s is gone and Kubernetes node %s no longer maps to its Slurm node",
 				defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
 			return nil
@@ -761,7 +757,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
 		}
 		invalidNode := nodesetutils.GetSlurmNodeName(pod)
 		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
+		eventutils.Warning(r.eventRecorder, nodeset, nil, eventutils.ReasonSlurmNodeInvalidReg, eventutils.ActionDelete,
 			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
 		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
 			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
@@ -847,7 +843,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAlwaysForPodTermination(
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s: %w",
 					slurmNode.Name, podKey.Namespace, podKey.Name, err)
 			}
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
+			eventutils.Normal(r.eventRecorder, nodeset, nil, eventutils.ReasonDefunctSlurmNodePruned, eventutils.ActionDelete,
 				"Deleted defunct Slurm node %s: backing Pod %s/%s is gone",
 				slurmNode.Name, podKey.Namespace, podKey.Name)
 		case err != nil:
@@ -910,7 +906,7 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 			}
 			return err
 		}
-		r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
+		eventutils.Warning(r.eventRecorder, nodeset, pod, eventutils.ReasonSlurmNodeNotRegistered, eventutils.ActionDelete,
 			"Deleted Pod %s because its Slurm node was not registered while the Pod was healthy", klog.KObj(pod))
 		return nil
 	}
@@ -1170,14 +1166,14 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				msg := fmt.Sprintf("Found failed daemon pod %s/%s on node %s, will try to kill it", pod.Namespace, pod.Name, node.Name)
 				logger.V(2).Info("Found failed daemon pod on node, will try to kill it")
 				// Emit an event so that it's discoverable to users.
-				r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeWarning, FailedDaemonPodReason, "Info", msg)
+				eventutils.Warning(r.eventRecorder, nodeset, pod, eventutils.ReasonFailedDaemonPod, eventutils.ActionDelete, msg)
 				podsToDelete = append(podsToDelete, pod)
 
 			case pod.Status.Phase == corev1.PodSucceeded:
 				msg := fmt.Sprintf("Found succeeded daemon pod %s/%s on node %s, will try to delete it", pod.Namespace, pod.Name, node.Name)
 				mainLogger.V(2).Info("Found succeeded daemon pod on node, will try to delete it", "pod", klog.KObj(pod), "node", klog.KObj(node))
 				// Emit an event so that it's discoverable to users.
-				r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, SucceededDaemonPodReason, "Info", msg)
+				eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonSucceededDaemonPod, eventutils.ActionDelete, msg)
 				podsToDelete = append(podsToDelete, pod)
 
 			default:
@@ -1187,7 +1183,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 					mainLogger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
 						"pod", klog.KObj(pod), "node", klog.KObj(node),
 						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
-					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
+					eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonHostnameMismatch, eventutils.ActionDelete,
 						"Recreating daemon pod %s/%s: hostname changed from %q to %q",
 						pod.Namespace, pod.Name, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], expectedHostname)
 					podsToDelete = append(podsToDelete, pod)
@@ -1446,7 +1442,7 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 		Name:      nodeset.Spec.ControllerRef.Name,
 	}
 	if err := r.Get(ctx, key, controller); err != nil {
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
+		eventutils.Warning(r.eventRecorder, nodeset, nil, eventutils.ReasonControllerRefFailed, eventutils.ActionResolveReference,
 			"Failed to get Controller (%s): %v", key, err)
 		return nil, err
 	}
@@ -1504,7 +1500,7 @@ func (r *NodeSetReconciler) newNodeSetPodOrdinal(
 		Name:      nodeset.Spec.ControllerRef.Name,
 	}
 	if err := r.Get(ctx, key, controller); err != nil {
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Info",
+		eventutils.Warning(r.eventRecorder, nodeset, nil, eventutils.ReasonControllerRefFailed, eventutils.ActionResolveReference,
 			"Failed to get Controller (%s): %v", key, err)
 		return nil, err
 	}

@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -811,7 +812,7 @@ func TestSyncObject_EventReferences(t *testing.T) {
 		event := testutils.ReadOneRecordedEvent(t, recorder)
 		require.Equal(t, parent, event.Regarding)
 		require.Equal(t, child, event.Related)
-		require.Equal(t, ReasonCreateSucceeded, event.Reason)
+		require.Equal(t, string(eventutils.ReasonSuccessfulCreate), event.Reason)
 		require.Equal(t, "Create", event.Action)
 	})
 
@@ -830,7 +831,7 @@ func TestSyncObject_EventReferences(t *testing.T) {
 
 		event := testutils.ReadOneRecordedEvent(t, recorder)
 		require.Equal(t, child, event.Related)
-		require.Equal(t, ReasonCreateFailed, event.Reason)
+		require.Equal(t, string(eventutils.ReasonFailedCreate), event.Reason)
 		require.Equal(t, "Create", event.Action)
 	})
 
@@ -857,7 +858,7 @@ func TestSyncObject_EventReferences(t *testing.T) {
 		event := testutils.ReadOneRecordedEvent(t, recorder)
 		related := event.Related.(*corev1.ConfigMap)
 		require.Equal(t, types.UID("existing-uid"), related.UID)
-		require.Equal(t, ReasonPatchFailed, event.Reason)
+		require.Equal(t, string(eventutils.ReasonFailedPatch), event.Reason)
 		require.Equal(t, "Patch", event.Action)
 	})
 }
