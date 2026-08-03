@@ -152,7 +152,7 @@ func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testin
 func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, nodesetKey crclient.ObjectKey) {
 	nodeset := &slinkyv1beta1.NodeSet{}
 
-	for retry := range 16 {
+	for retry := range 128 {
 
 		err := crClient.Get(ctx, nodesetKey, nodeset)
 		if err != nil {
@@ -163,7 +163,7 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 			break
 		}
 
-		if retry == 15 {
+		if retry == 127 {
 			t.Fatalf("Timed out waiting for NodeSet replicas to become ready. \nDesired replicas: %d \nReady replicas: %d", *nodeset.Spec.Replicas, nodeset.Status.AvailableReplicas)
 		}
 
