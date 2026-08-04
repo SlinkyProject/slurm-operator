@@ -60,7 +60,7 @@ type SlurmClientReconciler struct {
 }
 
 // +kubebuilder:rbac:groups=slinky.slurm.net,resources=controllers,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -100,6 +100,7 @@ func (r *SlurmClientReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named(ControllerName).
 		For(&slinkyv1beta1.Controller{}).
 		Watches(&slinkyv1beta1.RestApi{}, eventhandler.NewRestApiEventHandler(r.Client)).
+		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).

@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
@@ -79,8 +80,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 
 	// There is an existing client, handle in-place updates
 	if slurmClient := r.ClientMap.Get(controllerKey); slurmClient != nil {
-		slurmClient.SetServer(server)
-		slurmClient.SetToken(authToken)
+		updateClient(slurmClient, server, authToken)
 		return nil
 	}
 
@@ -90,8 +90,8 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 		},
 	}
 	config := &slurmclient.Config{
-		Server:    server,
-		AuthToken: authToken,
+		Server:        server,
+		TokenProvider: clienttoken.StaticProvider(authToken),
 	}
 	slurmClient, err := slurmclient.NewClient(config, opts)
 	if err != nil {
@@ -103,6 +103,13 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	}
 
 	return nil
+}
+
+func updateClient(slurmClient slurmclient.Client, server, authToken string) {
+	if slurmClient.GetServer() != server {
+		slurmClient.SetServer(server)
+	}
+	slurmClient.SetTokenProvider(clienttoken.StaticProvider(authToken))
 }
 
 func (r *SlurmClientReconciler) getRestApiServer(ctx context.Context, controller *slinkyv1beta1.Controller) (string, error) {
