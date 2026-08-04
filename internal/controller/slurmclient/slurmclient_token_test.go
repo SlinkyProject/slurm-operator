@@ -12,15 +12,6 @@ import (
 	client "github.com/SlinkyProject/slurm-client/pkg/client"
 	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 type trackingSlurmClient struct {
@@ -120,44 +111,4 @@ func TestSetTokenProviderUpdatesNextRequest(t *testing.T) {
 	if got := <-requestTokens; got != rotatedToken {
 		t.Fatalf("rotated request token = %q, want %q", got, rotatedToken)
 	}
-}
-
-func TestMapSecretToControllers(t *testing.T) {
-	scheme := runtime.NewScheme()
-	require.NoError(t, corev1.AddToScheme(scheme))
-	require.NoError(t, slinkyv1beta1.AddToScheme(scheme))
-
-	jwtKeyRef := testutils.NewJwtKeyRef("slurm")
-	controller := testutils.NewController(
-		"slurm",
-		testutils.NewSlurmKeyRef("slurm"),
-		jwtKeyRef,
-		nil,
-	)
-	otherController := testutils.NewController(
-		"other",
-		testutils.NewSlurmKeyRef("other"),
-		testutils.NewJwtKeyRef("other"),
-		nil,
-	)
-	kubeClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithObjects(controller, otherController).
-		Build()
-	reconciler := &SlurmClientReconciler{Client: kubeClient}
-
-	requests := reconciler.mapSecretToControllers(
-		context.Background(),
-		testutils.NewJwtKeySecret(jwtKeyRef),
-	)
-
-	require.Equal(t, []reconcile.Request{{
-		NamespacedName: k8sclient.ObjectKeyFromObject(controller),
-	}}, requests)
-
-	requests = reconciler.mapSecretToControllers(
-		context.Background(),
-		testutils.NewJwtKeySecret(testutils.NewJwtKeyRef("unreferenced")),
-	)
-	require.Empty(t, requests)
 }

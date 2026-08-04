@@ -17,7 +17,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -101,39 +100,11 @@ func (r *SlurmClientReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named(ControllerName).
 		For(&slinkyv1beta1.Controller{}).
 		Watches(&slinkyv1beta1.RestApi{}, eventhandler.NewRestApiEventHandler(r.Client)).
-		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.mapSecretToControllers)).
+		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		}).
 		Complete(r)
-}
-
-func (r *SlurmClientReconciler) mapSecretToControllers(
-	ctx context.Context,
-	obj client.Object,
-) []reconcile.Request {
-	secret, ok := obj.(*corev1.Secret)
-	if !ok {
-		return nil
-	}
-
-	controllerList := &slinkyv1beta1.ControllerList{}
-	if err := r.List(ctx, controllerList, client.InNamespace(secret.Namespace)); err != nil {
-		log.FromContext(ctx).Error(err, "failed to list Controller CRs")
-		return nil
-	}
-
-	secretKey := client.ObjectKeyFromObject(secret)
-	requests := make([]reconcile.Request, 0, len(controllerList.Items))
-	for i := range controllerList.Items {
-		controller := &controllerList.Items[i]
-		if refresolver.IsKeyMatch(secretKey, controller.AuthJwtKey()) {
-			requests = append(requests, reconcile.Request{
-				NamespacedName: client.ObjectKeyFromObject(controller),
-			})
-		}
-	}
-	return requests
 }
 
 func NewReconciler(c client.Client, cm *clientmap.ClientMap) *SlurmClientReconciler {
