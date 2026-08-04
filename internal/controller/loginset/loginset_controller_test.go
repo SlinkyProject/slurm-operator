@@ -83,18 +83,7 @@ var _ = Describe("LoginSet Controller", func() {
 			Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
 
 			By("Verifying Deployment child is NOT recreated")
-			const requiredConsecutiveAbsences = 5
-			consecutiveAbsences := 0
-			Eventually(func(g Gomega) {
-				if err := k8sClient.Get(ctx, deploymentKey, deployment); err == nil {
-					Expect(k8sClient.Delete(ctx, deployment)).To(Succeed())
-					consecutiveAbsences = 0
-					g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences), "Deployment was recreated")
-					return
-				}
-				consecutiveAbsences++
-				g.Expect(consecutiveAbsences).To(BeNumerically(">=", requiredConsecutiveAbsences))
-			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+			testutils.ExpectNotRecreated(ctx, k8sClient, deployment)
 
 			By("Cleaning up: removing foregroundDeletion finalizer")
 			ls := &slinkyv1beta1.LoginSet{}
