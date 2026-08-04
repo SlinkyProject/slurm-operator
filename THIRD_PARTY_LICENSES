@@ -11,6 +11,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.25.1
 - License: Apache-2.0
 
+### github.com/Masterminds/semver/v3
+- Name: github.com/Masterminds/semver/v3
+- Version: v3.5.0
+- License: MIT
+
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
 - Version: v1.1.0-rc1.0.20260730214247-f258b14b84ef
@@ -226,6 +231,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.7.1
 - License: Apache-2.0
 
+### github.com/google/go-cmp/cmp
+- Name: github.com/google/go-cmp/cmp
+- Version: v0.7.0
+- License: BSD-3-Clause
+
 ### github.com/google/uuid
 - Name: github.com/google/uuid
 - Version: v1.6.0
@@ -364,6 +374,16 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### github.com/oasdiff/yaml3
 - Name: github.com/oasdiff/yaml3
 - Version: v0.0.0-20250309153720-d2182401db90
+- License: MIT
+
+### github.com/onsi/ginkgo/v2
+- Name: github.com/onsi/ginkgo/v2
+- Version: v2.28.1
+- License: MIT
+
+### github.com/onsi/gomega
+- Name: github.com/onsi/gomega
+- Version: v1.39.1
 - License: MIT
 
 ### github.com/opencontainers/go-digest
@@ -586,6 +606,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.0.0-20251219203646-944ab1f22d93
 - License: BSD-3-Clause
 
+### golang.org/x/mod/semver
+- Name: golang.org/x/mod/semver
+- Version: v0.37.0
+- License: BSD-3-Clause
+
 ### golang.org/x/net
 - Name: golang.org/x/net
 - Version: v0.56.0
@@ -619,6 +644,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### golang.org/x/time/rate
 - Name: golang.org/x/time/rate
 - Version: v0.15.0
+- License: BSD-3-Clause
+
+### golang.org/x/tools
+- Name: golang.org/x/tools
+- Version: v0.47.0
 - License: BSD-3-Clause
 
 ### gomodules.xyz/jsonpatch/v2

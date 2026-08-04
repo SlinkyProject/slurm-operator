@@ -92,18 +92,9 @@ var _ = Describe("Token Controller", func() {
 			By("Deleting Secret child while Token is terminating")
 			Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, secret)).To(Succeed())
-			Eventually(func(g Gomega) {
-				err := k8sClient.Get(ctx, secretKey, secret)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Verifying Secret child is NOT recreated")
-			Consistently(func(g Gomega) {
-				err := k8sClient.Get(ctx, secretKey, secret)
-				g.Expect(err).To(HaveOccurred())
-				g.Expect(client.IgnoreNotFound(err)).To(Succeed())
-			}, 5*testutils.Interval, testutils.Interval).Should(Succeed())
+			testutils.ExpectNotRecreated(ctx, k8sClient, secret)
 
 			By("Cleaning up: removing foregroundDeletion finalizer")
 			Expect(k8sClient.Get(ctx, tokenKey, token)).To(Succeed())
