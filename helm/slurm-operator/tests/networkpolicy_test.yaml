@@ -1,0 +1,234 @@
+---
+suite: test networkpolicy
+templates:
+  - networkpolicy/operator-netpol.yaml
+  - networkpolicy/webhook-netpol.yaml
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+release:
+  name: test-release
+  namespace: test-namespace
+tests:
+  - it: should not create any networkpolicy when disabled
+    set:
+      networkPolicy:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: operator manifest should match snapshot
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create operator networkpolicy when operator.networkPolicy.enabled is false
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      operator:
+        networkPolicy:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create operator networkpolicy when operator is disabled
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      operator:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: operator should include metrics ingress when metricsPort is non-zero
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      operator:
+        metricsPort: 8080
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            ports:
+              - protocol: TCP
+                port: 8080
+
+  - it: operator should include slurmrestd egress
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            ports:
+              - protocol: TCP
+                port: 6820
+            to:
+              - namespaceSelector: {}
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: slurmrestd
+
+  - it: operator should not include metrics ingress when metricsPort is zero
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      operator:
+        metricsPort: 0
+    asserts:
+      - isEmpty:
+          path: spec.ingress
+
+  - it: webhook manifest should match snapshot
+    template: networkpolicy/webhook-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should not create webhook networkpolicy when webhook.networkPolicy.enabled is false
+    template: networkpolicy/webhook-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      webhook:
+        networkPolicy:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create webhook networkpolicy when webhook is disabled
+    template: networkpolicy/webhook-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      webhook:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: webhook should use custom serverPort
+    template: networkpolicy/webhook-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      webhook:
+        serverPort: 8443
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            ports:
+              - protocol: TCP
+                port: 8443
+
+  - it: should append global extraIngress to all networkpolicies
+    set:
+      networkPolicy:
+        enabled: true
+        extraIngress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: monitoring
+            ports:
+              - protocol: TCP
+                port: 9090
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: monitoring
+            ports:
+              - protocol: TCP
+                port: 9090
+
+  - it: should append global extraEgress to all networkpolicies
+    set:
+      networkPolicy:
+        enabled: true
+        extraEgress:
+          - to:
+              - ipBlock:
+                  cidr: 10.0.0.0/8
+            ports:
+              - protocol: TCP
+                port: 443
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 10.0.0.0/8
+            ports:
+              - protocol: TCP
+                port: 443
+
+  - it: should append operator-specific extraEgress
+    template: networkpolicy/operator-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      operator:
+        networkPolicy:
+          extraEgress:
+            - to:
+                - ipBlock:
+                    cidr: 192.168.0.0/16
+              ports:
+                - protocol: TCP
+                  port: 6443
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            to:
+              - ipBlock:
+                  cidr: 192.168.0.0/16
+            ports:
+              - protocol: TCP
+                port: 6443
+
+  - it: should append webhook-specific extraIngress
+    template: networkpolicy/webhook-netpol.yaml
+    set:
+      networkPolicy:
+        enabled: true
+      webhook:
+        networkPolicy:
+          extraIngress:
+            - from:
+                - namespaceSelector: {}
+              ports:
+                - protocol: TCP
+                  port: 9443
+    asserts:
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector: {}
+            ports:
+              - protocol: TCP
+                port: 9443

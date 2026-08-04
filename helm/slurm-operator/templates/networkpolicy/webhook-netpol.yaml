@@ -1,0 +1,51 @@
+{{- /*
+SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if and .Values.networkPolicy.enabled .Values.webhook.enabled .Values.webhook.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "slurm-operator.webhook.name" . }}
+  namespace: {{ include "slurm-operator.namespace" . }}
+  labels:
+    {{- include "slurm-operator.webhook.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "slurm-operator.webhook.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webhook.serverPort | default 9443 }}
+    {{- if ne (int .Values.webhook.metricsPort) 0 }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.webhook.metricsPort }}
+    {{- end }}
+    {{- with .Values.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.webhook.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- with .Values.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.webhook.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
