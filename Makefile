@@ -531,6 +531,12 @@ test: envtest ## Run tests.
 			exit 1; \
 		fi
 
+## Launch end-to-end tests
+##
+## Running e2e tests requires that the current Kubeconfig
+## references a cluster with Slurm-operator and its' CRDs
+## installed. To easily configure this using Kind, you can
+## run: `hack/kind.sh --crds --operator --extras`
 .PHONY: test-e2e
 test-e2e:
 	go test -v -timeout 30m ./test/e2e

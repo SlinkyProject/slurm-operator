@@ -5,6 +5,11 @@ package test
 
 import "sigs.k8s.io/e2e-framework/pkg/env"
 
+type SlurmImageConfig struct {
+	Tag  string
+	Repo string
+}
+
 type SlurmInstallationConfig struct {
 	Accounting bool
 	Login      bool
@@ -18,4 +23,5 @@ var (
 	SlinkyNamespace string = "slinky"
 	SlurmNamespace  string = "slurm"
 	Basepath        string
+	SlurmImage      SlurmImageConfig
 )

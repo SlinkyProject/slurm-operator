@@ -56,21 +56,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v2.3.0
 - License: MIT
 
-### github.com/containerd/errdefs
-- Name: github.com/containerd/errdefs
-- Version: v1.0.0
-- License: Apache-2.0
-
-### github.com/containerd/errdefs/pkg
-- Name: github.com/containerd/errdefs/pkg
-- Version: v0.3.0
-- License: Apache-2.0
-
-### github.com/containerd/log
-- Name: github.com/containerd/log
-- Version: v0.1.0
-- License: Apache-2.0
-
 ### github.com/davecgh/go-spew/spew
 - Name: github.com/davecgh/go-spew/spew
 - Version: v1.1.2-0.20180830191138-d8f796af33cc
@@ -79,21 +64,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 ### github.com/distribution/reference
 - Name: github.com/distribution/reference
 - Version: v0.6.0
-- License: Apache-2.0
-
-### github.com/docker/docker
-- Name: github.com/docker/docker
-- Version: v28.5.2
-- License: Apache-2.0
-
-### github.com/docker/go-connections
-- Name: github.com/docker/go-connections
-- Version: v0.6.0
-- License: Apache-2.0
-
-### github.com/docker/go-units
-- Name: github.com/docker/go-units
-- Version: v0.5.0
 - License: Apache-2.0
 
 ### github.com/emicklei/go-restful/v3
@@ -261,31 +231,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.1.12
 - License: MIT
 
-### github.com/klauspost/compress
-- Name: github.com/klauspost/compress
-- Version: v1.18.7
-- License: Apache-2.0
-
-### github.com/klauspost/compress
-- Name: github.com/klauspost/compress
-- Version: v1.18.7
-- License: BSD-3-Clause
-
-### github.com/klauspost/compress
-- Name: github.com/klauspost/compress
-- Version: v1.18.7
-- License: MIT
-
-### github.com/klauspost/compress/internal/snapref
-- Name: github.com/klauspost/compress/internal/snapref
-- Version: v1.18.7
-- License: BSD-3-Clause
-
-### github.com/klauspost/compress/zstd/internal/xxhash
-- Name: github.com/klauspost/compress/zstd/internal/xxhash
-- Version: v1.18.7
-- License: MIT
-
 ### github.com/mailru/easyjson/jlexer
 - Name: github.com/mailru/easyjson/jlexer
 - Version: v0.9.1
@@ -296,21 +241,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v0.38.1
 - License: MIT
 
-### github.com/moby/docker-image-spec/specs-go/v1
-- Name: github.com/moby/docker-image-spec/specs-go/v1
-- Version: v1.3.1
-- License: Apache-2.0
-
-### github.com/moby/go-archive
-- Name: github.com/moby/go-archive
-- Version: v0.2.0
-- License: Apache-2.0
-
-### github.com/moby/patternmatcher
-- Name: github.com/moby/patternmatcher
-- Version: v0.6.1
-- License: Apache-2.0
-
 ### github.com/moby/spdystream
 - Name: github.com/moby/spdystream
 - Version: v0.5.1
@@ -320,21 +250,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/moby/spdystream/spdy
 - Version: v0.5.1
 - License: BSD-3-Clause
-
-### github.com/moby/sys/sequential
-- Name: github.com/moby/sys/sequential
-- Version: v0.6.0
-- License: Apache-2.0
-
-### github.com/moby/sys/user
-- Name: github.com/moby/sys/user
-- Version: v0.4.0
-- License: Apache-2.0
-
-### github.com/moby/sys/userns
-- Name: github.com/moby/sys/userns
-- Version: v0.1.0
-- License: Apache-2.0
 
 ### github.com/modern-go/concurrent
 - Name: github.com/modern-go/concurrent
@@ -391,20 +306,10 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.0.0
 - License: Apache-2.0
 
-### github.com/opencontainers/image-spec/specs-go
-- Name: github.com/opencontainers/image-spec/specs-go
-- Version: v1.1.1
-- License: Apache-2.0
-
 ### github.com/perimeterx/marshmallow
 - Name: github.com/perimeterx/marshmallow
 - Version: v1.1.5
 - License: MIT
-
-### github.com/pkg/errors
-- Name: github.com/pkg/errors
-- Version: v0.9.1
-- License: BSD-2-Clause
 
 ### github.com/pmezard/go-difflib/difflib
 - Name: github.com/pmezard/go-difflib/difflib
@@ -455,11 +360,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/sethvargo/go-envconfig
 - Version: v1.3.0
 - License: Apache-2.0
-
-### github.com/sirupsen/logrus
-- Name: github.com/sirupsen/logrus
-- Version: v1.9.4
-- License: MIT
 
 ### github.com/spf13/cobra
 - Name: github.com/spf13/cobra
