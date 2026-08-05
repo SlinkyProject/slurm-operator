@@ -60,6 +60,10 @@ func (r *ControllerWebhook) ValidateCreate(ctx context.Context, controller *slin
 			len(controllerName), controllerName))
 	}
 
+	if err := r.validatePVC(ctx, controller); err != nil {
+		errs = append(errs, err)
+	}
+
 	return warns, utilerrors.NewAggregate(errs)
 }
 
@@ -90,10 +94,8 @@ func (r *ControllerWebhook) ValidateUpdate(ctx context.Context, oldController, n
 		errs = append(errs, errors.New("cannot change persistence.existingClaim after deployment"))
 	}
 
-	if newController.Spec.HighAvailability.Enabled != oldController.Spec.HighAvailability.Enabled {
-		if err := r.validatePVC(ctx, newController); err != nil {
-			errs = append(errs, err)
-		}
+	if err := r.validatePVC(ctx, newController); err != nil {
+		errs = append(errs, err)
 	}
 
 	return warns, utilerrors.NewAggregate(errs)

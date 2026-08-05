@@ -15,10 +15,6 @@ import (
 
 func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Controller) (*corev1.Service, error) {
 	spec := controller.Spec.Service
-	selector := labels.NewBuilder().WithControllerSelectorLabels(controller).Build()
-	if controller.Spec.HighAvailability.Enabled {
-		selector[slinkyv1beta1.LabelControllerActive] = "true"
-	}
 	opts := common.ServiceOpts{
 		Key: controller.ServiceKey(),
 		Metadata: slinkyv1beta1.Metadata{
@@ -26,7 +22,12 @@ func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Con
 			Labels:      structutils.MergeMaps(controller.Labels, spec.Metadata.Labels, labels.NewBuilder().WithControllerLabels(controller).Build()),
 		},
 		ServiceSpec: spec.ServiceSpecWrapper.ServiceSpec,
-		Selector:    selector,
+		Selector: labels.NewBuilder().
+			WithControllerLabels(controller).
+			WithLabels(map[string]string{
+				slinkyv1beta1.LabelControllerActive: "true",
+			}).
+			Build(),
 	}
 
 	port := corev1.ServicePort{
