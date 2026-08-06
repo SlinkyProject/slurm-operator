@@ -23,7 +23,7 @@ func (b *ControllerBuilder) BuildControllerService(controller *slinkyv1beta1.Con
 		},
 		ServiceSpec: spec.ServiceSpecWrapper.ServiceSpec,
 		Selector: labels.NewBuilder().
-			WithControllerLabels(controller).
+			WithControllerSelectorLabels(controller).
 			WithLabels(map[string]string{
 				slinkyv1beta1.LabelControllerActive: "true",
 			}).

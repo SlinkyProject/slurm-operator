@@ -76,7 +76,6 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 						},
 					},
 					Selector: map[string]string{
-						"app.kubernetes.io/component":       "controller",
 						"app.kubernetes.io/instance":        "slurm",
 						"app.kubernetes.io/name":            "slurmctld",
 						slinkyv1beta1.LabelControllerActive: "true",
@@ -117,7 +116,6 @@ func TestBuilder_BuildControllerService(t *testing.T) {
 						},
 					},
 					Selector: map[string]string{
-						"app.kubernetes.io/component":       "controller",
 						"app.kubernetes.io/instance":        "slurm",
 						"app.kubernetes.io/name":            "slurmctld",
 						slinkyv1beta1.LabelControllerActive: "true",
