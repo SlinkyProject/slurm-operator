@@ -34,6 +34,8 @@ Kubernetes: `>= 1.29.0-0`
 | certManager.secretName | string | `"slurm-operator-webhook-ca"` | The secret to be (created and) mounted. |
 | crds | object | `{"enabled":false}` | Configure Custom Resource Definitions (CRDs). |
 | crds.enabled | bool | `false` | Whether this helm chart should manage the CRD and its upgrades. |
+| externalCertInjection.enabled | bool | `false` | Mount a pre-existing TLS Secret instead of provisioning one. |
+| externalCertInjection.secretName | string | `""` | Name of a pre-existing kubernetes.io/tls Secret containing `tls.crt`, `tls.key`, and `ca.crt`. Must be set explicitly when `enabled` is true; intentionally has no default to avoid silently reusing the chart-managed Secret name during migrations. |
 | extraObjects | list | `[]` | Extra Kubernetes objects to deploy alongside the chart. Each entry is rendered as a standalone Kubernetes object. Supports Helm templating (e.g. {{ .Release.Namespace }}). |
 | fullnameOverride | string | `""` | Overrides the full name of the release. |
 | imagePullPolicy | string | `"IfNotPresent"` | Set the default image pull policy. |
@@ -85,6 +87,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.mutating.failurePolicy | string | `"Ignore"` | Action taken when the mutating admission webhook is unreachable or returns an error. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
 | webhook.mutating.matchConditions | list | `[]` | List of MatchConditions, which represents a condition which must by fulfilled for a request to be sent to a webhook. Ref: https://kubernetes.io/docs/reference/kubernetes-api/definitions/match-condition-v1-admissionregistration/ |
 | webhook.mutating.matchPolicy | string | `"Equivalent"` | How the rules listed in the mutating webhook are matched against incoming requests. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
+| webhook.mutatingAnnotations | object | `{}` | Extra annotations on the MutatingWebhookConfiguration. Merged with chart-managed annotations; user keys win on collision. |
 | webhook.namespaces | string | `""` | Comma-separated list of namespaces the webhook will watch. If empty, all namespaces are watched. |
 | webhook.nodeSelector | object | `{}` | Node label selector for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector |
 | webhook.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
@@ -105,4 +108,5 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.validating.matchConditions | list | `[]` | List of MatchConditions, which represents a condition which must by fulfilled for a request to be sent to a webhook. Ref: https://kubernetes.io/docs/reference/kubernetes-api/definitions/match-condition-v1-admissionregistration/ |
 | webhook.validating.matchPolicy | string | `"Equivalent"` | How the rules listed in the validating webhook are matched against incoming requests. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchpolicy |
 | webhook.validating.namespaceSelector | object | `{}` | Full override for the validating webhooks' namespaceSelector, rendered verbatim when set. Replaces `webhook.namespaces` and the default kube-system/kube-node-lease exclusions for these webhooks. |
+| webhook.validatingAnnotations | object | `{}` | Extra annotations on the ValidatingWebhookConfiguration. Merged with chart-managed annotations; user keys win on collision. |
 

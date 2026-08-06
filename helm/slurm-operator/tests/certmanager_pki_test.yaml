@@ -126,3 +126,42 @@ tests:
       - equal:
           path: metadata.namespace
           value: custom-namespace
+
+  - it: should not render when externalCertInjection is enabled
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should fail when both certManager and externalCertInjection are enabled
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: true
+      externalCertInjection:
+        enabled: true
+        secretName: my-byo-cert
+    asserts:
+      - failedTemplate:
+          errorPattern: mutually exclusive
+
+  - it: should fail when externalCertInjection.secretName is empty
+    set:
+      webhook:
+        enabled: true
+      certManager:
+        enabled: false
+      externalCertInjection:
+        enabled: true
+        secretName: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: externalCertInjection\.secretName is empty
