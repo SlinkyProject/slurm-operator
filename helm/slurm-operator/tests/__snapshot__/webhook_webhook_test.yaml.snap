@@ -435,5 +435,5 @@ should generate pods/binding webhook when podsBinding is set to true:
               - CREATE
             resources:
               - pods/binding
-        sideEffects: None
+        sideEffects: NoneOnDryRun
         timeoutSeconds: 10

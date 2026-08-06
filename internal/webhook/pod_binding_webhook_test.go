@@ -9,11 +9,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
@@ -74,7 +77,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Worker pod gets topology annotation from node",
 			client: fake.NewFakeClient(workerPod.DeepCopy(), nodeWithTopology.DeepCopy()),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      workerPod.Name,
@@ -91,7 +102,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Worker pod gets empty topology when node has no annotation",
 			client: fake.NewFakeClient(workerPod.DeepCopy(), nodeWithoutTopology.DeepCopy()),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      workerPod.Name,
@@ -108,7 +127,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Non-worker pod is skipped",
 			client: fake.NewFakeClient(nonWorkerPod.DeepCopy()),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      nonWorkerPod.Name,
@@ -123,7 +150,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Pod with no labels is skipped",
 			client: fake.NewFakeClient(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bare-pod", Namespace: corev1.NamespaceDefault}}),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "bare-pod",
@@ -138,7 +173,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Node not found is a no-op",
 			client: fake.NewFakeClient(workerPod.DeepCopy()),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      workerPod.Name,
@@ -153,7 +196,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			name:   "Pod not found returns error",
 			client: fake.NewFakeClient(),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "missing-pod",
@@ -175,7 +226,15 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 				}).
 				Build(),
 			args: args{
-				ctx: context.TODO(),
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
 				binding: &corev1.Binding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      workerPod.Name,
@@ -185,6 +244,31 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name:   "Label update is skipped on dry-run",
+			client: fake.NewFakeClient(workerPod.DeepCopy(), nodeWithTopology.DeepCopy()),
+			args: args{
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request",
+							DryRun: ptr.To(true),
+						},
+					},
+				),
+				binding: &corev1.Binding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      workerPod.Name,
+						Namespace: workerPod.Namespace,
+					},
+					Target: corev1.ObjectReference{Name: nodeWithTopology.Name},
+				},
+			},
+			wantErr:       false,
+			wantTopology:  "",
+			checkTopology: true,
 		},
 	}
 	for _, tt := range tests {
