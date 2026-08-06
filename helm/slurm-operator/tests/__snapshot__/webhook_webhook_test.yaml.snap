@@ -231,5 +231,5 @@ default manifest should match snapshot:
               - CREATE
             resources:
               - pods/binding
-        sideEffects: None
+        sideEffects: NoneOnDryRun
         timeoutSeconds: 10
