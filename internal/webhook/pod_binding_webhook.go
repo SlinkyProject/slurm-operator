@@ -37,12 +37,22 @@ func (r *PodBindingWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;update;patch;watch
 // +kubebuilder:rbac:groups="",resources=pods/binding,verbs=get;list;watch
-// +kubebuilder:webhook:path=/mutate--v1-binding,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=None,groups="",resources=pods/binding,verbs=create,versions=v1,name=podsbinding-v1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate--v1-binding,mutating=true,failurePolicy=fail,matchPolicy=Equivalent,sideEffects=NoneOnDryRun,groups="",resources=pods/binding,verbs=create,versions=v1,name=podsbinding-v1.kb.io,admissionReviewVersions=v1
 
 var _ admission.Defaulter[*corev1.Binding] = &PodBindingWebhook{}
 
 // Default implements admission.CustomDefaulter.
 func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding) error {
+	req, err := admission.RequestFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("get admission request from context: %w", err)
+	}
+
+	if req.DryRun != nil && *req.DryRun {
+		bindinglog.Info("skipping binding mutation for dry-run request", "pod", binding.Name, "node", binding.Target.Name)
+		return nil
+	}
+
 	bindinglog.Info("mutate binding for pod on node", "pod", binding.Name, "node", binding.Target.Name)
 
 	pod := &corev1.Pod{}
