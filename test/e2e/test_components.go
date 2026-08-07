@@ -121,7 +121,7 @@ func testSlurmController() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).
@@ -171,7 +171,7 @@ func testSlurmController() types.Feature {
 			cleanup_command := "kubectl"
 			cleanup_args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).Feature()
@@ -275,7 +275,7 @@ func testSlurmNodeSet() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 48, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 4*time.Minute, 5*time.Second)
 
 			return ctx
 		}).
@@ -288,7 +288,7 @@ func testSlurmNodeSet() types.Feature {
 			cleanup_command := "kubectl"
 			cleanup_args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).
@@ -459,7 +459,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 			require.NoError(t, crClient.Update(ctx, nodeset), "failed to scale NodeSet after JWT key rotation")
 			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
 
-			test.RetryCommand(
+			test.WaitForCommand(
 				ctx,
 				t,
 				"kubectl",
@@ -467,7 +467,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 				"idle",
 				"",
 				nil,
-				16,
+				80*time.Second,
 				5*time.Second,
 			)
 
@@ -538,7 +538,7 @@ func testSlurmAccounting() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 16, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).
@@ -562,12 +562,12 @@ func testSlurmAccounting() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
 			wants = "test"
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
 			return ctx
 		}).
@@ -580,12 +580,12 @@ func testSlurmAccounting() types.Feature {
 			var cleanup_command string
 			var cleanup_args []string
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
 			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
 			wants = "testuser"
 
-			test.RetryCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 8, time.Duration(5*time.Second))
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
 			return ctx
 		}).
