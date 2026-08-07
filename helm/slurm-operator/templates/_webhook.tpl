@@ -78,6 +78,6 @@ matchExpressions:
   - key: kubernetes.io/metadata.name
     operator: NotIn
     values:
-      {{- concat (list "kube-system" "kube-node-lease") $extraExcludes | toYaml | nindent 6 }}
+      {{- concat (list "kube-system" "kube-public" "kube-node-lease") $extraExcludes | toYaml | nindent 6 }}
 {{- end -}}
 {{- end -}}
