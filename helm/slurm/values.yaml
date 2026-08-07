@@ -520,13 +520,13 @@ accounting:
     # CommitDelay: 1
     # DebugLevel: debug2
     # DebugFlags: []
-    # PurgeEventAfter=1month
-    # PurgeJobAfter=12month
-    # PurgeResvAfter=1month
-    # PurgeStepAfter=1month
-    # PurgeSuspendAfter=1month
-    # PurgeTXNAfter=12month
-    # PurgeUsageAfter=24month
+    # PurgeEventAfter: 1month
+    # PurgeJobAfter: 12month
+    # PurgeResvAfter: 1month
+    # PurgeStepAfter: 1month
+    # PurgeSuspendAfter: 1month
+    # PurgeTXNAfter: 12month
+    # PurgeUsageAfter: 24month
   # -- Labels and annotations.
   # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   metadata: {}
