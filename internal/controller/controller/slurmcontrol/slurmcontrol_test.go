@@ -4,8 +4,6 @@
 package slurmcontrol
 
 import (
-	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,60 +19,6 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 )
-
-func Test_tolerateError(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Nil",
-			args: args{
-				err: nil,
-			},
-			want: true,
-		},
-		{
-			name: "Empty",
-			args: args{
-				err: errors.New(""),
-			},
-			want: false,
-		},
-		{
-			name: "NotFound",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNotFound)),
-			},
-			want: true,
-		},
-		{
-			name: "NoContent",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNoContent)),
-			},
-			want: true,
-		},
-		{
-			name: "Forbidden",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusForbidden)),
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tolerateError(tt.args.err); got != tt.want {
-				t.Errorf("tolerateError() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func newSlurmClientMap(controllerName string, client client.Client) *clientmap.ClientMap {
 	cm := clientmap.NewClientMap()

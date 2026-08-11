@@ -6,7 +6,6 @@ package slurmcontrol
 import (
 	"context"
 	"errors"
-	"net/http"
 	"slices"
 	"testing"
 	"time"
@@ -25,6 +24,7 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/client"
 	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
 	"github.com/SlinkyProject/slurm-client/pkg/object"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
@@ -161,7 +161,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -278,7 +278,7 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -370,7 +370,7 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -456,7 +456,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -607,7 +607,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -3392,59 +3392,6 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 	}
 }
 
-func Test_tolerateError(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Nil",
-			args: args{
-				err: nil,
-			},
-			want: true,
-		},
-		{
-			name: "Empty",
-			args: args{
-				err: errors.New(""),
-			},
-			want: false,
-		},
-		{
-			name: "NotFound",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNotFound)),
-			},
-			want: true,
-		},
-		{
-			name: "NoContent",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNoContent)),
-			},
-			want: true,
-		},
-		{
-			name: "Forbidden",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusForbidden)),
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tolerateError(tt.args.err)
-			require.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func Test_nodeState(t *testing.T) {
 	type args struct {
 		node  types.V0044Node
@@ -3677,5 +3624,5 @@ func Test_realSlurmControl_DeleteNode(t *testing.T) {
 
 	checkNode := &types.V0044Node{}
 	getErr := sclient.Get(ctx, node.GetKey(), checkNode)
-	require.True(t, tolerateError(getErr), "DeleteNode() node still exists: %v", getErr)
+	require.True(t, errors.Is(getErr, slurmerrors.ErrObjectNotFound), "DeleteNode() node still exists: %v", getErr)
 }
