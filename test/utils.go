@@ -32,34 +32,30 @@ func GetBasePath() string {
 	return path
 }
 
-// RetryCommand executes and evaluates the provided command against the provided wants
-func RetryCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanup_command string, cleanup_args []string, retries int, retryDelay time.Duration) context.Context {
-	for retry := range retries {
+// WaitForCommand executes the provided command until it succeeds with the expected output.
+func WaitForCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanup_command string, cleanup_args []string, timeout time.Duration, retryDelay time.Duration) {
+	t.Helper()
 
+	var output []byte
+	err := wait.For(func(waitCtx context.Context) (bool, error) {
 		if cleanup_command != "" && len(cleanup_args) > 0 {
-			cleanup_cmd := exec.Command(cleanup_command, cleanup_args...)
+			cleanup_cmd := exec.CommandContext(waitCtx, cleanup_command, cleanup_args...)
 
 			_, _ = cleanup_cmd.Output() //nolint:errcheck
 		}
 
-		cmd := exec.Command(command, args...)
+		cmd := exec.CommandContext(waitCtx, command, args...)
+		var commandErr error
+		output, commandErr = cmd.Output()
+		return commandErr == nil && (wants == "" || strings.TrimSpace(string(output)) == wants), nil
+	},
+		wait.WithContext(ctx),
+		wait.WithTimeout(timeout),
+		wait.WithInterval(retryDelay),
+		wait.WithImmediate(),
+	)
 
-		output, err := cmd.Output()
-		if err == nil && (wants == "" || strings.TrimSpace(string(output)) == wants) {
-			return ctx
-		}
-
-		if retry == retries-retry {
-			require.NoError(t, err, "failed running %v %v", command, args)
-			require.Equal(t, wants, strings.TrimSpace(string(output)))
-
-			return ctx
-		}
-
-		time.Sleep(retryDelay)
-	}
-
-	return ctx
+	require.NoError(t, err, "timed out waiting for %v %v; last output: %q", command, args, strings.TrimSpace(string(output)))
 }
 
 // GetSlurmNodeInfo uses scontrol to get details on a Slurm node
