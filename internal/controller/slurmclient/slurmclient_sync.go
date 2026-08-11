@@ -6,6 +6,7 @@ package slurmclient
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
 	"time"
@@ -92,6 +93,9 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 	config := &slurmclient.Config{
 		Server:        server,
 		TokenProvider: clienttoken.StaticProvider(authToken),
+		HTTPClient: &http.Client{
+			Timeout: 5 * time.Minute,
+		},
 	}
 	slurmClient, err := slurmclient.NewClient(config, opts)
 	if err != nil {
