@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 

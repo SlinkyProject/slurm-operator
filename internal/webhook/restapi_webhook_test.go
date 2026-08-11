@@ -4,12 +4,12 @@
 package webhook
 
 import (
-	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
 var _ = Describe("Restapi Webhook", func() {

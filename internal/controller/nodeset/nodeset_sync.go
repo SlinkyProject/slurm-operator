@@ -42,7 +42,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
-
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 

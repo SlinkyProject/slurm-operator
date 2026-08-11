@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
-	slurmfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -25,15 +24,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	slurmfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	slurminterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNodeSetReconciler_syncStatus(t *testing.T) {

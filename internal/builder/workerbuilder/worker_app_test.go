@@ -8,9 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -19,6 +16,10 @@ import (
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {

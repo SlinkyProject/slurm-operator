@@ -6,11 +6,10 @@ package indexes
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/stretchr/testify/require"
 )
 
 func Test_getPodNodeName(t *testing.T) {

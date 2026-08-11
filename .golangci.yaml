@@ -35,9 +35,21 @@ linters:
     misspell:
       locale: US
 formatters:
+  enable:
+    - gci
   exclusions:
     generated: lax
     paths:
       - third_party$
       - builtin$
       - examples$
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/SlinkyProject)
+        - localmodule
+      no-inline-comments: true
+      no-prefix-comments: true
+      custom-order: true

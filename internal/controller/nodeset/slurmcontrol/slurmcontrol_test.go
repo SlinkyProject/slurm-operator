@@ -11,17 +11,6 @@ import (
 	"testing"
 	"time"
 
-	api "github.com/SlinkyProject/slurm-client/api/v0044"
-	"github.com/SlinkyProject/slurm-client/pkg/client"
-	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
-	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
-	"github.com/SlinkyProject/slurm-client/pkg/object"
-	"github.com/SlinkyProject/slurm-client/pkg/types"
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 	"github.com/puttsk/hostlist"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +20,19 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	kubefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
+	"github.com/SlinkyProject/slurm-client/pkg/client"
+	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
+	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
+	"github.com/SlinkyProject/slurm-client/pkg/object"
+	"github.com/SlinkyProject/slurm-client/pkg/types"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
 func slurmUpdateFn(_ context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {

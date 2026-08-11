@@ -7,24 +7,24 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/events"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	clientfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	sinterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 
-	clientfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/controllerbuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/slurmcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/events"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func newControllerController(client client.Client, clientMap *clientmap.ClientMap) *ControllerReconciler {

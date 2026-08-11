@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/SlinkyProject/slurm-operator/test"
 	"github.com/stretchr/testify/require"
-
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 	"sigs.k8s.io/e2e-framework/third_party/helm"
+
+	"github.com/SlinkyProject/slurm-operator/test"
 )
 
 // Dependency Validation
