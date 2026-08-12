@@ -308,6 +308,6 @@ webhooks:
     {{- with .Values.webhook.timeoutSeconds }}
     timeoutSeconds: {{ . }}
     {{- end }}{{- /* with .Values.webhook.timeoutSeconds */}}
-    sideEffects: None
+    sideEffects: NoneOnDryRun
 {{- end }}{{- /* if .Values.webhook.podsBinding */}}
 {{- end }}{{- /* if .Values.webhook.enabled */}}

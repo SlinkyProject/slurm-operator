@@ -23,7 +23,7 @@ webhooks:
     - CREATE
     resources:
     - pods/binding
-  sideEffects: None
+  sideEffects: NoneOnDryRun
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
