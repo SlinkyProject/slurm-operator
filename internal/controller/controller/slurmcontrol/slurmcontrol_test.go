@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 
 	api "github.com/SlinkyProject/slurm-client/api/v0044"
 	"github.com/SlinkyProject/slurm-client/pkg/client"
@@ -17,18 +16,8 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
-
-func newSlurmClientMap(controllerName string, client client.Client) *clientmap.ClientMap {
-	cm := clientmap.NewClientMap()
-	key := k8stypes.NamespacedName{
-		Namespace: corev1.NamespaceDefault,
-		Name:      controllerName,
-	}
-	cm.Add(key, client)
-	return cm
-}
 
 func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 	tests := []struct {
@@ -126,7 +115,7 @@ func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.controller.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.controller.Namespace, tt.sclient))
 			got, gotErr := r.GetActiveHAController(t.Context(), tt.controller)
 			if gotErr != nil {
 				if !tt.wantErr {

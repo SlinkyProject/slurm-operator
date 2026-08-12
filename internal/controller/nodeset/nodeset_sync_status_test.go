@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +33,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
@@ -714,7 +714,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet not scheduled",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -734,7 +735,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet is scheduled and res does not exist in Slurm - condition is not added",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -758,7 +760,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet is scheduled and res does not exist in Slurm - condition is not removed",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -798,9 +801,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := newNodeSetController(tt.client, nil)
-			r.slurmControl = slurmcontrol.NewSlurmControl(newSlurmClientMap(tt.nodeset.Spec.ControllerRef.Name, tt.slurmclient))
+			r.slurmControl = slurmcontrol.NewSlurmControl(testutils.NewClientMap(tt.nodeset.Spec.ControllerRef.Name, tt.nodeset.Namespace, tt.slurmclient))
 
 			got, err := r.calculateReservationCondition(context.TODO(), tt.nodeset, tt.nodeset.Status.Conditions)
 			if tt.wantErr {
@@ -811,16 +813,6 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func newSlurmClientMap(controllerName string, client slurmclient.Client) *clientmap.ClientMap {
-	cm := clientmap.NewClientMap()
-	key := k8stypes.NamespacedName{
-		Namespace: corev1.NamespaceDefault,
-		Name:      controllerName,
-	}
-	cm.Add(key, client)
-	return cm
 }
 
 func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {
