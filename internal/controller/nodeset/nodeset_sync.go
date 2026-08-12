@@ -1785,7 +1785,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	_, oldPods := findUpdatedPods(pods, hash)
 
 	// Replace all unhealthy pods
-	unhealthyPods, healthyPods := nodesetutils.SplitUnhealthyPods(oldPods)
+	unhealthyPods, _ := nodesetutils.SplitUnhealthyPods(oldPods)
 	if len(unhealthyPods) > 0 {
 		logger.Info("Delete unhealthy pods for Scheduled Update",
 			"unhealthyPods", len(unhealthyPods))
@@ -1797,7 +1797,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	}
 
 	// If reservation is ongoing, handle updates
-	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, healthyPods, hash)
+	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
 
 	// Handle pod scale-down
 	if len(podsToDelete) > 0 {
