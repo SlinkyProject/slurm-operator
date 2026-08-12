@@ -93,31 +93,56 @@ func testSlurmOperator() types.Feature {
 // Slinky Components Installation
 
 func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
-	return features.New("Helm install slurm").
+	feature := features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return doSlurmInstall(ctx, t, config, slurmConfig)
 		}).
-		Assess("Slurm Cluster Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+		Assess("Controller StatefulSet is ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
-			require.NoError(t, err, "Failed to get new controller-runtime client")
+			require.NoError(t, err, "failed to get controller-runtime client")
 
 			checkControllerHealth(crClient, ctx, t, config)
+			return ctx
+		}).
+		Assess("REST API Deployment is ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
 			checkRestAPIHealth(crClient, ctx, t, config)
+			return ctx
+		}).
+		Assess("NodeSet replicas are available", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
 			checkNodeSetReplicas(crClient, ctx, t, config, crclient.ObjectKey{
 				Namespace: test.SlurmNamespace,
 				Name:      "slurm-worker-slinky",
 			})
-
-			if slurmConfig.Accounting {
-				checkAccountingHealth(crClient, ctx, t, config)
-			}
-
-			if slurmConfig.Login {
-				checkLoginSetHealth(crClient, ctx, t, config)
-			}
-
 			return ctx
-		}).Feature()
+		})
+
+	if slurmConfig.Accounting {
+		feature.Assess("Accounting StatefulSet is ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			checkAccountingHealth(crClient, ctx, t, config)
+			return ctx
+		})
+	}
+
+	if slurmConfig.Login {
+		feature.Assess("LoginSet Deployment is ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			checkLoginSetHealth(crClient, ctx, t, config)
+			return ctx
+		})
+	}
+
+	return feature.Feature()
 }
 
 func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, slurmConfig test.SlurmInstallationConfig) context.Context {
