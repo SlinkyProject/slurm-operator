@@ -65,8 +65,7 @@ func (r *realPodControl) CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 		return err
 	}
 	// If we created the PVCs attempt to create the Pod
-	err := r.podControl.CreateThisPod(ctx, pod, nodeset)
-	if apierrors.IsAlreadyExists(err) {
+	if err := r.podControl.CreateThisPod(ctx, pod, nodeset); err != nil {
 		return err
 	}
 	// Set PVC policy as much as is possible at this point.
@@ -74,7 +73,7 @@ func (r *realPodControl) CreateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 		r.recordPodEvent(eventUpdate, nodeset, pod, err)
 		return err
 	}
-	return err
+	return nil
 }
 
 // DeleteNodeSetPod implements PodControlInterface.
