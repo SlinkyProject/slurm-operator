@@ -227,7 +227,10 @@ func GetPersistentVolumeClaimName(nodeset *slinkyv1beta1.NodeSet, claim *corev1.
 // SetOwnerReferences modifies the object with all NodeSets as non-controller owners.
 func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Object, clusterName string) error {
 	nodesetList := &slinkyv1beta1.NodeSetList{}
-	if err := r.List(ctx, nodesetList); err != nil {
+	optsList := &client.ListOptions{
+		Namespace: object.GetNamespace(),
+	}
+	if err := r.List(ctx, nodesetList, optsList); err != nil {
 		return err
 	}
 	sort.Slice(nodesetList.Items, func(i, j int) bool {
@@ -239,6 +242,9 @@ func SetOwnerReferences(r client.Client, ctx context.Context, object metav1.Obje
 	}
 	for _, nodeset := range nodesetList.Items {
 		if nodeset.Spec.ControllerRef.Name != clusterName {
+			continue
+		}
+		if nodeset.Namespace != object.GetNamespace() {
 			continue
 		}
 		if err := controllerutil.SetOwnerReference(&nodeset, object, r.Scheme(), opts...); err != nil {

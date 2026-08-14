@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,8 +12,12 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
@@ -538,5 +543,30 @@ func TestGetPersistentVolumeClaimName(t *testing.T) {
 				t.Errorf("GetPersistentVolumeClaimName() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSetOwnerReferencesIgnoresNodeSetsInOtherNamespaces(t *testing.T) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(slinkyv1beta1.AddToScheme(scheme))
+
+	nodeset := newNodeSet("nodeset-a")
+	nodeset.Namespace = "other-namespace"
+	nodeset.Spec.ControllerRef = corev1.LocalObjectReference{Name: "my-cluster"}
+
+	object := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pod",
+			Namespace: corev1.NamespaceDefault,
+		},
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(nodeset).Build()
+
+	if err := SetOwnerReferences(client, context.Background(), object, "my-cluster"); err != nil {
+		t.Fatalf("SetOwnerReferences() error = %v", err)
+	}
+	if refs := object.GetOwnerReferences(); len(refs) != 0 {
+		t.Fatalf("SetOwnerReferences() added %d cross-namespace owner references, want 0", len(refs))
 	}
 }
