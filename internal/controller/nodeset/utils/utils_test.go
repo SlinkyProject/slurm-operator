@@ -136,6 +136,12 @@ func newNodeSetWithControllerRef(name, controllerName string, uid types.UID) *sl
 	return ns
 }
 
+func newNodeSetWithControllerRefAndNamespace(name, controllerName string, uid types.UID, namespace string) *slinkyv1beta1.NodeSet {
+	ns := newNodeSetWithControllerRef(name, controllerName, uid)
+	ns.Namespace = namespace
+	return ns
+}
+
 func newSetOwnerReferencesScheme() *runtime.Scheme {
 	sch := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(sch))
@@ -1039,6 +1045,17 @@ func TestSetOwnerReferences(t *testing.T) {
 			clusterName: "my-cluster",
 			wantErr:     false,
 			wantRefs:    1,
+		},
+		{
+			name: "matching NodeSet in a different namespace is not added as owner",
+			client: fake.NewClientBuilder().
+				WithScheme(sch).
+				WithObjects(newNodeSetWithControllerRefAndNamespace("nodeset-a", "my-cluster", "uid-a", "other-namespace")).
+				Build(),
+			object:      &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: corev1.NamespaceDefault}},
+			clusterName: "my-cluster",
+			wantErr:     false,
+			wantRefs:    0,
 		},
 		{
 			name: "no NodeSets match cluster name",
