@@ -76,7 +76,7 @@ function kind::start() {
 	kind::prerequisites
 	local cluster_name="${1:-"kind"}"
 	local kind_config="${2:-"$ROOT_DIR/hack/kind-config.yaml"}"
-	if [ "$(kind get clusters | grep -oc kind)" -eq 0 ]; then
+	if ! kind get clusters 2>/dev/null | grep -Fxq "$cluster_name"; then
 		if [ "$(command -v systemd-run)" ]; then
 			CMD="systemd-run --scope --user"
 		else
@@ -84,6 +84,7 @@ function kind::start() {
 		fi
 		$CMD kind create cluster --name "$cluster_name" --config "$kind_config"
 	fi
+	kubectl config use-context kind-"$cluster_name"
 	kubectl cluster-info --context kind-"$cluster_name"
 }
 
