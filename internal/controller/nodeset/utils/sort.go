@@ -62,18 +62,21 @@ func (o ActivePods) Less(i, j int) bool {
 		return podDeletionCost1 < podDeletionCost2
 	}
 
+	// Step: cordon < not cordon
+	// A pod already cordoned as a scale-in candidate stays preferred for deletion even if a
+	// later step (e.g. deadline) would otherwise re-rank it, so candidate selection doesn't
+	// flip-flop between reconciles while the original candidate is still draining.
+	podCordon1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordon)
+	podCordon2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordon)
+	if podCordon1 != podCordon2 {
+		return podCordon1
+	}
+
 	// Step: earlier deadline timestamp < later deadline timestamp
 	podDeadline1, _ := structutils.GetTimeFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 	podDeadline2, _ := structutils.GetTimeFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 	if !podDeadline1.Equal(podDeadline2) {
 		return podDeadline1.Before(podDeadline2)
-	}
-
-	// Step: cordon < not cordon
-	podCordon1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	podCordon2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	if podCordon1 != podCordon2 {
-		return podCordon1
 	}
 
 	// Step: higher ordinal < lower ordinal

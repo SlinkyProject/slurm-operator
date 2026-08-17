@@ -219,6 +219,25 @@ func TestSortingActivePods(t *testing.T) {
 			},
 		},
 		{
+			// Regression: once a pod is cordoned as a scale-in candidate, it must stay
+			// preferred for deletion even if its deadline is later than an uncordoned pod's,
+			// otherwise candidate selection flip-flops between reconciles while draining.
+			name: "Sort cordon sticks over deadline",
+			pods: []corev1.Pod{
+				newRunningPod("cordonedLaterDeadline", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("uncordonedEarlierDeadline", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+				}),
+			},
+			wantOrder: []string{
+				"cordonedLaterDeadline",
+				"uncordonedEarlierDeadline",
+			},
+		},
+		{
 			name: "Sort deletion cost",
 			pods: []corev1.Pod{
 				newRunningPod("costNeg10", map[string]string{
@@ -272,11 +291,11 @@ func TestSortingActivePods(t *testing.T) {
 			wantOrder: []string{
 				"deletionCostNeg10",
 				"podCordoned",
+				"podCordonedAndDeadlineNow",
+				"podCordonedAndDeadlineLater",
 				"ordinal-1",
 				"ordinal-0",
-				"podCordonedAndDeadlineNow",
 				"deadlineNow",
-				"podCordonedAndDeadlineLater",
 				"deadlineLater",
 				"deletionCostPos10",
 				"cordonedDeadlineCost100",
