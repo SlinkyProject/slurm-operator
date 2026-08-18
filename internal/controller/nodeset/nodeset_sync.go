@@ -703,11 +703,12 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 ) error {
 	logger := log.FromContext(ctx)
 
-	registeredSlurmNodes, ok, err := r.slurmControl.GetNodesForPods(ctx, nodeset, pods)
+	registeredSlurmNodes, err := r.slurmControl.GetNodesForPods(ctx, nodeset, pods)
 	if err != nil {
+		if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return nil
+		}
 		return err
-	} else if !ok {
-		return nil // skip, results cannot be used
 	}
 	registeredSlurmNodeSet := set.New(registeredSlurmNodes...)
 

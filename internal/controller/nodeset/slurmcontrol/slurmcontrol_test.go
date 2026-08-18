@@ -2393,7 +2393,6 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 		nodeset    *slinkyv1beta1.NodeSet
 		pods       []*corev1.Pod
 		want       []string
-		wantOk     bool
 		wantErr    bool
 	}
 	tests := []testCase{
@@ -2444,7 +2443,6 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 					ns0pod0name,
 					ns0pod1name,
 				},
-				wantOk: true,
 			}
 		}(),
 	}
@@ -2453,17 +2451,13 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithLists(tt.clientData.nodeList).Build()
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, sclient))
-			got, ok, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
+			got, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if tt.wantErr {
 					require.Error(t, gotErr)
 				} else {
 					require.NoError(t, gotErr)
 				}
-				return
-			}
-			if !ok {
-				require.Equal(t, tt.wantOk, ok)
 				return
 			}
 			if tt.wantErr {

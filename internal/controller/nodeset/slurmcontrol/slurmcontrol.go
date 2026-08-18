@@ -64,7 +64,7 @@ type SlurmControlInterface interface {
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 	// GetNodesForPods returns a list of Slurm nodes associated with the NodeSet pods.
-	GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, bool, error)
+	GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error)
 	// CheckReservationForNodeSet returns true when a reservation exists for a NodeSet
 	CheckReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (bool, error)
 	// GetPodsUnderReservation returns a sublist of pods whose Slurm nodes are under an active MAINT reservation
@@ -690,18 +690,18 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 }
 
 // GetNodesForPods implements SlurmControlInterface.
-func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, bool, error) {
+func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodesForPods()")
-		return nil, false, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
-		return nil, true, err
+		return nil, err
 	}
 
 	// Expected Slurm nodes backed by NodeSet pods
@@ -721,7 +721,7 @@ func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv
 		slurmNodeNames = append(slurmNodeNames, nodeName)
 	}
 
-	return slurmNodeNames, true, nil
+	return slurmNodeNames, nil
 }
 
 type DefunctNode struct {
@@ -913,11 +913,12 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 		return fmt.Errorf("SyncReservationForNodeSet() failed to format Reservation=%s for NodeSet=%s with error=%w", *reservationDesc.Name, nodeset.Name, err)
 	}
 
-	slurmNodes, ok, err := r.GetNodesForPods(ctx, nodeset, pods)
+	slurmNodes, err := r.GetNodesForPods(ctx, nodeset, pods)
 	if err != nil {
+		if errors.Is(err, ErrNoSlurmClient) {
+			return nil
+		}
 		return err
-	} else if !ok {
-		return nil // skip, results cannot be used
 	}
 	slurmNodeHostList, err := hostlist.Compress(slurmNodes)
 	if err != nil {
