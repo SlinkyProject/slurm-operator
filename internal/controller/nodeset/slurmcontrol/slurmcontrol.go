@@ -74,7 +74,7 @@ type SlurmControlInterface interface {
 	// DeleteReservationForNodeSet deletes a reservation associated with a NodeSet for the Scheduled update strategy
 	DeleteReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// GetDefunctNodesForNodeSet returns defunct-node candidates owned by this NodeSet.
-	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error)
+	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error)
 	// DeleteNode deletes a Slurm node by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
 }
@@ -730,18 +730,18 @@ type DefunctNode struct {
 }
 
 // GetDefunctNodesForNodeSet implements SlurmControlInterface.
-func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error) {
+func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetDefunctNodesForNodeSet()")
-		return nil, false, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
-		return nil, true, err
+		return nil, err
 	}
 
 	defunctNodes := make([]DefunctNode, 0)
@@ -773,7 +773,7 @@ func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodese
 		})
 	}
 
-	return defunctNodes, true, nil
+	return defunctNodes, nil
 }
 
 // DeleteNode implements SlurmControlInterface.

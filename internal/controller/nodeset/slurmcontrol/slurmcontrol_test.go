@@ -3502,60 +3502,63 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 		}).ToString())
 	}
 
-	type fields struct {
-		nodes []types.V0044Node
-	}
 	tests := []struct {
-		name    string
-		fields  fields
-		want    []DefunctNode
-		wantOk  bool
-		wantErr bool
+		name            string
+		slurmClient     client.Client
+		want            []DefunctNode
+		wantErr         bool
+		wantErrNoClient bool
 	}{
 		{
+			name:            "no client",
+			wantErrNoClient: true,
+		},
+		{
 			name: "returns only down and not responding nodes with PodInfo from this nodeset",
-			fields: fields{
-				nodes: []types.V0044Node{
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-ghost"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-							Comment: podInfo(nodeset, defunctPodName, "worker-a"),
+			slurmClient: fake.NewClientBuilder().
+				WithLists(&types.V0044NodeList{
+					Items: []types.V0044Node{
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-ghost"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+								Comment: podInfo(nodeset, defunctPodName, "worker-a"),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-missing-flag"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+								}),
+								Comment: podInfo(nodeset, nodesetutils.GetOrdinalPodName(nodeset, 8), ""),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("bar-ghost"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+								Comment: podInfo(otherNodeSet, nodesetutils.GetOrdinalPodName(otherNodeSet, 0), ""),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-no-comment"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+							},
 						},
 					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-missing-flag"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-							}),
-							Comment: podInfo(nodeset, nodesetutils.GetOrdinalPodName(nodeset, 8), ""),
-						},
-					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("bar-ghost"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-							Comment: podInfo(otherNodeSet, nodesetutils.GetOrdinalPodName(otherNodeSet, 0), ""),
-						},
-					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-no-comment"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-						},
-					},
-				},
-			},
+				}).
+				Build(),
 			want: []DefunctNode{
 				{
 					Name: "foo-ghost",
@@ -3568,35 +3571,21 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 					},
 				},
 			},
-			wantOk: true,
-		},
-		{
-			name:   "no client",
-			fields: fields{},
-			wantOk: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var sclient client.Client
-			if tt.wantOk {
-				objects := make([]object.Object, 0, len(tt.fields.nodes))
-				for i := range tt.fields.nodes {
-					node := tt.fields.nodes[i]
-					objects = append(objects, &node)
-				}
-				sclient = fake.NewClientBuilder().WithObjects(objects...).Build()
-			}
-			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, sclient)
-
+			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, tt.slurmClient)
 			r := NewSlurmControl(clientMap)
-			got, ok, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
+			got, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, err, ErrNoSlurmClient)
+				return
 			}
-			require.Equal(t, tt.wantOk, ok)
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}

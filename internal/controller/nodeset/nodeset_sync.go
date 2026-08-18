@@ -630,11 +630,12 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 	case slinkyv1beta1.ScalingModeStatefulset:
 		return nil
 	case slinkyv1beta1.ScalingModeDaemonset:
-		defunctNodes, ok, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
+		defunctNodes, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
 		if err != nil {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				return nil
+			}
 			return err
-		} else if !ok {
-			return nil
 		}
 
 		syncSlurmNodeRecordsFn := func(i int) error {
