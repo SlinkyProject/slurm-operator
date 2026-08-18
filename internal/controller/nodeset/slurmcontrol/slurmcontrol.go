@@ -392,7 +392,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrain()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -416,7 +416,7 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -445,7 +445,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -474,7 +474,7 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeReasonOurs()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}

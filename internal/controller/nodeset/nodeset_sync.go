@@ -519,11 +519,11 @@ func (r *NodeSetReconciler) syncCordon(
 		nodeIsCordoned := node.Spec.Unschedulable
 		podIsCordoned := podutils.IsPodCordon(pod)
 		slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
-		if err != nil {
+		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 		ourReason, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
-		if err != nil {
+		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 
@@ -1362,7 +1362,7 @@ func (r *NodeSetReconciler) processCondemned(
 	}
 
 	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 
@@ -1567,7 +1567,7 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 	}
 
 	// Slurm node may have been externally set in down, drain, fail, etc...
-	if ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod); err != nil {
+	if ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	} else if !ok {
 		logger.V(1).Info("Skipping uncordon for pod which has an externally set reason")

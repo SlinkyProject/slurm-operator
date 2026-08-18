@@ -700,9 +700,9 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 			got, err := r.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -985,9 +985,9 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 			got, err := r.IsNodeDrained(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -1342,9 +1342,9 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 			got, err := r.IsNodeDownForUnresponsive(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -1455,9 +1455,9 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 			got, err := r.IsNodeReasonOurs(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
