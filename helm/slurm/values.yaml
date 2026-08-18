@@ -520,13 +520,13 @@ accounting:
     # CommitDelay: 1
     # DebugLevel: debug2
     # DebugFlags: []
-    # PurgeEventAfter=1month
-    # PurgeJobAfter=12month
-    # PurgeResvAfter=1month
-    # PurgeStepAfter=1month
-    # PurgeSuspendAfter=1month
-    # PurgeTXNAfter=12month
-    # PurgeUsageAfter=24month
+    # PurgeEventAfter: 1month
+    # PurgeJobAfter: 12month
+    # PurgeResvAfter: 1month
+    # PurgeStepAfter: 1month
+    # PurgeSuspendAfter: 1month
+    # PurgeTXNAfter: 12month
+    # PurgeUsageAfter: 24month
   # -- Labels and annotations.
   # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   metadata: {}
@@ -913,32 +913,32 @@ vendor:
   google:
     # -- A3 Mega configurations. List of objects corresponding to nodesets.
     a3mega: []
-    # - targetNodeSet: a3-megagpu-8g
-    #   nodePool: "a3-megagpu-8g-a3megagpupool"
-    #   networks:
-    #     - default
-    #     - vpc1
-    #     - vpc2
-    #     - vpc3
-    #     - vpc4
-    #     - vpc5
-    #     - vpc6
-    #     - vpc7
-    #     - vpc8
+      # - targetNodeSet: a3-megagpu-8g
+      #   nodePool: "a3-megagpu-8g-a3megagpupool"
+      #   networks:
+      #     - default
+      #     - vpc1
+      #     - vpc2
+      #     - vpc3
+      #     - vpc4
+      #     - vpc5
+      #     - vpc6
+      #     - vpc7
+      #     - vpc8
     # -- A3 Ultra configurations. List of objects corresponding to nodesets.
     a3ultra: []
-    # - targetNodeSet: a3-ultra-compute
-    #   nodePool: "a3-ultra-compute-nodepool"
-    #   networks:
-    #     - default
-    #     - rdma-0
-    #     - rdma-1
-    #     - rdma-2
-    #     - rdma-3
-    #     - rdma-4
-    #     - rdma-5
-    #     - rdma-6
-    #     - rdma-7
+      # - targetNodeSet: a3-ultra-compute
+      #   nodePool: "a3-ultra-compute-nodepool"
+      #   networks:
+      #     - default
+      #     - rdma-0
+      #     - rdma-1
+      #     - rdma-2
+      #     - rdma-3
+      #     - rdma-4
+      #     - rdma-5
+      #     - rdma-6
+      #     - rdma-7
 
 # -- Extra Kubernetes objects to deploy alongside the chart.
 # Each entry is rendered as a standalone Kubernetes object.

@@ -115,6 +115,7 @@ tests:
             operator: NotIn
             values:
               - kube-system
+              - kube-public
               - kube-node-lease
       - documentSelector:
           path: kind
@@ -137,6 +138,7 @@ tests:
             operator: NotIn
             values:
               - kube-system
+              - kube-public
               - kube-node-lease
               - test-namespace
 
@@ -166,6 +168,7 @@ tests:
                 operator: NotIn
                 values:
                   - kube-system
+                  - kube-public
                   - kube-node-lease
                   - test-namespace
 
@@ -203,6 +206,7 @@ tests:
                 operator: NotIn
                 values:
                   - kube-system
+                  - kube-public
                   - kube-node-lease
                   - test-namespace
 

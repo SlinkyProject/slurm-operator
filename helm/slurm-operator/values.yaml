@@ -133,7 +133,6 @@ operator:
   # If empty, all namespaces are watched.
   namespaces: ""
 
-
 # Webhook configurations.
 webhook:
   # -- Enable the webhook.
@@ -150,7 +149,6 @@ webhook:
     repository: ghcr.io/slinkyproject/slurm-operator-webhook
     tag: null
     digest: null
-  #
   # Service account configurations.
   serviceAccount:
     # -- Allows chart to create the service account.
