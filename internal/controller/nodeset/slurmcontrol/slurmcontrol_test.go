@@ -2209,9 +2209,9 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 			got, err := r.CalculateNodeStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
 		})
 	}
@@ -2365,9 +2365,9 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 			got, err := r.GetNodeDeadlines(tt.args.ctx, tt.args.nodeset, tt.args.pods)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			for _, node := range tt.fields.nodeList.Items {
 				ts := got.Peek(ptr.Deref(node.Name, ""))
 				require.True(t, ts.After(now), "timestamp = %v, after = %v", ts, ts.After(now))
@@ -2484,11 +2484,12 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 	endTime := now.Add(time.Hour).Unix()
 
 	type testCase struct {
-		name    string
-		client  client.Client
-		nodeset *slinkyv1beta1.NodeSet
-		want    bool
-		wantErr bool
+		name            string
+		client          client.Client
+		nodeset         *slinkyv1beta1.NodeSet
+		want            bool
+		wantErr         bool
+		wantErrNoClient bool
 	}
 	tests := []testCase{
 		{
@@ -2499,9 +2500,9 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 					Name:      "slinky",
 				},
 			},
-			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
-			want:    false,
-			wantErr: false,
+			client:          fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
+			want:            false,
+			wantErrNoClient: true,
 		},
 		{
 			name: "reservation does not exist",
@@ -2555,6 +2556,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			got, gotErr := r.CheckReservationForNodeSet(context.Background(), tt.nodeset)
 			if tt.wantErr {
 				require.Error(t, gotErr)
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
 			} else {
 				require.NoError(t, gotErr)
 			}

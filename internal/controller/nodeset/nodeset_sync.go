@@ -171,7 +171,7 @@ func (r *NodeSetReconciler) syncReservationFinalizer(ctx context.Context, nodese
 
 	// Attempt to Get the reservation. If we cannot, assume it is deleted and remove the finalizer
 	reservationExists, err := r.slurmControl.CheckReservationForNodeSet(ctx, nodeset)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 	if !reservationExists {
@@ -745,7 +745,7 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 	pods []*corev1.Pod,
 ) error {
 	nodeDeadlines, err := r.slurmControl.GetNodeDeadlines(ctx, nodeset, pods)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 

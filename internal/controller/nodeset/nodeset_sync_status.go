@@ -111,7 +111,7 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 		return err
 	}
 	slurmNodeStatus, err := r.slurmControl.CalculateNodeStatus(ctx, nodeset, pods)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 	ordinalToNode, err := r.calculateOrdinalToNode(ctx, nodeset, pods)
@@ -254,7 +254,7 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 //     time as defined in the NodeSet spec.
 func (r *NodeSetReconciler) calculateReservationCondition(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, conditions []metav1.Condition) (*metav1.Condition, error) {
 	reservationExists, err := r.slurmControl.CheckReservationForNodeSet(ctx, nodeset)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return nil, err
 	}
 
@@ -399,7 +399,7 @@ func (r *NodeSetReconciler) syncNodeSetPodStatus(
 	pods []*corev1.Pod,
 ) error {
 	slurmNodeStatus, err := r.slurmControl.CalculateNodeStatus(ctx, nodeset, pods)
-	if err != nil {
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 

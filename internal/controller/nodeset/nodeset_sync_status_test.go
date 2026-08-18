@@ -807,9 +807,9 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			got, err := r.calculateReservationCondition(context.TODO(), tt.nodeset, tt.nodeset.Status.Conditions)
 			if tt.wantErr {
 				require.Error(t, err)
-				return
+			} else {
+				require.NoError(t, err)
 			}
-			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}

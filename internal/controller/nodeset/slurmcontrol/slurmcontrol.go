@@ -532,7 +532,7 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do CalculateNodeStatus()")
-		return status, nil
+		return status, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
@@ -642,7 +642,7 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodeDeadlines()")
-		return ts, nil
+		return ts, ErrNoSlurmClient
 	}
 
 	slurmNodeNamesSet := set.New[string]()
@@ -806,7 +806,7 @@ func (r *realSlurmControl) CheckReservationForNodeSet(ctx context.Context, nodes
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do CheckReservationForNodeSet()")
-		return false, nil
+		return false, ErrNoSlurmClient
 	}
 
 	emptyReservation := new(slurmtypes.V0044ReservationInfo)
