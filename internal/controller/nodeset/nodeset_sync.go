@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -33,6 +34,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
@@ -179,7 +181,9 @@ func (r *NodeSetReconciler) syncReservationFinalizer(ctx context.Context, nodese
 	// If the reservation exists and the NodeSet is being deleted, delete the reservation, then remove the finalizer
 	if reservationExists && !nodeset.DeletionTimestamp.IsZero() {
 		if err := r.slurmControl.DeleteReservationForNodeSet(ctx, nodeset); err != nil {
-			return err
+			if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				return err
+			}
 		}
 		if err := r.removeReservationFinalizerIfNeeded(ctx, nodeset); err != nil {
 			return err
@@ -375,7 +379,12 @@ func (r *NodeSetReconciler) sync(
 		{
 			Name: "RefreshNodeCache",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				return r.slurmControl.RefreshNodeCache(ctx, nodeset)
+				if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil {
+					if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+						return err
+					}
+				}
+				return nil
 			},
 			// We need to ensure the Slurm client cache is refreshed before proceeding
 			// because stale cache could cause incorrect action to be taken.
@@ -803,7 +812,8 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 			}
 		}
 
-		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil {
+		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return fmt.Errorf("failed to update Slurm node topology: %w", err)
 		}
 
@@ -854,7 +864,8 @@ func (r *NodeSetReconciler) syncSlurmFeatures(
 		annotation := node.Annotations[slinkyv1beta1.AnnotationNodeFeaturesSpec]
 		features := structutils.SortedDedup(strings.Split(annotation, ","))
 
-		if err := r.slurmControl.UpdateNodeFeatures(ctx, nodeset, pod, slinkyv1beta1.NodeFeaturePrefix, features); err != nil {
+		if err := r.slurmControl.UpdateNodeFeatures(ctx, nodeset, pod, slinkyv1beta1.NodeFeaturePrefix, features); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return fmt.Errorf("failed to update Slurm node features: %w", err)
 		}
 
@@ -1471,7 +1482,8 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 		reason = "unknown"
 	}
 
-	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil {
+	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 
@@ -1515,7 +1527,8 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 		return err
 	}
 
-	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
+	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
 
@@ -1686,7 +1699,9 @@ func (r *NodeSetReconciler) splitUpdatePods(
 	case slinkyv1beta1.ScheduledUpdateNodeSetStrategyType:
 		eligiblePods, err := r.slurmControl.GetPodsUnderReservation(ctx, nodeset, pods)
 		if err != nil {
-			logger.Error(err, "failed to determine pods under reservation", "NodeSet", klog.KObj(nodeset))
+			if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				logger.Error(err, "failed to determine pods under reservation", "NodeSet", klog.KObj(nodeset))
+			}
 			return nil, nil
 		}
 
@@ -1830,7 +1845,7 @@ func (r *NodeSetReconciler) syncSlurmReservation(
 		}
 
 		err = r.slurmControl.SyncReservationForNodeSet(ctx, nodeset, pods)
-		if err != nil {
+		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 	}
@@ -1838,7 +1853,7 @@ func (r *NodeSetReconciler) syncSlurmReservation(
 	// Reservations should be removed if the NodeSet UpdateStrategy is not ScheduledUpdate or if there are no NodeSet replicas
 	if !nodesetIsScheduled || !nodeSetHasReplicas {
 		err := r.slurmControl.DeleteReservationForNodeSet(ctx, nodeset)
-		if err != nil {
+		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 		return r.removeReservationFinalizerIfNeeded(ctx, nodeset)

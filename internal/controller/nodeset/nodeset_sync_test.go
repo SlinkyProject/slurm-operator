@@ -684,7 +684,9 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Succeeds with zero replicas and empty pod list",
+			// Without a Slurm client there is nothing to reconcile against, so
+			// every Slurm-backed sync step is skipped rather than erroring.
+			name: "No client",
 			fields: fields{
 				Client:    fake.NewFakeClient(controller.DeepCopy()),
 				ClientMap: clientmap.NewClientMap(),
@@ -745,7 +747,6 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
-
 			require.NoError(t, err)
 		})
 	}

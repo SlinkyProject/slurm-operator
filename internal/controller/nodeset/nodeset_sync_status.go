@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -47,25 +48,25 @@ func (r *NodeSetReconciler) syncStatus(
 	currentRevision, updateRevision *appsv1.ControllerRevision,
 	collisionCount int32,
 	hash string,
-	errors ...error,
+	errs ...error,
 ) error {
-	if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil {
-		errors = append(errors, err)
+	if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		errs = append(errs, err)
 	}
 
 	if err := r.syncSlurmStatus(ctx, nodeset, pods); err != nil {
-		errors = append(errors, err)
+		errs = append(errs, err)
 	}
 
 	if err := r.syncNodeSetStatus(ctx, nodeset, pods, currentRevision, updateRevision, collisionCount, hash); err != nil {
-		errors = append(errors, err)
+		errs = append(errs, err)
 	}
 
 	if err := r.syncNodeSetPodStatus(ctx, nodeset, pods); err != nil {
-		errors = append(errors, err)
+		errs = append(errs, err)
 	}
 
-	return utilerrors.NewAggregate(errors)
+	return utilerrors.NewAggregate(errs)
 }
 
 // syncSlurmStatus handles synchronizing Slurm Node Status given the pods.
@@ -79,7 +80,10 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 		if !podutils.IsHealthy(pod) {
 			return nil
 		}
-		return r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod)
+		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return err
+		}
+		return nil
 	}
 	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmStatusFn); err != nil {
 		return err

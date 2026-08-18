@@ -79,6 +79,8 @@ type SlurmControlInterface interface {
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
 }
 
+var ErrNoSlurmClient = errors.New("NoSlurmClient")
+
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
 	clientMap *clientmap.ClientMap
@@ -91,7 +93,7 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do RefreshNodeCache()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
@@ -111,7 +113,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeWithPodInfo()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -173,7 +175,7 @@ func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slin
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeTopology()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -214,7 +216,7 @@ func (r *realSlurmControl) UpdateNodeFeatures(ctx context.Context, nodeset *slin
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeFeatures()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -288,7 +290,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do MakeNodeDrain()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -341,7 +343,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do MakeNodeUndrain()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -781,7 +783,7 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do DeleteNode()", "nodeName", nodeName)
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{
@@ -836,7 +838,7 @@ func (r *realSlurmControl) GetPodsUnderReservation(ctx context.Context, nodeset 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetPodsUnderReservation()")
-		return nil, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
@@ -874,7 +876,7 @@ func (r *realSlurmControl) DeleteReservationForNodeSet(ctx context.Context, node
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do DeleteReservationForNodeSet()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
@@ -901,7 +903,7 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do SyncReservationForNodeSet()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	name := "SlurmOperatorMaint-" + nodeset.Name
