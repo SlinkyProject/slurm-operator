@@ -50,7 +50,6 @@ func (b *ControllerBuilder) BuildController(controller *slinkyv1beta1.Controller
 	out := &appsv1.StatefulSet{
 		ObjectMeta: objectMeta,
 		Spec: appsv1.StatefulSetSpec{
-			PodManagementPolicy:  appsv1.ParallelPodManagement,
 			Replicas:             new(replicas),
 			RevisionHistoryLimit: ptr.To[int32](0),
 			Selector: &metav1.LabelSelector{
