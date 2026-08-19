@@ -671,7 +671,19 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 			default:
 				override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 				expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
-				if expected == defunctNode.Name {
+
+				// Kubernetes nodes that still exist but do not match the DaemonSet pod's NodeSelector
+				// should be deleted
+				selectorMatch := true
+				for key, value := range nodeset.Spec.Template.PodSpecWrapper.NodeSelector {
+					nodeValue, ok := kubeNode.Labels[key]
+					if !ok || nodeValue != value {
+						selectorMatch = false
+						break
+					}
+				}
+
+				if expected == defunctNode.Name && selectorMatch {
 					logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it")
 					return nil
 				}
