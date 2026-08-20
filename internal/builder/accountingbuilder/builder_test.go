@@ -6,14 +6,15 @@ package accountingbuilder
 import (
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"github.com/stretchr/testify/require"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
 func init() {

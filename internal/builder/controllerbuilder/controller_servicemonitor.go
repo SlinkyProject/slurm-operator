@@ -6,12 +6,12 @@ package controllerbuilder
 import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
-	"k8s.io/utils/ptr"
 )
 
 func (b *ControllerBuilder) BuildControllerServiceMonitor(controller *slinkyv1beta1.Controller) (*monitoringv1.ServiceMonitor, error) {

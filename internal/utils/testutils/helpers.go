@@ -11,10 +11,14 @@ import (
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 )
 
 const Timeout = 30 * time.Second
@@ -307,4 +311,19 @@ func NewToken(name string, jwtKeySecret *corev1.Secret) *slinkyv1beta1.Token {
 			},
 		},
 	}
+}
+
+func NewClientMap(controllerName, namespace string, sclient slurmclient.Client) *clientmap.ClientMap {
+	cm := clientmap.NewClientMap()
+	if controllerName == "" {
+		return cm
+	}
+	key := types.NamespacedName{
+		Namespace: namespace,
+		Name:      controllerName,
+	}
+	if sclient != nil {
+		cm.Add(key, sclient)
+	}
+	return cm
 }

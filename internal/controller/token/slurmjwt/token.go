@@ -8,9 +8,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"k8s.io/apimachinery/pkg/util/uuid"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 )
 
 type Token struct {

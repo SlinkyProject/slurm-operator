@@ -6,22 +6,10 @@ package slurmcontrol
 import (
 	"context"
 	"errors"
-	"net/http"
 	"slices"
 	"testing"
 	"time"
 
-	api "github.com/SlinkyProject/slurm-client/api/v0044"
-	"github.com/SlinkyProject/slurm-client/pkg/client"
-	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
-	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
-	"github.com/SlinkyProject/slurm-client/pkg/object"
-	"github.com/SlinkyProject/slurm-client/pkg/types"
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
-	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
-	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 	"github.com/puttsk/hostlist"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +19,21 @@ import (
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	kubefake "sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
+	"github.com/SlinkyProject/slurm-client/pkg/client"
+	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
+	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+	"github.com/SlinkyProject/slurm-client/pkg/object"
+	"github.com/SlinkyProject/slurm-client/pkg/types"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
+	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
 func slurmUpdateFn(_ context.Context, obj object.Object, req any, opts ...client.UpdateOption) error {
@@ -81,16 +84,6 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
 		},
 	}
-}
-
-func newSlurmClientMap(controllerName string, client client.Client) *clientmap.ClientMap {
-	cm := clientmap.NewClientMap()
-	key := k8stypes.NamespacedName{
-		Namespace: corev1.NamespaceDefault,
-		Name:      controllerName,
-	}
-	cm.Add(key, client)
-	return cm
 }
 
 func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
@@ -150,7 +143,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			err := r.UpdateNodeWithPodInfo(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -159,7 +152,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -267,7 +260,7 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -276,7 +269,7 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -359,7 +352,7 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			err := r.MakeNodeUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -368,7 +361,7 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -382,7 +375,8 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -445,7 +439,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(tt.fields.node).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologySpec)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -454,7 +448,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -468,7 +462,8 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -588,7 +583,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			}
 			sclient := builder.Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			err := r.UpdateNodeFeatures(tt.args.ctx, tt.args.nodeset, tt.args.pod, prefix, tt.args.features)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -605,7 +600,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {
-				if !tolerateError(getErr) {
+				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -627,7 +622,8 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -660,7 +656,7 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -684,7 +680,7 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -716,7 +712,8 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -749,7 +746,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -773,7 +770,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -796,7 +793,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -820,7 +817,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -844,7 +841,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -868,7 +865,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -893,7 +890,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -919,7 +916,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -944,7 +941,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -969,7 +966,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1000,7 +997,8 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -1033,7 +1031,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1057,7 +1055,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1080,7 +1078,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1104,7 +1102,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1128,7 +1126,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1152,7 +1150,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1177,7 +1175,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1203,7 +1201,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1228,7 +1226,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1253,7 +1251,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1277,7 +1275,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1301,7 +1299,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1325,7 +1323,7 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1356,7 +1354,8 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -1389,7 +1388,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1413,7 +1412,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1437,7 +1436,7 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithObjects(node).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1468,7 +1467,8 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -1496,7 +1496,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1532,7 +1532,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1578,7 +1578,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1626,7 +1626,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1727,7 +1727,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -1885,7 +1885,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -2060,7 +2060,7 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 				}
 				sclient := fake.NewClientBuilder().WithLists(nodeList).Build()
 				return fields{
-					clientMap: newSlurmClientMap(controller.Name, sclient),
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
 				}
 			}(),
 			args: args{
@@ -2221,7 +2221,8 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -2360,7 +2361,7 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithLists(tt.fields.nodeList, tt.fields.jobList).Build()
 			controllerName := tt.args.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.args.nodeset.Namespace, sclient))
 			got, err := r.GetNodeDeadlines(tt.args.ctx, tt.args.nodeset, tt.args.pods)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -2378,7 +2379,8 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	kclient := kubefake.NewFakeClient()
@@ -2450,7 +2452,7 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithLists(tt.clientData.nodeList).Build()
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
-			r := NewSlurmControl(newSlurmClientMap(controllerName, sclient))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, sclient))
 			got, ok, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if tt.wantErr {
@@ -2493,8 +2495,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			name: "invalid NodeSet (no controller ref)",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 			},
 			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
@@ -2505,8 +2507,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			name: "reservation does not exist",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2522,8 +2524,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			name: "reservation exists",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2549,9 +2551,7 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
-
-			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
-
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 			got, gotErr := r.CheckReservationForNodeSet(context.Background(), tt.nodeset)
 			if tt.wantErr {
 				require.Error(t, gotErr)
@@ -2566,7 +2566,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	kclient := kubefake.NewFakeClient()
@@ -2738,8 +2739,7 @@ func Test_realSlurmControl_GetPodsUnderReservation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
-
-			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			got, gotErr := r.GetPodsUnderReservation(context.Background(), tt.nodeset, tt.pods)
 			if tt.wantErr {
@@ -2770,7 +2770,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			name: "invalid NodeSet (no controller ref)",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 			},
 			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
@@ -2780,7 +2781,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			name: "reservation does not exist",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2795,7 +2797,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			name: "reservation exists with default name, status not provided (lookup by full name)",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2817,7 +2820,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			name: "reservation exists with custom name, status not provided (lookup by prefix)",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2839,8 +2843,7 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
-
-			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			gotErr := r.DeleteReservationForNodeSet(context.Background(), tt.nodeset)
 			if tt.wantErr {
@@ -2872,7 +2875,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	kclient := kubefake.NewFakeClient()
@@ -2901,8 +2905,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "invalid NodeSet (no controller ref)",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 			},
 			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
@@ -2912,8 +2916,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "reservation spec not provided",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2931,8 +2935,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "create reservation with basic spec",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -2968,8 +2972,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "create reservation fails when Slurm Create returns error",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3009,8 +3013,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "create reservation with complex spec",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3033,8 +3037,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update reservation with simple spec",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3077,8 +3081,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update reservation fails when Slurm Update returns error",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3134,8 +3138,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update reservation with complex spec",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3182,8 +3186,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update reservation with past start time in Slurm",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3230,8 +3234,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update reservation with past start time in Slurm fails without reoccuring flag",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3276,8 +3280,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "update active reservation does not occur",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3326,8 +3330,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			name: "active reservation nodes are updated",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
 					Name:      "slinky",
-					Namespace: "default",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -3378,7 +3382,7 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
 
-			r := NewSlurmControl(newSlurmClientMap(controllerName, tt.client))
+			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			gotErr := r.SyncReservationForNodeSet(context.Background(), tt.nodeset, tt.pods)
 			if tt.wantErr {
@@ -3386,59 +3390,6 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			} else {
 				require.NoError(t, gotErr)
 			}
-		})
-	}
-}
-
-func Test_tolerateError(t *testing.T) {
-	type args struct {
-		err error
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Nil",
-			args: args{
-				err: nil,
-			},
-			want: true,
-		},
-		{
-			name: "Empty",
-			args: args{
-				err: errors.New(""),
-			},
-			want: false,
-		},
-		{
-			name: "NotFound",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNotFound)),
-			},
-			want: true,
-		},
-		{
-			name: "NoContent",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusNoContent)),
-			},
-			want: true,
-		},
-		{
-			name: "Forbidden",
-			args: args{
-				err: errors.New(http.StatusText(http.StatusForbidden)),
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tolerateError(tt.args.err)
-			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -3530,7 +3481,8 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -3624,20 +3576,18 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var clientMap *clientmap.ClientMap
+			var sclient client.Client
 			if tt.wantOk {
 				objects := make([]object.Object, 0, len(tt.fields.nodes))
 				for i := range tt.fields.nodes {
 					node := tt.fields.nodes[i]
 					objects = append(objects, &node)
 				}
-				sclient := fake.NewClientBuilder().WithObjects(objects...).Build()
-				clientMap = newSlurmClientMap(controller.Name, sclient)
-			} else {
-				clientMap = clientmap.NewClientMap()
+				sclient = fake.NewClientBuilder().WithObjects(objects...).Build()
 			}
+			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, sclient)
 
-			r := &realSlurmControl{clientMap: clientMap}
+			r := NewSlurmControl(clientMap)
 			got, ok, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
 			if tt.wantErr {
 				require.Error(t, err)
@@ -3654,7 +3604,8 @@ func Test_realSlurmControl_DeleteNode(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "slurm",
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 1)
@@ -3668,12 +3619,12 @@ func Test_realSlurmControl_DeleteNode(t *testing.T) {
 		},
 	}
 	sclient := fake.NewClientBuilder().WithObjects(node).Build()
-	r := &realSlurmControl{clientMap: newSlurmClientMap(controller.Name, sclient)}
+	r := &realSlurmControl{clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient)}
 
 	err := r.DeleteNode(ctx, nodeset, "foo-0")
 	require.NoError(t, err)
 
 	checkNode := &types.V0044Node{}
 	getErr := sclient.Get(ctx, node.GetKey(), checkNode)
-	require.True(t, tolerateError(getErr), "DeleteNode() node still exists: %v", getErr)
+	require.True(t, errors.Is(getErr, slurmerrors.ErrObjectNotFound), "DeleteNode() node still exists: %v", getErr)
 }

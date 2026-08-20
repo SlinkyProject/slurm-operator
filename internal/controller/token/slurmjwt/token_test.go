@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
 	"github.com/stretchr/testify/require"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/crypto"
 )
 
 func newSignedToken(signingKey []byte) string {

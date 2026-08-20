@@ -10,30 +10,31 @@ import (
 	"testing"
 	"time"
 
-	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
-	slurmfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	slurmfake "github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	slurminterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNodeSetReconciler_syncStatus(t *testing.T) {
@@ -713,7 +714,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet not scheduled",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -733,7 +735,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet is scheduled and res does not exist in Slurm - condition is not added",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -757,7 +760,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			name: "NodeSet is scheduled and res does not exist in Slurm - condition is not removed",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "slinky",
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
 				},
 				Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{
@@ -797,9 +801,8 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := newNodeSetController(tt.client, nil)
-			r.slurmControl = slurmcontrol.NewSlurmControl(newSlurmClientMap(tt.nodeset.Spec.ControllerRef.Name, tt.slurmclient))
+			r.slurmControl = slurmcontrol.NewSlurmControl(testutils.NewClientMap(tt.nodeset.Spec.ControllerRef.Name, tt.nodeset.Namespace, tt.slurmclient))
 
 			got, err := r.calculateReservationCondition(context.TODO(), tt.nodeset, tt.nodeset.Status.Conditions)
 			if tt.wantErr {
@@ -810,16 +813,6 @@ func TestNodeSetReconciler_calculateReservationCondition(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
-}
-
-func newSlurmClientMap(controllerName string, client slurmclient.Client) *clientmap.ClientMap {
-	cm := clientmap.NewClientMap()
-	key := k8stypes.NamespacedName{
-		Namespace: corev1.NamespaceDefault,
-		Name:      controllerName,
-	}
-	cm.Add(key, client)
-	return cm
 }
 
 func TestNodeSetReconciler_updateNodeSetPodConditions(t *testing.T) {

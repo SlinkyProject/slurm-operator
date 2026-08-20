@@ -8,6 +8,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,6 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/slurmcontrol"
-	"github.com/stretchr/testify/require"
 )
 
 type fakeSlurmControl struct {

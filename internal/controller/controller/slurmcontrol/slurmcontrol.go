@@ -6,13 +6,13 @@ package slurmcontrol
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	ktypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -90,13 +90,10 @@ func NewSlurmControl(clientMap *clientmap.ClientMap) SlurmControlInterface {
 }
 
 func tolerateError(err error) bool {
-	if err == nil {
+	switch {
+	case err == nil, errors.Is(err, slurmerrors.ErrObjectNotFound):
 		return true
+	default:
+		return false
 	}
-	errText := err.Error()
-	if errText == http.StatusText(http.StatusNotFound) ||
-		errText == http.StatusText(http.StatusNoContent) {
-		return true
-	}
-	return false
 }

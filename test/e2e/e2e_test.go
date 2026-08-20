@@ -8,11 +8,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SlinkyProject/slurm-operator/test"
 	"sigs.k8s.io/e2e-framework/klient/conf"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/types"
+
+	"github.com/SlinkyProject/slurm-operator/test"
 )
 
 func parseE2EFlags(imageConfig *test.SlurmImageConfig) {

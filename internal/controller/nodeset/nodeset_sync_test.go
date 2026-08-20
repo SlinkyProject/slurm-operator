@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -51,7 +52,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 func newNodeSetController(client client.Client, clientMap *clientmap.ClientMap) *NodeSetReconciler {
