@@ -64,7 +64,7 @@ type SlurmControlInterface interface {
 	// GetNodeDeadlines returns a map of node to its deadline time.Time calculated from running jobs.
 	GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error)
 	// GetNodesForPods returns a list of Slurm nodes associated with the NodeSet pods.
-	GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, bool, error)
+	GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error)
 	// CheckReservationForNodeSet returns true when a reservation exists for a NodeSet
 	CheckReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (bool, error)
 	// GetPodsUnderReservation returns a sublist of pods whose Slurm nodes are under an active MAINT reservation
@@ -74,10 +74,12 @@ type SlurmControlInterface interface {
 	// DeleteReservationForNodeSet deletes a reservation associated with a NodeSet for the Scheduled update strategy
 	DeleteReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// GetDefunctNodesForNodeSet returns defunct-node candidates owned by this NodeSet.
-	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error)
+	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error)
 	// DeleteNode deletes a Slurm node by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
 }
+
+var ErrNoSlurmClient = errors.New("NoSlurmClient")
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
@@ -91,7 +93,7 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do RefreshNodeCache()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
@@ -111,7 +113,7 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeWithPodInfo()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -173,7 +175,7 @@ func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slin
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeTopology()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -214,7 +216,7 @@ func (r *realSlurmControl) UpdateNodeFeatures(ctx context.Context, nodeset *slin
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do UpdateNodeFeatures()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -288,7 +290,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do MakeNodeDrain()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -341,7 +343,7 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do MakeNodeUndrain()",
 			"pod", klog.KObj(pod))
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -390,7 +392,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrain()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -414,7 +416,7 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -443,7 +445,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -472,7 +474,7 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeReasonOurs()",
 			"pod", klog.KObj(pod))
-		return true, nil
+		return true, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{}
@@ -530,7 +532,7 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do CalculateNodeStatus()")
-		return status, nil
+		return status, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
@@ -640,7 +642,7 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodeDeadlines()")
-		return ts, nil
+		return ts, ErrNoSlurmClient
 	}
 
 	slurmNodeNamesSet := set.New[string]()
@@ -688,18 +690,18 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 }
 
 // GetNodesForPods implements SlurmControlInterface.
-func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, bool, error) {
+func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodesForPods()")
-		return nil, false, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
-		return nil, true, err
+		return nil, err
 	}
 
 	// Expected Slurm nodes backed by NodeSet pods
@@ -719,7 +721,7 @@ func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv
 		slurmNodeNames = append(slurmNodeNames, nodeName)
 	}
 
-	return slurmNodeNames, true, nil
+	return slurmNodeNames, nil
 }
 
 type DefunctNode struct {
@@ -728,18 +730,18 @@ type DefunctNode struct {
 }
 
 // GetDefunctNodesForNodeSet implements SlurmControlInterface.
-func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, bool, error) {
+func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetDefunctNodesForNodeSet()")
-		return nil, false, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
-		return nil, true, err
+		return nil, err
 	}
 
 	defunctNodes := make([]DefunctNode, 0)
@@ -771,7 +773,7 @@ func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodese
 		})
 	}
 
-	return defunctNodes, true, nil
+	return defunctNodes, nil
 }
 
 // DeleteNode implements SlurmControlInterface.
@@ -781,7 +783,7 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do DeleteNode()", "nodeName", nodeName)
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmtypes.V0044Node{
@@ -804,7 +806,7 @@ func (r *realSlurmControl) CheckReservationForNodeSet(ctx context.Context, nodes
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do CheckReservationForNodeSet()")
-		return false, nil
+		return false, ErrNoSlurmClient
 	}
 
 	emptyReservation := new(slurmtypes.V0044ReservationInfo)
@@ -836,7 +838,7 @@ func (r *realSlurmControl) GetPodsUnderReservation(ctx context.Context, nodeset 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetPodsUnderReservation()")
-		return nil, nil
+		return nil, ErrNoSlurmClient
 	}
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
@@ -874,7 +876,7 @@ func (r *realSlurmControl) DeleteReservationForNodeSet(ctx context.Context, node
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do DeleteReservationForNodeSet()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
@@ -901,7 +903,7 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do SyncReservationForNodeSet()")
-		return nil
+		return ErrNoSlurmClient
 	}
 
 	name := "SlurmOperatorMaint-" + nodeset.Name
@@ -911,11 +913,12 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 		return fmt.Errorf("SyncReservationForNodeSet() failed to format Reservation=%s for NodeSet=%s with error=%w", *reservationDesc.Name, nodeset.Name, err)
 	}
 
-	slurmNodes, ok, err := r.GetNodesForPods(ctx, nodeset, pods)
+	slurmNodes, err := r.GetNodesForPods(ctx, nodeset, pods)
 	if err != nil {
+		if errors.Is(err, ErrNoSlurmClient) {
+			return nil
+		}
 		return err
-	} else if !ok {
-		return nil // skip, results cannot be used
 	}
 	slurmNodeHostList, err := hostlist.Compress(slurmNodes)
 	if err != nil {

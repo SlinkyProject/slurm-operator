@@ -684,7 +684,9 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Succeeds with zero replicas and empty pod list",
+			// Without a Slurm client there is nothing to reconcile against, so
+			// every Slurm-backed sync step is skipped rather than erroring.
+			name: "No client",
 			fields: fields{
 				Client:    fake.NewFakeClient(controller.DeepCopy()),
 				ClientMap: clientmap.NewClientMap(),
@@ -745,7 +747,6 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
-
 			require.NoError(t, err)
 		})
 	}
@@ -4811,7 +4812,6 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 		clientMap *clientmap.ClientMap
 		nodeset   *slinkyv1beta1.NodeSet
 		pods      []*corev1.Pod
-		wantOk    bool
 		wantErr   bool
 	}
 	tests := []testCase{
@@ -4842,7 +4842,6 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
-				wantOk: true,
 			}
 		}(),
 		func() testCase {
@@ -4866,13 +4865,14 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
-				wantOk: true,
 			}
 		}(),
 		func() testCase {
 			nodeset := newNodeSet("foo", controller.Name, 2)
 			pod0 := newNodeSetPodWithStatus(nodeset, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 			pod1 := newNodeSetPodWithStatus(nodeset, controller, 1, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
+			// Without a Slurm client the registered-node list is unknown, so no
+			// pod may be pruned and the sync is skipped without erroring.
 			return testCase{
 				name:      "no client",
 				kclient:   fake.NewFakeClient(nodeset, pod0, pod1),
@@ -4882,7 +4882,6 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
-				wantOk: false,
 			}
 		}(),
 	}
@@ -4893,16 +4892,15 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
 			if tt.wantErr {
 				require.Error(t, gotErr)
-				return
+			} else {
+				require.NoError(t, gotErr)
 			}
-			require.NoError(t, gotErr)
 			scontrol := slurmcontrol.NewSlurmControl(tt.clientMap)
-			slurmNodeNames, ok, err := scontrol.GetNodesForPods(ctx, tt.nodeset, tt.pods)
-			require.NoError(t, err)
-			if !ok {
-				require.Equal(t, tt.wantOk, ok, "slurmControl used a client unexpectedly")
+			slurmNodeNames, err := scontrol.GetNodesForPods(ctx, tt.nodeset, tt.pods)
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 				return
 			}
+			require.NoError(t, err)
 			podList := &corev1.PodList{}
 			require.NoError(t, tt.kclient.List(ctx, podList))
 			require.Equal(t, len(slurmNodeNames), len(podList.Items), "syncSlurmNodes() unregistered Slurm node but healthy pod was not deleted")

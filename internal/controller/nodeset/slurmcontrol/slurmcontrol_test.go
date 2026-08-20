@@ -147,9 +147,9 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			err := r.UpdateNodeWithPodInfo(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
 				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
@@ -264,9 +264,9 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			err := r.MakeNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
 				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
@@ -356,6 +356,7 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			err := r.MakeNodeUndrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason)
 			if tt.wantErr {
 				require.Error(t, err)
+				return
 			} else {
 				require.NoError(t, err)
 			}
@@ -443,9 +444,8 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			err := r.UpdateNodeTopology(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.topologySpec)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
 			}
+			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
 				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
@@ -700,9 +700,9 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 			got, err := r.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -985,9 +985,9 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 			got, err := r.IsNodeDrained(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -1342,9 +1342,9 @@ func Test_realSlurmControl_IsNodeDownForUnresponsive(t *testing.T) {
 			got, err := r.IsNodeDownForUnresponsive(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -1455,9 +1455,9 @@ func Test_realSlurmControl_IsNodeReasonOurs(t *testing.T) {
 			got, err := r.IsNodeReasonOurs(tt.args.ctx, tt.args.nodeset, tt.args.pod)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -2209,9 +2209,9 @@ func Test_realSlurmControl_CalculateNodeStatus(t *testing.T) {
 			got, err := r.CalculateNodeStatus(tt.args.ctx, tt.args.nodeset, tt.args.pods)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			require.True(t, apiequality.Semantic.DeepEqual(got, tt.want), "realSlurmControl.CalculateNodeStatus() = %v, want %v", got, tt.want)
 		})
 	}
@@ -2365,9 +2365,9 @@ func Test_realSlurmControl_GetNodeDeadlines(t *testing.T) {
 			got, err := r.GetNodeDeadlines(tt.args.ctx, tt.args.nodeset, tt.args.pods)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+			require.NoError(t, err)
 			for _, node := range tt.fields.nodeList.Items {
 				ts := got.Peek(ptr.Deref(node.Name, ""))
 				require.True(t, ts.After(now), "timestamp = %v, after = %v", ts, ts.After(now))
@@ -2393,7 +2393,6 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 		nodeset    *slinkyv1beta1.NodeSet
 		pods       []*corev1.Pod
 		want       []string
-		wantOk     bool
 		wantErr    bool
 	}
 	tests := []testCase{
@@ -2444,7 +2443,6 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 					ns0pod0name,
 					ns0pod1name,
 				},
-				wantOk: true,
 			}
 		}(),
 	}
@@ -2453,17 +2451,13 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 			sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithLists(tt.clientData.nodeList).Build()
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, sclient))
-			got, ok, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
+			got, gotErr := r.GetNodesForPods(context.Background(), tt.nodeset, tt.pods)
 			if gotErr != nil {
 				if tt.wantErr {
 					require.Error(t, gotErr)
 				} else {
 					require.NoError(t, gotErr)
 				}
-				return
-			}
-			if !ok {
-				require.Equal(t, tt.wantOk, ok)
 				return
 			}
 			if tt.wantErr {
@@ -2484,11 +2478,12 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 	endTime := now.Add(time.Hour).Unix()
 
 	type testCase struct {
-		name    string
-		client  client.Client
-		nodeset *slinkyv1beta1.NodeSet
-		want    bool
-		wantErr bool
+		name            string
+		client          client.Client
+		nodeset         *slinkyv1beta1.NodeSet
+		want            bool
+		wantErr         bool
+		wantErrNoClient bool
 	}
 	tests := []testCase{
 		{
@@ -2499,9 +2494,9 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 					Name:      "slinky",
 				},
 			},
-			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
-			want:    false,
-			wantErr: false,
+			client:          fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
+			want:            false,
+			wantErrNoClient: true,
 		},
 		{
 			name: "reservation does not exist",
@@ -2555,6 +2550,8 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			got, gotErr := r.CheckReservationForNodeSet(context.Background(), tt.nodeset)
 			if tt.wantErr {
 				require.Error(t, gotErr)
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
 			} else {
 				require.NoError(t, gotErr)
 			}
@@ -2760,10 +2757,11 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 	endTime := now.Add(time.Hour).Unix()
 
 	type testCase struct {
-		name    string
-		client  client.Client
-		nodeset *slinkyv1beta1.NodeSet
-		wantErr bool
+		name            string
+		client          client.Client
+		nodeset         *slinkyv1beta1.NodeSet
+		wantErrNoClient bool
+		wantErr         bool
 	}
 	tests := []testCase{
 		{
@@ -2774,8 +2772,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 					Name:      "slinky",
 				},
 			},
-			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
-			wantErr: false,
+			client:          fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
+			wantErrNoClient: true,
 		},
 		{
 			name: "reservation does not exist",
@@ -2848,6 +2846,8 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			gotErr := r.DeleteReservationForNodeSet(context.Background(), tt.nodeset)
 			if tt.wantErr {
 				require.Error(t, gotErr)
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
 			} else {
 				require.NoError(t, gotErr)
 			}
@@ -2894,11 +2894,12 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 	ns1pod1name := nodesetutils.GetSlurmNodeName(ns1pod1)
 
 	type testCase struct {
-		name    string
-		client  client.Client
-		nodeset *slinkyv1beta1.NodeSet
-		pods    []*corev1.Pod
-		wantErr bool
+		name            string
+		client          client.Client
+		nodeset         *slinkyv1beta1.NodeSet
+		pods            []*corev1.Pod
+		wantErr         bool
+		wantErrNoClient bool
 	}
 	tests := []testCase{
 		{
@@ -2909,8 +2910,8 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 					Name:      "slinky",
 				},
 			},
-			client:  fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
-			wantErr: false,
+			client:          fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).Build(),
+			wantErrNoClient: true,
 		},
 		{
 			name: "reservation spec not provided",
@@ -3381,12 +3382,13 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
-
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			gotErr := r.SyncReservationForNodeSet(context.Background(), tt.nodeset, tt.pods)
 			if tt.wantErr {
 				require.Error(t, gotErr)
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
 			} else {
 				require.NoError(t, gotErr)
 			}
@@ -3500,60 +3502,63 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 		}).ToString())
 	}
 
-	type fields struct {
-		nodes []types.V0044Node
-	}
 	tests := []struct {
-		name    string
-		fields  fields
-		want    []DefunctNode
-		wantOk  bool
-		wantErr bool
+		name            string
+		slurmClient     client.Client
+		want            []DefunctNode
+		wantErr         bool
+		wantErrNoClient bool
 	}{
 		{
+			name:            "no client",
+			wantErrNoClient: true,
+		},
+		{
 			name: "returns only down and not responding nodes with PodInfo from this nodeset",
-			fields: fields{
-				nodes: []types.V0044Node{
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-ghost"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-							Comment: podInfo(nodeset, defunctPodName, "worker-a"),
+			slurmClient: fake.NewClientBuilder().
+				WithLists(&types.V0044NodeList{
+					Items: []types.V0044Node{
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-ghost"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+								Comment: podInfo(nodeset, defunctPodName, "worker-a"),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-missing-flag"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+								}),
+								Comment: podInfo(nodeset, nodesetutils.GetOrdinalPodName(nodeset, 8), ""),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("bar-ghost"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+								Comment: podInfo(otherNodeSet, nodesetutils.GetOrdinalPodName(otherNodeSet, 0), ""),
+							},
+						},
+						{
+							V0044Node: api.V0044Node{
+								Name: ptr.To("foo-no-comment"),
+								State: ptr.To([]api.V0044NodeState{
+									api.V0044NodeStateDOWN,
+									api.V0044NodeStateNOTRESPONDING,
+								}),
+							},
 						},
 					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-missing-flag"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-							}),
-							Comment: podInfo(nodeset, nodesetutils.GetOrdinalPodName(nodeset, 8), ""),
-						},
-					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("bar-ghost"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-							Comment: podInfo(otherNodeSet, nodesetutils.GetOrdinalPodName(otherNodeSet, 0), ""),
-						},
-					},
-					{
-						V0044Node: api.V0044Node{
-							Name: ptr.To("foo-no-comment"),
-							State: ptr.To([]api.V0044NodeState{
-								api.V0044NodeStateDOWN,
-								api.V0044NodeStateNOTRESPONDING,
-							}),
-						},
-					},
-				},
-			},
+				}).
+				Build(),
 			want: []DefunctNode{
 				{
 					Name: "foo-ghost",
@@ -3566,35 +3571,21 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 					},
 				},
 			},
-			wantOk: true,
-		},
-		{
-			name:   "no client",
-			fields: fields{},
-			wantOk: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var sclient client.Client
-			if tt.wantOk {
-				objects := make([]object.Object, 0, len(tt.fields.nodes))
-				for i := range tt.fields.nodes {
-					node := tt.fields.nodes[i]
-					objects = append(objects, &node)
-				}
-				sclient = fake.NewClientBuilder().WithObjects(objects...).Build()
-			}
-			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, sclient)
-
+			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, tt.slurmClient)
 			r := NewSlurmControl(clientMap)
-			got, ok, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
+			got, err := r.GetDefunctNodesForNodeSet(ctx, nodeset)
 			if tt.wantErr {
 				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+				return
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, err, ErrNoSlurmClient)
+				return
 			}
-			require.Equal(t, tt.wantOk, ok)
+			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
 	}
