@@ -19,6 +19,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	jwt "github.com/golang-jwt/jwt/v5"
 )
@@ -43,19 +44,10 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	token = token.DeepCopy()
 	defaults.SetTokenDefaults(token)
 
+	key := objectutils.KeyFunc(token)
 	if !token.DeletionTimestamp.IsZero() {
 		logger.Info("Token is being deleted, skipping sync", "request", req)
 		return nil
-	} else {
-		now := time.Now()
-		key := objectutils.KeyFunc(token)
-		expirationTime, err := r.getExpTime(ctx, token)
-		if err != nil {
-			durationStore.Push(key, 30*time.Second)
-		} else {
-			refreshTime := expirationTime.Add(-token.Lifetime() * 1 / 5)
-			durationStore.Push(key, refreshTime.Sub(now))
-		}
 	}
 
 	syncSteps := []SyncStep{
@@ -91,9 +83,10 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 
 				refreshTime := now
 				if !expirationTime.IsZero() {
-					refreshTime = expirationTime.Add(-token.Lifetime() * 1 / 5)
-					key := objectutils.KeyFunc(token)
-					durationStore.Push(key, refreshTime.Sub(now))
+					// Requeue at 80% of Lifetime
+					refreshTime = expirationTime.Add(-token.Lifetime() / 5)
+					requeueAfter := mathutils.Clamp(refreshTime.Sub(now), 1*time.Second, token.Lifetime())
+					durationStore.Push(key, requeueAfter)
 				}
 
 				if now.Before(refreshTime) {
@@ -108,6 +101,10 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 				if err := objectutils.SyncObject(r.Client, ctx, object, true); err != nil {
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
 				}
+
+				// Requeue at 80% of Lifetime
+				requeueAfter := token.Lifetime() - token.Lifetime()/5
+				durationStore.Push(key, requeueAfter)
 
 				return nil
 			},
