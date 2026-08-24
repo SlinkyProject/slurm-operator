@@ -38,11 +38,6 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 		}
 	}
 
-	if install {
-		steps = append(steps, uninstallSlurm())
-
-	}
-
 	return steps
 }
 

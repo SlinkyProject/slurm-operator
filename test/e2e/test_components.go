@@ -33,6 +33,8 @@ import (
 // Dependency Component Health Checks
 
 func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+	t.Helper()
+
 	// Get MariaDB CR
 
 	mariadb := &mariadbv1alpha1.MariaDB{}
@@ -65,7 +67,15 @@ func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testin
 		err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(&statefulSet, func(object k8s.Object) int32 {
 			return object.(*appsv1.StatefulSet).Status.ReadyReplicas
 		}, *statefulSet.Spec.Replicas))
-		require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
+		require.NoError(
+			t,
+			err,
+			"timed out waiting for StatefulSet %s/%s to reach %d ready replicas; observed status: %s",
+			statefulSet.Namespace,
+			statefulSet.Name,
+			*statefulSet.Spec.Replicas,
+			test.StatusJSON(statefulSet.Status),
+		)
 	}
 
 	return ctx
@@ -76,6 +86,8 @@ func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testin
 // Controller tests
 
 func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	t.Helper()
+
 	// Get Controller CR
 	controller := &slinkyv1beta1.Controller{}
 
@@ -104,7 +116,18 @@ func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *tes
 	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(statefulSet, func(object k8s.Object) int32 {
 		return object.(*appsv1.StatefulSet).Status.ReadyReplicas
 	}, *statefulSet.Spec.Replicas))
-	require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
+	if err != nil {
+		_ = crClient.Get(ctx, controllerKey, controller)
+		t.Fatalf(
+			"timed out waiting for controller StatefulSet %s/%s to reach %d ready replicas: %v; controller status: %s; StatefulSet status: %s",
+			statefulSet.Namespace,
+			statefulSet.Name,
+			*statefulSet.Spec.Replicas,
+			err,
+			test.StatusJSON(controller.Status),
+			test.StatusJSON(statefulSet.Status),
+		)
+	}
 }
 
 func testSlurmController() types.Feature {
@@ -126,39 +149,7 @@ func testSlurmController() types.Feature {
 			return ctx
 		}).
 		Assess("slurm controller can resolve nodeset by hostname", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			for retry := range 16 {
-				nodeInfo, err := test.GetSlurmNodeInfo("slinky-0")
-				if err != nil && retry == 15 {
-					t.Fatalf("failed to execute command: %v", err)
-				}
-
-				if nodeInfo["NodeAddr"] == "" && retry == 15 {
-					t.Fatalf("Error resolving hostname for slurm node slinky-0")
-				}
-
-				command := "kubectl"
-				args := []string{
-					"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--",
-					"getent", "hosts", nodeInfo["NodeAddr"],
-				}
-
-				cmd := exec.Command(command, args...)
-				output, err := cmd.Output()
-				if err != nil && retry == 15 {
-					t.Fatalf("Failed to resolve nodeset by hostname. getent hosts returned: %v", output)
-				}
-
-				split_output := strings.Split(string(output), " ")
-				if len(split_output) <= 1 && retry == 15 {
-					t.Fatalf("Failed to resolve nodeset by hostname. getent hosts returned: %v", output)
-				}
-
-				if strings.HasPrefix(strings.TrimSpace(split_output[len(split_output)-1]), "slinky-0") {
-					break
-				}
-
-				time.Sleep(time.Second * 5)
-			}
+			checkHostnameResolution(ctx, t, "slurm-controller-0", "slinky-0")
 
 			return ctx
 		}).
@@ -177,9 +168,72 @@ func testSlurmController() types.Feature {
 		}).Feature()
 }
 
+func checkHostnameResolution(ctx context.Context, t *testing.T, sourcePod, nodeName string) {
+	t.Helper()
+
+	const attempts = 16
+	var (
+		lastAddress string
+		lastErr     error
+		lastOutput  []byte
+	)
+
+	for attempt := range attempts {
+		nodeInfo, err := test.GetSlurmNodeInfo(nodeName)
+		if err != nil {
+			lastErr = err
+		} else {
+			lastAddress = nodeInfo["NodeAddr"]
+			if lastAddress == "" {
+				lastErr = nil
+				lastOutput = nil
+			} else {
+				args := []string{
+					"exec", "-n", test.SlurmNamespace, sourcePod, "--",
+					"getent", "hosts", lastAddress,
+				}
+				cmd := exec.CommandContext(ctx, "kubectl", args...)
+				lastOutput, lastErr = cmd.CombinedOutput()
+				fields := strings.Fields(string(lastOutput))
+				if lastErr == nil && len(fields) > 1 && strings.HasPrefix(fields[len(fields)-1], nodeName) {
+					return
+				}
+			}
+		}
+
+		if attempt < attempts-1 {
+			select {
+			case <-ctx.Done():
+				t.Fatalf(
+					"context ended while resolving Slurm node %q from pod %q: address=%q, last command error=%v, last combined output=%q: %v",
+					nodeName,
+					sourcePod,
+					lastAddress,
+					lastErr,
+					strings.TrimSpace(string(lastOutput)),
+					ctx.Err(),
+				)
+			case <-time.After(5 * time.Second):
+			}
+		}
+	}
+
+	t.Fatalf(
+		"failed to resolve Slurm node %q from pod %q after %d attempts: address=%q, last command error=%v, last combined output=%q",
+		nodeName,
+		sourcePod,
+		attempts,
+		lastAddress,
+		lastErr,
+		strings.TrimSpace(string(lastOutput)),
+	)
+}
+
 // RestAPI tests
 
 func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	t.Helper()
+
 	// Get RestAPI CR
 	restapi := &slinkyv1beta1.RestApi{}
 
@@ -208,7 +262,18 @@ func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testin
 	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
 		return object.(*appsv1.Deployment).Status.ReadyReplicas
 	}, *deployment.Spec.Replicas))
-	require.NoError(t, err, "timed out waiting for Deployment %v to reach a ready state", deployment.Name)
+	if err != nil {
+		_ = crClient.Get(ctx, restapiKey, restapi)
+		t.Fatalf(
+			"timed out waiting for REST API Deployment %s/%s to reach %d ready replicas: %v; REST API status: %s; Deployment status: %s",
+			deployment.Namespace,
+			deployment.Name,
+			*deployment.Spec.Replicas,
+			err,
+			test.StatusJSON(restapi.Status),
+			test.StatusJSON(deployment.Status),
+		)
+	}
 }
 
 func testSlurmRestAPI(withAccounting bool) types.Feature {
@@ -242,7 +307,10 @@ func testSlurmRestAPI(withAccounting bool) types.Feature {
 // NodeSet tests
 
 func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, nodesetKey crclient.ObjectKey) {
+	t.Helper()
+
 	nodeset := &slinkyv1beta1.NodeSet{}
+	started := time.Now()
 
 	for retry := range 16 {
 
@@ -254,7 +322,14 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 		}
 
 		if retry == 15 {
-			t.Fatalf("Timed out waiting for NodeSet replicas to become ready. \nDesired replicas: %d \nReady replicas: %d", *nodeset.Spec.Replicas, nodeset.Status.AvailableReplicas)
+			t.Fatalf(
+				"timed out after %s waiting for NodeSet %s/%s replicas to become available: spec.replicas=%d; observed status=%s",
+				time.Since(started).Round(time.Millisecond),
+				nodeset.Namespace,
+				nodeset.Name,
+				*nodeset.Spec.Replicas,
+				test.StatusJSON(nodeset.Status),
+			)
 		}
 
 		time.Sleep(5 * time.Second)
@@ -316,39 +391,7 @@ func testSlurmNodeSet() types.Feature {
 			return ctx
 		}).
 		Assess("NodeSets can resolve each other's hostnames", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			for retry := range 16 {
-				nodeInfo, err := test.GetSlurmNodeInfo("slinky-1")
-				if err != nil && retry == 15 {
-					t.Fatalf("failed to execute command: %v", err)
-				}
-
-				if nodeInfo["NodeAddr"] == "" && retry == 15 {
-					t.Fatalf("Error resolving hostname for slurm node slinky-1")
-				}
-
-				command := "kubectl"
-				args := []string{
-					"exec", "-n", test.SlurmNamespace, "slurm-worker-slinky-0", "--",
-					"getent", "hosts", nodeInfo["NodeAddr"],
-				}
-
-				cmd := exec.Command(command, args...)
-				output, err := cmd.Output()
-				if err != nil && retry == 15 {
-					t.Fatalf("Failed to resolve nodeset by hostname. getent hosts returned: %v", output)
-				}
-
-				split_output := strings.Split(string(output), " ")
-				if len(split_output) <= 1 && retry == 15 {
-					t.Fatalf("Failed to resolve nodeset by hostname. getent hosts returned: %v", output)
-				}
-
-				if strings.HasPrefix(strings.TrimSpace(split_output[len(split_output)-1]), "slinky-1") {
-					break
-				}
-
-				time.Sleep(time.Second * 5)
-			}
+			checkHostnameResolution(ctx, t, "slurm-worker-slinky-0", "slinky-1")
 
 			return ctx
 		}).
@@ -494,6 +537,8 @@ func podReady(pod *corev1.Pod) bool {
 // Accounting tests
 
 func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	t.Helper()
+
 	// Get Accounting CR
 	accounting := &slinkyv1beta1.Accounting{}
 
@@ -521,7 +566,18 @@ func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *tes
 	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(statefulSet, func(object k8s.Object) int32 {
 		return object.(*appsv1.StatefulSet).Status.ReadyReplicas
 	}, *statefulSet.Spec.Replicas))
-	require.NoError(t, err, "timed out waiting for StatefulSet %v to reach a ready state", statefulSet.Name)
+	if err != nil {
+		_ = crClient.Get(ctx, accountingKey, accounting)
+		t.Fatalf(
+			"timed out waiting for accounting StatefulSet %s/%s to reach %d ready replicas: %v; Accounting status: %s; StatefulSet status: %s",
+			statefulSet.Namespace,
+			statefulSet.Name,
+			*statefulSet.Spec.Replicas,
+			err,
+			test.StatusJSON(accounting.Status),
+			test.StatusJSON(statefulSet.Status),
+		)
+	}
 }
 
 func testSlurmAccounting() types.Feature {
@@ -611,6 +667,8 @@ func testSlurmAccounting() types.Feature {
 // LoginSet tests
 
 func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+	t.Helper()
+
 	// Get LoginSet CR
 	loginSet := &slinkyv1beta1.LoginSet{}
 
@@ -639,5 +697,16 @@ func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testi
 	err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
 		return object.(*appsv1.Deployment).Status.ReadyReplicas
 	}, *deployment.Spec.Replicas))
-	require.NoError(t, err, "timed out waiting for Deployment %v to reach a ready state", deployment.Name)
+	if err != nil {
+		_ = crClient.Get(ctx, loginSetKey, loginSet)
+		t.Fatalf(
+			"timed out waiting for LoginSet Deployment %s/%s to reach %d ready replicas: %v; LoginSet status: %s; Deployment status: %s",
+			deployment.Namespace,
+			deployment.Name,
+			*deployment.Spec.Replicas,
+			err,
+			test.StatusJSON(loginSet.Status),
+			test.StatusJSON(deployment.Status),
+		)
+	}
 }

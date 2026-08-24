@@ -5,7 +5,8 @@ package test
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -33,20 +34,23 @@ func GetBasePath() string {
 }
 
 // WaitForCommand executes the provided command until it succeeds with the expected output.
-func WaitForCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanup_command string, cleanup_args []string, timeout time.Duration, retryDelay time.Duration) {
+func WaitForCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanupCommand string, cleanupArgs []string, timeout time.Duration, retryDelay time.Duration) {
 	t.Helper()
 
 	var output []byte
+	var commandErr error
+	attempts := 0
+	started := time.Now()
 	err := wait.For(func(waitCtx context.Context) (bool, error) {
-		if cleanup_command != "" && len(cleanup_args) > 0 {
-			cleanup_cmd := exec.CommandContext(waitCtx, cleanup_command, cleanup_args...)
+		attempts++
+		if cleanupCommand != "" && len(cleanupArgs) > 0 {
+			cleanupCmd := exec.CommandContext(waitCtx, cleanupCommand, cleanupArgs...)
 
-			_, _ = cleanup_cmd.Output() //nolint:errcheck
+			_, _ = cleanupCmd.CombinedOutput() //nolint:errcheck
 		}
 
 		cmd := exec.CommandContext(waitCtx, command, args...)
-		var commandErr error
-		output, commandErr = cmd.Output()
+		output, commandErr = cmd.CombinedOutput()
 		return commandErr == nil && (wants == "" || strings.TrimSpace(string(output)) == wants), nil
 	},
 		wait.WithContext(ctx),
@@ -55,7 +59,23 @@ func WaitForCommand(ctx context.Context, t *testing.T, command string, args []st
 		wait.WithImmediate(),
 	)
 
-	require.NoError(t, err, "timed out waiting for %v %v; last output: %q", command, args, strings.TrimSpace(string(output)))
+	if err != nil {
+		expected := fmt.Sprintf("output %q", wants)
+		if wants == "" {
+			expected = "a successful exit"
+		}
+		t.Fatalf(
+			"command did not reach %s after %s (%d attempts): %s %s\nwait error: %v\nlast command error: %v\nlast combined output: %q",
+			expected,
+			time.Since(started).Round(time.Millisecond),
+			attempts,
+			command,
+			strings.Join(args, " "),
+			err,
+			commandErr,
+			strings.TrimSpace(string(output)),
+		)
+	}
 }
 
 // GetSlurmNodeInfo uses scontrol to get details on a Slurm node
@@ -67,9 +87,9 @@ func GetSlurmNodeInfo(nodeName string) (map[string]string, error) {
 	}
 
 	cmd := exec.Command(command, args...)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New("failed executing command")
+		return nil, fmt.Errorf("failed executing %s %s: %w; combined output: %q", command, strings.Join(args, " "), err, strings.TrimSpace(string(output)))
 	}
 
 	out_map := StringToMap(string(output))
@@ -98,6 +118,8 @@ func StringToMap(input string) map[string]string {
 
 // CheckDeploymentStatus waits for the specified deployment to have the desired number of ReadyReplicas, then returns
 func CheckDeploymentStatus(ctx context.Context, t *testing.T, config *envconf.Config, deploymentName string, deploymentNamespace string) context.Context {
+	t.Helper()
+
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deploymentName,
@@ -107,9 +129,25 @@ func CheckDeploymentStatus(ctx context.Context, t *testing.T, config *envconf.Co
 	err := wait.For(conditions.New(config.Client().Resources()).ResourceScaled(deployment, func(object k8s.Object) int32 {
 		return object.(*appsv1.Deployment).Status.ReadyReplicas
 	}, 1))
-	require.NoError(t, err, "failed waiting for the %s deployment to reach a ready state", deploymentName)
+	require.NoError(
+		t,
+		err,
+		"failed waiting for deployment %s/%s to reach one ready replica; observed status: %s",
+		deploymentNamespace,
+		deploymentName,
+		StatusJSON(deployment.Status),
+	)
 
 	return ctx
+}
+
+// StatusJSON renders Kubernetes status structs compactly for failure messages.
+func StatusJSON(status any) string {
+	data, err := json.Marshal(status)
+	if err != nil {
+		return fmt.Sprintf("<failed to marshal status: %v>", err)
+	}
+	return string(data)
 }
 
 // DoUninstallHelmChart uses the Helm API to uninstall the specified Helm chart in the specified namespace

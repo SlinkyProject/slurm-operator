@@ -108,7 +108,32 @@ func TestSlurmChart(t *testing.T) {
 		steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
 
 		t.Run(tt.name, func(t *testing.T) {
-			_ = test.Testenv.Test(t, steps...)
+			if len(steps) == 0 {
+				t.Skip("scenario is not configured with any E2E features")
+			}
+
+			installAttempted := false
+			for _, feature := range steps {
+				if feature.Name() == "Helm install slurm" {
+					installAttempted = true
+				}
+				_ = test.Testenv.Test(t, feature)
+				if t.Failed() {
+					test.CaptureFailureDiagnostics(
+						t,
+						feature.Name(),
+						test.SlurmNamespace,
+						test.SlinkyNamespace,
+					)
+					break
+				}
+			}
+
+			// Keep cleanup separate from the feature loop so a failed feature can
+			// be diagnosed before its resources are removed.
+			if installAttempted {
+				_ = test.Testenv.Test(t, uninstallSlurm())
+			}
 		})
 	}
 }
