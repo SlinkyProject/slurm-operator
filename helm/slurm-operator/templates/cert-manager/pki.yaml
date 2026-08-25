@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 SPDX-License-Identifier: Apache-2.0
 */}}
 
+{{- include "slurm-operator.webhook.validateModes" . -}}
 {{- if and .Values.webhook.enabled .Values.certManager.enabled }}
 {{- $certManager := .Values.certManager | default dict -}}
 ---
