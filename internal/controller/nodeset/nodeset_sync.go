@@ -1059,8 +1059,12 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
 			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, ScalingDownReason, "ScaleDown",
 				"Deleting %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
-			podsToDelete, podsToKeep := nodesetutils.SplitActivePods(podsNewScaling, diff)
-			return r.doPodScale(ctx, nodeset, podsToKeep, podsToDelete, nil)
+			podsToDelete, _ := nodesetutils.SplitActivePods(podsNewScaling, diff)
+			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
+			// cordoned pods for deletion, but if more pods are already cordoned/draining
+			// than diff can delete this reconcile, the overflow lands in the keep set;
+			// doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, podsToDelete, nil)
 		}
 	}
 

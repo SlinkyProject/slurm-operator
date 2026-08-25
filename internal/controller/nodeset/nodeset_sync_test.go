@@ -6,6 +6,7 @@ package nodeset
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -975,6 +976,73 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 				wantPods:     2,
 				wantErr:      false,
 				wantCordoned: []*corev1.Pod{pod0},
+			}
+		}(),
+		func() testCaseFields {
+			// Regression: SplitActivePods already prefers cordoned pods for deletion
+			// (see the "cordon < not cordon" step in ActivePods.Less), so a single
+			// scale-in candidate from a prior rolling-update reconcile is handled. But
+			// when more pods are already cordoned/draining than the current diff can
+			// delete, the overflow lands in the keep set. syncNodeSetPods used to pass
+			// that keep set straight to doPodScale, whose syncPodUncordon would then
+			// remove the cordon from the overflow pod(s), fighting the rolling update.
+			ns := newNodeSet("foo", controller.Name, 2)
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			// Distinct UIDs matter here: doPodScale's ExcludePods(podsToKeep,
+			// podsToDelete) matches by UID, and zero-value UIDs would collide across
+			// all these synthetic pods, masking the very keep/delete split this test
+			// is exercising.
+			pod0.UID = types.UID("pod-0-uid")
+			cordonedPod := func(ordinal int) *corev1.Pod {
+				pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, ordinal, hash)
+				makePodHealthy(pod)
+				pod.UID = types.UID(fmt.Sprintf("pod-%d-uid", ordinal))
+				if pod.Annotations == nil {
+					pod.Annotations = make(map[string]string)
+				}
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				return pod
+			}
+			pod1 := cordonedPod(1)
+			pod2 := cordonedPod(2)
+			pod3 := cordonedPod(3)
+			drainedSlurmNode := func(pod *corev1.Pod) slurmtypes.V0044Node {
+				return slurmtypes.V0044Node{
+					V0044Node: slurmapi.V0044Node{
+						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
+					},
+				}
+			}
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					drainedSlurmNode(pod1),
+					drainedSlurmNode(pod2),
+					drainedSlurmNode(pod3),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Scale-down does not uncordon drain backlog exceeding the current diff",
+				fields: fields{
+					Client: fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(),
+						pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy(), pod3.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy(), pod3.DeepCopy()},
+					hash:    hash,
+				},
+				// diff=2 deletes the two highest-ordinal cordoned pods (pod3, pod2);
+				// pod1 is the drain-backlog overflow that must stay cordoned.
+				wantPods:     2,
+				wantErr:      false,
+				wantCordoned: []*corev1.Pod{pod1},
 			}
 		}(),
 	}
