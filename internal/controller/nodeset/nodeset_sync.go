@@ -79,10 +79,7 @@ func (r *NodeSetReconciler) Sync(ctx context.Context, req reconcile.Request) err
 		return err
 	}
 
-	if !nodeset.DeletionTimestamp.IsZero() {
-		logger.Info("NodeSet is being deleted, skipping sync")
-		return nil
-	} else {
+	if nodeset.DeletionTimestamp.IsZero() {
 		durationStore.Push(key, 30*time.Second)
 	}
 

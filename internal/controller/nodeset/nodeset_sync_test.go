@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
@@ -657,6 +658,30 @@ func TestNodeSetReconciler_getNodeSetPods(t *testing.T) {
 			require.Equal(t, tt.want, gotPodNames)
 		})
 	}
+}
+
+// TestNodeSetReconciler_Sync_DeletionStillSyncsStatus guards against regressing to an
+// early exit on DeletionTimestamp that skips syncStatus (see commit b63e603e, which
+// added that early exit for the accounting/controller/restapi/token controllers but
+// swept nodeset up too, even though nodeset must keep syncing status -- e.g. while
+// FinalizerNodeSetReservation holds the object -- until it's actually removed).
+func TestNodeSetReconciler_Sync_DeletionStillSyncsStatus(t *testing.T) {
+	now := metav1.Now()
+	nodeset := newNodeSet("foo", "slurm", 0)
+	nodeset.Generation = 5
+	nodeset.DeletionTimestamp = &now
+	nodeset.Finalizers = []string{"test.slinky.slurm.net/keep-alive"}
+
+	fakeClient := fake.NewClientBuilder().WithRuntimeObjects(nodeset).WithStatusSubresource(nodeset).Build()
+	r := newNodeSetController(fakeClient, clientmap.NewClientMap())
+
+	req := reconcile.Request{NamespacedName: client.ObjectKeyFromObject(nodeset)}
+	require.NoError(t, r.Sync(context.TODO(), req))
+
+	got := &slinkyv1beta1.NodeSet{}
+	require.NoError(t, fakeClient.Get(context.TODO(), client.ObjectKeyFromObject(nodeset), got))
+	require.Equal(t, nodeset.Generation, got.Status.ObservedGeneration,
+		"status must still be synced while a NodeSet is terminating")
 }
 
 func TestNodeSetReconciler_sync(t *testing.T) {
