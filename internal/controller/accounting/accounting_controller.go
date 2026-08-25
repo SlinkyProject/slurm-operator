@@ -91,7 +91,7 @@ func (r *AccountingReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			logger.Info("Finished syncing Accounting", "duration", time.Since(startTime), "error", retErr)
 		}
 		// clean the duration store
-		_ = durationStore.Pop(req.Namespace)
+		_ = durationStore.Pop(req.String())
 	}()
 
 	retErr = r.Sync(ctx, req)

@@ -96,7 +96,7 @@ func (r *LoginSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			logger.Info("Finished syncing LoginSet", "duration", time.Since(startTime), "error", retErr)
 		}
 		// clean the duration store
-		_ = durationStore.Pop(req.Namespace)
+		_ = durationStore.Pop(req.String())
 	}()
 
 	retErr = r.Sync(ctx, req)
