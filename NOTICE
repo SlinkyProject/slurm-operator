@@ -77,7 +77,6 @@ Third-party Dependencies:
 - github.com/sethvargo/go-envconfig (Apache-2.0)
 - github.com/spf13/cobra (Apache-2.0)
 - github.com/spf13/pflag (BSD-3-Clause)
-- github.com/stoewer/go-strcase (MIT)
 - github.com/stretchr/testify (MIT)
 - github.com/vladimirvivien/gexe (MIT)
 - github.com/x448/float16 (MIT)

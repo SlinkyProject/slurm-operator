@@ -188,12 +188,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: Apache-2.0
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: BSD-3-Clause
 
 ### github.com/google/gnostic-models
@@ -355,11 +355,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/spf13/pflag
 - Version: v1.0.10
 - License: BSD-3-Clause
-
-### github.com/stoewer/go-strcase
-- Name: github.com/stoewer/go-strcase
-- Version: v1.3.1
-- License: MIT
 
 ### github.com/stretchr/testify
 - Name: github.com/stretchr/testify
