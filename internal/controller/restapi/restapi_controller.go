@@ -91,7 +91,7 @@ func (r *RestapiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 			logger.Error(retErr, "Failed syncing Restapi", "duration", time.Since(startTime))
 		}
 		// clean the duration store
-		_ = durationStore.Pop(req.Namespace)
+		_ = durationStore.Pop(req.String())
 	}()
 
 	retErr = r.Sync(ctx, req)
