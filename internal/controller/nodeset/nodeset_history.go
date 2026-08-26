@@ -120,8 +120,10 @@ func (r *NodeSetReconciler) getNodeSetRevisions(
 	}
 
 	// attempt to find the revision that corresponds to the current revision
+	// NodeSetHash stores the bare hash label (see syncNodeSetStatus), not the
+	// "<name>-<hash>" ControllerRevision.Name, so compare hash to hash.
 	for i := range revisions {
-		if revisions[i].Name == nodeset.Status.NodeSetHash {
+		if historycontrol.GetRevision(revisions[i].GetLabels()) == nodeset.Status.NodeSetHash {
 			currentRevision = revisions[i]
 			break
 		}
