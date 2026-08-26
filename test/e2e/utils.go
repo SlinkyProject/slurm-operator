@@ -25,16 +25,16 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 	}
 	if runTests {
 
-		steps = append(steps, testSlurmController())
-		steps = append(steps, testSlurmRestAPI(config.Accounting))
-		steps = append(steps, testSlurmNodeSet())
+		steps = append(steps, testSlurmController(config.Namespace))
+		steps = append(steps, testSlurmRestAPI(config.Namespace, config.Accounting))
+		steps = append(steps, testSlurmNodeSet(config.Namespace))
 
-		if config == (test.SlurmInstallationConfig{}) {
-			steps = append(steps, testSlurmJWTKeyRotation())
+		if !config.Accounting && !config.Login && !config.Metrics && !config.Pyxis {
+			steps = append(steps, testSlurmJWTKeyRotation(config.Namespace))
 		}
 
 		if config.Accounting {
-			steps = append(steps, testSlurmAccounting())
+			steps = append(steps, testSlurmAccounting(config.Namespace))
 		}
 	}
 

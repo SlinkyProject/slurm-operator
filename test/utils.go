@@ -16,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -79,10 +81,10 @@ func WaitForCommand(ctx context.Context, t *testing.T, command string, args []st
 }
 
 // GetSlurmNodeInfo uses scontrol to get details on a Slurm node
-func GetSlurmNodeInfo(nodeName string) (map[string]string, error) {
+func GetSlurmNodeInfo(namespace, nodeName string) (map[string]string, error) {
 	command := "kubectl"
 	args := []string{
-		"exec", "-n", SlurmNamespace, "slurm-controller-0", "--",
+		"exec", "-n", namespace, "slurm-controller-0", "--",
 		"scontrol", "show", "node", nodeName,
 	}
 
@@ -161,6 +163,29 @@ func DoUninstallHelmChart(ctx context.Context, t *testing.T, config *envconf.Con
 		helm.WithTimeout("5m"),
 	)
 	require.NoError(t, err, "failed to invoke helm uninstall %s due to an error", chartName)
+
+	return ctx
+}
+
+// DoDeleteNamespace deletes the specified namespace and waits for its removal.
+func DoDeleteNamespace(ctx context.Context, t *testing.T, config *envconf.Config, namespace string) context.Context {
+	namespaceObject := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: namespace},
+	}
+	resources := config.Client().Resources()
+	err := resources.Delete(ctx, namespaceObject)
+	if apierrors.IsNotFound(err) {
+		return ctx
+	}
+	require.NoError(t, err, "failed to delete namespace %s", namespace)
+
+	err = wait.For(
+		conditions.New(resources).ResourceDeleted(namespaceObject),
+		wait.WithContext(ctx),
+		wait.WithTimeout(5*time.Minute),
+		wait.WithInterval(2*time.Second),
+	)
+	require.NoError(t, err, "timed out waiting for namespace %s to be deleted", namespace)
 
 	return ctx
 }

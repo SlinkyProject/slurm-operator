@@ -32,7 +32,7 @@ import (
 
 // Dependency Component Health Checks
 
-func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, namespace string) context.Context {
 	t.Helper()
 
 	// Get MariaDB CR
@@ -40,43 +40,36 @@ func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testin
 	mariadb := &mariadbv1alpha1.MariaDB{}
 
 	mariadbKey := crclient.ObjectKey{
-		Namespace: test.SlurmNamespace,
+		Namespace: namespace,
 		Name:      "mariadb",
 	}
 
 	err := crClient.Get(ctx, mariadbKey, mariadb)
 	require.NoError(t, err, "failed to Get() mariadb using controller-runtime client")
 
-	// Get every StatefulSet
-	statefulSetList := appsv1.StatefulSetList{}
-	err = crClient.List(ctx, &statefulSetList)
-	require.NoError(t, err, "failed to List() StatefulSets using controller-runtime client")
-
-	// Build a list of StatefulSets owned by this MariaDB CR
-	ownedStatefulSets := appsv1.StatefulSetList{}
-	for _, statefulSet := range statefulSetList.Items {
-		for _, owner := range statefulSet.OwnerReferences {
-			if owner.UID == mariadb.UID {
-				ownedStatefulSets.Items = append(ownedStatefulSets.Items, statefulSet)
-			}
-		}
+	statefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      "mariadb",
+		},
 	}
-
-	// Get MariaDB StatefulSet using CR
-	for _, statefulSet := range ownedStatefulSets.Items {
-		err = wait.For(conditions.New(config.Client().Resources()).ResourceScaled(&statefulSet, func(object k8s.Object) int32 {
+	err = wait.For(
+		conditions.New(config.Client().Resources()).ResourceScaled(statefulSet, func(object k8s.Object) int32 {
 			return object.(*appsv1.StatefulSet).Status.ReadyReplicas
-		}, *statefulSet.Spec.Replicas))
-		require.NoError(
-			t,
-			err,
-			"timed out waiting for StatefulSet %s/%s to reach %d ready replicas; observed status: %s",
-			statefulSet.Namespace,
-			statefulSet.Name,
-			*statefulSet.Spec.Replicas,
-			test.StatusJSON(statefulSet.Status),
-		)
-	}
+		}, 1),
+		wait.WithContext(ctx),
+		wait.WithTimeout(10*time.Minute),
+		wait.WithInterval(5*time.Second),
+		wait.WithImmediate(),
+	)
+	require.NoError(
+		t,
+		err,
+		"timed out waiting for StatefulSet %s/%s to reach one ready replica; observed status: %s",
+		statefulSet.Namespace,
+		statefulSet.Name,
+		test.StatusJSON(statefulSet.Status),
+	)
 
 	return ctx
 }
@@ -85,14 +78,14 @@ func checkMariaDBHealth(crClient crclient.Client, ctx context.Context, t *testin
 
 // Controller tests
 
-func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, namespace string) {
 	t.Helper()
 
 	// Get Controller CR
 	controller := &slinkyv1beta1.Controller{}
 
 	controllerKey := crclient.ObjectKey{
-		Namespace: test.SlurmNamespace,
+		Namespace: namespace,
 		Name:      "slurm",
 	}
 
@@ -130,7 +123,7 @@ func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *tes
 	}
 }
 
-func testSlurmController() types.Feature {
+func testSlurmController(namespace string) types.Feature {
 	return features.New("Assess the functionality of the Slurm controller").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return ctx
@@ -138,7 +131,7 @@ func testSlurmController() types.Feature {
 		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scontrol", "ping"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
 			var wants string
 
 			var cleanup_command string
@@ -149,18 +142,18 @@ func testSlurmController() types.Feature {
 			return ctx
 		}).
 		Assess("slurm controller can resolve nodeset by hostname", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			checkHostnameResolution(ctx, t, "slurm-controller-0", "slinky-0")
+			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", "slinky-0")
 
 			return ctx
 		}).
 		Assess("job launch & execution succeeds (srun)", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
 			wants := "slinky-0"
 
 			cleanup_command := "kubectl"
-			cleanup_args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
@@ -168,7 +161,7 @@ func testSlurmController() types.Feature {
 		}).Feature()
 }
 
-func checkHostnameResolution(ctx context.Context, t *testing.T, sourcePod, nodeName string) {
+func checkHostnameResolution(ctx context.Context, t *testing.T, namespace, sourcePod, nodeName string) {
 	t.Helper()
 
 	const attempts = 16
@@ -179,7 +172,7 @@ func checkHostnameResolution(ctx context.Context, t *testing.T, sourcePod, nodeN
 	)
 
 	for attempt := range attempts {
-		nodeInfo, err := test.GetSlurmNodeInfo(nodeName)
+		nodeInfo, err := test.GetSlurmNodeInfo(namespace, nodeName)
 		if err != nil {
 			lastErr = err
 		} else {
@@ -189,7 +182,7 @@ func checkHostnameResolution(ctx context.Context, t *testing.T, sourcePod, nodeN
 				lastOutput = nil
 			} else {
 				args := []string{
-					"exec", "-n", test.SlurmNamespace, sourcePod, "--",
+					"exec", "-n", namespace, sourcePod, "--",
 					"getent", "hosts", lastAddress,
 				}
 				cmd := exec.CommandContext(ctx, "kubectl", args...)
@@ -231,14 +224,14 @@ func checkHostnameResolution(ctx context.Context, t *testing.T, sourcePod, nodeN
 
 // RestAPI tests
 
-func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, namespace string) {
 	t.Helper()
 
 	// Get RestAPI CR
 	restapi := &slinkyv1beta1.RestApi{}
 
 	restapiKey := crclient.ObjectKey{
-		Namespace: test.SlurmNamespace,
+		Namespace: namespace,
 		Name:      "slurm",
 	}
 
@@ -276,7 +269,7 @@ func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testin
 	}
 }
 
-func testSlurmRestAPI(withAccounting bool) types.Feature {
+func testSlurmRestAPI(namespace string, withAccounting bool) types.Feature {
 	return features.New("Assess the functionality of the Slurm RestAPI").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return ctx
@@ -284,7 +277,7 @@ func testSlurmRestAPI(withAccounting bool) types.Feature {
 		Assess("slurmrestd container args match expectations", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"get", "deployment", "-n", "slurm", "slurm-restapi", "-o", `jsonpath="{.spec.template.spec.containers[0].args}"`}
+			args := []string{"get", "deployment", "-n", namespace, "slurm-restapi", "-o", `jsonpath="{.spec.template.spec.containers[0].args}"`}
 			var wants string
 			if withAccounting {
 				wants = `"["0.0.0.0:6820"]"`
@@ -336,7 +329,7 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 	}
 }
 
-func testSlurmNodeSet() types.Feature {
+func testSlurmNodeSet(namespace string) types.Feature {
 	return features.New("Assess the functionality of the Slurm NodeSet").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return ctx
@@ -344,7 +337,7 @@ func testSlurmNodeSet() types.Feature {
 		Assess("Nodeset can contact controller", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-worker-slinky-0", "--", "scontrol", "ping"}
+			args := []string{"exec", "-n", namespace, "slurm-worker-slinky-0", "--", "scontrol", "ping"}
 			var wants string
 
 			var cleanup_command string
@@ -357,11 +350,11 @@ func testSlurmNodeSet() types.Feature {
 		Assess("NodeSet is idle", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}
+			args := []string{"exec", "-n", namespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}
 			wants := "idle"
 
 			cleanup_command := "kubectl"
-			cleanup_args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
@@ -373,7 +366,7 @@ func testSlurmNodeSet() types.Feature {
 			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			nodesetKey := crclient.ObjectKey{
-				Namespace: test.SlurmNamespace,
+				Namespace: namespace,
 				Name:      "slurm-worker-slinky",
 			}
 			nodeset := &slinkyv1beta1.NodeSet{}
@@ -391,7 +384,7 @@ func testSlurmNodeSet() types.Feature {
 			return ctx
 		}).
 		Assess("NodeSets can resolve each other's hostnames", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			checkHostnameResolution(ctx, t, "slurm-worker-slinky-0", "slinky-1")
+			checkHostnameResolution(ctx, t, namespace, "slurm-worker-slinky-0", "slinky-1")
 
 			return ctx
 		}).
@@ -401,7 +394,7 @@ func testSlurmNodeSet() types.Feature {
 			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			nodesetKey := crclient.ObjectKey{
-				Namespace: test.SlurmNamespace,
+				Namespace: namespace,
 				Name:      "slurm-worker-slinky",
 			}
 			nodeset := &slinkyv1beta1.NodeSet{}
@@ -420,7 +413,7 @@ func testSlurmNodeSet() types.Feature {
 		}).Feature()
 }
 
-func testSlurmJWTKeyRotation() types.Feature {
+func testSlurmJWTKeyRotation(namespace string) types.Feature {
 	return features.New("Assess Slurm JWT signing key rotation").
 		Assess("referenced JWT Secret updates refresh the Slurm client", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
@@ -428,7 +421,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 
 			controller := &slinkyv1beta1.Controller{}
 			controllerKey := crclient.ObjectKey{
-				Namespace: test.SlurmNamespace,
+				Namespace: namespace,
 				Name:      "slurm",
 			}
 			require.NoError(t, crClient.Get(ctx, controllerKey, controller), "failed to get Controller")
@@ -464,7 +457,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 			// Capture the current slurmctld pod. Updating the key should replace it
 			// so Slurm and the operator both begin using the new signing key.
 			controllerPodKey := crclient.ObjectKey{
-				Namespace: test.SlurmNamespace,
+				Namespace: namespace,
 				Name:      "slurm-controller-0",
 			}
 			oldControllerPod := &corev1.Pod{}
@@ -491,7 +484,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 			// Without the JWT Secret watch, the old token is rejected here and
 			// the NodeSet cannot complete its scale-up.
 			nodesetKey := crclient.ObjectKey{
-				Namespace: test.SlurmNamespace,
+				Namespace: namespace,
 				Name:      "slurm-worker-slinky",
 			}
 			nodeset := &slinkyv1beta1.NodeSet{}
@@ -506,7 +499,7 @@ func testSlurmJWTKeyRotation() types.Feature {
 				ctx,
 				t,
 				"kubectl",
-				[]string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sinfo", "-N", "-n", "slinky-1", "--Format=StateLong", "-h"},
+				[]string{"exec", "-n", namespace, "slurm-controller-0", "--", "sinfo", "-N", "-n", "slinky-1", "--Format=StateLong", "-h"},
 				"idle",
 				"",
 				nil,
@@ -536,14 +529,14 @@ func podReady(pod *corev1.Pod) bool {
 
 // Accounting tests
 
-func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, namespace string) {
 	t.Helper()
 
 	// Get Accounting CR
 	accounting := &slinkyv1beta1.Accounting{}
 
 	accountingKey := crclient.ObjectKey{
-		Namespace: test.SlurmNamespace,
+		Namespace: namespace,
 		Name:      "slurm",
 	}
 
@@ -580,7 +573,7 @@ func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *tes
 	}
 }
 
-func testSlurmAccounting() types.Feature {
+func testSlurmAccounting(namespace string) types.Feature {
 	return features.New("Assess the functionality of the Slurm Accounting").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			return ctx
@@ -588,7 +581,7 @@ func testSlurmAccounting() types.Feature {
 		Assess("Controller can contact accounting", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "ping"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "ping"}
 			var wants string
 
 			var cleanup_command string
@@ -601,26 +594,27 @@ func testSlurmAccounting() types.Feature {
 		Assess("Sacctmgr has cluster entry", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "cluster", "format=cluster%30", "-n"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "cluster", "format=cluster%30", "-n"}
 
 			cmd := exec.Command(command, args...)
 			output, err := cmd.Output()
 			require.NoError(t, err, "sacctmgr show cluster returned non-zero error code")
-			require.Equal(t, "slurm_slurm", strings.TrimSpace(string(output)), "clustername in slurmdbd does not match expected slurm_slurm")
+			expectedClusterName := namespace + "_slurm"
+			require.Equal(t, expectedClusterName, strings.TrimSpace(string(output)), "clustername in slurmdbd does not match expected %s", expectedClusterName)
 
 			return ctx
 		}).
 		Assess("Sacctmgr add account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "name=test", "-i"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "name=test", "-i"}
 			var wants string
 			var cleanup_command string
 			var cleanup_args []string
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
-			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
+			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
 			wants = "test"
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
@@ -630,7 +624,7 @@ func testSlurmAccounting() types.Feature {
 		Assess("Sacctmgr add user", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "account=test", "name=testuser", "-i"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "account=test", "name=testuser", "-i"}
 
 			var wants string
 			var cleanup_command string
@@ -638,7 +632,7 @@ func testSlurmAccounting() types.Feature {
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
 
-			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
+			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
 			wants = "testuser"
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
@@ -648,13 +642,13 @@ func testSlurmAccounting() types.Feature {
 		Assess("Sacctmgr delete account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			command := "kubectl"
-			args := []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "delete", "account", "test", "-i"}
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "delete", "account", "test", "-i"}
 
 			cmd := exec.Command(command, args...)
 			_, err := cmd.Output()
 			require.NoError(t, err, "sacctmgr add account returned non-zero error code")
 
-			args = []string{"exec", "-n", test.SlurmNamespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
+			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
 			cmd = exec.Command(command, args...)
 			output, err := cmd.Output()
 			require.NoError(t, err, "sacctmgr show account returned non-zero error code")
@@ -666,14 +660,14 @@ func testSlurmAccounting() types.Feature {
 
 // LoginSet tests
 
-func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config) {
+func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, namespace string) {
 	t.Helper()
 
 	// Get LoginSet CR
 	loginSet := &slinkyv1beta1.LoginSet{}
 
 	loginSetKey := crclient.ObjectKey{
-		Namespace: test.SlurmNamespace,
+		Namespace: namespace,
 		Name:      "slurm-login-slinky",
 	}
 

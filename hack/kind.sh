@@ -396,7 +396,7 @@ function main() {
 
 	if $OPT_EXTRAS; then
 		kubectl create namespace slurm --dry-run=client -o yaml | kubectl apply -f -
-		until kubectl apply -f "$DIR"/resources; do
+		until kubectl apply --namespace slurm -f "$DIR"/resources; do
 			sleep 2
 		done
 	fi
