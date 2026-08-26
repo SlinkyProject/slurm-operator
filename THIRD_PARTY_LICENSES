@@ -83,7 +83,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/getkin/kin-openapi/openapi3
 - Name: github.com/getkin/kin-openapi/openapi3
-- Version: v0.133.0
+- Version: v0.144.0
 - License: MIT
 
 ### github.com/go-logr/logr
@@ -183,12 +183,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: Apache-2.0
 
 ### github.com/google/cel-go
 - Name: github.com/google/cel-go
-- Version: v0.26.0
+- Version: v0.30.0
 - License: BSD-3-Clause
 
 ### github.com/google/gnostic-models
@@ -206,19 +206,9 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v2.28.0
 - License: BSD-3-Clause
 
-### github.com/josharian/intern
-- Name: github.com/josharian/intern
-- Version: v1.0.0
-- License: MIT
-
 ### github.com/json-iterator/go
 - Name: github.com/json-iterator/go
 - Version: v1.1.12
-- License: MIT
-
-### github.com/mailru/easyjson/jlexer
-- Name: github.com/mailru/easyjson/jlexer
-- Version: v0.9.1
 - License: MIT
 
 ### github.com/modern-go/concurrent
@@ -230,11 +220,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/modern-go/reflect2
 - Version: v1.0.3-0.20250322232337-35a7c28c31ee
 - License: Apache-2.0
-
-### github.com/mohae/deepcopy
-- Name: github.com/mohae/deepcopy
-- Version: v0.0.0-20170929034955-c48cc78d4826
-- License: MIT
 
 ### github.com/munnerz/goautoneg
 - Name: github.com/munnerz/goautoneg
@@ -248,28 +233,23 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/oasdiff/yaml
 - Name: github.com/oasdiff/yaml
-- Version: v0.0.0-20250309154309-f31be36b4037
+- Version: v0.1.1
 - License: BSD-3-Clause
 
 ### github.com/oasdiff/yaml
 - Name: github.com/oasdiff/yaml
-- Version: v0.0.0-20250309154309-f31be36b4037
+- Version: v0.1.1
 - License: MIT
 
 ### github.com/oasdiff/yaml3
 - Name: github.com/oasdiff/yaml3
-- Version: v0.0.0-20250309153720-d2182401db90
+- Version: v0.0.14
 - License: MIT
 
 ### github.com/opencontainers/go-digest
 - Name: github.com/opencontainers/go-digest
 - Version: v1.0.0
 - License: Apache-2.0
-
-### github.com/perimeterx/marshmallow
-- Name: github.com/perimeterx/marshmallow
-- Version: v1.1.5
-- License: MIT
 
 ### github.com/pmezard/go-difflib/difflib
 - Name: github.com/pmezard/go-difflib/difflib
@@ -316,6 +296,11 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v3.0.1
 - License: MIT
 
+### github.com/santhosh-tekuri/jsonschema/v6
+- Name: github.com/santhosh-tekuri/jsonschema/v6
+- Version: v6.0.2
+- License: Apache-2.0
+
 ### github.com/spf13/cobra
 - Name: github.com/spf13/cobra
 - Version: v1.10.2
@@ -325,16 +310,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: github.com/spf13/pflag
 - Version: v1.0.10
 - License: BSD-3-Clause
-
-### github.com/stoewer/go-strcase
-- Name: github.com/stoewer/go-strcase
-- Version: v1.3.1
-- License: MIT
-
-### github.com/woodsbury/decimal128
-- Name: github.com/woodsbury/decimal128
-- Version: v1.4.0
-- License: BSD-0-Clause
 
 ### github.com/x448/float16
 - Name: github.com/x448/float16
