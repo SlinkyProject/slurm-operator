@@ -25,6 +25,7 @@ import (
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/restapibuilder"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/restapi/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/ratelimiter"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
@@ -115,6 +116,7 @@ func (r *RestapiReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
+			RateLimiter:             ratelimiter.Build[reconcile.Request](),
 		}).
 		Complete(r)
 }

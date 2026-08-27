@@ -24,6 +24,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/slurmclient/eventhandler"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/ratelimiter"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
@@ -103,6 +104,7 @@ func (r *SlurmClientReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
+			RateLimiter:             ratelimiter.Build[reconcile.Request](),
 		}).
 		Complete(r)
 }
