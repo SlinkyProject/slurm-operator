@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
@@ -229,7 +230,9 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 					}(),
 				},
 			}
-			nodeset.Status.NodeSetHash = revisionList.Items[1].Name
+			// Production code (syncNodeSetStatus) stores the bare hash label into
+			// NodeSetHash, not the "<name>-<hash>" ControllerRevision.Name.
+			nodeset.Status.NodeSetHash = historycontrol.GetRevision(revisionList.Items[1].GetLabels())
 
 			return testCaseFields{
 				name: "nodeset hash does match",
