@@ -14,6 +14,7 @@ type SlurmInstallationConfig struct {
 	Accounting bool
 	Login      bool
 	Metrics    bool
+	Namespace  string
 	Pyxis      bool
 }
 
@@ -21,7 +22,6 @@ var (
 	Testenv         env.Environment
 	TestUID         string
 	SlinkyNamespace string = "slinky"
-	SlurmNamespace  string = "slurm"
 	Basepath        string
 	SlurmImage      SlurmImageConfig
 )

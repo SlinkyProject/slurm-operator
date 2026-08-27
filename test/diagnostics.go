@@ -79,7 +79,7 @@ func CaptureFailureDiagnostics(t *testing.T, failure string, namespaces ...strin
 				"accountings.slinky.slurm.net",
 				"restapis.slinky.slurm.net",
 			}, ","), "--namespace", namespace, "-o", "yaml")
-		if namespace == SlurmNamespace {
+		if namespace != SlinkyNamespace {
 			captureKubectl(t, namespaceDir, "slurm-nodes.txt",
 				"exec", "--namespace", namespace, "slurm-controller-0", "--",
 				"scontrol", "show", "nodes", "--details")

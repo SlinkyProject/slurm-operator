@@ -45,6 +45,9 @@ func TestSlurmChart(t *testing.T) {
 	}{
 		{
 			name: "Validate Slurm-operator deployment",
+			config: test.SlurmInstallationConfig{
+				Namespace: "slurm",
+			},
 			dependencies: []types.Feature{
 				testCertMgr(),
 				testSlurmOperator(),
@@ -56,24 +59,28 @@ func TestSlurmChart(t *testing.T) {
 			test:    true,
 			config: test.SlurmInstallationConfig{
 				Accounting: true,
+				Namespace:  "slurm-e2e-accounting",
 			},
 			dependencies: []types.Feature{
 				testMariadbOperator(),
-				applyMariaDBYaml(),
+				applyMariaDBYaml("slurm-e2e-accounting"),
 			},
 		},
 		{
 			name:    "Install Slurm",
 			install: true,
 			test:    true,
-			config:  test.SlurmInstallationConfig{},
+			config: test.SlurmInstallationConfig{
+				Namespace: "slurm-e2e-basic",
+			},
 		},
 		{
 			name:    "Install Slurm with login",
 			install: true,
 			test:    true,
 			config: test.SlurmInstallationConfig{
-				Login: true,
+				Login:     true,
+				Namespace: "slurm-e2e-login",
 			},
 		},
 		{
@@ -81,7 +88,8 @@ func TestSlurmChart(t *testing.T) {
 			install: true,
 			test:    true,
 			config: test.SlurmInstallationConfig{
-				Metrics: true,
+				Metrics:   true,
+				Namespace: "slurm-e2e-metrics",
 			},
 			dependencies: []types.Feature{
 				testPrometheus(),
@@ -92,7 +100,8 @@ func TestSlurmChart(t *testing.T) {
 			install: true,
 			test:    true,
 			config: test.SlurmInstallationConfig{
-				Pyxis: true,
+				Namespace: "slurm-e2e-pyxis",
+				Pyxis:     true,
 			},
 		},
 		{
@@ -100,14 +109,14 @@ func TestSlurmChart(t *testing.T) {
 			config: test.SlurmInstallationConfig{
 				Pyxis:      true,
 				Accounting: true,
+				Namespace:  "slurm-e2e-pyxis-accounting",
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
-
 		t.Run(tt.name, func(t *testing.T) {
+			steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
 			if len(steps) == 0 {
 				t.Skip("scenario is not configured with any E2E features")
 			}
@@ -122,7 +131,7 @@ func TestSlurmChart(t *testing.T) {
 					test.CaptureFailureDiagnostics(
 						t,
 						feature.Name(),
-						test.SlurmNamespace,
+						tt.config.Namespace,
 						test.SlinkyNamespace,
 					)
 					break
@@ -132,7 +141,7 @@ func TestSlurmChart(t *testing.T) {
 			// Keep cleanup separate from the feature loop so a failed feature can
 			// be diagnosed before its resources are removed.
 			if installAttempted {
-				_ = test.Testenv.Test(t, uninstallSlurm())
+				_ = test.Testenv.Test(t, uninstallSlurm(tt.config.Namespace))
 			}
 		})
 	}
