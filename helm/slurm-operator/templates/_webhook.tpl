@@ -11,6 +11,17 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
+Release-scoped webhook name, for cluster-scoped objects that would otherwise
+collide between two releases of this chart in different namespaces.
+The base is truncated to 55 chars (63 minus "-webhook") so that the suffix
+survives a long release name and still distinguishes the webhook's objects.
+*/}}
+{{- define "slurm-operator.webhook.fullname" -}}
+{{- $base := include "slurm-operator.fullname" . | trunc 55 | trimSuffix "-" -}}
+{{- printf "%s-webhook" $base -}}
+{{- end }}
+
+{{/*
 Common webhook labels
 */}}
 {{- define "slurm-operator.webhook.labels" -}}
