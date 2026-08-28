@@ -764,6 +764,18 @@ nodesetDefaults:
     volumeMounts: []
       # - name: nfs-home
       #   mountPath: /home
+    # -- (corev1.Lifecycle) The container lifecycle hooks.
+    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';`
+    # Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
+    lifecycle: {}
+      # The block below is the operator default. Uncomment and edit it to run
+      # something else instead, such as draining the node rather than downing it.
+      # preStop:
+      #   exec:
+      #     command:
+      #       - /usr/bin/sh
+      #       - -c
+      #       - scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
   # LogFile sidecar configurations.
   logfile:
     # -- (string \| object) The image to use.

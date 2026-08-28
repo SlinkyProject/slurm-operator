@@ -258,15 +258,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 				},
 			},
 			Lifecycle: &corev1.Lifecycle{
-				PreStop: &corev1.LifecycleHandler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"/usr/bin/sh",
-							"-c",
-							"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';",
-						},
-					},
-				},
+				PreStop: slurmdPreStop(),
 			},
 			VolumeMounts: volumeMounts,
 		},
@@ -274,6 +266,24 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 	}
 
 	return b.CommonBuilder.BuildContainer(opts)
+}
+
+// slurmdPreStop returns the preStop handler used when the NodeSet does not
+// specify one. Marking the Slurm node down as the pod terminates stops the Slurm
+// controller from assigning work to a node that is going away.
+//
+// A preStop handler set on `NodeSet.Spec.Slurmd` replaces this one outright,
+// see `CommonBuilder.BuildContainer()`.
+func slurmdPreStop() *corev1.LifecycleHandler {
+	return &corev1.LifecycleHandler{
+		Exec: &corev1.ExecAction{
+			Command: []string{
+				"/usr/bin/sh",
+				"-c",
+				"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';",
+			},
+		},
+	}
 }
 
 func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []string {

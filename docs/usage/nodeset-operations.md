@@ -20,6 +20,7 @@ primitives. For design-level details, see
     - [Pod Deletion Cost](#pod-deletion-cost)
     - [Pod Deadline](#pod-deadline)
   - [Workload Disruption Protection](#workload-disruption-protection)
+  - [Customizing the slurmd preStop Hook](#customizing-the-slurmd-prestop-hook)
   - [External Drain Preservation](#external-drain-preservation)
   - [External Health Checker Integration Pattern](#external-health-checker-integration-pattern)
   - [Node Identity](#node-identity)
@@ -249,6 +250,67 @@ To check if a specific pod is currently protected:
 ```sh
 kubectl get pod <pod> -o jsonpath='{.metadata.labels.nodeset\.slinky\.slurm\.net/pod-protect}'
 ```
+
+## Customizing the slurmd preStop Hook
+
+When a NodeSet pod terminates, the slurmd container runs a `preStop` hook that
+marks its Slurm node down, so the Slurm controller stops assigning work to a
+node that is going away:
+
+```sh
+scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
+```
+
+Set `spec.slurmd.lifecycle.preStop` on the NodeSet to run something else
+instead. Your handler replaces the default outright — it does not run in
+addition to it — so the replacement is responsible for whatever shutdown
+behavior the node needs:
+
+```yaml
+apiVersion: slinky.slurm.net/v1beta1
+kind: NodeSet
+metadata:
+  name: slurm-compute
+spec:
+  slurmd:
+    lifecycle:
+      preStop:
+        exec:
+          command:
+            - /usr/bin/sh
+            - -c
+            - scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
+```
+
+The equivalent through the `slurm` Helm chart:
+
+```yaml
+nodesets:
+  slinky:
+    slurmd:
+      lifecycle:
+        preStop:
+          exec:
+            command:
+              - /usr/bin/sh
+              - -c
+              - scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
+```
+
+Points to keep in mind:
+
+- A handler may specify only one action. `exec`, `httpGet`, `tcpSocket`, and
+  `sleep` are all accepted, but supplying more than one is rejected by
+  Kubernetes.
+- The hook shares the pod's `terminationGracePeriodSeconds` with slurmd's own
+  shutdown. A hook that runs longer than the grace period is cut short when
+  Kubernetes kills the container.
+- To neutralize the hook without replacing its behavior, use a command that does
+  nothing, such as `["/usr/bin/true"]`.
+- This hook is a last-resort safety net, not the primary drain mechanism. On
+  scale-in the controller drains each Slurm node and waits for it to finish
+  before deleting the pod, and `spec.pruneSlurmNodeRecords` governs when the
+  operator deletes Slurm node records.
 
 ## External Drain Preservation
 

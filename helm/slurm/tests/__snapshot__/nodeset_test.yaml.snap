@@ -30,6 +30,7 @@ manifest should match snapshot:
         env: []
         image: ghcr.io/slinkyproject/slurmd:v1.2.3
         imagePullPolicy: IfNotPresent
+        lifecycle: {}
         resources: {}
         volumeMounts: []
       template:
