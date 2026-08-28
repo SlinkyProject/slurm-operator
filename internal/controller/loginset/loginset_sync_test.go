@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -127,4 +128,52 @@ func BenchmarkLoginsetReconciler_sync(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestLoginSetReconciler_syncSshHostKeys(t *testing.T) {
+	slurmKey := testutils.NewSlurmKeyRef("slurmkey")
+	jwtKey := testutils.NewJwtKeyRef("jwtkey")
+	sssdconfRef := testutils.NewSssdConfRef("sssd")
+	controller := testutils.NewController("slurm", slurmKey, jwtKey, nil)
+	loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+	key := loginset.SshHostKeys()
+
+	t.Run("creates the Secret when it is absent", func(t *testing.T) {
+		c := fake.NewFakeClient(loginset.DeepCopy())
+		r := newLoginsetController(c)
+
+		require.NoError(t, r.syncSshHostKeys(context.TODO(), loginset))
+
+		got := &corev1.Secret{}
+		require.NoError(t, c.Get(context.TODO(), key, got))
+		for _, file := range []string{
+			builder.SshHostRsaKeyFile,
+			builder.SshHostEd25519KeyFile,
+			builder.SshHostEcdsaKeyFile,
+		} {
+			require.NotEmpty(t, got.Data[file], file)
+		}
+	})
+
+	// Host keys must survive reconciles even when the live Secret is not marked
+	// immutable, e.g. one restored from a backup that dropped the field.
+	t.Run("keeps the keys of a mutable existing Secret", func(t *testing.T) {
+		existing := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: key.Namespace,
+				Name:      key.Name,
+			},
+			Data: map[string][]byte{
+				builder.SshHostRsaKeyFile: []byte("original-host-key"),
+			},
+		}
+		c := fake.NewFakeClient(loginset.DeepCopy(), existing)
+		r := newLoginsetController(c)
+
+		require.NoError(t, r.syncSshHostKeys(context.TODO(), loginset))
+
+		got := &corev1.Secret{}
+		require.NoError(t, c.Get(context.TODO(), key, got))
+		require.Equal(t, "original-host-key", string(got.Data[builder.SshHostRsaKeyFile]))
+	})
 }
