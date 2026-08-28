@@ -49,3 +49,39 @@ tests:
       - equal:
           path: metadata.name
           value: custom-service-account
+  - it: should scope cluster-scoped names to the release
+    set:
+      webhook:
+        serviceAccount:
+          name: custom-service-account
+    asserts:
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-operator-webhook
+        documentSelector:
+          path: kind
+          value: ClusterRole
+      - equal:
+          path: metadata.name
+          value: test-release-slurm-operator-webhook
+        documentSelector:
+          path: kind
+          value: ClusterRoleBinding
+  - it: should bind to the webhook ClusterRole, not the serviceAccount name
+    documentSelector:
+      path: kind
+      value: ClusterRoleBinding
+    set:
+      webhook:
+        serviceAccount:
+          name: custom-service-account
+    asserts:
+      - equal:
+          path: roleRef.name
+          value: test-release-slurm-operator-webhook
+      - equal:
+          path: subjects[0].name
+          value: custom-service-account
+      - equal:
+          path: subjects[0].namespace
+          value: test-namespace
