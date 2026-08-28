@@ -10,10 +10,13 @@ import (
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -56,6 +59,9 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 				}
 				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, token, object, false); err != nil {
 					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
+				}
+				if err := r.adoptSecret(ctx, token, object); err != nil {
+					return fmt.Errorf("failed to adopt object (%s): %w", klog.KObj(object), err)
 				}
 				return nil
 			},
@@ -117,6 +123,46 @@ func (r *TokenReconciler) Sync(ctx context.Context, req reconcile.Request) error
 	}
 
 	return r.syncStatus(ctx, token)
+}
+
+// adoptSecret repoints the auth-token Secret's controller owner at the Token.
+//
+// Operator versions before this fix set the JWT signing key Secret as the owner,
+// which orphaned the credential when the Token was deleted and made the Secret
+// watch in SetupWithManager unresolvable. Those Secrets cannot be repaired by
+// the normal sync: SyncObject is called create-only here, and skips immutable
+// Secrets entirely. Owner references are metadata, so they remain patchable even
+// when the Secret's contents are immutable.
+//
+// Only Secrets owned by this Token's signing key are adopted. spec.secretRef can
+// name any Secret, so anything else is left alone rather than taking ownership of
+// a resource this controller did not create.
+func (r *TokenReconciler) adoptSecret(ctx context.Context, token *slinkyv1beta1.Token, desired *corev1.Secret) error {
+	logger := log.FromContext(ctx)
+
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, token.SecretKey(), secret); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	if !secret.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	owner := metav1.GetControllerOf(secret)
+	if owner == nil || owner.UID == token.UID {
+		return nil
+	}
+	if owner.Kind != "Secret" || owner.Name != token.JwtRef().Name {
+		logger.V(1).Info("Auth-token Secret is owned by another resource, skipping adoption",
+			"secret", klog.KObj(secret), "owner", owner)
+		return nil
+	}
+
+	logger.Info("Adopting auth-token Secret", "secret", klog.KObj(secret))
+	return objectutils.PatchObject(r.Client, ctx, secret, func(o *corev1.Secret) error {
+		o.OwnerReferences = desired.OwnerReferences
+		return nil
+	})
 }
 
 func (r *TokenReconciler) getExpTime(ctx context.Context, token *slinkyv1beta1.Token) (time.Time, error) {
