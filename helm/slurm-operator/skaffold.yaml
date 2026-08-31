@@ -21,9 +21,11 @@ build:
     inputDigest: {}
   local:
     useDockerCLI: true
-    push: false
 deploy:
   helm:
+    flags:
+      upgrade:
+        - --reset-values
     releases:
       - name: slurm-operator
         chartPath: ./
