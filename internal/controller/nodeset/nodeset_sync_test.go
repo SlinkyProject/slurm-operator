@@ -5081,6 +5081,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		name              string
 		scalingMode       slinkyv1beta1.ScalingModeType
 		pruneSlurmRecords slinkyv1beta1.NodeSetPruneSlurmNodeRecordType
+		selector          map[string]string
 		setup             func(ns *slinkyv1beta1.NodeSet) (kubeObjs []runtime.Object, slurmNodes []slurmtypes.V0044Node, stillExist, pruned []string)
 		interceptor       sinterceptor.Funcs
 		wantErr           bool
@@ -5115,7 +5116,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			},
 		},
 		{
-			name:              "skips when kube node still maps to slurm node by default",
+			name:              "skips when kube node still maps to slurm node by default (no selectors)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
@@ -5129,6 +5130,60 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 					}},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
+			},
+		},
+		{
+			name:              "skips when kube node still maps to slurm node by default (selectors match)",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				kubeNode := &corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "worker-a",
+						Labels: map[string]string{
+							"test.nvidia.com": "test",
+						},
+					},
+				}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:    ptr.To("worker-a"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, ghostPodName, "worker-a"),
+					}},
+				}
+				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
+			},
+			selector: map[string]string{
+				"test.nvidia.com": "test",
+			},
+		},
+		{
+			name:              "prunes when kube node maps to slurm nodes and selectors don't match",
+			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
+				kubeNode := &corev1.Node{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "worker-a",
+						Labels: map[string]string{
+							"test.nvidia.com": "foo",
+						},
+					},
+				}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:    ptr.To("worker-a"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, ghostPodName, "worker-a"),
+					}},
+				}
+				return []runtime.Object{kubeNode}, nodes, []string{}, []string{"worker-a"}
+			},
+			selector: map[string]string{
+				"test.nvidia.com": "bar",
 			},
 		},
 		{
@@ -5243,6 +5298,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				nodeset.Spec.ScalingMode = tt.scalingMode
 			}
 			nodeset.Spec.PruneSlurmNodeRecords = tt.pruneSlurmRecords
+			if len(tt.selector) > 0 {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = tt.selector
+			}
 
 			kubeObjs, slurmNodes, stillExist, pruned := tt.setup(nodeset)
 			initObjs := append([]runtime.Object{nodeset}, kubeObjs...)
