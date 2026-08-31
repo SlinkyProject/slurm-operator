@@ -2490,7 +2490,7 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 				ctx: context.TODO(),
 				pod: pod1.DeepCopy(),
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "cordoned",
@@ -2731,7 +2731,7 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 				ctx: context.TODO(),
 				pod: pod1.DeepCopy(),
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "cordoned",

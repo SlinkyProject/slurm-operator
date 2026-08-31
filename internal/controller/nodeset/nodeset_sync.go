@@ -1196,6 +1196,12 @@ func (r *NodeSetReconciler) doPodScale(
 		return r.syncPodUncordon(ctx, nodeset, pod)
 	}
 	if _, err := utils.SlowStartBatch(len(podsToKeep), utils.SlowStartInitialBatchSize, uncordonFn); err != nil {
+		// No creates will be attempted this sync; release the creation
+		// expectations raised above, otherwise subsequent reconciles wait
+		// for creations that were never issued (see issue #249).
+		for range numCreate {
+			r.expectations.CreationObserved(logger, key)
+		}
 		return err
 	}
 
@@ -1529,6 +1535,12 @@ func (r *NodeSetReconciler) makePodCordon(
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+		// The pod may already be gone (e.g. deleted by this controller in a
+		// previous reconcile and still present in the informer cache).
+		// There is nothing left to cordon in that case.
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
@@ -1568,6 +1580,13 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+		// The pod may already be gone (e.g. deleted by a rolling update in a
+		// previous reconcile and still present in the informer cache).
+		// Failing here would abort the whole NodeSetPods step before any
+		// replacement pods are created (see issue #249).
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		return err
 	}
 
