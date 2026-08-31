@@ -100,6 +100,11 @@ func TestBuilder_BuildTokenSecret(t *testing.T) {
 			require.NoError(t, err)
 			refresh := ptr.Deref(tt.args.token.Spec.Refresh, defaults.DefaultTokenRefresh)
 			require.Equal(t, !refresh, ptr.Deref(got.Immutable, false))
+
+			owner := metav1.GetControllerOf(got)
+			require.NotNil(t, owner)
+			require.Equal(t, slinkyv1beta1.TokenKind, owner.Kind)
+			require.Equal(t, tt.args.token.Name, owner.Name)
 		})
 	}
 }
