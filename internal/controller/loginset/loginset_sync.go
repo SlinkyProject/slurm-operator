@@ -54,17 +54,8 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 
 	steps := []syncsteps.Step[*slinkyv1beta1.LoginSet]{
 		{
-			Name: "SSH Host Keys",
-			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
-				object, err := r.builder.BuildLoginSshHostKeys(loginset)
-				if err != nil {
-					return fmt.Errorf("failed to build object: %w", err)
-				}
-				if err := objectutils.SyncObject(r.Client, ctx, r.eventRecorder, loginset, object, true); err != nil {
-					return fmt.Errorf("failed to sync object (%s): %w", klog.KObj(object), err)
-				}
-				return nil
-			},
+			Name:   "SSH Host Keys",
+			SyncFn: r.syncSshHostKeys,
 		},
 		{
 			Name: "SSH Config",
@@ -117,4 +108,23 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	}
 
 	return r.syncStatus(ctx, loginset)
+}
+
+// syncSshHostKeys creates the SSH host keys Secret once and never touches it
+// again: the Secret is immutable, and replacing the keys would invalidate the
+// host keys clients have already accepted. Keygen is therefore deferred to the
+// create path rather than run on every reconcile and thrown away.
+func (r *LoginSetReconciler) syncSshHostKeys(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+	key := loginset.SshHostKeys()
+	build := func() (*corev1.Secret, error) {
+		object, err := r.builder.BuildLoginSshHostKeys(loginset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build object: %w", err)
+		}
+		return object, nil
+	}
+	if err := objectutils.CreateObjectIfNotExists(r.Client, ctx, r.eventRecorder, loginset, key, &corev1.Secret{}, build); err != nil {
+		return fmt.Errorf("failed to sync object (%s): %w", key, err)
+	}
+	return nil
 }
