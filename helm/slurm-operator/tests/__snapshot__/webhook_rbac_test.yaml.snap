@@ -24,8 +24,7 @@ manifest should match snapshot:
         app.kubernetes.io/part-of: slurm-operator
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-operator-1.2.3
-      name: slurm-operator-webhook
-      namespace: test-namespace
+      name: test-release-slurm-operator-webhook
     rules:
       - apiGroups:
           - ""
@@ -103,12 +102,11 @@ manifest should match snapshot:
         app.kubernetes.io/part-of: slurm-operator
         app.kubernetes.io/version: 1.2.3
         helm.sh/chart: slurm-operator-1.2.3
-      name: slurm-operator-webhook
-      namespace: test-namespace
+      name: test-release-slurm-operator-webhook
     roleRef:
       apiGroup: rbac.authorization.k8s.io
       kind: ClusterRole
-      name: slurm-operator-webhook
+      name: test-release-slurm-operator-webhook
     subjects:
       - kind: ServiceAccount
         name: slurm-operator-webhook
