@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
-	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -51,9 +50,6 @@ func (r *realSlurmControl) GetActiveHAController(ctx context.Context, controller
 	}
 	controllerPingList := &slurmtypes.V0044ControllerPingList{}
 	if err := slurmClient.List(ctx, controllerPingList, opts); err != nil {
-		if tolerateError(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -86,14 +82,5 @@ var _ SlurmControlInterface = &realSlurmControl{}
 func NewSlurmControl(clientMap *clientmap.ClientMap) SlurmControlInterface {
 	return &realSlurmControl{
 		clientMap: clientMap,
-	}
-}
-
-func tolerateError(err error) bool {
-	switch {
-	case err == nil, errors.Is(err, slurmerrors.ErrNotFound):
-		return true
-	default:
-		return false
 	}
 }
