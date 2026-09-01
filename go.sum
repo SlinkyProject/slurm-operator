@@ -11,8 +11,8 @@ github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lpr
 github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29 h1:0kQAzHq8vLs7Pptv+7TxjdETLf/nIqJpIB4oC6Ba4vY=
 github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29/go.mod h1:ZWa7ssZJT30CCDGJ7fk/2SBTq9BIQrrVjrcss0UW2s0=
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
-github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260814083532-fa489b21f028 h1:a3YIEf2XXBAoBe8tba0sNPzIm79EGeLUzX5D+8giHgg=
-github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260814083532-fa489b21f028/go.mod h1:GvTIUlfnOG7K3UjTLuYSbA5tKgyLSni9HRD4hTqaSJc=
+github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260901162108-a720d834e7da h1:pwgg91Vswu9jBlJEfbfvkQibwUKOfFFBKfLyMsEP3YE=
+github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260901162108-a720d834e7da/go.mod h1:GvTIUlfnOG7K3UjTLuYSbA5tKgyLSni9HRD4hTqaSJc=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat636LX7Bqt5lYEZ27JNDcqxfjdBQuJ/MM4CN/Lzo=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=

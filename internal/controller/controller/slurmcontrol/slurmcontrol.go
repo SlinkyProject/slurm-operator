@@ -91,7 +91,7 @@ func NewSlurmControl(clientMap *clientmap.ClientMap) SlurmControlInterface {
 
 func tolerateError(err error) bool {
 	switch {
-	case err == nil, errors.Is(err, slurmerrors.ErrObjectNotFound):
+	case err == nil, errors.Is(err, slurmerrors.ErrNotFound):
 		return true
 	default:
 		return false
