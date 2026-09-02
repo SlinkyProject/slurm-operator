@@ -33,3 +33,24 @@ tests:
       - equal:
           path: metadata.name
           value: custom-name-webhook
+  - it: should expose metrics by default
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: metrics
+            protocol: TCP
+            port: 8080
+            targetPort: 8080
+  - it: should not expose metrics when metricsPort is zero
+    set:
+      webhook:
+        metricsPort: 0
+    asserts:
+      - notContains:
+          path: spec.ports
+          content:
+            name: metrics
+            protocol: TCP
+            port: 8080
+            targetPort: 8080
