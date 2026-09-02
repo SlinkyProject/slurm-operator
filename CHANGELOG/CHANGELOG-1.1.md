@@ -1,3 +1,20 @@
+## v1.1.3
+
+### Fixed
+
+- Reuse Helm-native serving cert on upgrade.
+- Add a 5m timeout to all slurm rest calls.
+- GO-2026-5026 GO-2026-5942 GO-2026-5972 GO-2026-6088 GO-2026-6089 GO-2026-6090
+  GO-2026-6091 GO-2026-6179 GO-2026-6180 GO-2026-6218.
+- Cross-namespace owner reference error on NodeSet Service/PDB sync.
+- Fixed cases where an incorrect requeueAfter duration was applied to the
+  reconcile request, causing the Token to stop being reconciled and its JWT
+  could expire without refresh.
+- Replace /readyz probe with StartedChecker instead of a ping.
+- Make pods/binding webhook dry-run aware.
+- GO-2026-6094 GO-2026-6095 GO-2026-6112 GO-2026-6253 GO-2026-6274 GO-2026-6275.
+- Webhook ClusterRoleBinding now binds to the webhook ClusterRole.
+
 ## v1.1.2
 
 ### Added
