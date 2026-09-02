@@ -152,7 +152,7 @@ func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
+				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -269,7 +269,7 @@ func Test_realSlurmControl_MakeNodeDrain(t *testing.T) {
 			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
+				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -362,7 +362,7 @@ func Test_realSlurmControl_MakeNodeUndrain(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
+				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -448,7 +448,7 @@ func Test_realSlurmControl_UpdateNodeTopology(t *testing.T) {
 			require.NoError(t, err)
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.fields.node.GetKey(), checkNode); getErr != nil {
-				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
+				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -600,7 +600,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			}
 			checkNode := &types.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {
-				if !errors.Is(getErr, slurmerrors.ErrObjectNotFound) {
+				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
 					require.NoError(t, getErr)
 				}
 			}
@@ -2548,11 +2548,12 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			controllerName := tt.nodeset.Spec.ControllerRef.Name
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 			got, gotErr := r.CheckReservationForNodeSet(context.Background(), tt.nodeset)
-			if tt.wantErr {
+			switch {
+			case tt.wantErr:
 				require.Error(t, gotErr)
-			} else if tt.wantErrNoClient {
+			case tt.wantErrNoClient:
 				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
-			} else {
+			default:
 				require.NoError(t, gotErr)
 			}
 			require.Equal(t, tt.want, got)
@@ -2844,11 +2845,12 @@ func Test_realSlurmControl_DeleteReservationForNodeSet(t *testing.T) {
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			gotErr := r.DeleteReservationForNodeSet(context.Background(), tt.nodeset)
-			if tt.wantErr {
+			switch {
+			case tt.wantErr:
 				require.Error(t, gotErr)
-			} else if tt.wantErrNoClient {
+			case tt.wantErrNoClient:
 				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
-			} else {
+			default:
 				require.NoError(t, gotErr)
 			}
 		})
@@ -3385,11 +3387,12 @@ func Test_realSlurmControl_SyncReservationForNodeSet(t *testing.T) {
 			r := NewSlurmControl(testutils.NewClientMap(controllerName, tt.nodeset.Namespace, tt.client))
 
 			gotErr := r.SyncReservationForNodeSet(context.Background(), tt.nodeset, tt.pods)
-			if tt.wantErr {
+			switch {
+			case tt.wantErr:
 				require.Error(t, gotErr)
-			} else if tt.wantErrNoClient {
+			case tt.wantErrNoClient:
 				require.ErrorIs(t, gotErr, ErrNoSlurmClient)
-			} else {
+			default:
 				require.NoError(t, gotErr)
 			}
 		})
@@ -3617,5 +3620,5 @@ func Test_realSlurmControl_DeleteNode(t *testing.T) {
 
 	checkNode := &types.V0044Node{}
 	getErr := sclient.Get(ctx, node.GetKey(), checkNode)
-	require.True(t, errors.Is(getErr, slurmerrors.ErrObjectNotFound), "DeleteNode() node still exists: %v", getErr)
+	require.True(t, errors.Is(getErr, slurmerrors.ErrNotFound), "DeleteNode() node still exists: %v", getErr)
 }

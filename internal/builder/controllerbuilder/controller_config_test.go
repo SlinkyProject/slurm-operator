@@ -572,7 +572,7 @@ PartitionName=nodeset-2 Nodes=nodeset-2 MaxTime=UNLIMITED PreemptMode=REQUEUE`,
 		t.Run(tt.name, func(t *testing.T) {
 			size := len(tt.nodesetList.Items)
 			for range 5 {
-				idx := rand.Perm(size)
+				idx := rand.Perm(size) //nolint:gosec // test-only input shuffle, not security-sensitive
 				randomized := make([]slinkyv1beta1.NodeSet, size)
 
 				for j := range size {
@@ -631,12 +631,12 @@ Epilog=epilog-2.sh`,
 			prologScriptsSize := len(tt.prologScripts)
 			epilogScriptsSize := len(tt.epilogScripts)
 			for range 5 {
-				idx := rand.Perm(prologScriptsSize)
+				idx := rand.Perm(prologScriptsSize) //nolint:gosec // test-only input shuffle, not security-sensitive
 				randomizedPrologScripts := make([]string, prologScriptsSize)
 				for i := range prologScriptsSize {
 					randomizedPrologScripts[i] = tt.prologScripts[idx[i]]
 				}
-				jdx := rand.Perm(epilogScriptsSize)
+				jdx := rand.Perm(epilogScriptsSize) //nolint:gosec // test-only input shuffle, not security-sensitive
 				randomizedEpilogScripts := make([]string, epilogScriptsSize)
 				for j := range epilogScriptsSize {
 					randomizedEpilogScripts[j] = tt.epilogScripts[jdx[j]]
@@ -693,13 +693,13 @@ EpilogSlurmctld=/etc/slurm/epilog-slurmctld-2.sh`,
 			prologSlurmctldScriptsSize := len(tt.prologSlurmctldScripts)
 			epilogSlurmctldScriptsSize := len(tt.epilogSlurmctldScripts)
 			for range 5 {
-				idx := rand.Perm(prologSlurmctldScriptsSize)
+				idx := rand.Perm(prologSlurmctldScriptsSize) //nolint:gosec // test-only input shuffle, not security-sensitive
 				randomizedPrologSlurmctldScripts := make([]string, prologSlurmctldScriptsSize)
 				for i := range prologSlurmctldScriptsSize {
 					randomizedPrologSlurmctldScripts[i] = tt.prologSlurmctldScripts[idx[i]]
 				}
 
-				jdx := rand.Perm(epilogSlurmctldScriptsSize)
+				jdx := rand.Perm(epilogSlurmctldScriptsSize) //nolint:gosec // test-only input shuffle, not security-sensitive
 				randomizedEpilogSlurmctldScripts := make([]string, epilogSlurmctldScriptsSize)
 				for i := range epilogSlurmctldScriptsSize {
 					randomizedEpilogSlurmctldScripts[i] = tt.epilogSlurmctldScripts[jdx[i]]

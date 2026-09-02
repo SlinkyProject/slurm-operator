@@ -3,7 +3,7 @@ module github.com/SlinkyProject/slurm-operator
 go 1.26.6
 
 require (
-	github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260814083532-fa489b21f028
+	github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20260901162108-a720d834e7da
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
 	github.com/mariadb-operator/mariadb-operator v0.38.1

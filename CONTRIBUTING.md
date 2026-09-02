@@ -89,6 +89,25 @@ for clone, build, and test instructions for this repository.
 
   ```
 
+### Release notes
+
+- Every merge request needs a release note. Add a `Changelog` trailer to at
+  least one commit, in the same trailer block as your sign-off:
+  ```
+  Signed-off-by: Your Name <your@email.com>
+  Changelog: Fixed - short description of the change
+  ```
+- The category is one of `Added`, `Fixed`, `Changed`, or `Removed`. When the
+  change needs no release note, use `Changelog: NONE`.
+- The trailer has to sit in the commit's final, contiguous trailer block. A
+  blank line above it is required; a blank line inside the block hides it from
+  Git, and therefore from CI.
+- CI rejects a merge request when no commit carries a valid trailer, and a
+  malformed trailer fails the check even when another commit has a valid one.
+- Beware that `git commit --amend -s` appends a *second* `Signed-off-by` once
+  `Changelog` follows it, because the sign-off is no longer the final trailer.
+  When amending, keep the sign-off in the message you pass and omit `-s`.
+
 ### Community standards
 
 - [Code of Conduct](https://github.com/SlinkyProject/slurm-operator/blob/main/CODE_OF_CONDUCT.md)
