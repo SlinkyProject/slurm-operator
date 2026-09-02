@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-
-	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 )
 
 // StrategicMergePatch merges two objects via kubernetes StrategicMergePatch
@@ -65,14 +63,33 @@ func cleanAndMarshal(obj any) ([]byte, error) {
 	return out, nil
 }
 
-// removeEmpty will recursively walk a map, deleting fields if its value is empty.
+// removeEmpty will recursively walk a map, deleting fields that carry no
+// information: nulls, empty strings, empty objects and empty lists.
+//
+// Booleans and numbers are deliberately kept, even when they are the zero
+// value of their type. In Kubernetes API types, `false` and `0` are explicit
+// choices rather than "unset": `allowPrivilegeEscalation: false` is required
+// by the restricted Pod Security Standard, `privileged: false` is the only
+// way to override a `true` coming from the base spec, and `runAsUser: 0`
+// asks for root on purpose. Such fields are pointers with `omitempty` in the
+// Go structs, so they only reach this map when the user actually set them —
+// dropping them here silently discarded the user's configuration.
 func removeEmpty(m map[string]any) {
 	for k, v := range m {
-		if v == nil || reflectutils.IsEmpty(v) {
+		switch value := v.(type) {
+		case nil:
 			delete(m, k)
-		} else if subMap, ok := v.(map[string]any); ok {
-			removeEmpty(subMap)
-			if len(subMap) == 0 {
+		case string:
+			if value == "" {
+				delete(m, k)
+			}
+		case []any:
+			if len(value) == 0 {
+				delete(m, k)
+			}
+		case map[string]any:
+			removeEmpty(value)
+			if len(value) == 0 {
 				delete(m, k)
 			}
 		}
