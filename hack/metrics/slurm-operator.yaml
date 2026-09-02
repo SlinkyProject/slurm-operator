@@ -1,0 +1,28 @@
+---
+# SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: slurm-operator-controller-runtime
+  namespace: monitoring
+spec:
+  endpoints:
+    - interval: 15s
+      path: /metrics
+      port: metrics
+  namespaceSelector:
+    matchNames:
+      - slinky
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - slurm-operator
+          - slurm-operator-webhook
+      - key: app.kubernetes.io/instance
+        operator: In
+        values:
+          - slurm-operator
