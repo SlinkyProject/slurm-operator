@@ -131,6 +131,16 @@ tests:
       - equal:
           path: spec.pinToNode
           value: true
+  - it: should publish the Slurm node name
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          publishSlurmNodeName: true
+    asserts:
+      - equal:
+          path: spec.publishSlurmNodeName
+          value: true
   - it: should not use priority class
     set:
       priorityClass:

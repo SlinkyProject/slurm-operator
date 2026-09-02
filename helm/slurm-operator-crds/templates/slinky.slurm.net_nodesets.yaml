@@ -194,6 +194,12 @@ spec:
                 - Never
                 - NodeNotFound
                 type: string
+              publishSlurmNodeName:
+                default: false
+                description: |-
+                  PublishSlurmNodeName controls whether the operator publishes each pinned pod's Slurm node name on its Kubernetes Node.
+                  Used only when `scalingMode=StatefulSet`, `pinToNode=true`, and `oversubscribeNode=false`.
+                type: boolean
               replicas:
                 default: 1
                 description: |-
