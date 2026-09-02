@@ -118,7 +118,6 @@ func (r *NodeSetReconciler) syncNodeSetStatus(
 	if err != nil {
 		return err
 	}
-
 	newStatus := slinkyv1beta1.NodeSetStatus{
 		Replicas:            replicaStatus.Replicas,
 		UpdatedReplicas:     replicaStatus.Updated,
