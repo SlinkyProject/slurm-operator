@@ -13,6 +13,9 @@ manifest should match snapshot:
     spec:
       controllerRef:
         name: test-release-slurm
+      extraSshdConfig: |
+        ClientAliveInterval 60
+        ClientAliveCountMax 3
       initconf:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent

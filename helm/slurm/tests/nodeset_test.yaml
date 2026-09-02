@@ -253,3 +253,30 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should default to keepalive sshd config when ssh is enabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.ssh.extraSshdConfig
+          value: |-
+            ClientAliveInterval 60
+            ClientAliveCountMax 3
+  - it: should override the default sshd config
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+            extraSshdConfig: |-
+              ClientAliveInterval 30
+    asserts:
+      - equal:
+          path: spec.ssh.extraSshdConfig
+          value: |-
+            ClientAliveInterval 30

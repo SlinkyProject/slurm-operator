@@ -658,8 +658,13 @@ loginsetDefaults:
   # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
   rootSshAuthorizedKeys: null
   # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
+  # The default sends keepalives so that idle sessions survive the idle timeout
+  # of the load balancer fronting the login service, and so that sessions whose
+  # client went away are reaped instead of lingering.
   # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-  extraSshdConfig: null
+  extraSshdConfig: |-
+    ClientAliveInterval 60
+    ClientAliveCountMax 3
   # -- Labels and annotations.
   # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   metadata: {}
@@ -809,8 +814,12 @@ nodesetDefaults:
     # Ref: https://slurm.schedmd.com/pam_slurm_adopt.html
     enabled: false
     # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
+    # The default sends keepalives so that sessions whose client went away are
+    # reaped instead of lingering and holding the job they were adopted into.
     # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-    extraSshdConfig: null
+    extraSshdConfig: |-
+      ClientAliveInterval 60
+      ClientAliveCountMax 3
   # Update strategy configuration.
   # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
   updateStrategy:

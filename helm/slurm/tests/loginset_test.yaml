@@ -283,3 +283,26 @@ tests:
       - equal:
           path: spec.initconf.image
           value: registry.example.com/org/initconf@sha256:abcdef0123456789
+  - it: should default to keepalive sshd config
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.extraSshdConfig
+          value: |
+            ClientAliveInterval 60
+            ClientAliveCountMax 3
+  - it: should override the default sshd config
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          extraSshdConfig: |-
+            ClientAliveInterval 30
+    asserts:
+      - equal:
+          path: spec.extraSshdConfig
+          value: |
+            ClientAliveInterval 30
