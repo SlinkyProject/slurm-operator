@@ -127,8 +127,8 @@ type NodeSetSpec struct {
 	// PublishSlurmNodeName controls whether the operator publishes each pinned pod's Slurm node name on its Kubernetes Node.
 	// Used only when `scalingMode=StatefulSet`, `pinToNode=true`, and `oversubscribeNode=false`.
 	// +optional
-	// +default:=false
-	PublishSlurmNodeName bool `json:"publishSlurmNodeName,omitempty"`
+	// +default:=true
+	PublishSlurmNodeName *bool `json:"publishSlurmNodeName,omitempty"`
 
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
 	// a Pod Disruption Budget.

@@ -14,6 +14,7 @@ import (
 const (
 	DefaultNodeSetReplicas                     int32                                         = 1
 	DefaultNodeSetWorkloadDisruptionProtection bool                                          = true
+	DefaultNodeSetPublishSlurmNodeName          bool                                          = true
 	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType                 = slinkyv1beta1.ScalingModeStatefulset
 	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType       = slinkyv1beta1.RollingUpdateNodeSetStrategyType
 	DefaultNodeSetPruneSlurmNodeRecordType     slinkyv1beta1.NodeSetPruneSlurmNodeRecordType = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
@@ -40,6 +41,10 @@ func SetNodeSetDefaults(nodeset *slinkyv1beta1.NodeSet) {
 
 	if s.WorkloadDisruptionProtection == nil {
 		s.WorkloadDisruptionProtection = ptr.To(DefaultNodeSetWorkloadDisruptionProtection)
+	}
+
+	if s.PublishSlurmNodeName == nil {
+		s.PublishSlurmNodeName = ptr.To(DefaultNodeSetPublishSlurmNodeName)
 	}
 
 	if s.UpdateStrategy.Type == "" {

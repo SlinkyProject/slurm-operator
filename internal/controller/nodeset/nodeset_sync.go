@@ -514,7 +514,7 @@ type slurmNodeNameMapping struct {
 }
 
 func shouldManageSlurmNodeNames(nodeset *slinkyv1beta1.NodeSet) bool {
-	return nodeset.Spec.PublishSlurmNodeName &&
+	return ptr.Deref(nodeset.Spec.PublishSlurmNodeName, defaults.DefaultNodeSetPublishSlurmNodeName) &&
 		nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset &&
 		nodeset.Spec.PinToNode &&
 		!nodeset.Spec.OversubscribeNode

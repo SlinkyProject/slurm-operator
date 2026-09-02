@@ -728,7 +728,7 @@ nodesetDefaults:
   # -- Pin pods to their initially assigned Kubernetes nodes.
   pinToNode: false
   # -- Publish each pinned pod's Slurm node name on its Kubernetes Node.
-  publishSlurmNodeName: false
+  publishSlurmNodeName: true
   # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
   # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
   workloadDisruptionProtection: true

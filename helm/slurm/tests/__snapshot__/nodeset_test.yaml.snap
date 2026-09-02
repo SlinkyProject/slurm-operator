@@ -23,7 +23,7 @@ manifest should match snapshot:
         enabled: false
       pinToNode: false
       pruneSlurmNodeRecords: Never
-      publishSlurmNodeName: false
+      publishSlurmNodeName: true
       replicas: 1
       scalingMode: StatefulSet
       slurmd:

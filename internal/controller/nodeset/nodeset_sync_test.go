@@ -233,7 +233,7 @@ func newMappedNodeSet() *slinkyv1beta1.NodeSet {
 	nodeset.UID = types.UID("foo-uid")
 	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
 	nodeset.Spec.PinToNode = true
-	nodeset.Spec.PublishSlurmNodeName = true
+	nodeset.Spec.PublishSlurmNodeName = ptr.To(true)
 	nodeset.Spec.OversubscribeNode = false
 	return nodeset
 }
@@ -265,7 +265,7 @@ func TestShouldManageSlurmNodeNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nodeset := newMappedNodeSet()
-			nodeset.Spec.PublishSlurmNodeName = tt.publish
+			nodeset.Spec.PublishSlurmNodeName = ptr.To(tt.publish)
 			nodeset.Spec.ScalingMode = tt.scalingMode
 			nodeset.Spec.PinToNode = tt.pinToNode
 			nodeset.Spec.OversubscribeNode = tt.oversubscribe
@@ -469,7 +469,7 @@ func TestSyncSlurmNodeNameFinalizerCleansMappings(t *testing.T) {
 func TestSyncSlurmNodeNameFinalizerCleansMappingsWhenDisabled(t *testing.T) {
 	ctx := context.Background()
 	nodeset := newMappedNodeSet()
-	nodeset.Spec.PublishSlurmNodeName = false
+	nodeset.Spec.PublishSlurmNodeName = ptr.To(false)
 	nodeset.Finalizers = []string{slinkyv1beta1.FinalizerNodeSetSlurmNodeName}
 	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
 		Name:   "worker-a",
