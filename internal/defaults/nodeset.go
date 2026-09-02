@@ -14,7 +14,7 @@ import (
 const (
 	DefaultNodeSetReplicas                     int32                                         = 1
 	DefaultNodeSetWorkloadDisruptionProtection bool                                          = true
-	DefaultNodeSetPublishSlurmNodeName          bool                                          = true
+	DefaultNodeSetPublishSlurmNodeName         bool                                          = true
 	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType                 = slinkyv1beta1.ScalingModeStatefulset
 	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType       = slinkyv1beta1.RollingUpdateNodeSetStrategyType
 	DefaultNodeSetPruneSlurmNodeRecordType     slinkyv1beta1.NodeSetPruneSlurmNodeRecordType = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
