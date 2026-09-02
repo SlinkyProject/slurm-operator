@@ -3,7 +3,7 @@ module github.com/SlinkyProject/slurm-operator
 go 1.26.6
 
 require (
-	github.com/SlinkyProject/slurm-client v1.0.5
+	github.com/SlinkyProject/slurm-client v1.0.6
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.28.1
