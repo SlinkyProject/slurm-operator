@@ -7,6 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 
@@ -14,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -347,6 +349,8 @@ const (
 )
 
 func (b *ControllerBuilder) getHashes(ctx context.Context, controller *slinkyv1beta1.Controller) (map[string]string, error) {
+	configMapData := map[string]string{}
+
 	hashMap, err := b.getAuthHashes(ctx, controller)
 	if err != nil {
 		return nil, err
@@ -359,7 +363,23 @@ func (b *ControllerBuilder) getHashes(ctx context.Context, controller *slinkyv1b
 			return nil, err
 		}
 	}
-	slurmConfigHash := crypto.CheckSumFromMap(config.Data)
+	maps.Copy(configMapData, config.Data)
+
+	for _, ref := range controller.Spec.ConfigFileRefs {
+		config := &corev1.ConfigMap{}
+		configKey := types.NamespacedName{
+			Namespace: controller.Namespace,
+			Name:      ref.Name,
+		}
+		if err := b.client.Get(ctx, configKey, config); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, err
+			}
+		}
+		maps.Insert(configMapData, maps.All(config.Data))
+	}
+
+	slurmConfigHash := crypto.CheckSumFromMap(configMapData)
 
 	hashMap = structutils.MergeMaps(hashMap, map[string]string{
 		annotationSlurmConfigHash: slurmConfigHash,
