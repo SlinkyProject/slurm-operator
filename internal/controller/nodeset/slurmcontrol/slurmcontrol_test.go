@@ -2470,6 +2470,40 @@ func Test_realSlurmControl_GetNodesForPods(t *testing.T) {
 	}
 }
 
+func Test_isMissingReservationErr(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "joined 422 shape from a reservation GET",
+			err:  errors.Join(errors.New("Unprocessable Entity"), errors.New("Invalid Query")),
+			want: true,
+		},
+		{
+			name: "not found",
+			err:  slurmerrors.ErrNotFound,
+			want: false,
+		},
+		{
+			name: "unrelated error",
+			err:  errors.New("Internal Server Error"),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isMissingReservationErr(tt.err))
+		})
+	}
+}
+
 func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 	// Configure times for testing
 	now, err := time.Parse(time.RFC3339, "2026-03-04T00:00:00Z")
@@ -2541,6 +2575,29 @@ func Test_realSlurmControl_CheckReservationForNodeSet(t *testing.T) {
 			).Build(),
 			want:    true,
 			wantErr: false,
+		},
+		{
+			// slurmrestd reports a nonexistent reservation on GET as HTTP 422, not 404 (see
+			// isMissingReservationErr). This must be tolerated the same as ErrObjectNotFound.
+			name: "reservation does not exist (422 from slurmrestd)",
+			nodeset: &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slinky",
+				},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					ControllerRef: corev1.LocalObjectReference{
+						Name: "slurm",
+					},
+				},
+			},
+			client: fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(context.Context, object.ObjectKey, object.Object, ...client.GetOption) error {
+					return errors.Join(errors.New("Unprocessable Entity"), errors.New("Invalid Query"))
+				},
+			}).Build(),
+			wantErr: false,
+			want:    false,
 		},
 	}
 	for _, tt := range tests {
