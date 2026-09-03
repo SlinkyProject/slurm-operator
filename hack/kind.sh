@@ -9,6 +9,9 @@ set -euo pipefail
 ROOT_DIR="$(readlink -f "$(dirname "$0")/..")"
 DIR="$(readlink -f "$(dirname "$0")/")"
 
+KUBE_PROMETHEUS_STACK_CHART_REPO="https://prometheus-community.github.io/helm-charts"
+KUBE_PROMETHEUS_STACK_CHART_VERSION="88.6.2"
+
 function kind::prerequisites() {
 	go install sigs.k8s.io/kind@latest
 	go install sigs.k8s.io/cloud-provider-kind@latest
@@ -191,6 +194,37 @@ function extras::install() {
 	fi
 }
 
+function metrics::install() {
+	local config_dir="$DIR/metrics"
+
+	echo "[metrics] Installing kube-prometheus-stack..."
+	helm repo add prometheus-community "$KUBE_PROMETHEUS_STACK_CHART_REPO" --force-update
+	helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+		--version "$KUBE_PROMETHEUS_STACK_CHART_VERSION" \
+		--namespace monitoring --create-namespace \
+		--values "$config_dir/values.yaml" \
+		--wait --timeout=300s
+	kubectl apply --kustomize "$config_dir"
+	kubectl wait --for=create pod \
+		--namespace monitoring \
+		--selector=app.kubernetes.io/name=prometheus \
+		--timeout=120s
+	kubectl wait --for=condition=Ready pod \
+		--namespace monitoring \
+		--selector=app.kubernetes.io/name=prometheus \
+		--timeout=300s
+	kubectl wait --for=condition=Available deployment/prometheus-grafana \
+		--namespace monitoring \
+		--timeout=300s
+	echo "[metrics] Ready. Forward the Prometheus UI with:"
+	echo "kubectl --namespace monitoring port-forward service/prometheus-kube-prometheus-prometheus 9090:9090"
+	echo "[metrics] Forward the Grafana UI with:"
+	echo "kubectl --namespace monitoring port-forward service/prometheus-grafana 3000:80"
+	echo "[metrics] Grafana username: admin"
+	echo "[metrics] Read the Grafana password with:"
+	echo "kubectl --namespace monitoring get secret prometheus-grafana --output=jsonpath='{.data.admin-password}' | base64 --decode"
+}
+
 function ldap::install() {
 	local chartName
 
@@ -211,7 +245,7 @@ $(basename "$0") - Manage a kind cluster for local testing/development
 
 	usage: $(basename "$0") [--config=KIND_CONFIG_PATH] [--existing-cluster]
 	        [--recreate|--delete]
-	        [--core|--prereqs][--extras][--all] [--registry=REPO]
+	        [--core|--prereqs][--extras][--metrics][--all] [--registry=REPO]
 	        [--crds][--operator][--slurm]
 	        [-h|--help] [KIND_CLUSTER_NAME]
 
@@ -226,6 +260,7 @@ KIND OPTIONS:
 HELM OPTIONS:
 	--all               Equivalent of: --core --extras
 	--extras            Install extra charts (e.g. prometheus, keda, OpenLDAP, etc..).
+	--metrics           Install metrics collection for Slurm Operator.
 	--core              Equivalent of: --crds --operator --slurm
 	--prereqs           Install operator prerequisites only (cert-manager).
 	--crds              Install the operator CRDs chart.
@@ -262,9 +297,10 @@ OPT_OPERATOR_CRDS=false
 OPT_OPERATOR=false
 OPT_SLURM=false
 OPT_EXTRAS=false
+OPT_METRICS=false
 
 SHORT="+h"
-LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,core,prereqs,help"
+LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,metrics,core,prereqs,help"
 OPTS="$(getopt -a --options "$SHORT" --longoptions "$LONG" -- "$@")"
 eval set -- "${OPTS}"
 while :; do
@@ -320,6 +356,10 @@ while :; do
 		;;
 	--extras)
 		OPT_EXTRAS=true
+		shift
+		;;
+	--metrics)
+		OPT_METRICS=true
 		shift
 		;;
 	--core)
@@ -399,6 +439,10 @@ function main() {
 		until kubectl apply --namespace slurm -f "$DIR"/resources; do
 			sleep 2
 		done
+	fi
+
+	if $OPT_METRICS; then
+		metrics::install
 	fi
 }
 

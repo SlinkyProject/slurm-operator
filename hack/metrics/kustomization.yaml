@@ -1,0 +1,17 @@
+---
+# SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - slurm-operator.yaml
+configMapGenerator:
+  - name: slurm-operator-grafana-dashboard
+    files:
+      - dashboards/controller-runtime.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: '1'

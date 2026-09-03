@@ -42,7 +42,7 @@ manifest should match snapshot:
                 - --health-addr
                 - :8081
                 - --metrics-addr
-                - "0"
+                - :8080
                 - --leader-elect
                 - --leader-elect-namespace
                 - test-namespace

@@ -82,7 +82,7 @@ Kubernetes: `>= 1.29.0-0`
 | webhook.imagePullPolicy | string | `"IfNotPresent"` | Set the image pull policy. |
 | webhook.leaderElection | bool | `true` | Enable leader election for slurm-operator-webhook |
 | webhook.logLevel | string | `"info"` | Set the log level by string (e.g. error, info, debug) or number (e.g. 1..5). |
-| webhook.metricsPort | int | `0` | Set the port used by the metrics server. Value of "0" will disable it. |
+| webhook.metricsPort | int | `8080` | Set the port used by the metrics server. Value of "0" will disable it. |
 | webhook.metricsSecure | bool | `false` | Serve the metrics endpoint securely via HTTPS with authn/authz. Requires metricsPort to be non-zero. Scraping clients must present a token authorized to access /metrics (e.g. bound to the metrics-reader ClusterRole). The endpoint uses a generated self-signed certificate, so scrapers must skip TLS verification (e.g. insecureSkipVerify). |
 | webhook.mutating.failurePolicy | string | `"Ignore"` | Action taken when the mutating admission webhook is unreachable or returns an error. Ref: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy |
 | webhook.mutating.matchConditions | list | `[]` | List of MatchConditions, which represents a condition which must by fulfilled for a request to be sent to a webhook. Ref: https://kubernetes.io/docs/reference/kubernetes-api/definitions/match-condition-v1-admissionregistration/ |

@@ -247,7 +247,7 @@ webhook:
   # -- Set the port used for health checks.
   healthPort: 8081
   # -- Set the port used by the metrics server. Value of "0" will disable it.
-  metricsPort: 0
+  metricsPort: 8080
   # -- Serve the metrics endpoint securely via HTTPS with authn/authz.
   # Requires metricsPort to be non-zero. Scraping clients must present a
   # token authorized to access /metrics (e.g. bound to the metrics-reader

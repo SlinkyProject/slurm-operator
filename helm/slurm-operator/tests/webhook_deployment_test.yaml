@@ -214,6 +214,9 @@ tests:
       - failedTemplate:
           errorPattern: webhook.metricsSecure requires webhook.metricsPort
   - it: should disable the metrics server when metricsPort is zero
+    set:
+      webhook:
+        metricsPort: 0
     asserts:
       - equal:
           path: spec.template.spec.containers[0].args[6]

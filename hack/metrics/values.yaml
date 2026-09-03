@@ -1,0 +1,36 @@
+---
+# SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
+# SPDX-License-Identifier: Apache-2.0
+
+alertmanager:
+  enabled: false
+
+defaultRules:
+  create: false
+
+grafana:
+  enabled: true
+  defaultDashboardsEnabled: false
+
+kubeApiServer:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeStateMetrics:
+  enabled: false
+kubelet:
+  enabled: false
+nodeExporter:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 24h
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelectorNilUsesHelmValues: false
