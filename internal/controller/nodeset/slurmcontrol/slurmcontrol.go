@@ -720,6 +720,19 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	return nil
 }
 
+// isMissingReservationErr reports whether err is Slurm's shape for "no reservation with this
+// name exists" on a reservation GET. Unlike other Slurm REST GET-by-name endpoints,
+// slurmrestd's reservation lookup (_get_single_reservation) reports a nonexistent reservation
+// as HTTP 422 (ESLURM_REST_INVALID_QUERY) rather than 404. We match on the HTTP status text
+// rather than the more specific errno/description because slurm-client doesn't expose those
+// structured fields to callers of Get(); the status text is all we can key off here. Every
+// reservation Get in this file passes a fixed name and no other query parameters, so a 422
+// from these specific calls has no other realistic cause. Slurm should discriminate not-found
+// from other error classes here; this is a workaround pending that fix (bug filed upstream).
+func isMissingReservationErr(err error) bool {
+	return err != nil && strings.Contains(err.Error(), http.StatusText(http.StatusUnprocessableEntity))
+}
+
 // CheckReservationForNodeSet returns the state of the reservation
 // for the given nodeset in Slurm.
 func (r *realSlurmControl) CheckReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (bool, error) {
@@ -736,7 +749,7 @@ func (r *realSlurmControl) CheckReservationForNodeSet(ctx context.Context, nodes
 
 	key := slurmobject.ObjectKey("SlurmOperatorMaint-" + nodeset.Name)
 	if err := slurmClient.Get(ctx, key, reservation); err != nil {
-		if tolerateError(err) {
+		if tolerateError(err) || isMissingReservationErr(err) {
 			return false, nil
 		} else {
 			return false, err
@@ -765,7 +778,7 @@ func (r *realSlurmControl) GetPodsUnderReservation(ctx context.Context, nodeset 
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
 	key := slurmobject.ObjectKey("SlurmOperatorMaint-" + nodeset.Name)
-	if err := slurmClient.Get(ctx, key, reservation); !tolerateError(err) {
+	if err := slurmClient.Get(ctx, key, reservation); !tolerateError(err) && !isMissingReservationErr(err) {
 		return nil, err
 	}
 	if reservation.Name == nil {
@@ -803,7 +816,7 @@ func (r *realSlurmControl) DeleteReservationForNodeSet(ctx context.Context, node
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
 	key := slurmobject.ObjectKey("SlurmOperatorMaint-" + nodeset.Name)
-	if err := slurmClient.Get(ctx, key, reservation); !tolerateError(err) {
+	if err := slurmClient.Get(ctx, key, reservation); !tolerateError(err) && !isMissingReservationErr(err) {
 		return err
 	}
 
@@ -863,7 +876,7 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 
 	oldReservationInfo := new(slurmtypes.V0044ReservationInfo)
 	key := slurmobject.ObjectKey("SlurmOperatorMaint-" + nodeset.Name)
-	if err := slurmClient.Get(ctx, key, oldReservationInfo); !tolerateError(err) {
+	if err := slurmClient.Get(ctx, key, oldReservationInfo); !tolerateError(err) && !isMissingReservationErr(err) {
 		return err
 	}
 
@@ -1152,6 +1165,14 @@ func NewSlurmControl(clientMap *clientmap.ClientMap) SlurmControlInterface {
 	}
 }
 
+// isMissingReservationErr reports whether err is Slurm's shape for "no reservation with this
+// name exists" on a reservation GET. Unlike other Slurm REST GET-by-name endpoints,
+// slurmrestd's reservation lookup (_get_single_reservation) reports a nonexistent reservation
+// as HTTP 422 (ESLURM_REST_INVALID_QUERY) rather than 404. Every reservation Get in this file
+// passes a fixed name and no other query parameters, so a 422 from these specific calls has no
+// other realistic cause. Slurm should discriminate not-found from other error classes here;
+// this is a workaround pending that fix (bug filed upstream:
+// https://gitlab.com/nvidia/schedmd/slurm/slurm/-/work_items/51171).
 func tolerateError(err error) bool {
 	if err == nil {
 		return true
