@@ -83,7 +83,7 @@ var _ = Describe("Token Controller", func() {
 				g.Expect(k8sClient.Get(ctx, secretKey, secret)).To(Succeed())
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
-			By("Deleting Token with foregroud propagation")
+			By("Deleting Token with foreground propagation")
 			Expect(k8sClient.Delete(ctx, token,
 				client.PropagationPolicy(metav1.DeletePropagationForeground),
 			)).To(Succeed())
