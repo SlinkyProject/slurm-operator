@@ -104,8 +104,22 @@ func (r *ControllerReconciler) syncHAStatus(
 	}
 
 	pings, err := r.slurmControl.GetActiveHAController(ctx, controller)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-		return err
+	if err != nil {
+		// Do not bail out when Slurm cannot be asked which controller is
+		// active. The Controller Service selects pods by LabelControllerActive,
+		// so returning here leaves the Service without endpoints — and a
+		// Service without endpoints is exactly what makes Slurm unreachable,
+		// so every later reconcile fails the same way and no pod is ever
+		// labeled again. The deadlock survives operator restarts because the
+		// Slurm client is created once and kept, so the call keeps failing
+		// with a transport error rather than ErrNoSlurmClient. Treat any
+		// failure like a missing client: fall through with no pings, label the
+		// primary, and let a later reconcile move the label once Slurm answers.
+		if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			log.FromContext(ctx).V(1).Info("Failed to determine the active controller, defaulting to the primary",
+				"Controller", klog.KObj(controller), "error", err)
+		}
+		pings = nil
 	}
 
 	activePodName := controller.PodName(0)
