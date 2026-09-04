@@ -103,9 +103,14 @@ func (r *ControllerReconciler) syncHAStatus(
 		return nil
 	}
 
+	errs := []error{}
+
 	pings, err := r.slurmControl.GetActiveHAController(ctx, controller)
 	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-		return err
+		// Do not bail out when Slurm cannot be asked which controller is active.
+		log.FromContext(ctx).V(1).Info("Failed to determine the active controller, defaulting to the primary",
+			"Controller", klog.KObj(controller), "error", err)
+		errs = append(errs, fmt.Errorf("failed to determine the active controller: %w", err))
 	}
 
 	activePodName := controller.PodName(0)
@@ -126,7 +131,6 @@ func (r *ControllerReconciler) syncHAStatus(
 	}
 	sort.Sort(objectutils.PodsByName(podList.Items))
 
-	errs := []error{}
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		mutateFn := func(pod *corev1.Pod) error {
