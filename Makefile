@@ -123,9 +123,31 @@ clean: ## Clean executable files.
 
 ##@ Deployment
 
-ifndef ignore-not-found
-  ignore-not-found = false
-endif
+KIND_CLUSTER_NAME ?= slurm-operator-dev
+
+.PHONY: kind-start
+kind-start: ## Create a Kind cluster and deploy the Slurm Operator stack.
+	./hack/kind.sh --core $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-stop
+kind-stop: ## Delete the development Kind cluster.
+	./hack/kind.sh --delete $(KIND_CLUSTER_NAME)
+
+.PHONY: prereqs
+prereqs: ## Install prerequisites into the current Kubernetes context.
+	./hack/kind.sh --existing-cluster --prereqs
+
+.PHONY: deploy-crds
+deploy-crds:
+	cd helm/slurm-operator-crds && skaffold run
+
+.PHONY: deploy
+deploy: values-dev deploy-crds ## Build and deploy the Slurm Operator to the current Kubernetes context.
+	cd helm/slurm-operator && skaffold run
+
+.PHONY: debug
+debug: values-dev deploy-crds ## Run Delve-enabled Slurm Operator components and forward debug ports.
+	cd helm/slurm-operator && skaffold debug -p debug --auto-build=true --auto-deploy=true --cleanup=false --port-forward=user --tail
 
 ##@ Build Dependencies
 
@@ -262,8 +284,11 @@ helm-dependency-update: ## Update Helm chart dependencies.
 	find "helm/" -depth -mindepth 1 -maxdepth 1 -type d -print0 | xargs -0r -n1 helm dependency update
 
 .PHONY: values-dev
-values-dev: ## Safely initialize values-dev.yaml files for Helm charts.
-	find "helm/" -type f -name "values.yaml" | $(SED) 'p;s/\.yaml/-dev\.yaml/' | xargs -n2 cp $(CP_FLAGS)
+values-dev: ## Initialize sparse values-dev.yaml overrides for Helm charts.
+	find "helm/" -type f -name "values.yaml" | while read -r file; do \
+		dev="$${file%.yaml}-dev.yaml"; \
+		test -f "$$dev" || printf '{}\n' > "$$dev"; \
+	done
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.

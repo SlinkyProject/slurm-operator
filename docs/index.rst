@@ -367,6 +367,7 @@ limitations under the License.
     :caption: Getting started
 
     installation.md
+    development.md
 
 .. toctree::
     :maxdepth: 2

@@ -5,45 +5,57 @@
 # https://skaffold.dev/docs/references/yaml/
 apiVersion: skaffold/v4beta13
 kind: Config
-profiles:
-  - name: dev
-    build:
-      artifacts:
-        - image: slinky.slurm.net/slurm-operator
-          context: ../../
-          docker:
-            dockerfile: Dockerfile
-            target: manager
-        - image: slinky.slurm.net/slurm-operator-webhook
-          context: ../../
-          docker:
-            dockerfile: Dockerfile
-            target: webhook
-      tagPolicy:
-        inputDigest: {}
-      local:
-        useDockerCLI: true
-        push: false
-    deploy:
-      helm:
-        releases:
-          - name: slurm-operator
-            chartPath: ./
-            valuesFiles:
-              - ./values-dev.yaml
-            setValueTemplates:
-              operator.image.repository: '{{.IMAGE_REPO_slinky_slurm_net_slurm_operator}}'
-              operator.image.tag: '{{.IMAGE_TAG_slinky_slurm_net_slurm_operator}}'
-              webhook.image.repository: '{{.IMAGE_REPO_slinky_slurm_net_slurm_operator_webhook}}'
-              webhook.image.tag: '{{.IMAGE_TAG_slinky_slurm_net_slurm_operator_webhook}}'
-            namespace: slinky
-            createNamespace: true
+build:
+  artifacts:
+    - image: slinky.slurm.net/slurm-operator
+      runtimeType: go
+      context: ../../
+      docker:
+        dockerfile: Dockerfile
+        target: manager
+    - image: slinky.slurm.net/slurm-operator-webhook
+      runtimeType: go
+      context: ../../
+      docker:
+        dockerfile: Dockerfile
+        target: webhook
+  tagPolicy:
+    inputDigest: {}
+  local:
+    useDockerCLI: true
 deploy:
   helm:
+    flags:
+      upgrade:
+        - --reset-values
     releases:
       - name: slurm-operator
         chartPath: ./
         valuesFiles:
           - ./values-dev.yaml
+        setValueTemplates:
+          operator.image.repository: '{{.IMAGE_REPO_slinky_slurm_net_slurm_operator}}'
+          operator.image.tag: '{{.IMAGE_TAG_slinky_slurm_net_slurm_operator}}'
+          webhook.image.repository: '{{.IMAGE_REPO_slinky_slurm_net_slurm_operator_webhook}}'
+          webhook.image.tag: '{{.IMAGE_TAG_slinky_slurm_net_slurm_operator_webhook}}'
         namespace: slinky
         createNamespace: true
+portForward:
+  - resourceType: deployment
+    resourceName: slurm-operator
+    namespace: slinky
+    port: 56268
+    localPort: 40003
+  - resourceType: deployment
+    resourceName: slurm-operator-webhook
+    namespace: slinky
+    port: 56268
+    localPort: 40004
+profiles:
+  - name: debug
+    patches:
+      - op: add
+        path: /deploy/helm/releases/0/setValues
+        value:
+          operator.leaderElection: false
+          webhook.leaderElection: false
