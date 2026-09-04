@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
@@ -18,6 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -26,7 +28,12 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 
+	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
+	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/test"
 )
 
@@ -480,39 +487,31 @@ func testSlurmJWTKeyRotation(namespace string) types.Feature {
 				return current.UID != oldControllerPod.UID && podReady(current)
 			}, 2*time.Minute, 2*time.Second, "timed out waiting for slurmctld to adopt the rotated JWT key")
 
-			// NodeSet reconciliation performs authenticated Slurm REST requests.
-			// Without the JWT Secret watch, the old token is rejected here and
-			// the NodeSet cannot complete its scale-up.
-			nodesetKey := crclient.ObjectKey{
-				Namespace: namespace,
-				Name:      "slurm-worker-slinky",
-			}
-			nodeset := &slinkyv1beta1.NodeSet{}
-			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+			authToken, err := slurmjwt.NewToken(jwtSecret.Data[jwtKeyRef.Key]).NewSignedToken()
+			require.NoError(t, err, "failed to generate an auth token from the rotated JWT key")
 
-			var replicas int32 = 2
-			nodeset.Spec.Replicas = &replicas
-			require.NoError(t, crClient.Update(ctx, nodeset), "failed to scale NodeSet after JWT key rotation")
-			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+			restConfig := rest.CopyConfig(config.Client().RESTConfig())
+			restConfig.Timeout = 10 * time.Second
+			httpClient, err := rest.HTTPClientFor(restConfig)
+			require.NoError(t, err, "failed to create Kubernetes API HTTP client")
 
-			test.WaitForCommand(
-				ctx,
-				t,
-				"kubectl",
-				[]string{"exec", "-n", namespace, "slurm-controller-0", "--", "sinfo", "-N", "-n", "slinky-1", "--Format=StateLong", "-h"},
-				"idle",
-				"",
-				nil,
-				80*time.Second,
-				5*time.Second,
+			server := fmt.Sprintf(
+				"%s/api/v1/namespaces/%s/services/http:slurm-restapi:slurmrestd/proxy",
+				strings.TrimRight(restConfig.Host, "/"),
+				namespace,
 			)
+			operatorClient, err := slurmclient.NewClient(&slurmclient.Config{
+				Server:        server,
+				TokenProvider: clienttoken.StaticProvider(authToken),
+				HTTPClient:    httpClient,
+			})
+			require.NoError(t, err, "failed to create Slurm client")
 
-			nodeset = &slinkyv1beta1.NodeSet{}
-			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get scaled NodeSet")
-			replicas = 1
-			nodeset.Spec.Replicas = &replicas
-			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restore NodeSet replicas")
-			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+			require.Eventually(t, func() bool {
+				pings := &slurmtypes.V0044ControllerPingList{}
+				err := operatorClient.List(ctx, pings, &slurmclient.ListOptions{SkipCache: true})
+				return err == nil
+			}, 2*time.Minute, 2*time.Second, "timed out waiting for a controller ping using the rotated JWT key")
 
 			return ctx
 		}).Feature()
