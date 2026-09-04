@@ -131,13 +131,21 @@ func TestControllerReconciler_syncHAStatus(t *testing.T) {
 			},
 		},
 		{
-			name:       "Slurm error is returned",
+			// Regression: a transport error used to abort before labeling, which
+			// left the Controller Service without endpoints. A Service without
+			// endpoints is what makes Slurm unreachable, so the next reconcile
+			// failed the same way and nothing ever relabeled a pod.
+			name:       "Slurm error defaults to primary",
 			controller: newController(false),
 			pods: []*corev1.Pod{
-				newPod(newController(false), 0, true),
+				newPod(newController(false), 0, false),
+				newPod(newController(false), 1, true),
 			},
 			pingErr: errors.New("internal error"),
-			wantErr: true,
+			wantActive: map[string]bool{
+				"slurm-controller-0": true,
+				"slurm-controller-1": false,
+			},
 		},
 	}
 	for _, tt := range tests {
