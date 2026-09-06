@@ -1300,6 +1300,10 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 	hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 
 	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, hostnameOverride, revisionHash)
+	// Same tolerations the DaemonSet controller gives its own pods. Without
+	// them a NodeSet pod cannot be (re)created on a cordoned node, because
+	// cordon adds node.kubernetes.io/unschedulable:NoSchedule.
+	daemonutils.AddOrUpdateDaemonPodTolerations(&pod.Spec)
 	return pod, nil
 }
 
@@ -1325,6 +1329,10 @@ func newSimulatedDaemonPod(
 	}
 
 	pod := nodesetutils.NewNodeSetSimulatedPod(client, nodeset, controller, nodeName)
+	// The predicate must see the same tolerations the real pod gets,
+	// otherwise PodShouldRunOnNode reports "should not run" for nodes the
+	// pod would in fact tolerate.
+	daemonutils.AddOrUpdateDaemonPodTolerations(&pod.Spec)
 	return pod, nil
 }
 
