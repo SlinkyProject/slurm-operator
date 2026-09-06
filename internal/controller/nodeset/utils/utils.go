@@ -93,6 +93,11 @@ func NewNodeSetDaemonSetPod(
 	pod.Name = ""
 	pod.Spec.Affinity = daemonutils.ReplaceDaemonSetPodNodeNameNodeAffinity(pod.Spec.Affinity, nodeName)
 
+	// Same tolerations the DaemonSet controller gives its own pods. Without
+	// them a NodeSet pod cannot be (re)created on a cordoned node, because
+	// cordon adds node.kubernetes.io/unschedulable:NoSchedule.
+	daemonutils.AddOrUpdateDaemonPodTolerations(&pod.Spec)
+
 	return pod
 }
 
@@ -111,6 +116,10 @@ func NewNodeSetDaemonSetSimulatedPod(
 	podTemplate := builder.New(client).BuildWorkerPodTemplate(nodeset, controller)
 	pod, _ := k8scontroller.GetPodFromTemplate(&podTemplate, nodeset, controllerRef)
 	pod.Spec.NodeName = nodeName
+	// The predicate must see the same tolerations the real pod gets,
+	// otherwise PodShouldRunOnNode reports "should not run" for nodes the
+	// pod would in fact tolerate.
+	daemonutils.AddOrUpdateDaemonPodTolerations(&pod.Spec)
 	return pod
 }
 
