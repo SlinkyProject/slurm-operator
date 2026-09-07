@@ -56,7 +56,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 		{
 			Name: "SSH Host Keys",
 			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
-				object, err := r.builder.BuildLoginSshHostKeys(loginset)
+				object, err := r.builder.BuildLoginSshHostKeys(ctx, loginset)
 				if err != nil {
 					return fmt.Errorf("failed to build object: %w", err)
 				}
