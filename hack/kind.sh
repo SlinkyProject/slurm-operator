@@ -140,6 +140,48 @@ function slurm-operator::install() {
 		cd "$ROOT_DIR"/helm/slurm-operator
 		skaffold run
 	)
+	slurm-operator::wait_webhook
+}
+
+function slurm-operator::wait_webhook() {
+	kubectl wait --for=condition=Available deployment/slurm-operator-webhook \
+		-n slinky --timeout=120s || return 1
+
+	# Pod readiness can precede Service routing updates. Exercise admission from
+	# the API server without persisting a resource or requiring a running Slurm.
+	echo "[slurm] Waiting for slurm-operator webhook admission..."
+	local deadline=$((SECONDS + 120))
+	local output=""
+	local request_timeout
+	while ((SECONDS < deadline)); do
+		request_timeout=$((deadline - SECONDS))
+		if ((request_timeout <= 0)); then
+			break
+		fi
+		if ((request_timeout > 10)); then
+			request_timeout=10
+		fi
+		if output="$(
+			kubectl create --dry-run=server --namespace=slinky \
+				--request-timeout="${request_timeout}s" -f - 2>&1 <<-EOF
+					apiVersion: slinky.slurm.net/v1beta1
+					kind: RestApi
+					metadata:
+					  generateName: slurm-operator-webhook-check-
+					spec:
+					  controllerRef:
+					    name: slurm-operator-webhook-check
+				EOF
+		)"; then
+			echo "[slurm] Slurm-operator webhook admission is ready."
+			return 0
+		fi
+		sleep 2
+	done
+
+	echo "[slurm] Timed out waiting for slurm-operator webhook admission after 120s." >&2
+	printf '%s\n' "$output" >&2
+	return 1
 }
 
 function slurm::install() {
