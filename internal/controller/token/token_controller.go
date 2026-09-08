@@ -23,6 +23,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/common"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/durationstore"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/ratelimiter"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
@@ -103,6 +104,7 @@ func (r *TokenReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Secret{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
+			RateLimiter:             ratelimiter.Build[reconcile.Request](),
 		}).
 		Complete(r)
 }
