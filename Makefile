@@ -177,7 +177,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 GOVULNCHECK ?= $(LOCALBIN)/govulncheck-$(GOVULNCHECK_VERSION)
-GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
 COSIGN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
@@ -190,6 +190,7 @@ ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= v1.3.0
 GOLANGCI_LINT_VERSION ?= v2.9.0
+GOLANGCI_LINT_BASE_REV ?= HEAD
 HELM_DOCS_VERSION ?= v1.14.2
 PANDOC_VERSION ?= 3.9
 COSIGN_VERSION ?= v2.4.1
@@ -358,7 +359,7 @@ govulncheck: govulncheck-bin ## Write $(GOVULNCHECK_REPORT); fail if a vulnerabi
 # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
 .PHONY: golangci-lint
 golangci-lint: golangci-lint-bin ## Run golangci-lint.
-	$(GOLANGCI_LINT) run --fix
+	$(GOLANGCI_LINT) run --new-from-rev "$(GOLANGCI_LINT_BASE_REV)" --fix
 
 # https://github.com/golangci/golangci-lint/blob/main/.pre-commit-hooks.yaml
 .PHONY: golangci-lint-fmt
