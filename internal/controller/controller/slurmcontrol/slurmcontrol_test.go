@@ -4,20 +4,50 @@
 package slurmcontrol
 
 import (
+	"context"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	api "github.com/SlinkyProject/slurm-client/api/v0044"
 	"github.com/SlinkyProject/slurm-client/pkg/client"
 	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
+	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
+	"github.com/SlinkyProject/slurm-client/pkg/object"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
+
+// orderedControllerPingClient returns a fake client whose ControllerPingList List() results
+// are sorted by Hostname. GetActiveHAController picks the first *responding* entry in list
+// order as Active, mirroring real slurmctld, which returns controllers in a fixed order (the
+// HA backup index). The fake client's List() has no such ordering guarantee (backed by a Go
+// map), so without this, which entry it treats as "first" is nondeterministic and this test
+// flakes. See https://gitlab.com/nvidia/schedmd/slinky/slurm-client/-/merge_requests/188.
+func orderedControllerPingClient(items []types.V0044ControllerPing) client.Client {
+	base := fake.NewClientBuilder().
+		WithLists(&types.V0044ControllerPingList{Items: items}).
+		Build()
+	return interceptor.NewClient(base, interceptor.Funcs{
+		List: func(ctx context.Context, list object.ObjectList, opts ...client.ListOption) error {
+			if err := base.List(ctx, list, opts...); err != nil {
+				return err
+			}
+			if l, ok := list.(*types.V0044ControllerPingList); ok {
+				sort.Slice(l.Items, func(i, j int) bool {
+					return ptr.Deref(l.Items[i].Hostname, "") < ptr.Deref(l.Items[j].Hostname, "")
+				})
+			}
+			return nil
+		},
+	})
+}
 
 func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 	tests := []struct {
@@ -29,14 +59,10 @@ func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 	}{
 		{
 			name: "both responding",
-			sclient: fake.NewClientBuilder().
-				WithLists(&types.V0044ControllerPingList{
-					Items: []types.V0044ControllerPing{
-						{V0044ControllerPing: newPing("controller-0", true, true)},
-						{V0044ControllerPing: newPing("controller-1", false, true)},
-					},
-				}).
-				Build(),
+			sclient: orderedControllerPingClient([]types.V0044ControllerPing{
+				{V0044ControllerPing: newPing("controller-0", true, true)},
+				{V0044ControllerPing: newPing("controller-1", false, true)},
+			}),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: corev1.NamespaceDefault,
@@ -50,14 +76,10 @@ func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 		},
 		{
 			name: "primary down",
-			sclient: fake.NewClientBuilder().
-				WithLists(&types.V0044ControllerPingList{
-					Items: []types.V0044ControllerPing{
-						{V0044ControllerPing: newPing("controller-0", true, false)},
-						{V0044ControllerPing: newPing("controller-1", false, true)},
-					},
-				}).
-				Build(),
+			sclient: orderedControllerPingClient([]types.V0044ControllerPing{
+				{V0044ControllerPing: newPing("controller-0", true, false)},
+				{V0044ControllerPing: newPing("controller-1", false, true)},
+			}),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: corev1.NamespaceDefault,
@@ -71,14 +93,10 @@ func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 		},
 		{
 			name: "backup down",
-			sclient: fake.NewClientBuilder().
-				WithLists(&types.V0044ControllerPingList{
-					Items: []types.V0044ControllerPing{
-						{V0044ControllerPing: newPing("controller-0", true, true)},
-						{V0044ControllerPing: newPing("controller-1", false, false)},
-					},
-				}).
-				Build(),
+			sclient: orderedControllerPingClient([]types.V0044ControllerPing{
+				{V0044ControllerPing: newPing("controller-0", true, true)},
+				{V0044ControllerPing: newPing("controller-1", false, false)},
+			}),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: corev1.NamespaceDefault,
@@ -92,14 +110,10 @@ func Test_realSlurmControl_GetActiveHAController(t *testing.T) {
 		},
 		{
 			name: "all down",
-			sclient: fake.NewClientBuilder().
-				WithLists(&types.V0044ControllerPingList{
-					Items: []types.V0044ControllerPing{
-						{V0044ControllerPing: newPing("controller-0", true, false)},
-						{V0044ControllerPing: newPing("controller-1", false, false)},
-					},
-				}).
-				Build(),
+			sclient: orderedControllerPingClient([]types.V0044ControllerPing{
+				{V0044ControllerPing: newPing("controller-0", true, false)},
+				{V0044ControllerPing: newPing("controller-1", false, false)},
+			}),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: corev1.NamespaceDefault,
