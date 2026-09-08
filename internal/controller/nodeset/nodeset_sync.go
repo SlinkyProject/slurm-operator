@@ -1236,7 +1236,7 @@ func (r *NodeSetReconciler) doPodScale(
 		return r.syncPodUncordon(ctx, nodeset, pod)
 	}
 	if _, err := batch.SlowStartBatchDefault(len(podsToKeep), uncordonFn); err != nil {
-		return err
+		errs = append(errs, err)
 	}
 
 	// Batch the pod creates. Batch sizes start at SlowStartInitialBatchSize
