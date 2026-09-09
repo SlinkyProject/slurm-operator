@@ -149,45 +149,42 @@ function slurm::install() {
 	)
 }
 
-function extras::install() {
-	local chartName
-
+function mariadb::install() {
+	local chartName=mariadb-operator
 	helm repo add mariadb-operator https://helm.mariadb.com/mariadb-operator
-	helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-	helm repo add kedacore https://kedacore.github.io/charts
-	helm repo add nfs-ganesha https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
-	helm repo update
-
-	chartName=mariadb-operator
+	helm repo update mariadb-operator
 	if ! helm::find "$chartName"; then
 		helm install "$chartName" mariadb-operator/mariadb-operator \
 			--namespace mariadb --create-namespace \
 			--set 'crds.enabled=true'
 	fi
+}
 
-	chartName=metrics-server
+function metrics_server::install() {
+	local chartName=metrics-server
+	helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+	helm repo update metrics-server
 	if ! helm::find "$chartName"; then
 		helm install "$chartName" metrics-server/metrics-server \
 			--namespace metrics-server --create-namespace \
 			--set args="{--kubelet-insecure-tls}"
 	fi
+}
 
-	chartName=prometheus
-	if ! helm::find "$chartName"; then
-		helm install "$chartName" prometheus-community/kube-prometheus-stack \
-			--namespace prometheus --create-namespace \
-			--set installCRDs=true \
-			--set 'prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false'
-	fi
-
-	chartName=keda
+function keda::install() {
+	local chartName=keda
+	helm repo add kedacore https://kedacore.github.io/charts
+	helm repo update kedacore
 	if ! helm::find "$chartName"; then
 		helm install "$chartName" kedacore/keda \
 			--namespace keda --create-namespace
 	fi
+}
 
-	chartName=nfs-server-provisioner
+function nfs::install() {
+	local chartName=nfs-server-provisioner
+	helm repo add nfs-ganesha https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
+	helm repo update nfs-ganesha
 	if ! helm::find "$chartName"; then
 		helm install "$chartName" nfs-ganesha/nfs-server-provisioner \
 			--namespace nfs --create-namespace
@@ -196,6 +193,8 @@ function extras::install() {
 
 function metrics::install() {
 	local config_dir="$DIR/metrics"
+
+	metrics_server::install
 
 	echo "[metrics] Installing kube-prometheus-stack..."
 	helm repo add prometheus-community "$KUBE_PROMETHEUS_STACK_CHART_REPO" --force-update
@@ -245,7 +244,8 @@ $(basename "$0") - Manage a kind cluster for local testing/development
 
 	usage: $(basename "$0") [--config=KIND_CONFIG_PATH] [--existing-cluster]
 	        [--recreate|--delete]
-	        [--core|--prereqs][--extras][--metrics][--all] [--registry=REPO]
+	        [--core|--prereqs][--extras][--mariadb][--keda][--metrics]
+	        [--nfs][--ldap][--all] [--registry=REPO]
 	        [--crds][--operator][--slurm]
 	        [-h|--help] [KIND_CLUSTER_NAME]
 
@@ -259,8 +259,12 @@ KIND OPTIONS:
 
 HELM OPTIONS:
 	--all               Equivalent of: --core --extras
-	--extras            Install extra charts (e.g. prometheus, keda, OpenLDAP, etc..).
-	--metrics           Install metrics collection for Slurm Operator.
+	--extras            Equivalent of: --mariadb --metrics --nfs --ldap
+	--mariadb           Install mariadb-operator and the example MariaDB CR.
+	--keda              Install KEDA.
+	--metrics           Install metrics-server and kube-prometheus-stack.
+	--nfs               Install the NFS provisioner and example PVCs.
+	--ldap              Install OpenLDAP.
 	--core              Equivalent of: --crds --operator --slurm
 	--prereqs           Install operator prerequisites only (cert-manager).
 	--crds              Install the operator CRDs chart.
@@ -285,6 +289,14 @@ function main::validate_options() {
 	fi
 }
 
+function extras::enable() {
+	OPT_EXTRAS=true
+	OPT_MARIADB=true
+	OPT_METRICS=true
+	OPT_NFS=true
+	OPT_LDAP=true
+}
+
 OPT_DEBUG=false
 OPT_RECREATE=false
 OPT_CONFIG="$ROOT_DIR/hack/kind.yaml"
@@ -297,10 +309,14 @@ OPT_OPERATOR_CRDS=false
 OPT_OPERATOR=false
 OPT_SLURM=false
 OPT_EXTRAS=false
+OPT_MARIADB=false
+OPT_KEDA=false
+OPT_NFS=false
+OPT_LDAP=false
 OPT_METRICS=false
 
 SHORT="+h"
-LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,metrics,core,prereqs,help"
+LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,mariadb,keda,metrics,nfs,ldap,core,prereqs,help"
 OPTS="$(getopt -a --options "$SHORT" --longoptions "$LONG" -- "$@")"
 eval set -- "${OPTS}"
 while :; do
@@ -351,15 +367,31 @@ while :; do
 		OPT_OPERATOR_CRDS=true
 		OPT_OPERATOR=true
 		OPT_SLURM=true
-		OPT_EXTRAS=true
+		extras::enable
 		shift
 		;;
 	--extras)
-		OPT_EXTRAS=true
+		extras::enable
+		shift
+		;;
+	--mariadb)
+		OPT_MARIADB=true
+		shift
+		;;
+	--keda)
+		OPT_KEDA=true
 		shift
 		;;
 	--metrics)
 		OPT_METRICS=true
+		shift
+		;;
+	--nfs)
+		OPT_NFS=true
+		shift
+		;;
+	--ldap)
+		OPT_LDAP=true
 		shift
 		;;
 	--core)
@@ -419,8 +451,19 @@ function main() {
 		slurm-operator::prerequisites
 	fi
 
-	if $OPT_EXTRAS; then
-		extras::install
+	if $OPT_MARIADB; then
+		mariadb::install
+	fi
+	if $OPT_METRICS; then
+		metrics::install
+	fi
+	if $OPT_KEDA; then
+		keda::install
+	fi
+	if $OPT_NFS; then
+		nfs::install
+	fi
+	if $OPT_LDAP; then
 		ldap::install
 	fi
 
@@ -434,15 +477,26 @@ function main() {
 		slurm::install
 	fi
 
-	if $OPT_EXTRAS; then
+	if $OPT_MARIADB || $OPT_NFS || $OPT_EXTRAS; then
 		kubectl create namespace slurm --dry-run=client -o yaml | kubectl apply -f -
-		until kubectl apply --namespace slurm -f "$DIR"/resources; do
+	fi
+	if $OPT_MARIADB; then
+		until kubectl apply --namespace slurm -f "$DIR"/resources/mariadb.yaml; do
 			sleep 2
 		done
 	fi
-
-	if $OPT_METRICS; then
-		metrics::install
+	if $OPT_NFS; then
+		until kubectl apply --namespace slurm \
+			-f "$DIR"/resources/pvc-nfs-data.yaml \
+			-f "$DIR"/resources/pvc-nfs-home.yaml \
+			-f "$DIR"/resources/pvc-statesave.yaml; do
+			sleep 2
+		done
+	fi
+	if $OPT_EXTRAS; then
+		until kubectl apply --namespace slurm -f "$DIR"/resources/token.yaml; do
+			sleep 2
+		done
 	fi
 }
 

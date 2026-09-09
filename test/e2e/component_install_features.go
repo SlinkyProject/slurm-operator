@@ -95,7 +95,7 @@ func testPrometheus() types.Feature {
 			return ctx
 		}).
 		Assess("prometheus deployment Is Running Successfully", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			return test.CheckDeploymentStatus(ctx, t, config, "prometheus-kube-prometheus-operator", "prometheus")
+			return test.CheckDeploymentStatus(ctx, t, config, "prometheus-kube-prometheus-operator", "monitoring")
 		}).Feature()
 }
 
