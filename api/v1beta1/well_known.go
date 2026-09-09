@@ -92,6 +92,10 @@ const (
 	// LabelNodeSetScalingMode indicates the scaling mode (DaemonSet or StatefulSet).
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetScalingMode = NodeSetPrefix + "scaling-mode"
+
+	// LabelLoginSetPodName indicates the pod name.
+	// NOTE: Set by the LoginSet controller.
+	LabelLoginSetPodName = LoginSetPrefix + "pod-name"
 )
 
 // Well Known Finalizers
