@@ -829,12 +829,13 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 		hash    string
 	}
 	type testCaseFields struct {
-		name         string
-		fields       fields
-		args         args
-		wantPods     int
-		wantErr      bool
-		wantCordoned []*corev1.Pod
+		name            string
+		fields          fields
+		args            args
+		wantPods        int
+		wantErr         bool
+		wantCordoned    []*corev1.Pod
+		wantNotCordoned []*corev1.Pod
 	}
 	tests := []testCaseFields{
 		{
@@ -1045,6 +1046,45 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 				wantCordoned: []*corev1.Pod{pod1},
 			}
 		}(),
+		func() testCaseFields {
+			// ReplicaSet FilterActivePods: terminating pods are not active, so
+			// they must not count toward surplus (or SplitActivePods picks the
+			// highest-ordinal healthy pod instead).
+			ns := newNodeSet("foo", controller.Name, 2)
+			now := metav1.Now()
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod0.DeletionTimestamp = &now
+			pod0.Finalizers = []string{"slinky.slurm.net/test"}
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 2, hash)
+			makePodHealthy(pod2)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+					*newNodeSetPodSlurmNode(pod2),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Scale-down does not drain a healthy pod when another is already terminating",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()},
+					hash:    hash,
+				},
+				wantPods:        3,
+				wantErr:         false,
+				wantNotCordoned: []*corev1.Pod{pod1, pod2},
+			}
+		}(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1083,6 +1123,11 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 				gotPod := &corev1.Pod{}
 				require.NoError(t, r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod))
 				require.True(t, podutils.IsPodCordon(gotPod), "pod %s should remain cordoned after scale-up", pod.Name)
+			}
+			for _, pod := range tt.wantNotCordoned {
+				gotPod := &corev1.Pod{}
+				require.NoError(t, r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod))
+				require.False(t, podutils.IsPodCordon(gotPod), "pod %s should not be cordoned for scale-in", pod.Name)
 			}
 		})
 	}
