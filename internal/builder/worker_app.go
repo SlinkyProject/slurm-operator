@@ -154,6 +154,7 @@ func (b *Builder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controller *sl
 						"BPF",
 						"NET_ADMIN",
 						"SYS_ADMIN",
+						"SYS_RESOURCE",
 						"SYS_NICE",
 					},
 				},
