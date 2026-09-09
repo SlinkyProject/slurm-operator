@@ -1,0 +1,12 @@
+---
+configFiles:
+  topology.yaml: |
+    ---
+    - topology: topo-e2e
+      cluster_default: true
+      block:
+        block_sizes:
+          - 1
+        blocks:
+          - block: b0
+          - block: b1
