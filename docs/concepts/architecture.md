@@ -133,9 +133,8 @@ pre-defining the node in slurm.conf.
 ##### Dynamic Topology
 
 The operator ensures that each slurmd pod registers with the topology that
-matches the Kubernetes node it is scheduled on. It injects topology into the pod
-(e.g. via `POD_TOPOLOGY`) and, after registration, updates the Slurm node’s
-topology through the Slurm API. As a result, the Slurm
+matches the Kubernetes node it is scheduled on. After registration, it updates
+the Slurm node’s topology through the Slurm API. As a result, the Slurm
 [topology configuration][topology.yaml] does not need to enumerate every node in
 advance for topology-aware scheduling to work on Kubernetes.
 

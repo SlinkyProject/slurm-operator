@@ -458,9 +458,9 @@ func TestSlurmdConfArgs(t *testing.T) {
 		want    []string
 	}{
 		{
-			name:    "name only",
+			name:    "name only omits empty topology so image resource configuration is valid",
 			nodeset: &slinkyv1beta1.NodeSet{ObjectMeta: metav1.ObjectMeta{Name: "gpu"}},
-			want:    []string{"--conf", `'Features=gpu Topology='"$SLINKY_TOPOLOGY"''`},
+			want:    []string{"--conf", `'Features=gpu'`},
 		},
 		{
 			name: "feature and non-feature keys",
@@ -468,10 +468,10 @@ func TestSlurmdConfArgs(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
 				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Weight=10 feature=a"},
 			},
-			want: []string{"--conf", `'Features=a,gpu Topology='"$SLINKY_TOPOLOGY"' Weight=10'`},
+			want: []string{"--conf", `'Features=a,gpu Weight=10'`},
 		},
 		{
-			name: "clobber topology key",
+			name: "preserves explicit topology key",
 			nodeset: &slinkyv1beta1.NodeSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
 				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Topology=switch-topo:s1"},
@@ -484,7 +484,7 @@ func TestSlurmdConfArgs(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
 				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Features=z,a"},
 			},
-			want: []string{"--conf", `'Features=a,gpu,z Topology='"$SLINKY_TOPOLOGY"''`},
+			want: []string{"--conf", `'Features=a,gpu,z'`},
 		},
 		{
 			name: "hostname override is the feature name",
@@ -498,7 +498,7 @@ func TestSlurmdConfArgs(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"--conf", `'Features=foo Topology='"$SLINKY_TOPOLOGY"''`},
+			want: []string{"--conf", `'Features=foo'`},
 		},
 		{
 			name: "malformed ExtraConf degrades to baseline instead of panicking",
@@ -506,7 +506,7 @@ func TestSlurmdConfArgs(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "gpu"},
 				Spec:       slinkyv1beta1.NodeSetSpec{ExtraConf: "Weight10 Feature=a"},
 			},
-			want: []string{"--conf", `'Features=gpu Topology='"$SLINKY_TOPOLOGY"''`},
+			want: []string{"--conf", `'Features=gpu'`},
 		},
 	}
 	for _, tc := range cases {
