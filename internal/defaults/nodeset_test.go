@@ -24,6 +24,7 @@ func TestSetNodeSetDefaults(t *testing.T) {
 
 		require.Equal(t, ptr.To(DefaultNodeSetReplicas), ns.Spec.Replicas)
 		require.Equal(t, DefaultNodeSetScalingMode, ns.Spec.ScalingMode)
+		require.Equal(t, ptr.To(DefaultNodeSetSyncTopology), ns.Spec.SyncTopology)
 		require.Equal(t, ptr.To(DefaultNodeSetWorkloadDisruptionProtection), ns.Spec.WorkloadDisruptionProtection)
 		require.Equal(t, DefaultNodeSetUpdateStrategyType, ns.Spec.UpdateStrategy.Type)
 		require.NotNil(t, ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
@@ -42,10 +43,12 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
 		ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType
 		ns.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
+		ns.Spec.SyncTopology = ptr.To(false)
 		SetNodeSetDefaults(ns)
 
 		require.Equal(t, ptr.To(int32(3)), ns.Spec.Replicas)
 		require.Equal(t, slinkyv1beta1.ScalingModeDaemonset, ns.Spec.ScalingMode)
+		require.Equal(t, ptr.To(false), ns.Spec.SyncTopology)
 		require.Equal(t, ptr.To(maxUnavailable), ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
 		require.Equal(t, slinkyv1beta1.OnDeleteNodeSetStrategyType, ns.Spec.UpdateStrategy.Type)
 		require.Equal(t, slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted)

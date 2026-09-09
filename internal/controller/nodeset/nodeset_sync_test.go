@@ -4296,16 +4296,16 @@ func Test_syncPodUncordon(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
+	const (
+		existingTopology = "topo-block:old"
+		nodeTopology     = "topo-block:b0"
+	)
+
 	node := &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "node0",
-		},
-	}
-	node2 := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "node1",
 			Annotations: map[string]string{
-				slinkyv1beta1.AnnotationNodeTopologySpec: "topo-block:b0",
+				slinkyv1beta1.AnnotationNodeTopologySpec: nodeTopology,
 			},
 		},
 	}
@@ -4315,83 +4315,77 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 		},
 	}
 	nodeset := newNodeSet("foo", controller.Name, 2)
-	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
-	pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
-	pod2.Spec.NodeName = node2.Name
+	pendingPod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pendingPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = existingTopology
+	allocatedPod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+	allocatedPod.Spec.NodeName = node.Name
+	allocatedPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = existingTopology
 
 	tests := []struct {
-		name      string
-		client    client.Client
-		clientMap *clientmap.ClientMap
-		nodeset   *slinkyv1beta1.NodeSet
-		pods      []*corev1.Pod
-		wantErr   bool
+		name         string
+		syncTopology *bool
+		pod          *corev1.Pod
+		wantTopology string
 	}{
 		{
-			name:      "pending",
-			client:    fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod.DeepCopy()),
-			clientMap: newClientMap(controller.Name, newFakeClientList(sinterceptor.Funcs{})),
-			nodeset:   nodeset,
-			pods:      []*corev1.Pod{pod.DeepCopy()},
+			name:         "pending",
+			pod:          pendingPod,
+			wantTopology: existingTopology,
 		},
 		{
-			name:   "allocated",
-			client: fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), pod2.DeepCopy()),
-			clientMap: func() *clientmap.ClientMap {
-				nodeList := &slurmtypes.V0044NodeList{
-					Items: []slurmtypes.V0044Node{
-						{
-							V0044Node: slurmapi.V0044Node{
-								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-								State: ptr.To([]slurmapi.V0044NodeState{
-									slurmapi.V0044NodeStateIDLE,
-								}),
-							},
-						},
-					},
-				}
-				sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
-				return newClientMap(controller.Name, sclient)
-			}(),
-			nodeset: nodeset,
-			pods:    []*corev1.Pod{pod2.DeepCopy()},
+			name:         "default",
+			pod:          allocatedPod,
+			wantTopology: nodeTopology,
+		},
+		{
+			name:         "enabled",
+			syncTopology: ptr.To(true),
+			pod:          allocatedPod,
+			wantTopology: nodeTopology,
+		},
+		{
+			name:         "disabled",
+			syncTopology: ptr.To(false),
+			pod:          allocatedPod,
+			wantTopology: existingTopology,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			r := newNodeSetController(tt.client, tt.clientMap)
-			gotErr := r.syncSlurmTopology(context.Background(), tt.nodeset, tt.pods)
-			if tt.wantErr {
-				require.Error(t, gotErr)
+			nodeset := nodeset.DeepCopy()
+			nodeset.Spec.SyncTopology = tt.syncTopology
+			pod := tt.pod.DeepCopy()
+			kubeClient := fake.NewFakeClient(node.DeepCopy(), pod.DeepCopy())
+			slurmNodeList := &slurmtypes.V0044NodeList{}
+			if pod.Spec.NodeName != "" {
+				slurmNodeList.Items = []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:     ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+							State:    ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+							Topology: ptr.To(existingTopology),
+						},
+					},
+				}
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			r := newNodeSetController(kubeClient, newClientMap(controller.Name, sclient))
+
+			require.NoError(t, r.syncSlurmTopology(ctx, nodeset, []*corev1.Pod{pod}))
+
+			gotPod := &corev1.Pod{}
+			require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), gotPod), "Get() failed")
+			require.Equal(t, tt.wantTopology, gotPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], "syncSlurmTopology() pod topology")
+
+			if pod.Spec.NodeName == "" {
 				return
 			}
-			require.NoError(t, gotErr)
-			for _, pod := range tt.pods {
-				checkPod := &corev1.Pod{}
-				require.NoError(t, tt.client.Get(ctx, client.ObjectKeyFromObject(pod), checkPod), "Get() failed")
-				if pod.Spec.NodeName == "" {
-					continue
-				}
-				checkNode := &corev1.Node{}
-				checkNodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
-				require.NoError(t, tt.client.Get(ctx, checkNodeKey, checkNode), "Get() failed")
-				topologySpec := checkNode.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
-				require.True(t, apiequality.Semantic.DeepEqual(checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], topologySpec), "pod and node topology are incongruent: node = '%v' ; pod = '%v'", topologySpec, checkPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec])
 
-				mapKey := types.NamespacedName{
-					Namespace: nodeset.Namespace,
-					Name:      nodeset.Spec.ControllerRef.Name,
-				}
-				sclient := tt.clientMap.Get(mapKey)
-				if sclient == nil {
-					continue
-				}
-				slurmNode := &slurmtypes.V0044Node{}
-				slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-				require.NoError(t, sclient.Get(ctx, slurmNodeKey, slurmNode), "Get() failed")
-				require.True(t, apiequality.Semantic.DeepEqual(topologySpec, ptr.Deref(slurmNode.Topology, "")), "Kube node and Slurm node topology are incongruent: Kube node = '%v' ; slurm node = '%v'", topologySpec, ptr.Deref(slurmNode.Topology, ""))
-			}
+			gotSlurmNode := &slurmtypes.V0044Node{}
+			slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+			require.NoError(t, sclient.Get(ctx, slurmNodeKey, gotSlurmNode), "Get() failed")
+			require.Equal(t, tt.wantTopology, ptr.Deref(gotSlurmNode.Topology, ""), "syncSlurmTopology() Slurm node topology")
 		})
 	}
 }

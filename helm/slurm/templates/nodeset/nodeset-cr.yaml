@@ -61,6 +61,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
   ordinalPadding: {{ $nodeset.ordinalPadding }}
+  syncTopology: {{ $nodeset.syncTopology }}
   pinToNode: {{ $nodeset.pinToNode }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
   pruneSlurmNodeRecords: {{ $nodeset.pruneSlurmNodeRecords }}

@@ -732,6 +732,8 @@ nodesetDefaults:
   workloadDisruptionProtection: true
   # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
   pruneSlurmNodeRecords: Never
+  # -- Control whether Slurm-operator syncs K8s node topology annotations to Slurm
+  syncTopology: true
   # -- How many places to pad with zeroes when constructing the pod ordinal.
   ordinalPadding: 0
   # -- Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity).
