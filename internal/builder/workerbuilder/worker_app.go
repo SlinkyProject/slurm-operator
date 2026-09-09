@@ -253,6 +253,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 						"BPF",
 						"NET_ADMIN",
 						"SYS_ADMIN",
+						"SYS_RESOURCE",
 						"SYS_NICE",
 					},
 				},
