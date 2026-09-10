@@ -38,6 +38,12 @@ const (
 	// a NodeSet pod is scheduled is cordoned
 	AnnotationNodeCordonReason = NodeSetPrefix + "node-cordon-reason"
 
+	// AnnotationNodeSlurmNameOwner identifies the NodeSet that owns the Slurm node name mapping on a Kubernetes Node.
+	AnnotationNodeSlurmNameOwner = NodeSetPrefix + "slurm-nodename-owner"
+
+	// AnnotationNodeSlurmNameOwnerUID identifies the exact NodeSet instance that owns the Slurm node name mapping.
+	AnnotationNodeSlurmNameOwnerUID = NodeSetPrefix + "slurm-nodename-owner-uid"
+
 	// AnnotationNodeTopologySpec indicates the Slurm dynamic topology line (e.g. "topo-switch:s2,topo-block:b2").
 	// Ref: https://slurm.schedmd.com/topology.html#dynamic_topo
 	AnnotationNodeTopologySpec = TopologyPrefix + "spec"
@@ -73,6 +79,9 @@ const (
 	// NOTE: Set by the Controller controller.
 	LabelControllerActive = ControllerPrefix + "active"
 
+	// LabelSlurmNodeName indicates the Slurm NodeName corresponding to a Kubernetes Node.
+	LabelSlurmNodeName = SlinkyPrefix + "slurm-nodename"
+
 	// LabelNodeSetPodName indicates the pod name.
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetPodName = NodeSetPrefix + "pod-name"
@@ -100,4 +109,7 @@ const (
 	// FinalizerNodeSetReservation
 	// NOTE: Set by the NodeSet controller.
 	FinalizerNodeSetReservation = NodeSetPrefix + "reservation"
+
+	// FinalizerNodeSetSlurmNodeName ensures NodeSet-owned Kubernetes Node mappings are removed on deletion.
+	FinalizerNodeSetSlurmNodeName = NodeSetPrefix + "slurm-nodename"
 )

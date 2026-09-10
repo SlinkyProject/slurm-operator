@@ -328,6 +328,7 @@ To use node pinning, set `pinToNode=true` on a NodeSet in the Slurm Helm chart:
 nodesets:
   slinky:
     pinToNode: true
+    oversubscribeNode: false
 ```
 
 Or directly in the NodeSet CR:
@@ -339,19 +340,54 @@ metadata:
   name: gpu-workers
 spec:
   pinToNode: true
+  oversubscribeNode: false
   replicas: 4
 ```
 
 When enabled, the controller:
 
 1. The pod is initially scheduled like normal.
-1. Records the node-to-pod mapping in `status.nodeToOrdinal`.
+1. Records the pod ordinal-to-node mapping in `status.ordinalToNode`.
 1. On subsequent pod recreations, a [node affinity][node-affinity] is added to
    the pod such that it can only be scheduled to the recorded node.
 1. Reset the node in the node-to-pod map if:
    - the Kubernetes node no longer exists
    - the NodeSet pod template no longer matches the recorded Kubernetes Node
      (e.g. affinity, nodeSelector).
+
+When `publishSlurmNodeName=true`, `scalingMode=StatefulSet`, `pinToNode=true`,
+and `oversubscribeNode=false`, the controller also publishes the pinned pod's
+Slurm node name on the corresponding Kubernetes Node:
+
+```yaml
+spec:
+  scalingMode: StatefulSet
+  pinToNode: true
+  publishSlurmNodeName: true
+  oversubscribeNode: false
+```
+
+```yaml
+metadata:
+  labels:
+    slinky.slurm.net/slurm-nodename: gpu-workers-0
+```
+
+This label allows components such as `slurm-bridge` to map an ordinal-based
+Slurm node name back to its Kubernetes Node. The operator records the owning
+NodeSet UID in Node annotations and removes only mappings it owns. A matching
+externally managed label is preserved without being adopted. A conflicting
+label, NodeSet owner, or duplicate effective Slurm node name causes
+reconciliation to fail without overwriting the existing mapping. For an
+unlabeled Kubernetes Node, `slurm-bridge` uses the Kubernetes Node name as its
+Slurm node name. The controller accounts for this fallback when validating new
+or moved mappings, preventing two Kubernetes Nodes from resolving to the same
+Slurm node name.
+
+The mapping remains during pod recreation and graceful scale-down, then is
+removed after the ordinal is no longer desired. It is also removed when node
+name publication or node pinning is disabled, node oversubscription is enabled,
+the scaling mode changes, or the NodeSet is deleted.
 
 ### DaemonSet Mode
 
