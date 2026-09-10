@@ -247,18 +247,21 @@ Release branch  Kubernetes 1.35 Kubernetes 1.36 Kubernetes 1.37
 each branch. Backported support is marked with the first supporting
 patch version.
 
-+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| Release                                                                        | Minimum Slurm (Data Parser)                                                       |
-+================================================================================+===================================================================================+
-| `v1.2 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.2.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| `v1.1 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.1.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| `v1.0 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.0.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
++-----------------+-----------------------------------------------------------------------------------+
+| Release branch  | Minimum Slurm (Data Parser)                                                       |
++=================+===================================================================================+
+| ``release-1.3`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------------+-----------------------------------------------------------------------------------+
+| ``release-1.2`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------------+-----------------------------------------------------------------------------------+
+| ``release-1.1`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------------+-----------------------------------------------------------------------------------+
+| ``release-1.0`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------------+-----------------------------------------------------------------------------------+
 
 Please refer to the following lifecycle documents for support guidance:
 

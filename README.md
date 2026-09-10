@@ -184,11 +184,12 @@ validation; these backports are optional.
 ✓ means supported; — means unsupported. Use the latest patch release of each
 branch. Backported support is marked with the first supporting patch version.
 
-| Release |             Minimum Slurm (Data Parser)             |
-| :-----: | :-------------------------------------------------: |
-| [v1.2]  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
-| [v1.1]  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
-| [v1.0]  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| Release branch |             Minimum Slurm (Data Parser)             |
+| :------------- | :-------------------------------------------------: |
+| `release-1.3`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `release-1.2`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `release-1.1`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `release-1.0`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
 
 Please refer to the following lifecycle documents for support guidance:
 
@@ -352,7 +353,4 @@ specific language governing permissions and limitations under the License.
 [slurm-priority]: https://slurm.schedmd.com/priority_multifactor.html
 [slurm-qos]: https://slurm.schedmd.com/qos.html
 [slurm-reservations]: https://slurm.schedmd.com/reservations.html
-[v1.0]: https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.0.0
-[v1.1]: https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.1.0
-[v1.2]: https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.2.0
 [versioning]: ./docs/versioning.md
