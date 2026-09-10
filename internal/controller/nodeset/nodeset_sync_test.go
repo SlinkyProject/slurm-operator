@@ -552,6 +552,54 @@ func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
 			}
 		})
 	}
+
+	// Regression: when a NodeSet is scaling up (too few pods for the desired replica
+	// count), syncNodeSet used to pass the existing pods as podsToKeep to doPodScale,
+	// causing doPodScale to uncordon pods that syncRollingUpdate had already condemned
+	// and drained. Scale-up must not touch the cordon state of existing pods.
+	t.Run("Scale-up does not uncordon pod condemned by rolling update", func(t *testing.T) {
+		controller := &slinkyv1beta1.Controller{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: corev1.NamespaceDefault,
+				Name:      "slurm",
+			},
+		}
+		ns := newNodeSet("foo", controller.Name, 2)
+		const oldHash = "old-hash"
+		pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 0, oldHash)
+		makePodHealthy(pod0)
+		if pod0.Annotations == nil {
+			pod0.Annotations = make(map[string]string)
+		}
+		pod0.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+		slurmNodeName := nodesetutils.GetSlurmNodeName(pod0)
+		nodeList := &slurmtypes.V0044NodeList{
+			Items: []slurmtypes.V0044Node{
+				{
+					V0044Node: slurmapi.V0044Node{
+						Name:   ptr.To(slurmNodeName),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
+					},
+				},
+			},
+		}
+		sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+		kubeClient := fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy())
+		r := newNodeSetController(kubeClient, newClientMap(controller.Name, sclient))
+
+		if err := r.syncNodeSet(context.TODO(), ns.DeepCopy(), []*corev1.Pod{pod0.DeepCopy()}, oldHash); err != nil {
+			t.Fatalf("NodeSetReconciler.syncNodeSet() error = %v", err)
+		}
+
+		gotPod := &corev1.Pod{}
+		if err := kubeClient.Get(context.TODO(), client.ObjectKeyFromObject(pod0), gotPod); err != nil {
+			t.Fatalf("get pod0: %v", err)
+		}
+		if !podutils.IsPodCordon(gotPod) {
+			t.Errorf("pod %s should remain cordoned after scale-up", gotPod.Name)
+		}
+	})
 }
 
 func TestNodeSetReconciler_syncTaint(t *testing.T) {

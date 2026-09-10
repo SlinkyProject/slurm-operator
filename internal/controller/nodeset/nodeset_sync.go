@@ -817,7 +817,9 @@ func (r *NodeSetReconciler) syncNodeSet(
 			podsToCreate[i] = pod
 		}
 		if len(podsToDelete) > 0 || len(podsToCreate) > 0 {
-			return r.doPodScale(ctx, nodeset, podsNewScaling, podsToDelete, podsToCreate)
+			// Don't uncordon existing pods during scale; syncRollingUpdate may be
+			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, podsToDelete, podsToCreate)
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods for replica scaling")
@@ -847,7 +849,9 @@ func (r *NodeSetReconciler) syncNodeSet(
 				podsToCreate[i] = pod
 			}
 			logger.V(2).Info("Too few NodeSet pods", "need", replicaCount, "creating", diff)
-			return r.doPodScale(ctx, nodeset, podsNewScaling, nil, podsToCreate)
+			// Don't uncordon existing pods during scale-up; syncRollingUpdate may be
+			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
 		}
 		if diff > 0 {
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
