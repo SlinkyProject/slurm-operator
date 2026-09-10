@@ -289,7 +289,7 @@ func TestSortingActivePods(t *testing.T) {
 			numPods := len(test.pods)
 
 			for range 20 {
-				idx := rand.Perm(numPods)
+				idx := rand.Perm(numPods) //nolint:gosec // test-only shuffle, not security-sensitive
 				randomizedPods := make([]*corev1.Pod, numPods)
 				for j := range numPods {
 					randomizedPods[j] = &test.pods[idx[j]]
