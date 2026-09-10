@@ -174,19 +174,15 @@ Kubernetes 1.35. That set is recorded for the release branch. Support for newer
 Kubernetes minors may be backported in a patch release after end-to-end
 validation; these backports are optional.
 
-| Release branch           | Kubernetes 1.35 | Kubernetes 1.36 | Kubernetes 1.37 |
-| :----------------------- | :-------------: | :-------------: | :-------------: |
-| `main` (1.3 development) |        ✓        |        ✓        |        ✓        |
-| `release-1.2`            |        ✓        |        ✓        |        ✓        |
-| `release-1.1`            |        ✓        |        ✓        |        —        |
-| `release-1.0`            |        ✓        |        ✓        |        —        |
+| Release branch | Kubernetes 1.35 | Kubernetes 1.36 | Kubernetes 1.37 |
+| :------------- | :-------------: | :-------------: | :-------------: |
+| `release-1.3`  |        ✓        |        ✓        |        ✓        |
+| `release-1.2`  |        ✓        |        ✓        |        ✓        |
+| `release-1.1`  |        ✓        |        ✓        |        —        |
+| `release-1.0`  |        ✓        |        ✓        |        —        |
 
-The grid applies to the latest patch release of each branch: ✓ means supported;
-— means unsupported. When a patch adds Kubernetes support, the entry records the
-first supporting patch version (for example, `✓ since 1.3.1`). The `main` row is
-provisional until the minor release.
-
-A successful Helm installation does not imply support beyond this grid.
+✓ means supported; — means unsupported. Use the latest patch release of each
+branch. Backported support is marked with the first supporting patch version.
 
 | Release |             Minimum Slurm (Data Parser)             |
 | :-----: | :-------------------------------------------------: |
