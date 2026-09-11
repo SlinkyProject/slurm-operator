@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -20,6 +21,8 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
@@ -133,6 +136,12 @@ type SyncFinalizer struct {
 func (r *NodeSetReconciler) syncFinalizers(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 	syncSteps := []SyncFinalizer{
 		{
+			Name: "SlurmNodeName",
+			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmNodeNameFinalizer(ctx, nodeset)
+			},
+		},
+		{
 			Name: "Reservation",
 			Sync: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncReservationFinalizer(ctx, nodeset)
@@ -148,6 +157,60 @@ func (r *NodeSetReconciler) syncFinalizers(ctx context.Context, nodeset *slinkyv
 		}
 	}
 
+	return nil
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeNameFinalizer(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+	if nodeset.UID == "" {
+		return nil
+	}
+	shouldFinalize := shouldManageSlurmNodeNames(nodeset) && nodeset.DeletionTimestamp.IsZero()
+	if shouldFinalize {
+		return r.addSlurmNodeNameFinalizerIfNeeded(ctx, nodeset)
+	}
+
+	if err := r.removeAllSlurmNodeNameMappings(ctx, nodeset); err != nil {
+		return err
+	}
+	return r.removeSlurmNodeNameFinalizerIfNeeded(ctx, nodeset)
+}
+
+func (r *NodeSetReconciler) addSlurmNodeNameFinalizerIfNeeded(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+	if controllerutil.ContainsFinalizer(nodeset, slinkyv1beta1.FinalizerNodeSetSlurmNodeName) {
+		return nil
+	}
+
+	finalizersToAdd := slices.Concat(nodeset.Finalizers, []string{slinkyv1beta1.FinalizerNodeSetSlurmNodeName})
+	return r.updateNodeSetFinalizers(ctx, nodeset, finalizersToAdd)
+}
+
+func (r *NodeSetReconciler) removeSlurmNodeNameFinalizerIfNeeded(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+	if !controllerutil.ContainsFinalizer(nodeset, slinkyv1beta1.FinalizerNodeSetSlurmNodeName) {
+		return nil
+	}
+
+	currentFinalizers := set.New(nodeset.Finalizers...)
+	finalizersToRemove := set.New(slinkyv1beta1.FinalizerNodeSetSlurmNodeName)
+	finalizersToKeep := currentFinalizers.Difference(finalizersToRemove).SortedList()
+	return r.updateNodeSetFinalizers(ctx, nodeset, finalizersToKeep)
+}
+
+func (r *NodeSetReconciler) removeAllSlurmNodeNameMappings(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+	if nodeset.UID == "" {
+		return nil
+	}
+	nodeList := &corev1.NodeList{}
+	if err := r.List(ctx, nodeList); err != nil {
+		return err
+	}
+	for _, node := range nodeList.Items {
+		if node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID] != string(nodeset.UID) {
+			continue
+		}
+		if err := r.removeSlurmNodeNameMapping(ctx, nodeset, node.Name); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -406,6 +469,12 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
+			Name: "SlurmNodeNameMappings",
+			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+				return r.syncSlurmNodeNameMappings(ctx, nodeset, pods)
+			},
+		},
+		{
 			Name: "SlurmNodeRecords",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmNodeRecords(ctx, nodeset)
@@ -437,6 +506,246 @@ func (r *NodeSetReconciler) sync(
 		},
 	}
 	return syncsteps.Sync(ctx, r.eventRecorder, nodeset, steps)
+}
+
+type slurmNodeNameMapping struct {
+	nodeName      string
+	slurmNodeName string
+}
+
+func shouldManageSlurmNodeNames(nodeset *slinkyv1beta1.NodeSet) bool {
+	return ptr.Deref(nodeset.Spec.PublishSlurmNodeName, defaults.DefaultNodeSetPublishSlurmNodeName) &&
+		nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset &&
+		nodeset.Spec.PinToNode &&
+		!nodeset.Spec.OversubscribeNode
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeNameMappings(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	if !shouldManageSlurmNodeNames(nodeset) || !nodeset.DeletionTimestamp.IsZero() {
+		return nil
+	}
+	ordinalToNode, err := r.calculateOrdinalToNode(ctx, nodeset, pods)
+	if err != nil {
+		return err
+	}
+	return r.syncSlurmNodeNameLabels(ctx, nodeset, pods, ordinalToNode)
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeNameLabels(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+	ordinalToNode map[string]string,
+) error {
+	if nodeset.UID == "" || !nodeset.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	nodeList := &corev1.NodeList{}
+	if err := r.List(ctx, nodeList); err != nil {
+		return err
+	}
+
+	desired, retained, err := desiredSlurmNodeNameMappings(nodeset, pods, ordinalToNode)
+	if err != nil {
+		return err
+	}
+
+	staleOwnedNodes := set.New[string]()
+	for _, node := range nodeList.Items {
+		if node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID] != string(nodeset.UID) {
+			continue
+		}
+		if _, ok := desired[node.Name]; ok || retained.Has(node.Name) {
+			continue
+		}
+		staleOwnedNodes.Insert(node.Name)
+	}
+	if err := validateSlurmNodeNameMappings(nodeset, nodeList.Items, desired, staleOwnedNodes); err != nil {
+		return err
+	}
+	for _, nodeName := range staleOwnedNodes.SortedList() {
+		if err := r.removeSlurmNodeNameMapping(ctx, nodeset, nodeName); err != nil {
+			return err
+		}
+	}
+
+	desiredNodeNames := make([]string, 0, len(desired))
+	for nodeName := range desired {
+		desiredNodeNames = append(desiredNodeNames, nodeName)
+	}
+	slices.Sort(desiredNodeNames)
+	for _, nodeName := range desiredNodeNames {
+		if err := r.applySlurmNodeNameMapping(ctx, nodeset, desired[nodeName]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func desiredSlurmNodeNameMappings(
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+	ordinalToNode map[string]string,
+) (map[string]slurmNodeNameMapping, set.Set[string], error) {
+	desired := make(map[string]slurmNodeNameMapping)
+	retained := set.New[string]()
+	if !shouldManageSlurmNodeNames(nodeset) {
+		return desired, retained, nil
+	}
+
+	replicas := int(ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas))
+	for ordinalValue, nodeName := range ordinalToNode {
+		ordinal, err := strconv.Atoi(ordinalValue)
+		if err == nil && ordinal >= 0 && ordinal < replicas {
+			retained.Insert(nodeName)
+		}
+	}
+
+	for _, pod := range pods {
+		ordinal := nodesetutils.GetOrdinal(pod)
+		if ordinal < 0 {
+			continue
+		}
+		nodeName, ok := ordinalToNode[strconv.Itoa(ordinal)]
+		if !ok || nodeName == "" || nodeName != pod.Spec.NodeName {
+			continue
+		}
+		retained.Insert(nodeName)
+		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) {
+			continue
+		}
+
+		slurmNodeName := nodesetutils.GetSlurmNodeName(pod)
+		if problems := utilvalidation.IsValidLabelValue(slurmNodeName); len(problems) > 0 {
+			return nil, nil, fmt.Errorf("slurm node name %q cannot be represented as a Kubernetes label value: %v", slurmNodeName, problems)
+		}
+		if current, ok := desired[nodeName]; ok && current.slurmNodeName != slurmNodeName {
+			return nil, nil, fmt.Errorf("kubernetes Node %q is assigned to multiple Slurm nodes %q and %q", nodeName, current.slurmNodeName, slurmNodeName)
+		}
+		for mappedNode, current := range desired {
+			if mappedNode != nodeName && current.slurmNodeName == slurmNodeName {
+				return nil, nil, fmt.Errorf("slurm node name %q is assigned to multiple Kubernetes Nodes %q and %q", slurmNodeName, mappedNode, nodeName)
+			}
+		}
+		desired[nodeName] = slurmNodeNameMapping{
+			nodeName:      nodeName,
+			slurmNodeName: slurmNodeName,
+		}
+	}
+
+	return desired, retained, nil
+}
+
+func validateSlurmNodeNameMappings(
+	nodeset *slinkyv1beta1.NodeSet,
+	nodes []corev1.Node,
+	desired map[string]slurmNodeNameMapping,
+	staleOwnedNodes set.Set[string],
+) error {
+	for nodeName, mapping := range desired {
+		for _, node := range nodes {
+			mappedName := node.Labels[slinkyv1beta1.LabelSlurmNodeName]
+			if staleOwnedNodes.Has(node.Name) {
+				// This owned label will be removed before the desired mappings are
+				// applied, exposing the Kubernetes Node name as the effective mapping.
+				mappedName = ""
+			}
+			effectiveName := mappedName
+			if effectiveName == "" {
+				effectiveName = node.Name
+			}
+			if node.Name != nodeName && effectiveName == mapping.slurmNodeName {
+				return fmt.Errorf("slurm node name %q is already mapped by Kubernetes Node %q", mapping.slurmNodeName, node.Name)
+			}
+			if node.Name != nodeName {
+				continue
+			}
+
+			ownerUID := node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID]
+			switch {
+			case ownerUID != "" && ownerUID != string(nodeset.UID):
+				return fmt.Errorf("kubernetes Node %q Slurm node name mapping is owned by NodeSet UID %q", node.Name, ownerUID)
+			case ownerUID == "" && mappedName != "" && mappedName != mapping.slurmNodeName:
+				return fmt.Errorf("kubernetes Node %q has externally managed Slurm node name %q", node.Name, mappedName)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *NodeSetReconciler) applySlurmNodeNameMapping(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	mapping slurmNodeNameMapping,
+) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node := &corev1.Node{}
+		if err := r.Get(ctx, types.NamespacedName{Name: mapping.nodeName}, node); err != nil {
+			return err
+		}
+		ownerUID := node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID]
+		mappedName := node.Labels[slinkyv1beta1.LabelSlurmNodeName]
+		if ownerUID != "" && ownerUID != string(nodeset.UID) {
+			return fmt.Errorf("kubernetes Node %q Slurm node name mapping is owned by NodeSet UID %q", node.Name, ownerUID)
+		}
+		if ownerUID == "" && mappedName != "" {
+			if mappedName == mapping.slurmNodeName {
+				return nil
+			}
+			return fmt.Errorf("kubernetes Node %q has externally managed Slurm node name %q", node.Name, mappedName)
+		}
+
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+		if node.Annotations == nil {
+			node.Annotations = make(map[string]string)
+		}
+		owner := nodeset.Namespace + "/" + nodeset.Name
+		if mappedName == mapping.slurmNodeName &&
+			node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwner] == owner &&
+			node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID] == string(nodeset.UID) {
+			return nil
+		}
+
+		baseline := node.DeepCopy()
+		node.Labels[slinkyv1beta1.LabelSlurmNodeName] = mapping.slurmNodeName
+		node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwner] = owner
+		node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID] = string(nodeset.UID)
+		return r.Patch(ctx, node, client.MergeFromWithOptions(baseline, client.MergeFromWithOptimisticLock{}))
+	})
+}
+
+func (r *NodeSetReconciler) removeSlurmNodeNameMapping(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	nodeName string,
+) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		node := &corev1.Node{}
+		if err := r.Get(ctx, types.NamespacedName{Name: nodeName}, node); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		if node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID] != string(nodeset.UID) {
+			return nil
+		}
+
+		baseline := node.DeepCopy()
+		delete(node.Labels, slinkyv1beta1.LabelSlurmNodeName)
+		delete(node.Annotations, slinkyv1beta1.AnnotationNodeSlurmNameOwner)
+		delete(node.Annotations, slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID)
+		return r.Patch(ctx, node, client.MergeFromWithOptions(baseline, client.MergeFromWithOptimisticLock{}))
+	})
 }
 
 // syncClusterWorkerService manages the cluster worker hostname service for the Slurm cluster.
