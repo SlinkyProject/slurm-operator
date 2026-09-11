@@ -230,38 +230,38 @@ Compatibility Matrix
 Each minor release supports all Kubernetes minor versions that are
 `supported upstream <https://kubernetes.io/releases/#release-history>`__
 when it is released, starting with Kubernetes 1.35. That set is recorded
-for the release branch. Support for newer Kubernetes minors may be
+for each minor release. Support for newer Kubernetes minors may be
 backported in a patch release after end-to-end validation; these
 backports are optional.
 
-=============== =============== =============== ===============
-Release branch  Kubernetes 1.35 Kubernetes 1.36 Kubernetes 1.37
-=============== =============== =============== ===============
-``release-1.3`` ✓               ✓               ✓
-``release-1.2`` ✓               ✓               ✓
-``release-1.1`` ✓               ✓               —
-``release-1.0`` ✓               ✓               —
-=============== =============== =============== ===============
+========= =============== =============== ===============
+Release   Kubernetes 1.35 Kubernetes 1.36 Kubernetes 1.37
+========= =============== =============== ===============
+``1.3.X`` ✓               ✓               ✓
+``1.2.X`` ✓               ✓               ✓
+``1.1.X`` ✓               ✓               —
+``1.0.X`` ✓               ✓               —
+========= =============== =============== ===============
 
-✓ means supported; — means unsupported. Use the latest patch release of
-each branch. Backported support is marked with the first supporting
-patch version.
+✓ means supported; — means unsupported. ``X`` denotes the patch version.
+Use the latest patch release in each minor release series. Backported
+support is marked with the first supporting patch version.
 
-+-----------------+-----------------------------------------------------------------------------------+
-| Release branch  | Minimum Slurm (Data Parser)                                                       |
-+=================+===================================================================================+
-| ``release-1.3`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+-----------------+-----------------------------------------------------------------------------------+
-| ``release-1.2`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+-----------------+-----------------------------------------------------------------------------------+
-| ``release-1.1`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+-----------------+-----------------------------------------------------------------------------------+
-| ``release-1.0`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                 | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+-----------------+-----------------------------------------------------------------------------------+
++-----------+-----------------------------------------------------------------------------------+
+| Release   | Minimum Slurm (Data Parser)                                                       |
++===========+===================================================================================+
+| ``1.3.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.2.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.1.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.0.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
 
 Please refer to the following lifecycle documents for support guidance:
 

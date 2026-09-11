@@ -170,26 +170,27 @@ Slurm is a full featured HPC workload manager. To highlight a few features:
 
 Each minor release supports all Kubernetes minor versions that are
 [supported upstream][k8s-lifecycle] when it is released, starting with
-Kubernetes 1.35. That set is recorded for the release branch. Support for newer
+Kubernetes 1.35. That set is recorded for each minor release. Support for newer
 Kubernetes minors may be backported in a patch release after end-to-end
 validation; these backports are optional.
 
-| Release branch | Kubernetes 1.35 | Kubernetes 1.36 | Kubernetes 1.37 |
-| :------------- | :-------------: | :-------------: | :-------------: |
-| `release-1.3`  |        ✓        |        ✓        |        ✓        |
-| `release-1.2`  |        ✓        |        ✓        |        ✓        |
-| `release-1.1`  |        ✓        |        ✓        |        —        |
-| `release-1.0`  |        ✓        |        ✓        |        —        |
+| Release | Kubernetes 1.35 | Kubernetes 1.36 | Kubernetes 1.37 |
+| :------ | :-------------: | :-------------: | :-------------: |
+| `1.3.X` |        ✓        |        ✓        |        ✓        |
+| `1.2.X` |        ✓        |        ✓        |        ✓        |
+| `1.1.X` |        ✓        |        ✓        |        —        |
+| `1.0.X` |        ✓        |        ✓        |        —        |
 
-✓ means supported; — means unsupported. Use the latest patch release of each
-branch. Backported support is marked with the first supporting patch version.
+✓ means supported; — means unsupported. `X` denotes the patch version. Use the
+latest patch release in each minor release series. Backported support is marked
+with the first supporting patch version.
 
-| Release branch |             Minimum Slurm (Data Parser)             |
-| :------------- | :-------------------------------------------------: |
-| `release-1.3`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
-| `release-1.2`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
-| `release-1.1`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
-| `release-1.0`  | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| Release |             Minimum Slurm (Data Parser)             |
+| :------ | :-------------------------------------------------: |
+| `1.3.X` | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `1.2.X` | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `1.1.X` | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
+| `1.0.X` | [25.11][slurm-25.11] ([v0.0.44][slurm-data_parser]) |
 
 Please refer to the following lifecycle documents for support guidance:
 
