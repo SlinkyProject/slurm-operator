@@ -827,10 +827,11 @@ func (r *NodeSetReconciler) syncNodeSet(
 		// Handle replica scaling by comparing the known pods to the target number of replicas.
 		// Create or delete pods as needed to reach the target number.
 		replicaCount := int(ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas))
-		diff := len(podsNewScaling) - replicaCount
-		if diff < 0 {
-			diff = -diff
-
+		// ReplicaSet: terminating/failed/succeeded pods are not active and do not count
+		// toward surplus. StatefulSet: they still occupy their ordinal, so scale-up
+		// uses the full list (usedOrdinals below) rather than len(activePods).
+		activePods := kubecontroller.FilterActivePods(klog.FromContext(ctx), podsNewScaling)
+		if diff := replicaCount - len(podsNewScaling); diff > 0 {
 			podsToCreate := make([]*corev1.Pod, diff)
 			usedOrdinals := set.New[int]()
 			for _, pod := range pods {
@@ -853,10 +854,14 @@ func (r *NodeSetReconciler) syncNodeSet(
 			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
 		}
-		if diff > 0 {
+		if diff := len(activePods) - replicaCount; diff > 0 {
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
-			podsToDelete, podsToKeep := nodesetutils.SplitActivePods(podsNewScaling, diff)
-			return r.doPodScale(ctx, nodeset, podsToKeep, podsToDelete, nil)
+			podsToDelete, _ := nodesetutils.SplitActivePods(activePods, diff)
+			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
+			// cordoned pods for deletion, but if more pods are already cordoned/draining
+			// than diff can delete this reconcile, the overflow lands in the keep set;
+			// doPodProcessing will uncordon survivors once counts stabilize.
+			return r.doPodScale(ctx, nodeset, nil, podsToDelete, nil)
 		}
 	}
 
