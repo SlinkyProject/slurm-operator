@@ -42,7 +42,14 @@ spec:
   {{- end }}{{- /* with $nodeset.partition */}}
   {{- with $nodeset.ssh }}
   {{- if .enabled }}
-  {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
+  {{- $sssdRef := ($nodeset.sssd | default dict).secretRef | default dict }}
+  {{- if and $sssdRef.key (not $sssdRef.name) }}
+    {{- fail (printf "nodeset `%s` sets sssd.secretRef.key without sssd.secretRef.name." $key) }}
+  {{- end }}
+  {{- if not $sssdRef.name }}
+    {{- $sssdRef = dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $) }}
+  {{- end }}
+  {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" $sssdRef.name "key" ($sssdRef.key | default "sssd.conf")) }}
   ssh:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* if .enabled */}}
