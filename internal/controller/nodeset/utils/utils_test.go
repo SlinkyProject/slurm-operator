@@ -433,6 +433,139 @@ func TestGetSlurmNodeName(t *testing.T) {
 	}
 }
 
+func TestStatefulSetHostnameOverride(t *testing.T) {
+	for _, test := range []struct {
+		name                                                     string
+		disabled                                                 bool
+		noPin, missingNode, mismatch, hostNetwork, oversubscribe bool
+		wantOverride                                             bool
+	}{
+		{name: "preference enabled", wantOverride: true},
+		{name: "default preserves pod hostname", disabled: true},
+		{name: "no pin", noPin: true},
+		{name: "deleted node", missingNode: true},
+		{name: "node no longer matches", mismatch: true},
+		{name: "host networking", hostNetwork: true, wantOverride: true},
+		{name: "oversubscription", oversubscribe: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			nodeset := newNodeSet("workers")
+			nodeset.Spec.PreferKubernetesNodeName = !test.disabled
+			nodeset.Spec.PinToNode = !test.noPin
+			nodeset.Spec.OversubscribeNode = test.oversubscribe
+			nodeset.Spec.Template.PodSpecWrapper.HostNetwork = test.hostNetwork
+			nodeset.Spec.Template.PodSpecWrapper.Hostname = "compute-"
+			nodeset.Status.OrdinalToNode = map[string]string{"3": "worker-a"}
+			if test.mismatch {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"pool": "other"}
+			}
+			kclient := fake.NewFakeClient()
+			if !test.missingNode {
+				require.NoError(t, kclient.Create(context.Background(), &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+					Name: "worker-a", Annotations: map[string]string{slinkyv1beta1.AnnotationNodeHostnameOverride: "gpu-01"},
+				}}))
+			}
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+			pod := NewNodeSetStatefulSetPod(kclient, nodeset, controller, 3, "")
+			want := "compute-3"
+			if test.wantOverride {
+				want = "gpu-01"
+				require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+				require.Equal(t, want, GetSlurmNodeName(pod))
+			}
+			require.Equal(t, want, pod.Spec.Hostname)
+			require.Equal(t, "workers-3", pod.Name)
+			require.Empty(t, pod.Spec.NodeName)
+			require.Equal(t, "datadir-workers-3", GetPersistentVolumeClaims(nodeset, pod)["datadir"].Name)
+			require.Equal(t, pod.Spec, NewNodeSetStatefulSetPod(kclient, nodeset, controller, 3, "").Spec)
+		})
+	}
+}
+
+func TestStatefulSetNodeNamingMatchesDaemonSet(t *testing.T) {
+	for _, override := range []string{"", "gpu-01"} {
+		t.Run(override, func(t *testing.T) {
+			node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a.example.com", Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeHostnameOverride: override,
+			}}}
+			kclient := fake.NewFakeClient(node)
+			nodeset := newNodeSet("workers")
+			nodeset.Spec.PinToNode = true
+			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Status.OrdinalToNode = map[string]string{"0": node.Name}
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+			statefulPod := NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, "")
+			nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+			daemonPod := NewNodeSetDaemonSetPod(kclient, nodeset, controller, node.Name, override, "")
+			want := "worker-a"
+			if override != "" {
+				want = override
+			}
+			require.Equal(t, want, GetSlurmNodeName(statefulPod))
+			require.Equal(t, GetSlurmNodeName(daemonPod), GetSlurmNodeName(statefulPod))
+			require.Equal(t, daemonPod.Spec.Hostname, statefulPod.Spec.Hostname)
+		})
+	}
+}
+
+func TestSlurmNodeNameModeIdentityPreserved(t *testing.T) {
+	nodeset := &slinkyv1beta1.NodeSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "workers", Namespace: "slurm"},
+		Spec: slinkyv1beta1.NodeSetSpec{
+			ScalingMode:              slinkyv1beta1.ScalingModeStatefulset,
+			PreferKubernetesNodeName: true,
+			PinToNode:                true,
+		},
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "workers-0", Namespace: "slurm", Labels: map[string]string{
+			slinkyv1beta1.LabelNodeSetPodName:           "workers-0",
+			slinkyv1beta1.LabelNodeSetSlurmNodeNameMode: string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode),
+			slinkyv1beta1.LabelNodeSetPodHostname:       "gpu-01",
+		}},
+		Spec: corev1.PodSpec{NodeName: "kube-node"},
+	}
+	require.True(t, IsIdentityMatch(nodeset, pod))
+	UpdateIdentity(nodeset, pod)
+	require.True(t, IsIdentityMatch(nodeset, pod))
+	require.Equal(t, "gpu-01", GetSlurmNodeName(pod))
+	nodeset.Spec.PinToNode = false
+	UpdateIdentity(nodeset, pod)
+	require.True(t, IsIdentityMatch(nodeset, pod))
+	require.Equal(t, "gpu-01", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+}
+
+func TestSlurmNodeNameModeIdentity(t *testing.T) {
+	for name, prefer := range map[string]bool{"disabled": false, "enabled": true} {
+		t.Run(name, func(t *testing.T) {
+			nodeset := newNodeSet("workers")
+			nodeset.Spec.PreferKubernetesNodeName = prefer
+			nodeset.Spec.PinToNode = true
+			nodeset.Spec.Template.Metadata.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "inherited-name"
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+			pod := NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 3, "")
+			if prefer {
+				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
+				require.Empty(t, GetSlurmNodeName(pod))
+			} else {
+				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModePodHostname), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
+			}
+			pod.Spec.NodeName = "worker-a.example.com"
+			want := "workers-3"
+			if prefer {
+				require.Empty(t, GetSlurmNodeName(pod))
+				want = "worker-a"
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = want
+			}
+			require.Equal(t, want, GetSlurmNodeName(pod))
+			require.Equal(t, "workers-3", pod.Name)
+			UpdateIdentity(nodeset, pod)
+			require.Equal(t, want, GetSlurmNodeName(pod))
+			require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+		})
+	}
+}
+
 func TestIsIdentityMatch(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{

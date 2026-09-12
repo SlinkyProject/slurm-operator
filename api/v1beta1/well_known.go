@@ -49,9 +49,8 @@ const (
 	// Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_Features
 	AnnotationNodeFeaturesSpec = FeaturesPrefix + "spec"
 
-	// AnnotationNodeHostnameOverride may be set to override the pod hostname assigned to NodeSet DaemonSet-mode
-	// pod scheduled on the node. When present, the value is used verbatim as the pod's spec.hostname
-	// (and therefore the Slurm node name) instead of the default derived from the node name.
+	// AnnotationNodeHostnameOverride overrides DaemonSet hostnames and StatefulSet Slurm names
+	// when the effective naming mode is KubernetesNode.
 	AnnotationNodeHostnameOverride = NodeSetPrefix + "hostname-override"
 )
 
@@ -92,6 +91,8 @@ const (
 	// LabelNodeSetScalingMode indicates the scaling mode (DaemonSet or StatefulSet).
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetScalingMode = NodeSetPrefix + "scaling-mode"
+
+	LabelNodeSetSlurmNodeNameMode = NodeSetPrefix + "slurm-node-name-mode"
 )
 
 // Well Known Finalizers

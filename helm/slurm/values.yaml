@@ -723,6 +723,8 @@ nodesetDefaults:
   enabled: true
   # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
   scalingMode: StatefulSet
+  # -- Prefer Node-derived Slurm names for pinned, non-oversubscribed StatefulSets; otherwise use Pod hostnames. Immutable preference, defaults to false. DaemonSet naming is unchanged.
+  preferKubernetesNodeName: false
   # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
   replicas: 1
   # -- Pin pods to their initially assigned Kubernetes nodes.

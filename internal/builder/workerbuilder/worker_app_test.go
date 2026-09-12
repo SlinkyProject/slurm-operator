@@ -22,6 +22,61 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
+func TestPreferKubernetesNodeNameContainer(t *testing.T) {
+	const hostnameFieldPath = "metadata.labels['" + slinkyv1beta1.LabelNodeSetPodHostname + "']"
+	for _, test := range []struct {
+		name                                                              string
+		prefer, pinned, oversubscribed, hostNetwork, daemon, wantNodeArgs bool
+		wantFieldPath                                                     string
+	}{
+		{name: "default pod naming", wantFieldPath: hostnameFieldPath},
+		{name: "default pinned preserves pod naming", pinned: true, wantFieldPath: hostnameFieldPath},
+		{name: "preferred unpinned", prefer: true, wantFieldPath: hostnameFieldPath},
+		{name: "preferred pinned", prefer: true, pinned: true, wantNodeArgs: true, wantFieldPath: hostnameFieldPath},
+		{name: "preferred oversubscribed", prefer: true, pinned: true, oversubscribed: true, wantFieldPath: hostnameFieldPath},
+		{name: "legacy host network", hostNetwork: true, wantFieldPath: "spec.nodeName"},
+		{name: "preferred unpinned host network", prefer: true, hostNetwork: true, wantFieldPath: "spec.nodeName"},
+		{name: "preferred oversubscribed host network", prefer: true, pinned: true, oversubscribed: true, hostNetwork: true, wantFieldPath: "spec.nodeName"},
+		{name: "preferred host network", prefer: true, pinned: true, hostNetwork: true, wantNodeArgs: true, wantFieldPath: hostnameFieldPath},
+		{name: "daemon default", daemon: true, wantFieldPath: hostnameFieldPath},
+		{name: "daemon preferred", prefer: true, daemon: true, wantFieldPath: hostnameFieldPath},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			nodeset := &slinkyv1beta1.NodeSet{Spec: slinkyv1beta1.NodeSetSpec{
+				PreferKubernetesNodeName: test.prefer,
+				PinToNode:                test.pinned,
+				OversubscribeNode:        test.oversubscribed,
+			}}
+			nodeset.Spec.Template.PodSpecWrapper.HostNetwork = test.hostNetwork
+			if test.daemon {
+				nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+			}
+			container := New(fake.NewFakeClient()).slurmdContainer(nodeset, &slinkyv1beta1.Controller{})
+			require.Empty(t, container.Command)
+			if test.wantNodeArgs {
+				require.GreaterOrEqual(t, len(container.Args), 3)
+				require.Equal(t, []string{"-Z", "-N", "$(SLURM_NODE_NAME)"}, container.Args[:3])
+			} else {
+				require.NotContains(t, container.Args, "-N")
+				require.NotContains(t, container.Args, "$(SLURM_NODE_NAME)")
+			}
+			require.Contains(t, container.Env, corev1.EnvVar{
+				Name: "SLURM_NODE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{FieldPath: test.wantFieldPath},
+				},
+			})
+			require.NotNil(t, container.Lifecycle)
+			require.NotNil(t, container.Lifecycle.PreStop)
+			require.NotNil(t, container.Lifecycle.PreStop.Exec)
+			require.Equal(t, []string{
+				"/usr/bin/sh", "-c",
+				`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`,
+			}, container.Lifecycle.PreStop.Exec.Command)
+		})
+	}
+}
+
 func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 	type fields struct {
 		client client.Client

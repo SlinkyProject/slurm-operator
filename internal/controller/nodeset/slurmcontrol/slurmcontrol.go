@@ -106,6 +106,28 @@ func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinky
 	return nil
 }
 
+func getSlurmNodeForPod(ctx context.Context, slurmClient slurmclient.Client, pod *corev1.Pod) (*slurmtypes.V0044Node, error) {
+	name := nodesetutils.GetSlurmNodeName(pod)
+	if name == "" {
+		return nil, slurmerrors.ErrNotFound
+	}
+	node := &slurmtypes.V0044Node{}
+	if err := slurmClient.Get(ctx, slurmobject.ObjectKey(name), node); err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+func slurmNodeNamesForPods(pods []*corev1.Pod) set.Set[string] {
+	names := set.New[string]()
+	for _, pod := range pods {
+		if name := nodesetutils.GetSlurmNodeName(pod); name != "" {
+			names.Insert(name)
+		}
+	}
+	return names
+}
+
 // UpdateNodeWithPodInfo implements SlurmControlInterface.
 func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
@@ -117,9 +139,8 @@ func (r *realSlurmControl) UpdateNodeWithPodInfo(ctx context.Context, nodeset *s
 		return ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return nil
 		}
@@ -179,9 +200,8 @@ func (r *realSlurmControl) UpdateNodeTopology(ctx context.Context, nodeset *slin
 		return ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return nil
 		}
@@ -220,9 +240,8 @@ func (r *realSlurmControl) UpdateNodeFeatures(ctx context.Context, nodeset *slin
 		return ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return nil
 		}
@@ -294,9 +313,8 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		return ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return nil
 		}
@@ -347,9 +365,8 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return nil
 		}
@@ -396,9 +413,8 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 		return true, ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return true, nil
 		}
@@ -420,9 +436,8 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 		return true, ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return true, nil
 		}
@@ -449,9 +464,8 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 		return true, ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return true, nil
 		}
@@ -478,9 +492,8 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 		return true, ErrNoSlurmClient
 	}
 
-	slurmNode := &slurmtypes.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+	if err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return true, nil
 		}
@@ -529,11 +542,15 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 	status := SlurmNodeStatus{
 		NodeStates: make(map[string][]corev1.PodCondition),
 	}
+	podNodeNameSet := slurmNodeNamesForPods(pods)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do CalculateNodeStatus()")
 		return status, ErrNoSlurmClient
+	}
+	if len(podNodeNameSet) == 0 {
+		return status, nil
 	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
@@ -542,12 +559,6 @@ func (r *realSlurmControl) CalculateNodeStatus(ctx context.Context, nodeset *sli
 			return status, nil
 		}
 		return status, err
-	}
-
-	podNodeNameSet := set.New[string]()
-	for _, pod := range pods {
-		podNodeName := nodesetutils.GetSlurmNodeName(pod)
-		podNodeNameSet.Insert(podNodeName)
 	}
 
 	for _, node := range nodeList.Items {
@@ -639,17 +650,15 @@ const infiniteDuration = time.Duration(math.MaxInt64)
 func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (*timestore.TimeStore, error) {
 	logger := log.FromContext(ctx)
 	ts := timestore.NewTimeStore(timestore.Greater)
+	slurmNodeNamesSet := slurmNodeNamesForPods(pods)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodeDeadlines()")
 		return ts, ErrNoSlurmClient
 	}
-
-	slurmNodeNamesSet := set.New[string]()
-	for _, pod := range pods {
-		slurmNodeName := nodesetutils.GetSlurmNodeName(pod)
-		slurmNodeNamesSet.Insert(slurmNodeName)
+	if len(slurmNodeNamesSet) == 0 {
+		return ts, nil
 	}
 
 	jobList := &slurmtypes.V0044JobInfoList{}
@@ -693,23 +702,20 @@ func (r *realSlurmControl) GetNodeDeadlines(ctx context.Context, nodeset *slinky
 // GetNodesForPods implements SlurmControlInterface.
 func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]string, error) {
 	logger := log.FromContext(ctx)
+	podNodeNameSet := slurmNodeNamesForPods(pods)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do GetNodesForPods()")
 		return nil, ErrNoSlurmClient
 	}
+	if len(podNodeNameSet) == 0 {
+		return []string{}, nil
+	}
 
 	nodeList := &slurmtypes.V0044NodeList{}
 	if err := slurmClient.List(ctx, nodeList); err != nil {
 		return nil, err
-	}
-
-	// Expected Slurm nodes backed by NodeSet pods
-	podNodeNameSet := set.New[string]()
-	for _, pod := range pods {
-		podNodeName := nodesetutils.GetSlurmNodeName(pod)
-		podNodeNameSet.Insert(podNodeName)
 	}
 
 	// Actual Slurm nodes given NodeSet pods
@@ -854,6 +860,9 @@ func (r *realSlurmControl) GetPodsUnderReservation(ctx context.Context, nodeset 
 		logger.V(2).Info("no client for nodeset, cannot do GetPodsUnderReservation()")
 		return nil, ErrNoSlurmClient
 	}
+	if len(slurmNodeNamesForPods(pods)) == 0 {
+		return nil, nil
+	}
 
 	reservation := new(slurmtypes.V0044ReservationInfo)
 	key := slurmobject.ObjectKey("SlurmOperatorMaint-" + nodeset.Name)
@@ -866,11 +875,11 @@ func (r *realSlurmControl) GetPodsUnderReservation(ctx context.Context, nodeset 
 
 	// For each pod, determine if the associated Slurm node is actively under the NodeSet's reservation
 	for _, pod := range pods {
-		nodename := nodesetutils.GetSlurmNodeName(pod)
-
-		slurmNode := new(slurmtypes.V0044Node)
-		key := slurmobject.ObjectKey(nodename)
-		if err := slurmClient.Get(ctx, key, slurmNode); err != nil && !errors.Is(err, slurmerrors.ErrNotFound) {
+		slurmNode, err := getSlurmNodeForPod(ctx, slurmClient, pod)
+		if errors.Is(err, slurmerrors.ErrNotFound) {
+			continue
+		}
+		if err != nil {
 			return nil, err
 		}
 		if slurmNode.State != nil && slurmNode.Reservation != nil {
@@ -919,6 +928,9 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 		logger.V(2).Info("no client for nodeset, cannot do SyncReservationForNodeSet()")
 		return ErrNoSlurmClient
 	}
+	if len(slurmNodeNamesForPods(pods)) == 0 {
+		return nil
+	}
 
 	name := "SlurmOperatorMaint-" + nodeset.Name
 
@@ -933,6 +945,9 @@ func (r *realSlurmControl) SyncReservationForNodeSet(ctx context.Context, nodese
 			return nil
 		}
 		return err
+	}
+	if len(slurmNodes) == 0 {
+		return nil
 	}
 	slurmNodeHostList, err := hostlist.Compress(slurmNodes)
 	if err != nil {

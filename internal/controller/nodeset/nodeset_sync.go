@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -20,6 +22,7 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
@@ -620,89 +623,105 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
 	mainLogger := log.FromContext(ctx)
-
-	switch nodeset.Spec.ScalingMode {
-	default:
-		fallthrough
-	case slinkyv1beta1.ScalingModeStatefulset:
-		return nil
-	case slinkyv1beta1.ScalingModeDaemonset:
-		defunctNodes, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
-		if err != nil {
-			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-				return nil
-			}
-			return err
-		}
-
-		syncSlurmNodeRecordsFn := func(i int) error {
-			defunctNode := defunctNodes[i]
-			podKey := types.NamespacedName{
-				Namespace: defunctNode.PodInfo.Namespace,
-				Name:      defunctNode.PodInfo.PodName,
-			}
-
-			// If the pod still exists it is not defunct -- skip.
-			pod := &corev1.Pod{}
-			if err := r.Get(ctx, podKey, pod); err == nil {
-				return nil
-			} else if !apierrors.IsNotFound(err) {
-				return err
-			}
-
-			logger := mainLogger.WithValues("slurmNode", defunctNode.Name, "pod", podKey)
-
-			if defunctNode.PodInfo.Node == "" {
-				logger.V(2).Info("Skipping defunct Slurm node deletion because PodInfo does not include a Kubernetes node")
-				return nil
-			}
-
-			kubeNodeKey := types.NamespacedName{Name: defunctNode.PodInfo.Node}
-			logger = logger.WithValues("kubeNode", kubeNodeKey.Name)
-			kubeNode := &corev1.Node{}
-			switch err := r.Get(ctx, kubeNodeKey, kubeNode); {
-			case apierrors.IsNotFound(err):
-				// K8s node is gone -- let it be deleted.
-			case err != nil:
-				return err
-			default:
-				override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
-				expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
-
-				// Kubernetes nodes that still exist but do not match the DaemonSet pod's NodeSelector
-				// should be deleted
-				selectorMatch := true
-				for key, value := range nodeset.Spec.Template.PodSpecWrapper.NodeSelector {
-					nodeValue, ok := kubeNode.Labels[key]
-					if !ok || nodeValue != value {
-						selectorMatch = false
-						break
-					}
-				}
-
-				if expected == defunctNode.Name && selectorMatch {
-					logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it")
-					return nil
-				}
-			}
-
-			// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
-			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node")
-			if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
-				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
-					defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
-			}
-			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
-				"Deleted defunct Slurm node %s: backing Pod %s/%s is gone and Kubernetes node %s no longer maps to its Slurm node",
-				defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name)
-			return nil
-		}
-		if _, err := utils.SlowStartBatch(len(defunctNodes), utils.SlowStartInitialBatchSize, syncSlurmNodeRecordsFn); err != nil {
-			return err
-		}
-
+	daemonSet := nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset
+	if !daemonSet && !nodeset.Spec.PreferKubernetesNodeName {
 		return nil
 	}
+
+	defunctNodes, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
+	if err != nil {
+		if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return nil
+		}
+		return err
+	}
+	getPins := sync.OnceValues(func() (map[string]string, error) {
+		return r.calculateOrdinalToNode(ctx, nodeset, nil)
+	})
+
+	syncSlurmNodeRecordsFn := func(index int) error {
+		defunctNode := defunctNodes[index]
+		podKey := types.NamespacedName{
+			Namespace: defunctNode.PodInfo.Namespace,
+			Name:      defunctNode.PodInfo.PodName,
+		}
+		kubeNodeKey := types.NamespacedName{Name: defunctNode.PodInfo.Node}
+		logger := mainLogger.WithValues("slurmNode", defunctNode.Name, "pod", podKey, "kubeNode", kubeNodeKey.Name)
+
+		pod := &corev1.Pod{}
+		switch err := r.Get(ctx, podKey, pod); {
+		case err == nil:
+			if daemonSet ||
+				!metav1.IsControlledBy(pod, nodeset) ||
+				!podutils.IsRunning(pod) ||
+				podutils.IsTerminating(pod) ||
+				nodesetutils.GetSlurmNodeName(pod) == defunctNode.Name {
+				return nil
+			}
+		case apierrors.IsNotFound(err):
+			if daemonSet {
+				if kubeNodeKey.Name == "" {
+					logger.V(2).Info("Skipping defunct Slurm node deletion because PodInfo does not include a Kubernetes node")
+					return nil
+				}
+
+				kubeNode := &corev1.Node{}
+				switch err := r.Get(ctx, kubeNodeKey, kubeNode); {
+				case apierrors.IsNotFound(err):
+					// K8s node is gone -- let it be deleted.
+				case err != nil:
+					return err
+				default:
+					override := kubeNode.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
+					expected := nodesetutils.GetDaemonSetPodHostname(kubeNodeKey.Name, override)
+
+					// Kubernetes nodes that still exist but do not match the DaemonSet pod's NodeSelector
+					// should be deleted
+					selectorMatch := true
+					for key, value := range nodeset.Spec.Template.PodSpecWrapper.NodeSelector {
+						nodeValue, ok := kubeNode.Labels[key]
+						if !ok || nodeValue != value {
+							selectorMatch = false
+							break
+						}
+					}
+
+					if expected == defunctNode.Name && selectorMatch {
+						logger.V(2).Info("Skipping defunct Slurm node deletion because the Kubernetes node still maps to it")
+						return nil
+					}
+				}
+			} else {
+				pins, err := getPins()
+				if err != nil {
+					return err
+				}
+				ordinal := nodesetutils.GetOrdinal(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podKey.Name}})
+				if nodeName := pins[strconv.Itoa(ordinal)]; nodeName != "" || nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
+					expectedPod := nodesetutils.NewNodeSetStatefulSetPod(r.Client, nodeset, &slinkyv1beta1.Controller{}, ordinal, "")
+					expectedPod.Spec.NodeName = nodeName
+					if nodesetutils.GetSlurmNodeName(expectedPod) == defunctNode.Name {
+						return nil
+					}
+				}
+			}
+		default:
+			return err
+		}
+
+		logger.V(1).Info("Deleting defunct Slurm node whose backing worker no longer maps to its identity")
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
+			return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
+				defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
+		}
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
+			"Deleted defunct Slurm node %s: its backing worker no longer maps to this identity", defunctNode.Name)
+		return nil
+	}
+	if _, err := utils.SlowStartBatch(len(defunctNodes), utils.SlowStartInitialBatchSize, syncSlurmNodeRecordsFn); err != nil {
+		return err
+	}
+	return nil
 }
 
 // syncSlurmNodes handles Slurm node drift where nodes may become unregistered but its pod is running and healthy.
@@ -1003,19 +1022,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				podsToDelete = append(podsToDelete, pod)
 
 			default:
-				hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
-				expectedHostname := nodesetutils.GetDaemonSetPodHostname(node.Name, hostnameOverride)
-				if pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] != expectedHostname {
-					mainLogger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
-						"pod", klog.KObj(pod), "node", klog.KObj(node),
-						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
-					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
-						"Recreating daemon pod %s/%s: hostname changed from %q to %q",
-						pod.Namespace, pod.Name, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], expectedHostname)
-					podsToDelete = append(podsToDelete, pod)
-				} else {
-					daemonPodsRunning = append(daemonPodsRunning, pod)
-				}
+				daemonPodsRunning = append(daemonPodsRunning, pod)
 			}
 		}
 
@@ -1039,6 +1046,71 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 	}
 
 	return nodesNeedingDaemonPods, podsToDelete
+}
+
+func (r *NodeSetReconciler) getHostnameMismatches(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]*corev1.Pod, error) {
+	var mismatches []*corev1.Pod
+	if nodeset.Spec.EffectiveSlurmNodeNameMode() != slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		return mismatches, nil
+	}
+	daemonSet := nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset
+	pins, err := r.calculateOrdinalToNode(ctx, nodeset, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range pods {
+		if podutils.IsTerminating(pod) {
+			continue
+		}
+		nodeName := pod.Spec.NodeName
+		if daemonSet {
+			if podutils.IsFailed(pod) || podutils.IsSucceeded(pod) {
+				continue
+			}
+			targetNodeName, err := daemonutils.GetTargetNodeName(pod)
+			if err != nil {
+				continue
+			}
+			nodeName = targetNodeName
+		} else {
+			if pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] != string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode) {
+				continue
+			}
+			ordinal := nodesetutils.GetOrdinal(pod)
+			if !podutils.IsRunning(pod) || nodeName == "" || pins[strconv.Itoa(ordinal)] != nodeName {
+				continue
+			}
+		}
+		node := &corev1.Node{}
+		if err := r.Get(ctx, client.ObjectKey{Name: nodeName}, node); err != nil {
+			if daemonSet && apierrors.IsNotFound(err) {
+				continue
+			}
+			return nil, err
+		}
+		if daemonSet {
+			if _, shouldContinueRunning := r.NodeShouldRunDaemonPod(ctx, node, nodeset); !shouldContinueRunning {
+				continue
+			}
+		}
+		expectedName := nodesetutils.GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
+		if !daemonSet {
+			if problems := utilvalidation.IsDNS1123Label(expectedName); len(problems) > 0 {
+				return nil, fmt.Errorf("invalid hostname override or node name on node %s: %v", nodeName, problems)
+			}
+		}
+		currentHostname := pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
+		if currentHostname != expectedName {
+			log.FromContext(ctx).V(2).Info("Pod hostname mismatch detected, will recreate",
+				"pod", klog.KObj(pod), "node", klog.KObj(node),
+				"currentHostname", currentHostname, "expectedHostname", expectedName)
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
+				"Recreating %s pod %s/%s: Slurm name changed from %q to %q",
+				nodeset.Spec.ScalingMode, pod.Namespace, pod.Name, currentHostname, expectedName)
+			mismatches = append(mismatches, pod)
+		}
+	}
+	return mismatches, nil
 }
 
 // syncNodeSetPods will reconcile NodeSet pod replica counts.
@@ -1066,6 +1138,11 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		}
 	}
 
+	mismatches, err := r.getHostnameMismatches(ctx, nodeset, podsNewScaling)
+	if err != nil {
+		return err
+	}
+
 	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
 		logger.V(2).Info("Processing NodeSet pods in DaemonSet mode")
 		nodeList := &corev1.NodeList{}
@@ -1073,8 +1150,11 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			return err
 		}
 		nodeToDaemonPods := r.getNodesToDaemonPods(ctx, nodeset, podsNewScaling, false)
+		for nodeName, daemonPods := range nodeToDaemonPods {
+			nodeToDaemonPods[nodeName] = nodesetutils.ExcludePods(daemonPods, mismatches)
+		}
 		var nodesNeedingDaemonPods []string
-		var podsToDelete []*corev1.Pod
+		podsToDelete := mismatches
 		for _, node := range nodeList.Items {
 			nodesNeedingDaemonPodsOnNode, podsToDeleteOnNode := r.podsShouldBeOnNode(
 				ctx, &node, nodeToDaemonPods, nodeset)
@@ -1105,6 +1185,9 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods in StatefulSet mode")
+		if len(mismatches) > 0 {
+			return r.doPodScale(ctx, nodeset, nil, mismatches, nil)
+		}
 
 		// Handle replica scaling by comparing the known pods to the target number of replicas.
 		// Create or delete pods as needed to reach the target number.

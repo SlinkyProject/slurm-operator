@@ -86,6 +86,152 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 	}
 }
 
+func TestUnresolvedPodSlurmIdentity(t *testing.T) {
+	ctx := context.Background()
+	nodeset := newNodeSet("workers", "slurm", 1)
+	nodeset.Spec.PinToNode = true
+	nodeset.Spec.PreferKubernetesNodeName = true
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, &slinkyv1beta1.Controller{}, 0, "")
+	require.Empty(t, pod.Spec.NodeName)
+	require.Empty(t, nodesetutils.GetSlurmNodeName(pod))
+
+	for _, test := range []struct {
+		name string
+		run  func(*testing.T, SlurmControlInterface)
+	}{
+		{name: "pod info", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.UpdateNodeWithPodInfo(ctx, nodeset, pod))
+		}},
+		{name: "topology", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.UpdateNodeTopology(ctx, nodeset, pod, "rack-a"))
+		}},
+		{name: "features", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.UpdateNodeFeatures(ctx, nodeset, pod, "node-", []string{"gpu"}))
+		}},
+		{name: "drain", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.MakeNodeDrain(ctx, nodeset, pod, "scale down", true))
+		}},
+		{name: "undrain", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.MakeNodeUndrain(ctx, nodeset, pod, ""))
+		}},
+		{name: "is drain", run: func(t *testing.T, control SlurmControlInterface) {
+			value, err := control.IsNodeDrain(ctx, nodeset, pod)
+			require.NoError(t, err)
+			require.True(t, value)
+		}},
+		{name: "is drained permits cancellation", run: func(t *testing.T, control SlurmControlInterface) {
+			value, err := control.IsNodeDrained(ctx, nodeset, pod)
+			require.NoError(t, err)
+			require.True(t, value)
+		}},
+		{name: "is unresponsive", run: func(t *testing.T, control SlurmControlInterface) {
+			value, err := control.IsNodeDownForUnresponsive(ctx, nodeset, pod)
+			require.NoError(t, err)
+			require.True(t, value)
+		}},
+		{name: "reason ownership", run: func(t *testing.T, control SlurmControlInterface) {
+			value, err := control.IsNodeReasonOurs(ctx, nodeset, pod)
+			require.NoError(t, err)
+			require.True(t, value)
+		}},
+		{name: "status", run: func(t *testing.T, control SlurmControlInterface) {
+			status, err := control.CalculateNodeStatus(ctx, nodeset, []*corev1.Pod{pod})
+			require.NoError(t, err)
+			require.Zero(t, status.Total)
+			require.Empty(t, status.NodeStates)
+		}},
+		{name: "deadlines", run: func(t *testing.T, control SlurmControlInterface) {
+			deadlines, err := control.GetNodeDeadlines(ctx, nodeset, []*corev1.Pod{pod})
+			require.NoError(t, err)
+			require.True(t, deadlines.Peek("").IsZero())
+		}},
+		{name: "registered nodes", run: func(t *testing.T, control SlurmControlInterface) {
+			names, err := control.GetNodesForPods(ctx, nodeset, []*corev1.Pod{pod})
+			require.NoError(t, err)
+			require.Empty(t, names)
+		}},
+		{name: "reservation membership", run: func(t *testing.T, control SlurmControlInterface) {
+			pods, err := control.GetPodsUnderReservation(ctx, nodeset, []*corev1.Pod{pod})
+			require.NoError(t, err)
+			require.Empty(t, pods)
+		}},
+		{name: "reservation creation", run: func(t *testing.T, control SlurmControlInterface) {
+			require.NoError(t, control.SyncReservationForNodeSet(ctx, nodeset, []*corev1.Pod{pod}))
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			lookups := 0
+			slurmClient := fake.NewClientBuilder().WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(context.Context, object.ObjectKey, object.Object, ...client.GetOption) error {
+					lookups++
+					return errors.New("unexpected lookup for unresolved Slurm identity")
+				},
+				List: func(context.Context, object.ObjectList, ...client.ListOption) error {
+					lookups++
+					return errors.New("unexpected list for unresolved Slurm identity")
+				},
+			}).Build()
+			control := NewSlurmControl(testutils.NewClientMap("slurm", nodeset.Namespace, slurmClient))
+			test.run(t, control)
+			require.Zero(t, lookups)
+		})
+	}
+}
+
+func TestSlurmOperationsWithPendingAndResolvedPods(t *testing.T) {
+	ctx := context.Background()
+	nodeset := newNodeSet("workers", "slurm", 3)
+	nodeset.UID = "workers-uid"
+	nodeset.Spec.PinToNode = true
+	nodeset.Spec.PreferKubernetesNodeName = true
+	pending := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, &slinkyv1beta1.Controller{}, 0, "")
+	registered := pending.DeepCopy()
+	registered.Name = "workers-1"
+	registered.Spec.NodeName = "worker-a"
+	registered.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "gpu-a"
+	unregistered := pending.DeepCopy()
+	unregistered.Name = "workers-2"
+	unregistered.Spec.NodeName = "worker-b"
+	unregistered.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "gpu-b"
+	pods := []*corev1.Pod{pending, registered, unregistered}
+	reservation := &types.V0044ReservationInfo{V0044ReservationInfo: api.V0044ReservationInfo{
+		Name: ptr.To("SlurmOperatorMaint-workers"), NodeList: ptr.To("gpu-a"),
+	}}
+	node := &types.V0044Node{V0044Node: api.V0044Node{
+		Name: ptr.To("gpu-a"), State: ptr.To([]api.V0044NodeState{api.V0044NodeStateIDLE, api.V0044NodeStateMAINTENANCE}),
+		Reservation: reservation.Name,
+	}}
+	baseClient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(node, reservation).Build()
+	slurmClient := interceptor.NewClient(baseClient, interceptor.Funcs{
+		Get: func(ctx context.Context, key object.ObjectKey, obj object.Object, opts ...client.GetOption) error {
+			require.NotEmpty(t, key, "pending workers must not generate empty Slurm lookup keys")
+			return baseClient.Get(ctx, key, obj, opts...)
+		},
+	})
+	control := NewSlurmControl(testutils.NewClientMap("slurm", nodeset.Namespace, slurmClient))
+
+	status, err := control.CalculateNodeStatus(ctx, nodeset, pods)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), status.Total)
+	require.Equal(t, int32(1), status.Idle)
+	require.Contains(t, status.NodeStates, "gpu-a")
+	require.NotContains(t, status.NodeStates, "")
+	names, err := control.GetNodesForPods(ctx, nodeset, pods)
+	require.NoError(t, err)
+	require.Equal(t, []string{"gpu-a"}, names)
+	reserved, err := control.GetPodsUnderReservation(ctx, nodeset, pods)
+	require.NoError(t, err)
+	require.Equal(t, []*corev1.Pod{registered}, reserved)
+	for _, pod := range pods {
+		require.NoError(t, control.UpdateNodeWithPodInfo(ctx, nodeset, pod))
+	}
+	require.NoError(t, baseClient.Get(ctx, object.ObjectKey("gpu-a"), node))
+	info := &podinfo.PodInfo{}
+	require.NoError(t, podinfo.ParseIntoPodInfo(node.Comment, info))
+	require.Equal(t, registered.Name, info.PodName)
+	require.Equal(t, registered.Spec.NodeName, info.Node)
+}
+
 func Test_realSlurmControl_UpdateNodeWithPodInfo(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{

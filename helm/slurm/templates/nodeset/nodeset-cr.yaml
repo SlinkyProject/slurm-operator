@@ -48,6 +48,7 @@ spec:
   {{- end }}{{- /* if .enabled */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
   scalingMode: {{ $nodeset.scalingMode }}
+  preferKubernetesNodeName: {{ $nodeset.preferKubernetesNodeName | default false }}
   replicas: {{ $nodeset.replicas }}
   slurmd:
     {{- $_ := set $slurmd "imagePullPolicy" (get $slurmd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
