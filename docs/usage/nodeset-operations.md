@@ -397,12 +397,14 @@ from Slurm operations while still counting toward Kubernetes replicas.
 The preference itself is immutable after creation, but `pinToNode` and
 `oversubscribeNode` remain mutable.
 
-The operator passes the recorded hostname label through the Downward API as
-`SLURM_NODE_NAME` to slurmd's native `-N` option. The default termination hook
-uses that same name. Custom images must honor the supplied arguments. The slurmd
-command, `-N` argument, `SLURM_NODE_NAME` and `SLURMD_OPTIONS` environment
-variables, and `nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label are
-reserved while a StatefulSet uses Node-derived naming.
+The slurmd container exposes `SLURM_NODE_NAME` in both scaling modes, and the
+default termination hook uses it. For StatefulSet workers using Node-derived
+naming, the variable comes from the recorded hostname label through the Downward
+API and is passed to slurmd's native `-N` option. Custom images must honor the
+supplied arguments. The slurmd command, `-N` argument, `SLURM_NODE_NAME` and
+`SLURMD_OPTIONS` environment variables, and
+`nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label are reserved while a
+StatefulSet uses Node-derived naming.
 
 To change the preference itself, create a new NodeSet and retire the old one
 after draining its workloads. Existing NodeSets default to `false`; upgrading

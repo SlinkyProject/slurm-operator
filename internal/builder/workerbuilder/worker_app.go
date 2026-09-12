@@ -195,6 +195,17 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 
 	cpus, memory := b.getResourceLimits(&nodeset.Spec)
 
+	slurmNodeNameFieldPath := fmt.Sprintf("metadata.labels['%s']", slinkyv1beta1.LabelNodeSetPodHostname)
+	if nodeset.Spec.Template.PodSpecWrapper.HostNetwork && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
+		slurmNodeNameFieldPath = "spec.nodeName"
+	}
+	slurmNodeNameEnv := corev1.EnvVar{
+		Name: "SLURM_NODE_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: slurmNodeNameFieldPath},
+		},
+	}
+
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.WorkerApp,
@@ -216,6 +227,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 					Name:  "POD_MEMORY",
 					Value: strconv.FormatInt(memory, 10),
 				},
+				slurmNodeNameEnv,
 			},
 			Ports: ports,
 			StartupProbe: &corev1.Probe{
@@ -264,7 +276,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 						Command: []string{
 							"/usr/bin/sh",
 							"-c",
-							"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';",
+							`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`,
 						},
 					},
 				},
@@ -274,18 +286,6 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 		Merge: merge,
 	}
 
-	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
-		opts.Base.Env = append(opts.Base.Env, corev1.EnvVar{
-			Name: "SLURM_NODE_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.labels['" + slinkyv1beta1.LabelNodeSetPodHostname + "']"},
-			},
-		})
-		opts.Base.Lifecycle.PreStop.Exec.Command = []string{
-			"/usr/bin/sh", "-c",
-			`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`,
-		}
-	}
 	return b.CommonBuilder.BuildContainer(opts)
 }
 
