@@ -60,7 +60,12 @@ func NewNodeSetStatefulSetPod(
 
 	// Ensure recreated pods are pinned to their node, but only if they still match their Node.
 	if nodeset.Spec.PinToNode {
-		pinPodToNode(client, nodeset.Status.OrdinalToNode, pod, ordinal)
+		if node := pinPodToNode(client, nodeset.Status.OrdinalToNode, pod, ordinal); node != nil {
+			if nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+				pod.Spec.Hostname = GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = pod.Spec.Hostname
+			}
+		}
 	}
 
 	// WARNING: Do not use the spec.NodeName otherwise the Pod scheduler will
@@ -71,23 +76,24 @@ func NewNodeSetStatefulSetPod(
 }
 
 // pinPodToNode will modify the input Pod with its Node affinity if the pin is valid
-func pinPodToNode(kclient client.Client, ordinalToNode map[string]string, pod *corev1.Pod, ordinal int) {
+func pinPodToNode(kclient client.Client, ordinalToNode map[string]string, pod *corev1.Pod, ordinal int) *corev1.Node {
 	nodeName, ok := ordinalToNode[strconv.Itoa(ordinal)]
 	if !ok {
-		return
+		return nil
 	}
 
 	ctx := context.TODO()
 	node := &corev1.Node{}
 	nodeKey := types.NamespacedName{Name: nodeName}
 	if err := kclient.Get(ctx, nodeKey, node); err != nil {
-		return
+		return nil
 	}
 	if shouldRun, _ := PodShouldRunOnNode(ctx, pod, node); !shouldRun {
-		return
+		return nil
 	}
 
 	pod.Spec.Affinity = daemonutils.ReplaceDaemonSetPodNodeNameNodeAffinity(pod.Spec.Affinity, nodeName)
+	return node
 }
 
 func NewNodeSetDaemonSetPod(
@@ -175,8 +181,14 @@ func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 			pod.Spec.Hostname = pod.Name
 		}
 	}
-	pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetSlurmNodeName(pod)
 	pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(nodeset.Spec.ScalingMode)
+	delete(pod.Labels, slinkyv1beta1.LabelNodeSetSlurmNodeNameMode)
+	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] = string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode)
+		pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = ""
+	} else {
+		pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetSlurmNodeName(pod)
+	}
 }
 
 // UpdateIdentity updates pod's labels.
@@ -330,8 +342,12 @@ func GetOrdinalPodName(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
 	return fmt.Sprintf("%s-%s", nodeset.Name, paddedOrdinal)
 }
 
-// GetSlurmNodeName returns the Slurm node name.
+// GetSlurmNodeName returns the Pod's resolved Slurm identity, or "" if unresolved.
+// A resolved identity does not imply that the Pod is scheduled or registered in Slurm.
 func GetSlurmNodeName(pod *corev1.Pod) string {
+	if pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] == string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode) {
+		return pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
+	}
 	if pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] == string(slinkyv1beta1.ScalingModeStatefulset) {
 		if pod.Spec.HostNetwork {
 			return pod.Spec.NodeName

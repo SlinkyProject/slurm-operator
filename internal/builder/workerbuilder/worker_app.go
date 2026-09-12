@@ -274,11 +274,26 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 		Merge: merge,
 	}
 
+	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		opts.Base.Env = append(opts.Base.Env, corev1.EnvVar{
+			Name: "SLURM_NODE_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.labels['" + slinkyv1beta1.LabelNodeSetPodHostname + "']"},
+			},
+		})
+		opts.Base.Lifecycle.PreStop.Exec.Command = []string{
+			"/usr/bin/sh", "-c",
+			`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`,
+		}
+	}
 	return b.CommonBuilder.BuildContainer(opts)
 }
 
 func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []string {
 	args := []string{"-Z"}
+	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		args = append(args, "-N", "$(SLURM_NODE_NAME)")
+	}
 	args = append(args, common.ConfiglessArgs(controller)...)
 	args = append(args, slurmdConfArgs(nodeset)...)
 	return args

@@ -10,6 +10,71 @@ chart:
   version: 1.2.3
   appVersion: 1.2.3
 tests:
+  - it: should default to legacy naming
+    set:
+      nodesets.slinky.enabled: true
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
+      - notExists:
+          path: spec.slurmNodeNameMode
+  - it: should accept null naming defaults
+    set:
+      nodesetDefaults.preferKubernetesNodeName: null
+      nodesets.slinky.enabled: true
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
+  - it: should allow a null nodeset preference to select false
+    set:
+      nodesetDefaults.preferKubernetesNodeName: true
+      nodesets.slinky.enabled: true
+      nodesets.slinky.preferKubernetesNodeName: null
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
+  - it: should preserve daemonset defaults
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.scalingMode: DaemonSet
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
+      - equal:
+          path: spec.scalingMode
+          value: DaemonSet
+  - it: should inherit preferred node naming
+    set:
+      nodesetDefaults.preferKubernetesNodeName: true
+      nodesetDefaults.pinToNode: true
+      nodesets.slinky.enabled: true
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: true
+      - equal:
+          path: spec.scalingMode
+          value: StatefulSet
+      - equal:
+          path: spec.pinToNode
+          value: true
+      - equal:
+          path: spec.oversubscribeNode
+          value: false
+  - it: should disable the preference per nodeset
+    set:
+      nodesetDefaults.preferKubernetesNodeName: true
+      nodesetDefaults.pinToNode: true
+      nodesets.slinky.enabled: true
+      nodesets.slinky.preferKubernetesNodeName: false
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
   - it: manifest should match snapshot
     set:
       nodesets:

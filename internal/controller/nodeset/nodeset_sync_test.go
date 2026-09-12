@@ -49,6 +49,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podinfo"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
@@ -1169,6 +1170,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1223,6 +1225,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1267,6 +1270,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1327,6 +1331,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						DeletionTimestamp: &now,
 						Finalizers:        []string{"test-finalizer"},
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1381,6 +1386,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1435,6 +1441,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -1499,6 +1506,7 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 						Namespace: corev1.NamespaceDefault,
 						Name:      "pod-0",
 					},
+					Spec: corev1.PodSpec{NodeName: "worker-a", Hostname: "pod-0"},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodRunning,
 						Conditions: []corev1.PodCondition{
@@ -5096,6 +5104,358 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			for _, pod := range podList.Items {
 				slurmNodeName := nodesetutils.GetSlurmNodeName(&pod)
 				require.True(t, slurmNodeNameSet.Has(slurmNodeName), "syncSlurmNodes() unexpected pod exists: %v", slurmNodeName)
+			}
+		})
+	}
+}
+
+func TestNodeNamedScaleUpBeforeNodesExist(t *testing.T) {
+	ctx := context.Background()
+	nodeset := newNodeSet("workers", "slurm", 2)
+	nodeset.UID = "workers-uid"
+	nodeset.Spec.PinToNode = true
+	nodeset.Spec.PreferKubernetesNodeName = true
+	defaults.SetNodeSetDefaults(nodeset)
+	controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{
+		Name: "slurm", Namespace: nodeset.Namespace,
+	}}
+	kubeClient := fake.NewClientBuilder().WithObjects(nodeset, controller).
+		WithStatusSubresource(&corev1.Pod{}).Build()
+	lookups := 0
+	slurmClient := newFakeClientList(sinterceptor.Funcs{
+		Get: func(context.Context, slurmobject.ObjectKey, slurmobject.Object, ...slurmclient.GetOption) error {
+			lookups++
+			return errors.New("unexpected lookup before worker Nodes exist")
+		},
+	}, &slurmtypes.V0044NodeList{})
+	reconciler := newNodeSetController(kubeClient, newClientMap("slurm", slurmClient))
+	revision, err := newRevision(nodeset, 1, ptr.To[int32](0))
+	require.NoError(t, err)
+	hash := historycontrol.GetRevision(revision.Labels)
+	require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, nil, hash))
+
+	podList := &corev1.PodList{}
+	require.NoError(t, kubeClient.List(ctx, podList))
+	require.Len(t, podList.Items, 2)
+	for index := range podList.Items {
+		pod := &podList.Items[index]
+		pod.Status.Phase = corev1.PodPending
+		require.NoError(t, kubeClient.Status().Update(ctx, pod))
+		require.NotEmpty(t, pod.Name)
+		require.Empty(t, pod.Spec.NodeName)
+		require.Empty(t, nodesetutils.GetSlurmNodeName(pod))
+	}
+	pods := structutils.ReferenceList(podList.Items)
+	for range 2 {
+		require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, pods, hash))
+		require.NoError(t, reconciler.syncSlurmStatus(ctx, nodeset, pods))
+		status, err := reconciler.calculateReplicaStatus(ctx, nodeset, pods, revision, revision)
+		require.NoError(t, err)
+		require.Equal(t, int32(2), status.Replicas)
+		require.Equal(t, int32(2), status.Updated)
+		require.Equal(t, int32(2), status.Unavailable)
+		slurmStatus, err := reconciler.slurmControl.CalculateNodeStatus(ctx, nodeset, pods)
+		require.NoError(t, err)
+		require.Zero(t, slurmStatus.Total)
+	}
+	for _, pod := range pods {
+		current := &corev1.Pod{}
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), current))
+		require.Equal(t, pod.Spec, current.Spec)
+		require.Empty(t, nodesetutils.GetSlurmNodeName(current))
+		require.False(t, podutils.IsPodCordon(current))
+	}
+
+	nodeset.Spec.Replicas = ptr.To[int32](0)
+	require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, pods, hash))
+	require.NoError(t, kubeClient.List(ctx, podList))
+	require.Empty(t, podList.Items)
+	require.Zero(t, lookups)
+}
+
+func TestPreferredNamingPlacementUpdates(t *testing.T) {
+	for _, change := range []struct {
+		name                                                     string
+		oldPinned, newPinned, oldOversubscribe, newOversubscribe bool
+		busy                                                     bool
+	}{
+		{name: "enable pin", newPinned: true},
+		{name: "disable pin", oldPinned: true},
+		{name: "enable oversubscription", oldPinned: true, newPinned: true, newOversubscribe: true},
+		{name: "disable oversubscription", oldPinned: true, newPinned: true, oldOversubscribe: true},
+		{name: "busy worker switching to node naming", newPinned: true, busy: true},
+		{name: "busy worker falling back to pod naming", oldPinned: true, busy: true},
+	} {
+		for _, strategy := range []slinkyv1beta1.NodeSetUpdateStrategyType{slinkyv1beta1.RollingUpdateNodeSetStrategyType, slinkyv1beta1.OnDeleteNodeSetStrategyType, slinkyv1beta1.ScheduledUpdateNodeSetStrategyType} {
+			t.Run(change.name+"/"+string(strategy), func(t *testing.T) {
+				ctx := context.Background()
+				nodeset := newNodeSet("workers", "slurm", 1)
+				nodeset.UID = "workers-uid"
+				nodeset.Spec.PreferKubernetesNodeName = true
+				nodeset.Spec.PinToNode = change.oldPinned
+				nodeset.Spec.OversubscribeNode = change.oldOversubscribe
+				nodeset.Spec.UpdateStrategy.Type = strategy
+				nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
+				controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: nodeset.Namespace}}
+				node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a", Annotations: map[string]string{slinkyv1beta1.AnnotationNodeHostnameOverride: "gpu-a"}}}
+				kclient := fake.NewFakeClient(nodeset, node, controller)
+				oldRevision, err := newRevision(nodeset, 1, ptr.To[int32](0))
+				require.NoError(t, err)
+				pod := nodesetutils.NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, historycontrol.GetRevision(oldRevision.Labels))
+				pod.Spec.NodeName = node.Name
+				pod.Status.Phase = corev1.PodRunning
+				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+				require.NoError(t, kclient.Create(ctx, pod))
+				oldName := nodesetutils.GetSlurmNodeName(pod)
+				nodeset.Spec.PinToNode = change.newPinned
+				nodeset.Spec.OversubscribeNode = change.newOversubscribe
+				revision, err := newRevision(nodeset, 2, ptr.To[int32](0))
+				require.NoError(t, err)
+				require.False(t, history.EqualRevision(oldRevision, revision))
+				hash := historycontrol.GetRevision(revision.Labels)
+				state := []slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}
+				if change.busy {
+					state = []slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}
+				}
+				sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{{V0044Node: slurmapi.V0044Node{
+					Name: ptr.To(oldName), State: &state,
+				}}}})
+				reconciler := newNodeSetController(kclient, newClientMap("slurm", sclient))
+				mismatches, err := reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
+				require.NoError(t, err)
+				require.Empty(t, mismatches, "placement updates must use updateStrategy")
+				nodesetutils.UpdateIdentity(nodeset, pod)
+				require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(pod))
+				require.NoError(t, reconciler.syncUpdate(ctx, nodeset, []*corev1.Pod{pod}, hash))
+				current := &corev1.Pod{}
+				err = kclient.Get(ctx, client.ObjectKeyFromObject(pod), current)
+				if strategy != slinkyv1beta1.RollingUpdateNodeSetStrategyType || change.busy {
+					require.NoError(t, err)
+					require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(current))
+					if strategy == slinkyv1beta1.RollingUpdateNodeSetStrategyType {
+						require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+					}
+					return
+				}
+				require.True(t, apierrors.IsNotFound(err))
+				require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, nil, hash))
+				require.NoError(t, kclient.Get(ctx, client.ObjectKeyFromObject(pod), current))
+				want := "workers-0"
+				if change.newPinned && !change.newOversubscribe {
+					want = "gpu-a"
+				}
+				require.Equal(t, want, nodesetutils.GetSlurmNodeName(current))
+				require.Equal(t, pod.Spec.Volumes, current.Spec.Volumes)
+			})
+		}
+	}
+}
+
+func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
+	for _, test := range []struct {
+		name, oldOverride, newOverride string
+		noPin, podMode, busy, wantErr  bool
+		wantReplace                    bool
+	}{
+		{name: "added", newOverride: "gpu-a", wantReplace: true},
+		{name: "changed", oldOverride: "gpu-a", newOverride: "gpu-b", wantReplace: true},
+		{name: "removed", oldOverride: "gpu-a", wantReplace: true},
+		{name: "unchanged", oldOverride: "gpu-a", newOverride: "gpu-a"},
+		{name: "added override matches current hostname", newOverride: "worker-a"},
+		{name: "removed override matches default hostname", oldOverride: "worker-a"},
+		{name: "no override"},
+		{name: "wait for initial pin", newOverride: "gpu-a", noPin: true},
+		{name: "disabled preference ignores override", newOverride: "gpu-a", podMode: true},
+		{name: "busy old identity is drained", oldOverride: "gpu-a", newOverride: "gpu-b", busy: true, wantReplace: true},
+		{name: "invalid override preserves pod", oldOverride: "gpu-a", newOverride: "not.valid", wantErr: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			nodeset := newNodeSet("workers", "slurm", 1)
+			nodeset.UID = "workers-uid"
+			nodeset.Spec.PinToNode = true
+			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
+			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
+			if test.podMode {
+				nodeset.Spec.PreferKubernetesNodeName = false
+			}
+			if test.noPin {
+				nodeset.Status.OrdinalToNode = nil
+			}
+			node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a", Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeHostnameOverride: test.oldOverride,
+			}}}
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: nodeset.Namespace}}
+			kclient := fake.NewFakeClient(nodeset, node, controller)
+			pod := nodesetutils.NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, "")
+			pod.Spec.NodeName = node.Name
+			pod.Status.Phase = corev1.PodRunning
+			require.NoError(t, kclient.Create(ctx, pod))
+			oldName := nodesetutils.GetSlurmNodeName(pod)
+			node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride] = test.newOverride
+			require.NoError(t, kclient.Update(ctx, node))
+			state := []slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}
+			if test.busy {
+				state = []slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{{
+				V0044Node: slurmapi.V0044Node{Name: ptr.To(oldName), State: &state},
+			}}})
+			reconciler := newNodeSetController(kclient, newClientMap("slurm", sclient))
+			mismatches, err := reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
+			if test.wantErr {
+				require.ErrorContains(t, err, "invalid hostname override")
+				require.Error(t, reconciler.syncNodeSetPods(ctx, nodeset, []*corev1.Pod{pod}, ""))
+				require.NoError(t, kclient.Get(ctx, client.ObjectKeyFromObject(pod), &corev1.Pod{}))
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.wantReplace, len(mismatches) > 0)
+			if !test.wantReplace {
+				current := &corev1.Pod{}
+				require.NoError(t, kclient.Get(ctx, client.ObjectKeyFromObject(pod), current))
+				require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(current))
+				return
+			}
+			require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, []*corev1.Pod{pod}, ""))
+			current := &corev1.Pod{}
+			err = kclient.Get(ctx, client.ObjectKeyFromObject(pod), current)
+			if test.busy {
+				require.NoError(t, err)
+				require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+				require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(current))
+				return
+			}
+			require.True(t, apierrors.IsNotFound(err))
+			require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, nil, ""))
+			require.NoError(t, kclient.Get(ctx, client.ObjectKeyFromObject(pod), current))
+			want := test.newOverride
+			if want == "" {
+				want = "worker-a"
+			}
+			require.Equal(t, want, current.Spec.Hostname)
+			require.Equal(t, want, nodesetutils.GetSlurmNodeName(current))
+			require.Equal(t, pod.Name, current.Name)
+			require.Equal(t, pod.Spec.Volumes, current.Spec.Volumes)
+			mismatches, err = reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{current})
+			require.NoError(t, err)
+			require.Empty(t, mismatches)
+		})
+	}
+}
+
+func TestStatefulSetHostnameOverrideRecords(t *testing.T) {
+	for _, test := range []struct {
+		name, recordName, override string
+		wantPruned                 bool
+		unpinned, oversubscribed   bool
+	}{
+		{name: "override restart", recordName: "gpu-a", override: "gpu-a"},
+		{name: "default restart", recordName: "worker-a"},
+		{name: "changed override", recordName: "gpu-a", override: "gpu-b", wantPruned: true},
+		{name: "removed override", recordName: "gpu-a", wantPruned: true},
+		{name: "added override", recordName: "worker-a", override: "gpu-a", wantPruned: true},
+		{name: "unpinning removes old node record", recordName: "gpu-a", unpinned: true, wantPruned: true},
+		{name: "unpinning retains fallback record", recordName: "workers-0", unpinned: true},
+		{name: "oversubscription removes old node record", recordName: "gpu-a", oversubscribed: true, wantPruned: true},
+		{name: "oversubscription retains fallback record", recordName: "workers-0", oversubscribed: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			nodeset := newNodeSet("workers", "slurm", 1)
+			nodeset.UID = "workers-uid"
+			nodeset.Spec.PinToNode = !test.unpinned
+			nodeset.Spec.OversubscribeNode = test.oversubscribed
+			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
+			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
+			node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a", Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeHostnameOverride: test.override,
+			}}}
+			info := podinfo.PodInfo{Namespace: nodeset.Namespace, PodName: "workers-0", Node: node.Name, NodeSetName: nodeset.Name, NodeSetUID: string(nodeset.UID)}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{{
+				V0044Node: slurmapi.V0044Node{Name: ptr.To(test.recordName), Comment: ptr.To(info.ToString()),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN, slurmapi.V0044NodeStateNOTRESPONDING})},
+			}}})
+			reconciler := newNodeSetController(fake.NewFakeClient(nodeset, node), newClientMap("slurm", sclient))
+			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
+			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
+			err := sclient.Get(ctx, slurmclient.ObjectKey(test.recordName), &slurmtypes.V0044Node{})
+			if test.wantPruned {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNodeNamedSlurmNodeRecordLifecycle(t *testing.T) {
+	for _, test := range []struct {
+		name               string
+		podNode            string
+		oldNodeExists      bool
+		pinNoLongerMatches bool
+		podHostnameMode    bool
+		foreign            bool
+		never              bool
+		wantPruned         bool
+	}{
+		{name: "restart retains valid pin", oldNodeExists: true},
+		{name: "running pod retains identity", oldNodeExists: true, podNode: "worker-a"},
+		{name: "deleted backing node", wantPruned: true},
+		{name: "pin no longer matches template", oldNodeExists: true, pinNoLongerMatches: true, wantPruned: true},
+		{name: "replacement pod changes identity", oldNodeExists: true, podNode: "worker-b", wantPruned: true},
+		{name: "unpinned pod hostname mode preserves records", podHostnameMode: true},
+		{name: "foreign record preserved", foreign: true},
+		{name: "never preserves records", never: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			nodeset := newNodeSet("workers", "slurm", 1)
+			nodeset.UID = "nodeset-uid"
+			nodeset.Spec.PinToNode = true
+			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
+			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
+			if test.never {
+				nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
+			}
+			if test.podHostnameMode {
+				nodeset.Spec.PreferKubernetesNodeName = false
+				nodeset.Spec.PinToNode = false
+			}
+			if test.pinNoLongerMatches {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"pool": "replacement"}
+			}
+			objects := []client.Object{nodeset}
+			if test.oldNodeExists {
+				objects = append(objects, &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}})
+			}
+			if test.podNode != "" {
+				pod := newNodeSetPodWithStatus(nodeset, &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}, 0, corev1.PodRunning, nil)
+				pod.Spec.NodeName = test.podNode
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = test.podNode
+				objects = append(objects, pod)
+			}
+			info := podinfo.PodInfo{Namespace: nodeset.Namespace, PodName: "workers-0", Node: "worker-a", NodeSetName: nodeset.Name, NodeSetUID: string(nodeset.UID)}
+			if test.foreign {
+				info.NodeSetUID = "other-uid"
+			}
+			slurmNode := slurmtypes.V0044Node{V0044Node: slurmapi.V0044Node{
+				Name: ptr.To("worker-a"), Comment: ptr.To(info.ToString()),
+				State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN, slurmapi.V0044NodeStateNOTRESPONDING}),
+			}}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{slurmNode}})
+			reconciler := newNodeSetController(fake.NewClientBuilder().WithObjects(objects...).Build(), newClientMap("slurm", slurmClient))
+			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
+			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
+			err := slurmClient.Get(ctx, slurmclient.ObjectKey("worker-a"), &slurmtypes.V0044Node{})
+			if test.wantPruned {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

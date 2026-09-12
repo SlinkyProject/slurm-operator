@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -61,6 +62,9 @@ func (r *NodeSetWebhook) ValidateUpdate(ctx context.Context, oldNodeSet, newNode
 	if !apiequality.Semantic.DeepEqual(newNodeSet.Spec.VolumeClaimTemplates, oldNodeSet.Spec.VolumeClaimTemplates) {
 		errs = append(errs, errors.New("cannot change volumeClaimTemplates after deployment"))
 	}
+	if oldNodeSet.Spec.PreferKubernetesNodeName != newNodeSet.Spec.PreferKubernetesNodeName {
+		errs = append(errs, errors.New("preferKubernetesNodeName is immutable"))
+	}
 
 	return warns, utilerrors.NewAggregate(errs)
 }
@@ -78,6 +82,25 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 
 	if nodeset.Spec.ControllerRef.Name == "" {
 		errs = append(errs, errors.New("controllerRef.name must not be empty"))
+	}
+
+	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		if len(nodeset.Spec.Slurmd.Command) != 0 {
+			errs = append(errs, errors.New("slurmd.command must not override the entrypoint with KubernetesNode naming"))
+		}
+		for _, arg := range nodeset.Spec.Slurmd.Args {
+			if strings.HasPrefix(arg, "-N") {
+				errs = append(errs, errors.New("slurmd.args must not override -N with KubernetesNode naming"))
+			}
+		}
+		for _, env := range nodeset.Spec.Slurmd.Env {
+			if env.Name == "SLURM_NODE_NAME" || env.Name == "SLURMD_OPTIONS" {
+				errs = append(errs, fmt.Errorf("slurmd.env %s is reserved with KubernetesNode naming", env.Name))
+			}
+		}
+	}
+	if _, ok := nodeset.Spec.Template.Metadata.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode]; ok {
+		errs = append(errs, errors.New("the Slurm node naming mode Pod label is reserved for the operator"))
 	}
 
 	if mu := nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable; mu != nil {

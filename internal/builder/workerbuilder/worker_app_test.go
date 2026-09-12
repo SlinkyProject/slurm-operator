@@ -22,6 +22,58 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
+func TestPreferKubernetesNodeNameContainer(t *testing.T) {
+	for _, test := range []struct {
+		name                                                              string
+		prefer, pinned, oversubscribed, hostNetwork, daemon, wantNodeArgs bool
+	}{
+		{name: "default pinned preserves pod naming", pinned: true},
+		{name: "preferred unpinned", prefer: true},
+		{name: "preferred pinned", prefer: true, pinned: true, wantNodeArgs: true},
+		{name: "preferred oversubscribed", prefer: true, pinned: true, oversubscribed: true},
+		{name: "preferred host network", prefer: true, pinned: true, hostNetwork: true, wantNodeArgs: true},
+		{name: "daemon unchanged", prefer: true, daemon: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			nodeset := &slinkyv1beta1.NodeSet{Spec: slinkyv1beta1.NodeSetSpec{
+				PreferKubernetesNodeName: test.prefer,
+				PinToNode:                test.pinned,
+				OversubscribeNode:        test.oversubscribed,
+			}}
+			nodeset.Spec.Template.PodSpecWrapper.HostNetwork = test.hostNetwork
+			if test.daemon {
+				nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+			}
+			container := New(fake.NewFakeClient()).slurmdContainer(nodeset, &slinkyv1beta1.Controller{})
+			require.Empty(t, container.Command)
+			preStop := "scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';"
+			if test.wantNodeArgs {
+				require.GreaterOrEqual(t, len(container.Args), 3)
+				require.Equal(t, []string{"-Z", "-N", "$(SLURM_NODE_NAME)"}, container.Args[:3])
+				require.Contains(t, container.Env, corev1.EnvVar{
+					Name: "SLURM_NODE_NAME",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.labels['" + slinkyv1beta1.LabelNodeSetPodHostname + "']",
+						},
+					},
+				})
+				preStop = `scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`
+			} else {
+				require.NotContains(t, container.Args, "-N")
+				require.NotContains(t, container.Args, "$(SLURM_NODE_NAME)")
+				for _, variable := range container.Env {
+					require.NotEqual(t, "SLURM_NODE_NAME", variable.Name)
+				}
+			}
+			require.NotNil(t, container.Lifecycle)
+			require.NotNil(t, container.Lifecycle.PreStop)
+			require.NotNil(t, container.Lifecycle.PreStop.Exec)
+			require.Equal(t, []string{"/usr/bin/sh", "-c", preStop}, container.Lifecycle.PreStop.Exec.Command)
+		})
+	}
+}
+
 func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 	type fields struct {
 		client client.Client

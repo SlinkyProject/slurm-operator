@@ -19,6 +19,7 @@ var (
 )
 
 // NodeSetSpec defines the desired state of NodeSet
+// +kubebuilder:validation:XValidation:rule="(has(self.preferKubernetesNodeName) && self.preferKubernetesNodeName) == (has(oldSelf.preferKubernetesNodeName) && oldSelf.preferKubernetesNodeName)",message="preferKubernetesNodeName is immutable"
 type NodeSetSpec struct {
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
@@ -124,6 +125,20 @@ type NodeSetSpec struct {
 	// +default:=false
 	PinToNode bool `json:"pinToNode"`
 
+	// PreferKubernetesNodeName controls whether StatefulSet workers use Node-derived Slurm names.
+	// When true, StatefulSets use Node-derived names if pinToNode is true and oversubscribeNode is false.
+	// Node-derived names use the Kubernetes Node's nodeset.slinky.slurm.net/hostname-override annotation
+	// verbatim when non-empty; otherwise they use the Node name up to the first dot.
+	// This rule applies regardless of hostNetwork and the resolved name is passed explicitly to slurmd.
+	// Otherwise, the operator identifies StatefulSet workers by their Pod hostname, except when
+	// hostNetwork is true: it uses the full Kubernetes Node name (spec.nodeName) instead.
+	// This fallback ignores the Node hostname override and does not pass an explicit name to slurmd.
+	// DaemonSet workers always use this Node-derived naming rule, regardless of this preference.
+	// Defaults to false. This preference is immutable after creation.
+	// +optional
+	// +kubebuilder:default:=false
+	PreferKubernetesNodeName bool `json:"preferKubernetesNodeName,omitempty"`
+
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
 	// a Pod Disruption Budget.
 	// See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
@@ -142,6 +157,23 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=false
 	OversubscribeNode bool `json:"oversubscribeNode,omitempty"`
+}
+
+type SlurmNodeNameModeType string
+
+const (
+	SlurmNodeNameModePodHostname    SlurmNodeNameModeType = "PodHostname"
+	SlurmNodeNameModeKubernetesNode SlurmNodeNameModeType = "KubernetesNode"
+)
+
+func (spec *NodeSetSpec) EffectiveSlurmNodeNameMode() SlurmNodeNameModeType {
+	if spec.ScalingMode == ScalingModeDaemonset {
+		return SlurmNodeNameModeKubernetesNode
+	}
+	if spec.PreferKubernetesNodeName && spec.PinToNode && !spec.OversubscribeNode {
+		return SlurmNodeNameModeKubernetesNode
+	}
+	return SlurmNodeNameModePodHostname
 }
 
 // ScalingModeType is a string enumeration of how a NodeSet scales its pods.

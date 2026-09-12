@@ -186,6 +186,20 @@ spec:
                   When disabled, all stored node pinnings are removed.
                   Used only when `scalingMode=StatefulSet`.
                 type: boolean
+              preferKubernetesNodeName:
+                default: false
+                description: |-
+                  PreferKubernetesNodeName controls whether StatefulSet workers use Node-derived Slurm names.
+                  When true, StatefulSets use Node-derived names if pinToNode is true and oversubscribeNode is false.
+                  Node-derived names use the Kubernetes Node's nodeset.slinky.slurm.net/hostname-override annotation
+                  verbatim when non-empty; otherwise they use the Node name up to the first dot.
+                  This rule applies regardless of hostNetwork and the resolved name is passed explicitly to slurmd.
+                  Otherwise, the operator identifies StatefulSet workers by their Pod hostname, except when
+                  hostNetwork is true: it uses the full Kubernetes Node name (spec.nodeName) instead.
+                  This fallback ignores the Node hostname override and does not pass an explicit name to slurmd.
+                  DaemonSet workers always use this Node-derived naming rule, regardless of this preference.
+                  Defaults to false. This preference is immutable after creation.
+                type: boolean
               pruneSlurmNodeRecords:
                 default: Never
                 description: PruneSlurmNodeRecords controls when the operator deletes
@@ -397,6 +411,10 @@ spec:
             required:
             - controllerRef
             type: object
+            x-kubernetes-validations:
+            - message: preferKubernetesNodeName is immutable
+              rule: (has(self.preferKubernetesNodeName) && self.preferKubernetesNodeName)
+                == (has(oldSelf.preferKubernetesNodeName) && oldSelf.preferKubernetesNodeName)
           status:
             description: NodeSetStatus defines the observed state of NodeSet
             properties:

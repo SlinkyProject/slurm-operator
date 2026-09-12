@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -20,6 +21,7 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
@@ -625,7 +627,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 	default:
 		fallthrough
 	case slinkyv1beta1.ScalingModeStatefulset:
-		return nil
+		return r.syncNodeNamedSlurmNodeRecords(ctx, nodeset)
 	case slinkyv1beta1.ScalingModeDaemonset:
 		defunctNodes, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
 		if err != nil {
@@ -703,6 +705,50 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 
 		return nil
 	}
+}
+
+func (r *NodeSetReconciler) syncNodeNamedSlurmNodeRecords(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
+	if !nodeset.Spec.PreferKubernetesNodeName {
+		return nil
+	}
+	defunctNodes, err := r.slurmControl.GetDefunctNodesForNodeSet(ctx, nodeset)
+	if err != nil {
+		if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return nil
+		}
+		return err
+	}
+	pins, err := r.calculateOrdinalToNode(ctx, nodeset, nil)
+	if err != nil {
+		return err
+	}
+	for _, defunct := range defunctNodes {
+		pod := &corev1.Pod{}
+		key := client.ObjectKey{Namespace: defunct.PodInfo.Namespace, Name: defunct.PodInfo.PodName}
+		switch err := r.Get(ctx, key, pod); {
+		case err == nil:
+			if !metav1.IsControlledBy(pod, nodeset) || !podutils.IsRunning(pod) || podutils.IsTerminating(pod) || nodesetutils.GetSlurmNodeName(pod) == defunct.Name {
+				continue
+			}
+		case apierrors.IsNotFound(err):
+			ordinal := nodesetutils.GetOrdinal(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: key.Name}})
+			if nodeName := pins[strconv.Itoa(ordinal)]; nodeName != "" || nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
+				expectedPod := nodesetutils.NewNodeSetStatefulSetPod(r.Client, nodeset, &slinkyv1beta1.Controller{}, ordinal, "")
+				expectedPod.Spec.NodeName = nodeName
+				if nodesetutils.GetSlurmNodeName(expectedPod) == defunct.Name {
+					continue
+				}
+			}
+		default:
+			return err
+		}
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, defunct.Name); err != nil {
+			return err
+		}
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
+			"Deleted defunct Slurm node %s after its Node-backed identity changed", defunct.Name)
+	}
+	return nil
 }
 
 // syncSlurmNodes handles Slurm node drift where nodes may become unregistered but its pod is running and healthy.
@@ -1041,6 +1087,40 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 	return nodesNeedingDaemonPods, podsToDelete
 }
 
+func (r *NodeSetReconciler) getStatefulSetHostnameMismatches(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]*corev1.Pod, error) {
+	var mismatches []*corev1.Pod
+	if nodeset.Spec.EffectiveSlurmNodeNameMode() != slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		return mismatches, nil
+	}
+	pins, err := r.calculateOrdinalToNode(ctx, nodeset, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range pods {
+		ordinal := nodesetutils.GetOrdinal(pod)
+		if pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] != string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode) {
+			continue
+		}
+		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) || pod.Spec.NodeName == "" || pins[strconv.Itoa(ordinal)] != pod.Spec.NodeName {
+			continue
+		}
+		node := &corev1.Node{}
+		if err := r.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node); err != nil {
+			return nil, err
+		}
+		expectedName := nodesetutils.GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
+		if problems := utilvalidation.IsDNS1123Label(expectedName); len(problems) > 0 {
+			return nil, fmt.Errorf("invalid hostname override or node name on node %s: %v", pod.Spec.NodeName, problems)
+		}
+		if nodesetutils.GetSlurmNodeName(pod) != expectedName {
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
+				"Recreating StatefulSet pod %s/%s: Slurm name changed from %q to %q", pod.Namespace, pod.Name, nodesetutils.GetSlurmNodeName(pod), expectedName)
+			mismatches = append(mismatches, pod)
+		}
+	}
+	return mismatches, nil
+}
+
 // syncNodeSetPods will reconcile NodeSet pod replica counts.
 // Pods will be:
 //   - Scaled out when: `replicaCount < replicasWant“
@@ -1105,6 +1185,13 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods in StatefulSet mode")
+		mismatches, err := r.getStatefulSetHostnameMismatches(ctx, nodeset, podsNewScaling)
+		if err != nil {
+			return err
+		}
+		if len(mismatches) > 0 {
+			return r.doPodScale(ctx, nodeset, nil, mismatches, nil)
+		}
 
 		// Handle replica scaling by comparing the known pods to the target number of replicas.
 		// Create or delete pods as needed to reach the target number.
