@@ -43,18 +43,18 @@ func TestPreferKubernetesNodeNameAdmission(t *testing.T) {
 			ns.Spec.OversubscribeNode = true
 			ns.Spec.Slurmd.Args = []string{"-Nother"}
 		}},
-		{name: "rejects name argument", mutate: func(ns *slinkyv1beta1.NodeSet) {
+		{name: "accepts name argument", mutate: func(ns *slinkyv1beta1.NodeSet) {
 			ns.Spec.Slurmd.Args = []string{"-Nother"}
-		}, wantErr: "slurmd.args must not override -N"},
-		{name: "rejects reserved env", mutate: func(ns *slinkyv1beta1.NodeSet) {
+		}},
+		{name: "accepts node name env", mutate: func(ns *slinkyv1beta1.NodeSet) {
 			ns.Spec.Slurmd.Env = []corev1.EnvVar{{Name: "SLURM_NODE_NAME", Value: "other"}}
-		}, wantErr: "slurmd.env SLURM_NODE_NAME is reserved"},
-		{name: "rejects reserved options env", mutate: func(ns *slinkyv1beta1.NodeSet) {
+		}},
+		{name: "accepts options env", mutate: func(ns *slinkyv1beta1.NodeSet) {
 			ns.Spec.Slurmd.Env = []corev1.EnvVar{{Name: "SLURMD_OPTIONS", Value: "-Nother"}}
-		}, wantErr: "slurmd.env SLURMD_OPTIONS is reserved"},
-		{name: "rejects command", mutate: func(ns *slinkyv1beta1.NodeSet) {
+		}},
+		{name: "accepts command", mutate: func(ns *slinkyv1beta1.NodeSet) {
 			ns.Spec.Slurmd.Command = []string{"custom"}
-		}, wantErr: "slurmd.command must not override the entrypoint"},
+		}},
 		{name: "rejects mode label", mutate: func(ns *slinkyv1beta1.NodeSet) {
 			ns.Spec.Template.Metadata.Labels = map[string]string{slinkyv1beta1.LabelNodeSetSlurmNodeNameMode: "KubernetesNode"}
 		}, wantErr: "the Slurm node naming mode Pod label is reserved"},
