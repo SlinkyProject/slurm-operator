@@ -4996,6 +4996,109 @@ func TestNodeSetReconciler_podsShouldBeOnNode(t *testing.T) {
 	}
 }
 
+func TestDaemonSetHostnameMismatchReplacement(t *testing.T) {
+	for _, test := range []struct {
+		name, hostname   string
+		phase            corev1.PodPhase
+		wantMismatch     bool
+		matchingPod      bool
+		busy             bool
+		terminating      bool
+		missingNode      bool
+		selectorMismatch bool
+	}{
+		{name: "matching hostname", hostname: "gpu-a", phase: corev1.PodRunning},
+		{name: "running mismatch", hostname: "gpu-old", phase: corev1.PodRunning, wantMismatch: true},
+		{name: "pending unbound mismatch", hostname: "gpu-old", phase: corev1.PodPending, wantMismatch: true},
+		{name: "mismatch excluded from duplicate cleanup", hostname: "gpu-old", phase: corev1.PodPending, wantMismatch: true, matchingPod: true},
+		{name: "busy mismatch is drained", hostname: "gpu-old", phase: corev1.PodRunning, wantMismatch: true, busy: true},
+		{name: "terminating pod is ignored", hostname: "gpu-old", phase: corev1.PodRunning, terminating: true},
+		{name: "failed pod uses existing cleanup", hostname: "gpu-old", phase: corev1.PodFailed},
+		{name: "succeeded pod uses existing cleanup", hostname: "gpu-old", phase: corev1.PodSucceeded},
+		{name: "deleted target is ignored", hostname: "gpu-old", phase: corev1.PodRunning, missingNode: true},
+		{name: "ineligible target uses placement cleanup", hostname: "gpu-old", phase: corev1.PodRunning, selectorMismatch: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			nodeset := newNodeSet("workers", "slurm", 1)
+			nodeset.UID = "workers-uid"
+			nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
+			if test.selectorMismatch {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"pool": "other"}
+			}
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: nodeset.Namespace}}
+			node := newNodeForNodeSetTest("worker-a", map[string]string{"pool": "workers"}, false)
+			node.Annotations = map[string]string{slinkyv1beta1.AnnotationNodeHostnameOverride: "gpu-a"}
+			kubeClient := fake.NewFakeClient(nodeset, controller)
+			if !test.missingNode {
+				require.NoError(t, kubeClient.Create(ctx, node))
+			}
+			pod := nodesetutils.NewNodeSetDaemonSetPod(kubeClient, nodeset, controller, node.Name, test.hostname, "")
+			pod.Name = "workers-old"
+			pod.UID = "workers-old-uid"
+			pod.Status.Phase = test.phase
+			if test.phase != corev1.PodPending {
+				pod.Spec.NodeName = node.Name
+			}
+			if test.terminating {
+				pod.Finalizers = []string{"test"}
+			}
+			require.NoError(t, kubeClient.Create(ctx, pod))
+			if test.terminating {
+				require.NoError(t, kubeClient.Delete(ctx, pod))
+				require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), pod))
+			}
+			pods := []*corev1.Pod{pod}
+			if test.matchingPod {
+				matching := pod.DeepCopy()
+				matching.Name = "workers-current"
+				matching.UID = "workers-current-uid"
+				matching.ResourceVersion = ""
+				matching.Spec.NodeName = node.Name
+				matching.Spec.Hostname = "gpu-a"
+				matching.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "gpu-a"
+				matching.Status.Phase = corev1.PodRunning
+				matching.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+				require.NoError(t, kubeClient.Create(ctx, matching))
+				pods = append(pods, matching)
+			}
+			state := []slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}
+			if test.busy {
+				state = []slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{{
+				V0044Node: slurmapi.V0044Node{Name: ptr.To(test.hostname), State: &state},
+			}}})
+			reconciler := newNodeSetController(kubeClient, newClientMap("slurm", slurmClient))
+			mismatches, err := reconciler.getHostnameMismatches(ctx, nodeset, pods)
+			require.NoError(t, err)
+			if !test.wantMismatch {
+				require.Empty(t, mismatches)
+				return
+			}
+			require.Equal(t, []*corev1.Pod{pod}, mismatches)
+			require.NoError(t, reconciler.syncNodeSetPods(ctx, nodeset, pods, ""))
+			current := &corev1.Pod{}
+			err = kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), current)
+			wantRemaining := len(pods)
+			if test.busy {
+				require.NoError(t, err)
+				require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+			} else {
+				require.True(t, apierrors.IsNotFound(err))
+				wantRemaining--
+			}
+			if test.matchingPod {
+				require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pods[1]), &corev1.Pod{}))
+			}
+			remaining := &corev1.PodList{}
+			require.NoError(t, kubeClient.List(ctx, remaining))
+			require.Len(t, remaining.Items, wantRemaining)
+		})
+	}
+}
+
 func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -5221,7 +5324,7 @@ func TestPreferredNamingPlacementUpdates(t *testing.T) {
 					Name: ptr.To(oldName), State: &state,
 				}}}})
 				reconciler := newNodeSetController(kclient, newClientMap("slurm", sclient))
-				mismatches, err := reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
+				mismatches, err := reconciler.getHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
 				require.NoError(t, err)
 				require.Empty(t, mismatches, "placement updates must use updateStrategy")
 				nodesetutils.UpdateIdentity(nodeset, pod)
@@ -5303,7 +5406,7 @@ func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
 				V0044Node: slurmapi.V0044Node{Name: ptr.To(oldName), State: &state},
 			}}})
 			reconciler := newNodeSetController(kclient, newClientMap("slurm", sclient))
-			mismatches, err := reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
+			mismatches, err := reconciler.getHostnameMismatches(ctx, nodeset, []*corev1.Pod{pod})
 			if test.wantErr {
 				require.ErrorContains(t, err, "invalid hostname override")
 				require.Error(t, reconciler.syncNodeSetPods(ctx, nodeset, []*corev1.Pod{pod}, ""))
@@ -5338,7 +5441,7 @@ func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
 			require.Equal(t, want, nodesetutils.GetSlurmNodeName(current))
 			require.Equal(t, pod.Name, current.Name)
 			require.Equal(t, pod.Spec.Volumes, current.Spec.Volumes)
-			mismatches, err = reconciler.getStatefulSetHostnameMismatches(ctx, nodeset, []*corev1.Pod{current})
+			mismatches, err = reconciler.getHostnameMismatches(ctx, nodeset, []*corev1.Pod{current})
 			require.NoError(t, err)
 			require.Empty(t, mismatches)
 		})

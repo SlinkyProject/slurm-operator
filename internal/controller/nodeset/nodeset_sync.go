@@ -1022,19 +1022,7 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 				podsToDelete = append(podsToDelete, pod)
 
 			default:
-				hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
-				expectedHostname := nodesetutils.GetDaemonSetPodHostname(node.Name, hostnameOverride)
-				if pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] != expectedHostname {
-					mainLogger.V(2).Info("Daemon pod hostname mismatch detected, will recreate",
-						"pod", klog.KObj(pod), "node", klog.KObj(node),
-						"currentHostname", pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], "expectedHostname", expectedHostname)
-					r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
-						"Recreating daemon pod %s/%s: hostname changed from %q to %q",
-						pod.Namespace, pod.Name, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname], expectedHostname)
-					podsToDelete = append(podsToDelete, pod)
-				} else {
-					daemonPodsRunning = append(daemonPodsRunning, pod)
-				}
+				daemonPodsRunning = append(daemonPodsRunning, pod)
 			}
 		}
 
@@ -1060,34 +1048,65 @@ func (r *NodeSetReconciler) podsShouldBeOnNode(
 	return nodesNeedingDaemonPods, podsToDelete
 }
 
-func (r *NodeSetReconciler) getStatefulSetHostnameMismatches(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]*corev1.Pod, error) {
+func (r *NodeSetReconciler) getHostnameMismatches(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]*corev1.Pod, error) {
 	var mismatches []*corev1.Pod
 	if nodeset.Spec.EffectiveSlurmNodeNameMode() != slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
 		return mismatches, nil
 	}
+	daemonSet := nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset
 	pins, err := r.calculateOrdinalToNode(ctx, nodeset, nil)
 	if err != nil {
 		return nil, err
 	}
 	for _, pod := range pods {
-		ordinal := nodesetutils.GetOrdinal(pod)
-		if pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] != string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode) {
+		if podutils.IsTerminating(pod) {
 			continue
 		}
-		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) || pod.Spec.NodeName == "" || pins[strconv.Itoa(ordinal)] != pod.Spec.NodeName {
-			continue
+		nodeName := pod.Spec.NodeName
+		if daemonSet {
+			if podutils.IsFailed(pod) || podutils.IsSucceeded(pod) {
+				continue
+			}
+			targetNodeName, err := daemonutils.GetTargetNodeName(pod)
+			if err != nil {
+				continue
+			}
+			nodeName = targetNodeName
+		} else {
+			if pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] != string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode) {
+				continue
+			}
+			ordinal := nodesetutils.GetOrdinal(pod)
+			if !podutils.IsRunning(pod) || nodeName == "" || pins[strconv.Itoa(ordinal)] != nodeName {
+				continue
+			}
 		}
 		node := &corev1.Node{}
-		if err := r.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node); err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Name: nodeName}, node); err != nil {
+			if daemonSet && apierrors.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
-		expectedName := nodesetutils.GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
-		if problems := utilvalidation.IsDNS1123Label(expectedName); len(problems) > 0 {
-			return nil, fmt.Errorf("invalid hostname override or node name on node %s: %v", pod.Spec.NodeName, problems)
+		if daemonSet {
+			if _, shouldContinueRunning := r.NodeShouldRunDaemonPod(ctx, node, nodeset); !shouldContinueRunning {
+				continue
+			}
 		}
-		if nodesetutils.GetSlurmNodeName(pod) != expectedName {
+		expectedName := nodesetutils.GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
+		if !daemonSet {
+			if problems := utilvalidation.IsDNS1123Label(expectedName); len(problems) > 0 {
+				return nil, fmt.Errorf("invalid hostname override or node name on node %s: %v", nodeName, problems)
+			}
+		}
+		currentHostname := pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
+		if currentHostname != expectedName {
+			log.FromContext(ctx).V(2).Info("Pod hostname mismatch detected, will recreate",
+				"pod", klog.KObj(pod), "node", klog.KObj(node),
+				"currentHostname", currentHostname, "expectedHostname", expectedName)
 			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, "HostnameMismatch", "Info",
-				"Recreating StatefulSet pod %s/%s: Slurm name changed from %q to %q", pod.Namespace, pod.Name, nodesetutils.GetSlurmNodeName(pod), expectedName)
+				"Recreating %s pod %s/%s: Slurm name changed from %q to %q",
+				nodeset.Spec.ScalingMode, pod.Namespace, pod.Name, currentHostname, expectedName)
 			mismatches = append(mismatches, pod)
 		}
 	}
@@ -1119,6 +1138,11 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		}
 	}
 
+	mismatches, err := r.getHostnameMismatches(ctx, nodeset, podsNewScaling)
+	if err != nil {
+		return err
+	}
+
 	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
 		logger.V(2).Info("Processing NodeSet pods in DaemonSet mode")
 		nodeList := &corev1.NodeList{}
@@ -1126,8 +1150,11 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			return err
 		}
 		nodeToDaemonPods := r.getNodesToDaemonPods(ctx, nodeset, podsNewScaling, false)
+		for nodeName, daemonPods := range nodeToDaemonPods {
+			nodeToDaemonPods[nodeName] = nodesetutils.ExcludePods(daemonPods, mismatches)
+		}
 		var nodesNeedingDaemonPods []string
-		var podsToDelete []*corev1.Pod
+		podsToDelete := mismatches
 		for _, node := range nodeList.Items {
 			nodesNeedingDaemonPodsOnNode, podsToDeleteOnNode := r.podsShouldBeOnNode(
 				ctx, &node, nodeToDaemonPods, nodeset)
@@ -1158,10 +1185,6 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods in StatefulSet mode")
-		mismatches, err := r.getStatefulSetHostnameMismatches(ctx, nodeset, podsNewScaling)
-		if err != nil {
-			return err
-		}
 		if len(mismatches) > 0 {
 			return r.doPodScale(ctx, nodeset, nil, mismatches, nil)
 		}
