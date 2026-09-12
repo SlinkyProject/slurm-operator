@@ -5521,6 +5521,33 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			},
 		},
 		{
+			name:              "statefulset prunes stale identity but keeps current identity for the same pod name",
+			scalingMode:       slinkyv1beta1.ScalingModeStatefulset,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ns.Spec.PinToNode = true
+				ns.Spec.PreferKubernetesNodeName = true
+				ns.Status.OrdinalToNode = map[string]string{"0": "worker-b"}
+				pod := newNodeSetPodWithStatus(ns, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
+				pod.Spec.NodeName = "worker-b"
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "worker-b"
+				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}}
+				nodes := []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:    ptr.To("worker-a"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, pod.Name, "worker-a"),
+					}},
+					{V0044Node: slurmapi.V0044Node{
+						Name:    ptr.To("worker-b"),
+						State:   defunctNodeState,
+						Comment: podInfo(ns, pod.Name, "worker-b"),
+					}},
+				}
+				return []runtime.Object{pod, kubeNode}, nodes, []string{"worker-b"}, []string{"worker-a"}
+			},
+		},
+		{
 			name:              "skips when kube node still maps to slurm node by default (no selectors)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
