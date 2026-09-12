@@ -253,3 +253,120 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should use the cluster-wide sssd secretRef when the set has none
+    set:
+      sssd:
+        secretRef:
+          name: global-sssd
+          key: sssd.conf
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: global-sssd
+      - equal:
+          path: spec.ssh.sssdConfRef.key
+          value: sssd.conf
+  - it: should prefer the per-nodeset sssd secretRef over the cluster-wide one
+    set:
+      sssd:
+        secretRef:
+          name: global-sssd
+          key: sssd.conf
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+          sssd:
+            secretRef:
+              name: my-sssd-secret
+              key: my-sssd.conf
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: my-sssd-secret
+      - equal:
+          path: spec.ssh.sssdConfRef.key
+          value: my-sssd.conf
+  - it: should take the whole reference from the set, not one field from each
+    set:
+      sssd:
+        secretRef:
+          name: global-sssd
+          key: global.conf
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+          sssd:
+            secretRef:
+              name: my-sssd-secret
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: my-sssd-secret
+      - equal:
+          path: spec.ssh.sssdConfRef.key
+          value: sssd.conf
+  - it: should fail when the set gives a secret key without a name
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+          sssd:
+            secretRef:
+              key: my-sssd.conf
+    asserts:
+      - failedTemplate:
+          errorMessage: "nodeset `slinky` sets sssd.secretRef.key without sssd.secretRef.name."
+  - it: should fall back to the cluster-wide sssd secretRef when the set clears it
+    set:
+      sssd:
+        secretRef:
+          name: global-sssd
+          key: global.conf
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+          sssd: null
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: global-sssd
+      - equal:
+          path: spec.ssh.sssdConfRef.key
+          value: global.conf
+  - it: should give each nodeset its own sssd secretRef
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+        slinky2:
+          enabled: true
+          ssh:
+            enabled: true
+          sssd:
+            secretRef:
+              name: my-sssd-secret
+              key: my-sssd.conf
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: test-release-slurm-sssd-conf
+        documentIndex: 0
+      - equal:
+          path: spec.ssh.sssdConfRef.name
+          value: my-sssd-secret
+        documentIndex: 1
