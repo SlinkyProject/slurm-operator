@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -634,10 +635,9 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 		}
 		return err
 	}
-	pins, err := r.calculateOrdinalToNode(ctx, nodeset, nil)
-	if err != nil {
-		return err
-	}
+	getPins := sync.OnceValues(func() (map[string]string, error) {
+		return r.calculateOrdinalToNode(ctx, nodeset, nil)
+	})
 
 	syncSlurmNodeRecordsFn := func(index int) error {
 		defunctNode := defunctNodes[index]
@@ -692,6 +692,10 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 					}
 				}
 			} else {
+				pins, err := getPins()
+				if err != nil {
+					return err
+				}
 				ordinal := nodesetutils.GetOrdinal(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podKey.Name}})
 				if nodeName := pins[strconv.Itoa(ordinal)]; nodeName != "" || nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
 					expectedPod := nodesetutils.NewNodeSetStatefulSetPod(r.Client, nodeset, &slinkyv1beta1.Controller{}, ordinal, "")

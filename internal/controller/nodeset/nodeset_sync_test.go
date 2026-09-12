@@ -5401,9 +5401,14 @@ func TestNodeNamedSlurmNodeRecordLifecycle(t *testing.T) {
 		foreign            bool
 		never              bool
 		wantPruned         bool
+		pinLookupErr       error
+		wantErr            bool
 	}{
 		{name: "restart retains valid pin", oldNodeExists: true},
 		{name: "running pod retains identity", oldNodeExists: true, podNode: "worker-a"},
+		{name: "running pod skips pin lookup", oldNodeExists: true, podNode: "worker-a", pinLookupErr: errors.New("pin lookup failed")},
+		{name: "no defunct records skip pin lookup", oldNodeExists: true, foreign: true, pinLookupErr: errors.New("pin lookup failed")},
+		{name: "missing pod propagates pin lookup failure", oldNodeExists: true, pinLookupErr: errors.New("pin lookup failed"), wantErr: true},
 		{name: "deleted backing node", wantPruned: true},
 		{name: "pin no longer matches template", oldNodeExists: true, pinNoLongerMatches: true, wantPruned: true},
 		{name: "replacement pod changes identity", oldNodeExists: true, podNode: "worker-b", wantPruned: true},
@@ -5448,9 +5453,23 @@ func TestNodeNamedSlurmNodeRecordLifecycle(t *testing.T) {
 				State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN, slurmapi.V0044NodeStateNOTRESPONDING}),
 			}}
 			slurmClient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{slurmNode}})
-			reconciler := newNodeSetController(fake.NewClientBuilder().WithObjects(objects...).Build(), newClientMap("slurm", slurmClient))
-			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
-			require.NoError(t, reconciler.syncSlurmNodeRecords(ctx, nodeset))
+			kubeClient := fake.NewClientBuilder().WithObjects(objects...).WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(ctx context.Context, kubeClient client.WithWatch, key client.ObjectKey, object client.Object, opts ...client.GetOption) error {
+					if _, isNode := object.(*corev1.Node); isNode && test.pinLookupErr != nil {
+						return test.pinLookupErr
+					}
+					return kubeClient.Get(ctx, key, object, opts...)
+				},
+			}).Build()
+			reconciler := newNodeSetController(kubeClient, newClientMap("slurm", slurmClient))
+			for range 2 {
+				err := reconciler.syncSlurmNodeRecords(ctx, nodeset)
+				if test.wantErr {
+					require.ErrorIs(t, err, test.pinLookupErr)
+				} else {
+					require.NoError(t, err)
+				}
+			}
 			err := slurmClient.Get(ctx, slurmclient.ObjectKey("worker-a"), &slurmtypes.V0044Node{})
 			if test.wantPruned {
 				require.Error(t, err)
