@@ -182,11 +182,11 @@ func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 		}
 	}
 	pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(nodeset.Spec.ScalingMode)
-	delete(pod.Labels, slinkyv1beta1.LabelNodeSetSlurmNodeNameMode)
 	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
 		pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] = string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode)
 		pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = ""
 	} else {
+		pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] = string(slinkyv1beta1.SlurmNodeNameModePodHostname)
 		pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetSlurmNodeName(pod)
 	}
 }

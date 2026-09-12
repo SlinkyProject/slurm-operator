@@ -545,7 +545,10 @@ func TestSlurmNodeNameModeIdentity(t *testing.T) {
 			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
 			pod := NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 3, "")
 			if prefer {
+				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
 				require.Empty(t, GetSlurmNodeName(pod))
+			} else {
+				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModePodHostname), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
 			}
 			pod.Spec.NodeName = "worker-a.example.com"
 			want := "workers-3"
