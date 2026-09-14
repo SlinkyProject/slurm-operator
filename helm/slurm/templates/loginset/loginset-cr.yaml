@@ -32,9 +32,16 @@ spec:
   extraSshdConfig: |
     {{- . | nindent 4 }}
   {{- end }}{{- /* with $loginset.extraSshdConfig */}}
+  {{- $sssdRef := ($loginset.sssd | default dict).secretRef | default dict }}
+  {{- if and $sssdRef.key (not $sssdRef.name) }}
+    {{- fail (printf "loginset `%s` sets sssd.secretRef.key without sssd.secretRef.name." $key) }}
+  {{- end }}
+  {{- if not $sssdRef.name }}
+    {{- $sssdRef = dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $) }}
+  {{- end }}
   sssdConfRef:
-    name: {{ include "slurm.sssdConf.name" $ }}
-    key: {{ include "slurm.sssdConf.key" $ }}
+    name: {{ $sssdRef.name }}
+    key: {{ $sssdRef.key | default "sssd.conf" }}
   {{- with $loginset.rootSshAuthorizedKeys }}
   rootSshAuthorizedKeys: |
     {{- . | nindent 4 }}
