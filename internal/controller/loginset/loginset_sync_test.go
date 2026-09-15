@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -127,4 +128,70 @@ func BenchmarkLoginsetReconciler_sync(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestLoginsetReconciler_sync_sshHostKeys(t *testing.T) {
+	slurmKeyRef := testutils.NewSlurmKeyRef("slurmkey")
+	jwtKeyRef := testutils.NewJwtKeyRef("jwtkey")
+	sssdconfRef := testutils.NewSssdConfRef("sssd")
+	controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
+	loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+	key := loginset.SshHostKeys()
+	request := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: corev1.NamespaceDefault,
+			Name:      loginset.Name,
+		},
+	}
+
+	newClient := func(objects ...client.Object) client.Client {
+		objects = append(objects,
+			loginset.DeepCopy(),
+			controller.DeepCopy(),
+			testutils.NewSlurmKeySecret(slurmKeyRef),
+			testutils.NewJwtKeySecret(jwtKeyRef),
+		)
+		return fake.NewClientBuilder().
+			WithObjects(objects...).
+			WithStatusSubresource(&slinkyv1beta1.LoginSet{}).
+			Build()
+	}
+
+	t.Run("creates the Secret when it is absent", func(t *testing.T) {
+		c := newClient()
+
+		require.NoError(t, newLoginsetController(c).Sync(context.TODO(), request))
+
+		got := &corev1.Secret{}
+		require.NoError(t, c.Get(context.TODO(), key, got))
+		for _, file := range []string{
+			builder.SshHostRsaKeyFile,
+			builder.SshHostEd25519KeyFile,
+			builder.SshHostEcdsaKeyFile,
+		} {
+			require.NotEmpty(t, got.Data[file], file)
+		}
+	})
+
+	// Host keys must survive reconciles even when the live Secret is not marked
+	// immutable, e.g. one restored from a backup that dropped the field.
+	t.Run("keeps the keys of a mutable existing Secret", func(t *testing.T) {
+		c := newClient(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: key.Namespace,
+				Name:      key.Name,
+			},
+			Data: map[string][]byte{
+				builder.SshHostRsaKeyFile:    []byte("original-host-key"),
+				builder.SshHostRsaPubKeyFile: []byte("original-host-key.pub"),
+			},
+		})
+
+		require.NoError(t, newLoginsetController(c).Sync(context.TODO(), request))
+
+		got := &corev1.Secret{}
+		require.NoError(t, c.Get(context.TODO(), key, got))
+		require.Equal(t, "original-host-key", string(got.Data[builder.SshHostRsaKeyFile]))
+		require.Equal(t, "original-host-key.pub", string(got.Data[builder.SshHostRsaPubKeyFile]))
+	})
 }

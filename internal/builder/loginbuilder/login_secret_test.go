@@ -4,9 +4,11 @@
 package loginbuilder
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -44,7 +46,7 @@ func TestBuilder_BuildLoginSshHostKeys(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := New(tt.fields.client)
-			got, err := b.BuildLoginSshHostKeys(tt.args.loginset)
+			got, err := b.BuildLoginSshHostKeys(context.TODO(), tt.args.loginset)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -60,4 +62,36 @@ func TestBuilder_BuildLoginSshHostKeys(t *testing.T) {
 			require.True(t, got.Data[SshHostRsaPubKeyFile] != nil || got.StringData[SshHostRsaPubKeyFile] != "")
 		})
 	}
+}
+
+// The host keys Secret is the source of truth once it exists: regenerating the
+// keys would invalidate the host keys clients have already accepted.
+func TestBuilder_BuildLoginSshHostKeys_reusesExistingKeys(t *testing.T) {
+	loginset := &slinkyv1beta1.LoginSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	key := loginset.SshHostKeys()
+
+	existing := map[string][]byte{}
+	for _, file := range []string{
+		SshHostRsaKeyFile, SshHostRsaPubKeyFile,
+		SshHostEd25519KeyFile, SshHostEd25519PubKeyFile,
+		SshHostEcdsaKeyFile, SshHostEcdsaPubKeyFile,
+	} {
+		existing[file] = []byte("existing-" + file)
+	}
+
+	c := fake.NewFakeClient(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+		},
+		Data: existing,
+	})
+
+	got, err := New(c).BuildLoginSshHostKeys(context.TODO(), loginset)
+	require.NoError(t, err)
+	require.Equal(t, existing, got.Data)
 }
