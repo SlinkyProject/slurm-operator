@@ -75,6 +75,15 @@ func TestSlurmChart(t *testing.T) {
 			},
 		},
 		{
+			name:    "Install Slurm with DaemonSet scaling",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				DaemonSet: true,
+				Namespace: "slurm-e2e-daemonset",
+			},
+		},
+		{
 			name:    "Install Slurm with login",
 			install: true,
 			test:    true,

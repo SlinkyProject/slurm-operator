@@ -227,18 +227,41 @@ features:
 Compatibility Matrix
 --------------------
 
-+--------------------------------------------------------------------------------+---------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| Release                                                                        | Minimum Kubernetes                                                        | Minimum Slurm (Data Parser)                                                       |
-+================================================================================+===========================================================================+===================================================================================+
-| `v1.2 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.2.0>`__ | `v1.29 <https://github.com/kubernetes/kubernetes/releases/tag/v1.29.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                |                                                                           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+---------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| `v1.1 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.1.0>`__ | `v1.29 <https://github.com/kubernetes/kubernetes/releases/tag/v1.29.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                |                                                                           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+---------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
-| `v1.0 <https://github.com/SlinkyProject/slurm-operator/releases/tag/v1.0.0>`__ | `v1.29 <https://github.com/kubernetes/kubernetes/releases/tag/v1.29.0>`__ | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
-|                                                                                |                                                                           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
-+--------------------------------------------------------------------------------+---------------------------------------------------------------------------+-----------------------------------------------------------------------------------+
+Each minor release supports all Kubernetes minor versions that are
+`supported upstream <https://kubernetes.io/releases/#release-history>`__
+when it is released, starting with Kubernetes 1.35. That set is recorded
+for each minor release. Support for newer Kubernetes minors may be
+backported in a patch release after end-to-end validation; these
+backports are optional.
+
+========= =============== =============== ===============
+Release   Kubernetes 1.35 Kubernetes 1.36 Kubernetes 1.37
+========= =============== =============== ===============
+``1.3.X`` ✓               ✓               ✓
+``1.2.X`` ✓               ✓               ✓
+``1.1.X`` ✓               ✓               —
+``1.0.X`` ✓               ✓               —
+========= =============== =============== ===============
+
+✓ means supported; — means unsupported. ``X`` denotes the patch version.
+Use the latest patch release in each minor release series. Backported
+support is marked with the first supporting patch version.
+
++-----------+-----------------------------------------------------------------------------------+
+| Release   | Minimum Slurm (Data Parser)                                                       |
++===========+===================================================================================+
+| ``1.3.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.2.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.1.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
+| ``1.0.X`` | `25.11 <https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1>`__         |
+|           | (`v0.0.44 <https://slurm.schedmd.com/rest_clients.html#data_parser_lifecycle>`__) |
++-----------+-----------------------------------------------------------------------------------+
 
 Please refer to the following lifecycle documents for support guidance:
 

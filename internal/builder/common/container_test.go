@@ -301,6 +301,176 @@ func TestBuilder_BuildContainer(t *testing.T) {
 		},
 
 		{
+			name:   "preStop exec replaces exec",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmd",
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+							},
+						},
+					},
+				},
+				Merge: corev1.Container{
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/bin/bash", "-c", "my-drain.sh"},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "slurmd",
+				Lifecycle: &corev1.Lifecycle{
+					PreStop: &corev1.LifecycleHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"/bin/bash", "-c", "my-drain.sh"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "preStop httpGet replaces exec",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmd",
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+							},
+						},
+					},
+				},
+				Merge: corev1.Container{
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/drain",
+								Port: intstr.FromString("slurmd"),
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "slurmd",
+				Lifecycle: &corev1.Lifecycle{
+					PreStop: &corev1.LifecycleHandler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/drain",
+							Port: intstr.FromString("slurmd"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "postStart merge preserves base preStop",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmd",
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+							},
+						},
+					},
+				},
+				Merge: corev1.Container{
+					Lifecycle: &corev1.Lifecycle{
+						PostStart: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/bin/bash", "-c", "my-setup.sh"},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "slurmd",
+				Lifecycle: &corev1.Lifecycle{
+					PostStart: &corev1.LifecycleHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"/bin/bash", "-c", "my-setup.sh"},
+						},
+					},
+					PreStop: &corev1.LifecycleHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "no merge lifecycle leaves base untouched",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmd",
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+							},
+						},
+					},
+				},
+				Merge: corev1.Container{
+					Image: "nginx",
+				},
+			},
+			want: corev1.Container{
+				Name:  "slurmd",
+				Image: "nginx",
+				Lifecycle: &corev1.Lifecycle{
+					PreStop: &corev1.LifecycleHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"/usr/bin/sh", "-c", "scontrol update nodename=$(hostname) state=down;"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "merge lifecycle when base has no lifecycle",
+			client: fake.NewFakeClient(),
+			opts: ContainerOpts{
+				Base: corev1.Container{
+					Name: "slurmd",
+				},
+				Merge: corev1.Container{
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"/bin/bash", "-c", "my-drain.sh"},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Container{
+				Name: "slurmd",
+				Lifecycle: &corev1.Lifecycle{
+					PreStop: &corev1.LifecycleHandler{
+						Exec: &corev1.ExecAction{
+							Command: []string{"/bin/bash", "-c", "my-drain.sh"},
+						},
+					},
+				},
+			},
+		},
+		{
 			name:   "merge probe when base has no probe",
 			client: fake.NewFakeClient(),
 			opts: ContainerOpts{

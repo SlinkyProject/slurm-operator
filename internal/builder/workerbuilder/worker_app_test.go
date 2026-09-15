@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -341,6 +342,96 @@ func TestWorkerBuilder_getResourceLimits(t *testing.T) {
 			require.Equal(t, tt.want.memory, memory)
 		})
 	}
+}
+
+func TestWorkerBuilder_slurmdContainerPreStop(t *testing.T) {
+	customExec := &corev1.LifecycleHandler{
+		Exec: &corev1.ExecAction{
+			Command: []string{"/bin/bash", "-c", "scontrol update nodename=$(hostname) state=drain reason='draining';"},
+		},
+	}
+	customHTTPGet := &corev1.LifecycleHandler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Path: "/drain",
+			Port: intstr.FromString(labels.WorkerApp),
+		},
+	}
+	customPostStart := &corev1.LifecycleHandler{
+		Exec: &corev1.ExecAction{
+			Command: []string{"/bin/bash", "-c", "my-setup.sh"},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		lifecycle     *corev1.Lifecycle
+		wantPreStop   *corev1.LifecycleHandler
+		wantPostStart *corev1.LifecycleHandler
+	}{
+		{
+			name:        "operator default when unset",
+			lifecycle:   nil,
+			wantPreStop: slurmdPreStop(),
+		},
+		{
+			name:        "exec handler replaces the default",
+			lifecycle:   &corev1.Lifecycle{PreStop: customExec},
+			wantPreStop: customExec,
+		},
+		{
+			name:        "httpGet handler replaces the default exec",
+			lifecycle:   &corev1.Lifecycle{PreStop: customHTTPGet},
+			wantPreStop: customHTTPGet,
+		},
+		{
+			name:          "postStart alone keeps the default preStop",
+			lifecycle:     &corev1.Lifecycle{PostStart: customPostStart},
+			wantPreStop:   slurmdPreStop(),
+			wantPostStart: customPostStart,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeset := &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{Name: "slurm-foo"},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					ControllerRef: corev1.LocalObjectReference{Name: "slurm"},
+					Slurmd: slinkyv1beta1.ContainerWrapper{
+						Container: corev1.Container{Lifecycle: tt.lifecycle},
+					},
+				},
+			}
+			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+
+			b := New(fake.NewFakeClient())
+			got := b.slurmdContainer(nodeset, controller)
+
+			require.NotNil(t, got.Lifecycle)
+			require.Equal(t, tt.wantPreStop, got.Lifecycle.PreStop)
+			require.Equal(t, tt.wantPostStart, got.Lifecycle.PostStart)
+			// Kubernetes rejects a handler that specifies more than one action.
+			require.Equal(t, 1, countHandlerActions(got.Lifecycle.PreStop))
+		})
+	}
+}
+
+// countHandlerActions reports how many actions a lifecycle handler specifies.
+func countHandlerActions(handler *corev1.LifecycleHandler) int {
+	if handler == nil {
+		return 0
+	}
+	count := 0
+	for _, isSet := range []bool{
+		handler.Exec != nil,
+		handler.HTTPGet != nil,
+		handler.TCPSocket != nil,
+		handler.Sleep != nil,
+	} {
+		if isSet {
+			count++
+		}
+	}
+	return count
 }
 
 func TestParseExtraConf(t *testing.T) {
