@@ -470,10 +470,18 @@ from Slurm operations while still counting toward Kubernetes replicas.
 The preference itself is immutable after creation, but `pinToNode` and
 `oversubscribeNode` remain mutable.
 
-In both scaling modes, the slurmd container sources `SLURM_NODE_NAME` from the
-recorded hostname label through the Downward API and passes it to slurmd's
-native `-N` option. The default termination hook uses the same variable. Custom
-images and startup overrides must preserve the recorded Slurm identity. The
+The operator-managed `nodeset.slinky.slurm.net/pod-hostname` label records the
+Pod's Slurm node name in both scaling modes. Despite its historical name, this
+Slurm node name label need not match the Pod's configured `spec.hostname` or
+runtime hostname. In a StatefulSet using Node-derived naming, it holds the
+Node-derived Slurm name while `spec.hostname` remains ordinal-based. The label
+can be empty until binding resolves the name if no valid pin is available; an
+empty value means unresolved, not a fallback to the Pod hostname.
+
+The slurmd container sources `SLURM_NODE_NAME` from this label through the
+Downward API and passes it to slurmd's native `-N` option. The default
+termination hook uses the same variable. Custom images and startup overrides
+must preserve the recorded Slurm identity. The separate
 `nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label is reserved for the
 operator.
 

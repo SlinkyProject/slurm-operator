@@ -80,8 +80,10 @@ const (
 	// NOTE: Set by the NodeSet controller.
 	LabelNodeSetPodIndex = NodeSetPrefix + "pod-index"
 
-	// LabelNodeSetPodHostname indicates the pod hostname (used as Slurm node name).
-	// NOTE: Set by the NodeSet controller.
+	// LabelNodeSetPodHostname records the Pod's Slurm node name in both scaling modes.
+	// The historical key does not imply equality with spec.hostname or the runtime hostname.
+	// Empty means the Slurm identity is unresolved.
+	// NOTE: Set by the NodeSet controller or Pod binding webhook.
 	LabelNodeSetPodHostname = NodeSetPrefix + "pod-hostname"
 
 	// LabelNodeSetPodProtect indicates whether the pod is protected against eviction using a PodDisruptionBudget
