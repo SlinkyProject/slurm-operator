@@ -26,6 +26,7 @@ build-docs/*
 # Output of the go coverage tooling, specifically when used with LiteIDE
 *.out
 cover.html
+e2e-artifacts/
 
 # Output of go tool pprof
 cpu.prof
