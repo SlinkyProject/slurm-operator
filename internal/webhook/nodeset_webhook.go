@@ -15,6 +15,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -61,7 +62,7 @@ func (r *NodeSetWebhook) ValidateUpdate(ctx context.Context, oldNodeSet, newNode
 	if !apiequality.Semantic.DeepEqual(newNodeSet.Spec.VolumeClaimTemplates, oldNodeSet.Spec.VolumeClaimTemplates) {
 		errs = append(errs, errors.New("cannot change volumeClaimTemplates after deployment"))
 	}
-	if oldNodeSet.Spec.PreferKubernetesNodeName != newNodeSet.Spec.PreferKubernetesNodeName {
+	if ptr.Deref(oldNodeSet.Spec.PreferKubernetesNodeName, true) != ptr.Deref(newNodeSet.Spec.PreferKubernetesNodeName, true) {
 		errs = append(errs, errors.New("preferKubernetesNodeName is immutable"))
 	}
 

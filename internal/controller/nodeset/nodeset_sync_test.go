@@ -5217,7 +5217,7 @@ func TestNodeNamedScaleUpBeforeNodesExist(t *testing.T) {
 	nodeset := newNodeSet("workers", "slurm", 2)
 	nodeset.UID = "workers-uid"
 	nodeset.Spec.PinToNode = true
-	nodeset.Spec.PreferKubernetesNodeName = true
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 	defaults.SetNodeSetDefaults(nodeset)
 	controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{
 		Name: "slurm", Namespace: nodeset.Namespace,
@@ -5294,7 +5294,7 @@ func TestPreferredNamingPlacementUpdates(t *testing.T) {
 				ctx := context.Background()
 				nodeset := newNodeSet("workers", "slurm", 1)
 				nodeset.UID = "workers-uid"
-				nodeset.Spec.PreferKubernetesNodeName = true
+				nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 				nodeset.Spec.PinToNode = change.oldPinned
 				nodeset.Spec.OversubscribeNode = change.oldOversubscribe
 				nodeset.Spec.UpdateStrategy.Type = strategy
@@ -5377,11 +5377,11 @@ func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
 			nodeset := newNodeSet("workers", "slurm", 1)
 			nodeset.UID = "workers-uid"
 			nodeset.Spec.PinToNode = true
-			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
 			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
 			if test.podMode {
-				nodeset.Spec.PreferKubernetesNodeName = false
+				nodeset.Spec.PreferKubernetesNodeName = ptr.To(false)
 			}
 			if test.noPin {
 				nodeset.Status.OrdinalToNode = nil
@@ -5470,7 +5470,7 @@ func TestStatefulSetHostnameOverrideRecords(t *testing.T) {
 			nodeset.UID = "workers-uid"
 			nodeset.Spec.PinToNode = !test.unpinned
 			nodeset.Spec.OversubscribeNode = test.oversubscribed
-			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 			nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
 			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
 			node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a", Annotations: map[string]string{
@@ -5524,14 +5524,14 @@ func TestNodeNamedSlurmNodeRecordLifecycle(t *testing.T) {
 			nodeset := newNodeSet("workers", "slurm", 1)
 			nodeset.UID = "nodeset-uid"
 			nodeset.Spec.PinToNode = true
-			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 			nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound
 			nodeset.Status.OrdinalToNode = map[string]string{"0": "worker-a"}
 			if test.never {
 				nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
 			}
 			if test.podHostnameMode {
-				nodeset.Spec.PreferKubernetesNodeName = false
+				nodeset.Spec.PreferKubernetesNodeName = ptr.To(false)
 				nodeset.Spec.PinToNode = false
 			}
 			if test.pinNoLongerMatches {
@@ -5648,7 +5648,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
 				ns.Spec.PinToNode = true
-				ns.Spec.PreferKubernetesNodeName = true
+				ns.Spec.PreferKubernetesNodeName = ptr.To(true)
 				ns.Status.OrdinalToNode = map[string]string{"0": "worker-b"}
 				pod := newNodeSetPodWithStatus(ns, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 				pod.Spec.NodeName = "worker-b"
@@ -5805,10 +5805,11 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			},
 		},
 		{
-			name:              "skips for statefulset scaling mode",
+			name:              "skips when statefulset naming preference is disabled",
 			scalingMode:       "",
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+				ns.Spec.PreferKubernetesNodeName = ptr.To(false)
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmtypes.V0044Node{
 					{V0044Node: slurmapi.V0044Node{

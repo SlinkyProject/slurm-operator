@@ -10,12 +10,15 @@ chart:
   version: 1.2.3
   appVersion: 1.2.3
 tests:
-  - it: should default to legacy naming
+  - it: should enable the naming preference by default without enabling pinning
     set:
       nodesets.slinky.enabled: true
     asserts:
       - equal:
           path: spec.preferKubernetesNodeName
+          value: true
+      - equal:
+          path: spec.pinToNode
           value: false
       - notExists:
           path: spec.slurmNodeNameMode
@@ -26,16 +29,16 @@ tests:
     asserts:
       - equal:
           path: spec.preferKubernetesNodeName
-          value: false
-  - it: should allow a null nodeset preference to select false
+          value: true
+  - it: should allow a null nodeset preference to select the default true
     set:
-      nodesetDefaults.preferKubernetesNodeName: true
+      nodesetDefaults.preferKubernetesNodeName: false
       nodesets.slinky.enabled: true
       nodesets.slinky.preferKubernetesNodeName: null
     asserts:
       - equal:
           path: spec.preferKubernetesNodeName
-          value: false
+          value: true
   - it: should preserve daemonset defaults
     set:
       nodesets.slinky.enabled: true
@@ -43,13 +46,12 @@ tests:
     asserts:
       - equal:
           path: spec.preferKubernetesNodeName
-          value: false
+          value: true
       - equal:
           path: spec.scalingMode
           value: DaemonSet
   - it: should inherit preferred node naming
     set:
-      nodesetDefaults.preferKubernetesNodeName: true
       nodesetDefaults.pinToNode: true
       nodesets.slinky.enabled: true
     asserts:
@@ -65,6 +67,24 @@ tests:
       - equal:
           path: spec.oversubscribeNode
           value: false
+  - it: should preserve explicit false in nodeset defaults
+    set:
+      nodesetDefaults.preferKubernetesNodeName: false
+      nodesetDefaults.pinToNode: true
+      nodesets.slinky.enabled: true
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: false
+  - it: should allow an explicit true to override false defaults
+    set:
+      nodesetDefaults.preferKubernetesNodeName: false
+      nodesets.slinky.enabled: true
+      nodesets.slinky.preferKubernetesNodeName: true
+    asserts:
+      - equal:
+          path: spec.preferKubernetesNodeName
+          value: true
   - it: should disable the preference per nodeset
     set:
       nodesetDefaults.preferKubernetesNodeName: true

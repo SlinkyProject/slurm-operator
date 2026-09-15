@@ -624,7 +624,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 ) error {
 	mainLogger := log.FromContext(ctx)
 	daemonSet := nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset
-	if !daemonSet && !nodeset.Spec.PreferKubernetesNodeName {
+	if !daemonSet && !ptr.Deref(nodeset.Spec.PreferKubernetesNodeName, true) {
 		return nil
 	}
 

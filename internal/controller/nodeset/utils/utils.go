@@ -349,9 +349,6 @@ func GetSlurmNodeName(pod *corev1.Pod) string {
 		return pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
 	}
 	if pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] == string(slinkyv1beta1.ScalingModeStatefulset) {
-		if pod.Spec.HostNetwork {
-			return pod.Spec.NodeName
-		}
 		if pod.Spec.Hostname != "" {
 			return pod.Spec.Hostname
 		}

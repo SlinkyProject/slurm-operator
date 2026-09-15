@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -19,7 +20,7 @@ var (
 )
 
 // NodeSetSpec defines the desired state of NodeSet
-// +kubebuilder:validation:XValidation:rule="(has(self.preferKubernetesNodeName) && self.preferKubernetesNodeName) == (has(oldSelf.preferKubernetesNodeName) && oldSelf.preferKubernetesNodeName)",message="preferKubernetesNodeName is immutable"
+// +kubebuilder:validation:XValidation:rule="(!has(self.preferKubernetesNodeName) || self.preferKubernetesNodeName) == (!has(oldSelf.preferKubernetesNodeName) || oldSelf.preferKubernetesNodeName)",message="preferKubernetesNodeName is immutable"
 type NodeSetSpec struct {
 	// controllerRef is a reference to the Controller CR to which this has membership.
 	// +required
@@ -127,10 +128,10 @@ type NodeSetSpec struct {
 
 	// PreferKubernetesNodeName enables DaemonSet-style Slurm node naming for StatefulSet workers.
 	// Only takes effect with pinToNode=true and oversubscribeNode=false.
-	// Defaults to false. This preference is immutable after creation.
+	// Defaults to true. This preference is immutable after creation.
 	// +optional
-	// +kubebuilder:default:=false
-	PreferKubernetesNodeName bool `json:"preferKubernetesNodeName,omitempty"`
+	// +kubebuilder:default:=true
+	PreferKubernetesNodeName *bool `json:"preferKubernetesNodeName,omitempty"`
 
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
 	// a Pod Disruption Budget.
@@ -163,7 +164,7 @@ func (spec *NodeSetSpec) EffectiveSlurmNodeNameMode() SlurmNodeNameModeType {
 	if spec.ScalingMode == ScalingModeDaemonset {
 		return SlurmNodeNameModeKubernetesNode
 	}
-	if spec.PreferKubernetesNodeName && spec.PinToNode && !spec.OversubscribeNode {
+	if ptr.Deref(spec.PreferKubernetesNodeName, true) && spec.PinToNode && !spec.OversubscribeNode {
 		return SlurmNodeNameModeKubernetesNode
 	}
 	return SlurmNodeNameModePodHostname

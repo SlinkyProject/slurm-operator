@@ -365,8 +365,9 @@ With node pinning enabled:
 
 Pinning controls placement; `spec.preferKubernetesNodeName` also lets pinned
 StatefulSet workers register in Slurm using the Node's hostname override or
-short name instead of the Pod hostname. This boolean defaults to `false` when
-omitted or set to YAML `null`. Node-derived naming requires both
+short name instead of the Pod hostname. This boolean defaults to `true` when
+omitted or set to YAML `null`. Set it to `false` when creating a NodeSet to keep
+Pod-hostname naming even with pinning enabled. Node-derived naming requires both
 `pinToNode: true` and `oversubscribeNode: false`.
 
 To use the same Node-derived naming rule as DaemonSet mode while retaining
@@ -397,17 +398,18 @@ from Slurm operations while still counting toward Kubernetes replicas.
 The preference itself is immutable after creation, but `pinToNode` and
 `oversubscribeNode` remain mutable.
 
-The slurmd container exposes `SLURM_NODE_NAME` in both scaling modes, and the
-default termination hook uses it. For StatefulSet workers using Node-derived
-naming, the variable comes from the recorded hostname label through the Downward
-API and is passed to slurmd's native `-N` option. Custom images and startup
-overrides must preserve the recorded Slurm identity. The
+In both scaling modes, the slurmd container sources `SLURM_NODE_NAME` from the
+recorded hostname label through the Downward API and passes it to slurmd's
+native `-N` option. The default termination hook uses the same variable. Custom
+images and startup overrides must preserve the recorded Slurm identity. The
 `nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label is reserved for the
 operator.
 
+Legacy host-networked StatefulSet workers using implicit Node names must be
+drained before upgrading and recreated with the new controller.
+
 To change the preference itself, create a new NodeSet and retire the old one
-after draining its workloads. Existing NodeSets default to `false`; upgrading
-does not opt them in or rename their workers.
+after draining its workloads.
 
 If a pin is released, the replacement Pod can run on another Node and register
 under that Node's name. Existing scheduling and eviction policies still apply;

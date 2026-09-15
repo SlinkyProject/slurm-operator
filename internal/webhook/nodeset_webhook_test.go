@@ -64,7 +64,7 @@ func TestPreferKubernetesNodeNameAdmission(t *testing.T) {
 				ControllerRef:            corev1.LocalObjectReference{Name: "slurm"},
 				ScalingMode:              slinkyv1beta1.ScalingModeStatefulset,
 				PinToNode:                true,
-				PreferKubernetesNodeName: true,
+				PreferKubernetesNodeName: ptr.To(true),
 			}}
 			old := nodeset.DeepCopy()
 			if test.mutate != nil {
@@ -90,19 +90,27 @@ func TestPreferKubernetesNodeNameAdmission(t *testing.T) {
 }
 
 func TestPreferKubernetesNodeNameImmutable(t *testing.T) {
-	for _, oldPreference := range []bool{false, true} {
-		for _, newPreference := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%t to %t", oldPreference, newPreference), func(t *testing.T) {
+	preferences := []struct {
+		name  string
+		value *bool
+	}{
+		{name: "omitted"},
+		{name: "false", value: ptr.To(false)},
+		{name: "true", value: ptr.To(true)},
+	}
+	for _, oldPreference := range preferences {
+		for _, newPreference := range preferences {
+			t.Run(fmt.Sprintf("%s to %s", oldPreference.name, newPreference.name), func(t *testing.T) {
 				old := &slinkyv1beta1.NodeSet{Spec: slinkyv1beta1.NodeSetSpec{
 					ControllerRef: corev1.LocalObjectReference{Name: "slurm"},
 					ScalingMode:   slinkyv1beta1.ScalingModeStatefulset,
-					PinToNode:     true, PreferKubernetesNodeName: oldPreference,
+					PinToNode:     true, PreferKubernetesNodeName: oldPreference.value,
 				}}
 				updated := old.DeepCopy()
-				updated.Spec.PreferKubernetesNodeName = newPreference
+				updated.Spec.PreferKubernetesNodeName = newPreference.value
 				updated.Spec.Replicas = ptr.To[int32](2)
 				warns, err := (&NodeSetWebhook{}).ValidateUpdate(context.Background(), old, updated)
-				if oldPreference != newPreference {
+				if ptr.Deref(oldPreference.value, true) != ptr.Deref(newPreference.value, true) {
 					require.ErrorContains(t, err, "preferKubernetesNodeName is immutable")
 				} else {
 					require.NoError(t, err)
@@ -155,7 +163,7 @@ var _ = Describe("NodeSet Webhook", func() {
 	})
 
 	Context("Slurm naming schema", func() {
-		It("defaults null to false in either scaling mode", func(ctx SpecContext) {
+		It("defaults null to true in either scaling mode", func(ctx SpecContext) {
 			for _, scalingMode := range []string{"StatefulSet", "DaemonSet"} {
 				nodeset := &unstructured.Unstructured{Object: map[string]any{
 					"apiVersion": slinkyv1beta1.GroupVersion.String(),
@@ -170,14 +178,14 @@ var _ = Describe("NodeSet Webhook", func() {
 				DeferCleanup(func(ctx SpecContext) { Expect(k8sClient.Delete(ctx, nodeset)).To(Succeed()) })
 				prefer, _, err := unstructured.NestedBool(nodeset.Object, "spec", "preferKubernetesNodeName")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(prefer).To(BeFalse())
-				Expect(unstructured.SetNestedField(nodeset.Object, true, "spec", "preferKubernetesNodeName")).To(Succeed())
-				Expect(apierrors.IsInvalid(k8sClient.Update(ctx, nodeset))).To(BeTrue())
+				Expect(prefer).To(BeTrue())
 				Expect(unstructured.SetNestedField(nodeset.Object, false, "spec", "preferKubernetesNodeName")).To(Succeed())
+				Expect(apierrors.IsInvalid(k8sClient.Update(ctx, nodeset))).To(BeTrue())
+				Expect(unstructured.SetNestedField(nodeset.Object, true, "spec", "preferKubernetesNodeName")).To(Succeed())
 				Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 			}
 		})
-		It("preserves default naming and mutable placement on legacy objects", func(ctx SpecContext) {
+		It("defaults an omitted preference to true while placement remains mutable", func(ctx SpecContext) {
 			nodeset := &unstructured.Unstructured{Object: map[string]any{
 				"apiVersion": slinkyv1beta1.GroupVersion.String(),
 				"kind":       "NodeSet",
@@ -188,7 +196,7 @@ var _ = Describe("NodeSet Webhook", func() {
 			DeferCleanup(func(ctx SpecContext) { Expect(k8sClient.Delete(ctx, nodeset)).To(Succeed()) })
 			prefer, _, err := unstructured.NestedBool(nodeset.Object, "spec", "preferKubernetesNodeName")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(prefer).To(BeFalse())
+			Expect(prefer).To(BeTrue())
 			unstructured.RemoveNestedField(nodeset.Object, "spec", "preferKubernetesNodeName")
 			Expect(unstructured.SetNestedField(nodeset.Object, true, "spec", "pinToNode")).To(Succeed())
 			Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
@@ -197,8 +205,32 @@ var _ = Describe("NodeSet Webhook", func() {
 			Expect(unstructured.SetNestedField(nodeset.Object, false, "spec", "pinToNode")).To(Succeed())
 			Expect(unstructured.SetNestedField(nodeset.Object, false, "spec", "oversubscribeNode")).To(Succeed())
 			Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
-			Expect(unstructured.SetNestedField(nodeset.Object, true, "spec", "preferKubernetesNodeName")).To(Succeed())
+			Expect(unstructured.SetNestedField(nodeset.Object, false, "spec", "preferKubernetesNodeName")).To(Succeed())
 			Expect(apierrors.IsInvalid(k8sClient.Update(ctx, nodeset))).To(BeTrue())
+		})
+		It("preserves an explicit false from a Go client", func(ctx SpecContext) {
+			nodeset := &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{GenerateName: "pod-naming-", Namespace: "default"},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					ControllerRef:            corev1.LocalObjectReference{Name: "slurm"},
+					PinToNode:                true,
+					PreferKubernetesNodeName: ptr.To(false),
+				},
+			}
+			Expect(k8sClient.Create(ctx, nodeset)).To(Succeed())
+			DeferCleanup(func(ctx SpecContext) { Expect(k8sClient.Delete(ctx, nodeset)).To(Succeed()) })
+			Expect(nodeset.Spec.PreferKubernetesNodeName).To(Equal(ptr.To(false)))
+			Expect(nodeset.Spec.EffectiveSlurmNodeNameMode()).To(Equal(slinkyv1beta1.SlurmNodeNameModePodHostname))
+			nodeset.Spec.Replicas = ptr.To[int32](2)
+			Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
+			Expect(nodeset.Spec.PreferKubernetesNodeName).To(Equal(ptr.To(false)))
+			for _, preference := range []*bool{nil, ptr.To(true)} {
+				updated := nodeset.DeepCopy()
+				updated.Spec.PreferKubernetesNodeName = preference
+				err := k8sClient.Update(ctx, updated)
+				Expect(apierrors.IsInvalid(err)).To(BeTrue())
+				Expect(err.Error()).To(ContainSubstring("preferKubernetesNodeName is immutable"))
+			}
 		})
 		It("keeps the preference immutable without restricting placement changes", func(ctx SpecContext) {
 			nodeset := &unstructured.Unstructured{Object: map[string]any{
@@ -220,17 +252,13 @@ var _ = Describe("NodeSet Webhook", func() {
 					Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 				}
 			}
-			for _, remove := range []bool{false, true} {
-				updated := nodeset.DeepCopy()
-				if remove {
-					unstructured.RemoveNestedField(updated.Object, "spec", "preferKubernetesNodeName")
-				} else {
-					Expect(unstructured.SetNestedField(updated.Object, false, "spec", "preferKubernetesNodeName")).To(Succeed())
-				}
-				err := k8sClient.Update(ctx, updated)
-				Expect(apierrors.IsInvalid(err)).To(BeTrue())
-				Expect(err.Error()).To(ContainSubstring("preferKubernetesNodeName is immutable"))
-			}
+			updated := nodeset.DeepCopy()
+			Expect(unstructured.SetNestedField(updated.Object, false, "spec", "preferKubernetesNodeName")).To(Succeed())
+			err := k8sClient.Update(ctx, updated)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue())
+			Expect(err.Error()).To(ContainSubstring("preferKubernetesNodeName is immutable"))
+			unstructured.RemoveNestedField(nodeset.Object, "spec", "preferKubernetesNodeName")
+			Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 		})
 	})
 

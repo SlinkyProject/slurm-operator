@@ -187,11 +187,11 @@ spec:
                   Used only when `scalingMode=StatefulSet`.
                 type: boolean
               preferKubernetesNodeName:
-                default: false
+                default: true
                 description: |-
                   PreferKubernetesNodeName enables DaemonSet-style Slurm node naming for StatefulSet workers.
                   Only takes effect with pinToNode=true and oversubscribeNode=false.
-                  Defaults to false. This preference is immutable after creation.
+                  Defaults to true. This preference is immutable after creation.
                 type: boolean
               pruneSlurmNodeRecords:
                 default: Never
@@ -406,8 +406,8 @@ spec:
             type: object
             x-kubernetes-validations:
             - message: preferKubernetesNodeName is immutable
-              rule: (has(self.preferKubernetesNodeName) && self.preferKubernetesNodeName)
-                == (has(oldSelf.preferKubernetesNodeName) && oldSelf.preferKubernetesNodeName)
+              rule: (!has(self.preferKubernetesNodeName) || self.preferKubernetesNodeName)
+                == (!has(oldSelf.preferKubernetesNodeName) || oldSelf.preferKubernetesNodeName)
           status:
             description: NodeSetStatus defines the observed state of NodeSet
             properties:

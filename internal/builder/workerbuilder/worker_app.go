@@ -195,14 +195,10 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 
 	cpus, memory := b.getResourceLimits(&nodeset.Spec)
 
-	slurmNodeNameFieldPath := fmt.Sprintf("metadata.labels['%s']", slinkyv1beta1.LabelNodeSetPodHostname)
-	if nodeset.Spec.Template.PodSpecWrapper.HostNetwork && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
-		slurmNodeNameFieldPath = "spec.nodeName"
-	}
 	slurmNodeNameEnv := corev1.EnvVar{
 		Name: "SLURM_NODE_NAME",
 		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{FieldPath: slurmNodeNameFieldPath},
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: fmt.Sprintf("metadata.labels['%s']", slinkyv1beta1.LabelNodeSetPodHostname)},
 		},
 	}
 
@@ -290,10 +286,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 }
 
 func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []string {
-	args := []string{"-Z"}
-	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
-		args = append(args, "-N", "$(SLURM_NODE_NAME)")
-	}
+	args := []string{"-Z", "-N", "$(SLURM_NODE_NAME)"}
 	args = append(args, common.ConfiglessArgs(controller)...)
 	args = append(args, slurmdConfArgs(nodeset)...)
 	return args

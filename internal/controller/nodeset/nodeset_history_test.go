@@ -35,25 +35,29 @@ func TestDefaultNodeNamePreferenceRevision(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, legacyPatch, string(legacy.Data.Raw), "patch captured from commit 399ee2039253b6912c81a6d7bbc8eccc06e27744")
 	require.Equal(t, legacyRevisionName, legacy.Name, "revision name captured from commit 399ee2039253b6912c81a6d7bbc8eccc06e27744")
-	nodeset.Spec.PreferKubernetesNodeName = false
-	explicitDefault, err := newRevision(nodeset, 2, ptr.To[int32](0))
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(false)
+	explicitFalse, err := newRevision(nodeset, 2, ptr.To[int32](0))
 	require.NoError(t, err)
-	require.True(t, history.EqualRevision(legacy, explicitDefault))
+	require.True(t, history.EqualRevision(legacy, explicitFalse))
 	nodeset.Spec.PinToNode = true
 	pinnedLegacy, err := newRevision(nodeset, 3, ptr.To[int32](0))
 	require.NoError(t, err)
 	require.True(t, history.EqualRevision(legacy, pinnedLegacy))
-	nodeset.Spec.PreferKubernetesNodeName = true
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 	nodeNamed, err := newRevision(nodeset, 4, ptr.To[int32](0))
 	require.NoError(t, err)
 	require.False(t, history.EqualRevision(legacy, nodeNamed))
+	nodeset.Spec.PreferKubernetesNodeName = nil
+	defaultNodeNamed, err := newRevision(nodeset, 5, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.True(t, history.EqualRevision(nodeNamed, defaultNodeNamed))
 	nodeset.Spec.PinToNode = false
-	fallback, err := newRevision(nodeset, 5, ptr.To[int32](0))
+	fallback, err := newRevision(nodeset, 6, ptr.To[int32](0))
 	require.NoError(t, err)
 	require.True(t, history.EqualRevision(legacy, fallback))
 	nodeset.Spec.PinToNode = true
 	nodeset.Spec.OversubscribeNode = true
-	oversubscribed, err := newRevision(nodeset, 6, ptr.To[int32](0))
+	oversubscribed, err := newRevision(nodeset, 7, ptr.To[int32](0))
 	require.NoError(t, err)
 	require.False(t, history.EqualRevision(nodeNamed, oversubscribed))
 }

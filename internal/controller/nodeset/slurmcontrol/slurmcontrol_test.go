@@ -90,7 +90,7 @@ func TestUnresolvedPodSlurmIdentity(t *testing.T) {
 	ctx := context.Background()
 	nodeset := newNodeSet("workers", "slurm", 1)
 	nodeset.Spec.PinToNode = true
-	nodeset.Spec.PreferKubernetesNodeName = true
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, &slinkyv1beta1.Controller{}, 0, "")
 	require.Empty(t, pod.Spec.NodeName)
 	require.Empty(t, nodesetutils.GetSlurmNodeName(pod))
@@ -183,7 +183,7 @@ func TestSlurmOperationsWithPendingAndResolvedPods(t *testing.T) {
 	nodeset := newNodeSet("workers", "slurm", 3)
 	nodeset.UID = "workers-uid"
 	nodeset.Spec.PinToNode = true
-	nodeset.Spec.PreferKubernetesNodeName = true
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 	pending := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, &slinkyv1beta1.Controller{}, 0, "")
 	registered := pending.DeepCopy()
 	registered.Name = "workers-1"

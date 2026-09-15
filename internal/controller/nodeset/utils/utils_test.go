@@ -424,6 +424,22 @@ func TestGetSlurmNodeName(t *testing.T) {
 			},
 			want: "bar-1",
 		},
+		{
+			name: "host networking does not override pod hostname",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "workers-0", Labels: map[string]string{
+						slinkyv1beta1.LabelNodeSetScalingMode: string(slinkyv1beta1.ScalingModeStatefulset),
+					}},
+					Spec: corev1.PodSpec{
+						HostNetwork: true,
+						Hostname:    "compute-0",
+						NodeName:    "worker-a.example.com",
+					},
+				},
+			},
+			want: "compute-0",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -435,25 +451,23 @@ func TestGetSlurmNodeName(t *testing.T) {
 
 func TestStatefulSetHostnameOverride(t *testing.T) {
 	for _, test := range []struct {
-		name                                                     string
-		disabled                                                 bool
-		noPin, missingNode, mismatch, hostNetwork, oversubscribe bool
-		wantOverride                                             bool
+		name                                        string
+		disabled                                    bool
+		noPin, missingNode, mismatch, oversubscribe bool
+		wantOverride                                bool
 	}{
 		{name: "preference enabled", wantOverride: true},
 		{name: "default preserves pod hostname", disabled: true},
 		{name: "no pin", noPin: true},
 		{name: "deleted node", missingNode: true},
 		{name: "node no longer matches", mismatch: true},
-		{name: "host networking", hostNetwork: true, wantOverride: true},
 		{name: "oversubscription", oversubscribe: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			nodeset := newNodeSet("workers")
-			nodeset.Spec.PreferKubernetesNodeName = !test.disabled
+			nodeset.Spec.PreferKubernetesNodeName = ptr.To(!test.disabled)
 			nodeset.Spec.PinToNode = !test.noPin
 			nodeset.Spec.OversubscribeNode = test.oversubscribe
-			nodeset.Spec.Template.PodSpecWrapper.HostNetwork = test.hostNetwork
 			nodeset.Spec.Template.PodSpecWrapper.Hostname = "compute-"
 			nodeset.Status.OrdinalToNode = map[string]string{"3": "worker-a"}
 			if test.mismatch {
@@ -472,6 +486,11 @@ func TestStatefulSetHostnameOverride(t *testing.T) {
 				want = "gpu-01"
 				require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
 				require.Equal(t, want, GetSlurmNodeName(pod))
+			} else if nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModePodHostname {
+				require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+				require.Equal(t, want, GetSlurmNodeName(pod))
+			} else {
+				require.Empty(t, GetSlurmNodeName(pod))
 			}
 			require.Equal(t, want, pod.Spec.Hostname)
 			require.Equal(t, "workers-3", pod.Name)
@@ -491,7 +510,7 @@ func TestStatefulSetNodeNamingMatchesDaemonSet(t *testing.T) {
 			kclient := fake.NewFakeClient(node)
 			nodeset := newNodeSet("workers")
 			nodeset.Spec.PinToNode = true
-			nodeset.Spec.PreferKubernetesNodeName = true
+			nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
 			nodeset.Status.OrdinalToNode = map[string]string{"0": node.Name}
 			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
 			statefulPod := NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, "")
@@ -513,7 +532,7 @@ func TestSlurmNodeNameModeIdentityPreserved(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "workers", Namespace: "slurm"},
 		Spec: slinkyv1beta1.NodeSetSpec{
 			ScalingMode:              slinkyv1beta1.ScalingModeStatefulset,
-			PreferKubernetesNodeName: true,
+			PreferKubernetesNodeName: ptr.To(true),
 			PinToNode:                true,
 		},
 	}
@@ -537,32 +556,36 @@ func TestSlurmNodeNameModeIdentityPreserved(t *testing.T) {
 
 func TestSlurmNodeNameModeIdentity(t *testing.T) {
 	for name, prefer := range map[string]bool{"disabled": false, "enabled": true} {
-		t.Run(name, func(t *testing.T) {
-			nodeset := newNodeSet("workers")
-			nodeset.Spec.PreferKubernetesNodeName = prefer
-			nodeset.Spec.PinToNode = true
-			nodeset.Spec.Template.Metadata.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "inherited-name"
-			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
-			pod := NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 3, "")
-			if prefer {
-				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
-				require.Empty(t, GetSlurmNodeName(pod))
-			} else {
-				require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModePodHostname), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
-			}
-			pod.Spec.NodeName = "worker-a.example.com"
-			want := "workers-3"
-			if prefer {
-				require.Empty(t, GetSlurmNodeName(pod))
-				want = "worker-a"
-				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = want
-			}
-			require.Equal(t, want, GetSlurmNodeName(pod))
-			require.Equal(t, "workers-3", pod.Name)
-			UpdateIdentity(nodeset, pod)
-			require.Equal(t, want, GetSlurmNodeName(pod))
-			require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
-		})
+		for _, hostNetwork := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/hostNetwork=%t", name, hostNetwork), func(t *testing.T) {
+				nodeset := newNodeSet("workers")
+				nodeset.Spec.PreferKubernetesNodeName = ptr.To(prefer)
+				nodeset.Spec.PinToNode = true
+				nodeset.Spec.Template.PodSpecWrapper.HostNetwork = hostNetwork
+				nodeset.Spec.Template.Metadata.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = "inherited-name"
+				controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+				pod := NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 3, "")
+				if prefer {
+					require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
+					require.Empty(t, GetSlurmNodeName(pod))
+				} else {
+					require.Equal(t, string(slinkyv1beta1.SlurmNodeNameModePodHostname), pod.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode])
+					require.Equal(t, "workers-3", GetSlurmNodeName(pod))
+				}
+				pod.Spec.NodeName = "worker-a.example.com"
+				want := "workers-3"
+				if prefer {
+					require.Empty(t, GetSlurmNodeName(pod))
+					want = "worker-a"
+					pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = want
+				}
+				require.Equal(t, want, GetSlurmNodeName(pod))
+				require.Equal(t, "workers-3", pod.Name)
+				UpdateIdentity(nodeset, pod)
+				require.Equal(t, want, GetSlurmNodeName(pod))
+				require.Equal(t, want, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+			})
+		}
 	}
 }
 
