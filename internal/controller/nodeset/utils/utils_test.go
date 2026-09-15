@@ -492,7 +492,7 @@ func TestStatefulSetHostnameOverride(t *testing.T) {
 			} else {
 				require.Empty(t, GetSlurmNodeName(pod))
 			}
-			require.Equal(t, want, pod.Spec.Hostname)
+			require.Equal(t, "compute-3", pod.Spec.Hostname)
 			require.Equal(t, "workers-3", pod.Name)
 			require.Empty(t, pod.Spec.NodeName)
 			require.Equal(t, "datadir-workers-3", GetPersistentVolumeClaims(nodeset, pod)["datadir"].Name)
@@ -511,8 +511,11 @@ func TestStatefulSetNodeNamingMatchesDaemonSet(t *testing.T) {
 			nodeset := newNodeSet("workers")
 			nodeset.Spec.PinToNode = true
 			nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
-			nodeset.Status.OrdinalToNode = map[string]string{"0": node.Name}
 			controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+			initialPod := NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, "")
+			require.Equal(t, "workers-0", initialPod.Spec.Hostname)
+			require.Empty(t, GetSlurmNodeName(initialPod))
+			nodeset.Status.OrdinalToNode = map[string]string{"0": node.Name}
 			statefulPod := NewNodeSetStatefulSetPod(kclient, nodeset, controller, 0, "")
 			nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
 			daemonPod := NewNodeSetDaemonSetPod(kclient, nodeset, controller, node.Name, override, "")
@@ -522,7 +525,10 @@ func TestStatefulSetNodeNamingMatchesDaemonSet(t *testing.T) {
 			}
 			require.Equal(t, want, GetSlurmNodeName(statefulPod))
 			require.Equal(t, GetSlurmNodeName(daemonPod), GetSlurmNodeName(statefulPod))
-			require.Equal(t, daemonPod.Spec.Hostname, statefulPod.Spec.Hostname)
+			require.Equal(t, want, daemonPod.Spec.Hostname)
+			require.Equal(t, initialPod.Spec.Hostname, statefulPod.Spec.Hostname)
+			require.Equal(t, initialPod.Name, statefulPod.Name)
+			require.Equal(t, initialPod.Spec.Volumes, statefulPod.Spec.Volumes)
 		})
 	}
 }

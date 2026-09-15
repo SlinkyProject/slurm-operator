@@ -5437,7 +5437,7 @@ func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
 			if want == "" {
 				want = "worker-a"
 			}
-			require.Equal(t, want, current.Spec.Hostname)
+			require.Equal(t, pod.Spec.Hostname, current.Spec.Hostname)
 			require.Equal(t, want, nodesetutils.GetSlurmNodeName(current))
 			require.Equal(t, pod.Name, current.Name)
 			require.Equal(t, pod.Spec.Volumes, current.Spec.Volumes)

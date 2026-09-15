@@ -382,6 +382,10 @@ name up to the first dot.
 When using `scalingMode=StatefulSet`, NodeSet Pods may be loosely mapped to
 Kubernetes Nodes and may be rescheduled freely.
 
+Pod names remain ordinal-based. The configured `spec.hostname` is the Pod
+template's hostname prefix plus ordinal, or the Pod name if no prefix is set.
+Without node pinning, Slurm uses this configured hostname as the node name.
+
 If a stricter node mapping is preferred, node pinning can be enabled on the
 NodeSet.
 
@@ -447,8 +451,12 @@ nodesets:
 ```
 
 These fields can also be set directly on the NodeSet's `spec`. Disabling pinning
-or enabling oversubscription falls back to Pod-hostname naming: the Pod template
-hostname prefix plus ordinal, or the Pod name if no prefix is set.
+or enabling oversubscription falls back to Pod-hostname naming, which uses the
+Pod's configured `spec.hostname` as its Slurm name.
+
+Node-derived naming changes only the Slurm name. The StatefulSet Pod's name and
+configured `spec.hostname` remain ordinal-based on both first creation and
+pinned recreation.
 
 With Node-derived naming enabled, the operator passes the Node's hostname
 override or short name explicitly to slurmd. Resolved names must be valid Pod
@@ -468,6 +476,9 @@ native `-N` option. The default termination hook uses the same variable. Custom
 images and startup overrides must preserve the recorded Slurm identity. The
 `nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label is reserved for the
 operator.
+
+With host networking, the runtime hostname may differ from `spec.hostname`;
+slurmd still uses the explicitly supplied Slurm name.
 
 Legacy host-networked StatefulSet workers using implicit Node names must be
 drained before upgrading and recreated with the new controller.

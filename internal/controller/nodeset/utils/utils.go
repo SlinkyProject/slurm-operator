@@ -62,8 +62,7 @@ func NewNodeSetStatefulSetPod(
 	if nodeset.Spec.PinToNode {
 		if node := pinPodToNode(client, nodeset.Status.OrdinalToNode, pod, ordinal); node != nil {
 			if nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
-				pod.Spec.Hostname = GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
-				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = pod.Spec.Hostname
+				pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
 			}
 		}
 	}
