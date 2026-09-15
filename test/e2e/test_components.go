@@ -14,6 +14,7 @@ import (
 	"time"
 
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -416,6 +417,198 @@ func testSlurmNodeSet(namespace string) types.Feature {
 
 			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
 
+			return ctx
+		}).Feature()
+}
+
+func nodeSetPods(ctx context.Context, crClient crclient.Client, nodeset *slinkyv1beta1.NodeSet) ([]corev1.Pod, error) {
+	podList := &corev1.PodList{}
+	if err := crClient.List(ctx, podList, crclient.InNamespace(nodeset.Namespace)); err != nil {
+		return nil, err
+	}
+
+	pods := make([]corev1.Pod, 0, len(podList.Items))
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if metav1.IsControlledBy(pod, nodeset) {
+			pods = append(pods, *pod)
+		}
+	}
+	return pods, nil
+}
+
+// waitForDaemonSetReplicas waits for a DaemonSet-mode NodeSet and all of its
+// pods to converge. Pass a negative expected value to accept the controller's
+// non-zero desired count, which is useful during initial installation.
+func waitForDaemonSetReplicas(
+	crClient crclient.Client,
+	ctx context.Context,
+	t *testing.T,
+	nodesetKey crclient.ObjectKey,
+	expected int32,
+) (*slinkyv1beta1.NodeSet, []corev1.Pod) {
+	t.Helper()
+
+	var (
+		nodeset slinkyv1beta1.NodeSet
+		pods    []corev1.Pod
+	)
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		current := &slinkyv1beta1.NodeSet{}
+		if !assert.NoError(
+			collect,
+			crClient.Get(ctx, nodesetKey, current),
+			"failed to get NodeSet",
+		) {
+			return
+		}
+
+		currentPods, err := nodeSetPods(ctx, crClient, current)
+		if !assert.NoError(collect, err, "failed to list NodeSet pods") {
+			return
+		}
+
+		nodeset = *current
+		pods = currentPods
+
+		desired := expected
+		if desired < 0 {
+			desired = current.Status.Desired
+			assert.NotZero(collect, desired, "desired replica count is not populated")
+		}
+
+		assert.Equal(collect, current.Generation, current.Status.ObservedGeneration)
+		assert.Equal(collect, desired, current.Status.Desired)
+		assert.Equal(collect, desired, current.Status.Replicas)
+		assert.Equal(collect, desired, current.Status.UpdatedReplicas)
+		assert.Equal(collect, desired, current.Status.ReadyReplicas)
+		assert.Equal(collect, desired, current.Status.AvailableReplicas)
+		assert.Len(collect, currentPods, int(desired))
+
+		for i := range currentPods {
+			assert.True(collect, podReady(&currentPods[i]), "pod %s is not ready", currentPods[i].Name)
+		}
+	}, 2*time.Minute, 2*time.Second,
+		"DaemonSet-mode NodeSet %s/%s did not converge",
+		nodesetKey.Namespace,
+		nodesetKey.Name,
+	)
+
+	return &nodeset, pods
+}
+
+func testSlurmDaemonSet(namespace string) types.Feature {
+	nodesetKey := crclient.ObjectKey{Namespace: namespace, Name: "slurm-worker-slinky"}
+	var (
+		initialDesired       int32
+		originalNodeSelector map[string]string
+		selectedNode         string
+		workerHostname       string
+		workerPod            string
+	)
+
+	return features.New("Assess DaemonSet scaling of the Slurm NodeSet").
+		Assess("DaemonSet creates one ready Slurm worker per eligible Kubernetes node", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			nodeset, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, -1)
+			require.Equal(t, slinkyv1beta1.ScalingModeDaemonset, nodeset.Spec.ScalingMode)
+			require.Greater(t, nodeset.Status.Desired, int32(1), "DaemonSet scaling e2e test requires at least two eligible Kubernetes nodes")
+			if nodeset.Spec.Replicas != nil {
+				require.NotEqual(t, *nodeset.Spec.Replicas, nodeset.Status.Desired, "DaemonSet desired count must be node-driven, not spec.replicas")
+			}
+
+			initialDesired = nodeset.Status.Desired
+			originalNodeSelector = make(map[string]string, len(nodeset.Spec.Template.PodSpecWrapper.NodeSelector))
+			for key, value := range nodeset.Spec.Template.PodSpecWrapper.NodeSelector {
+				originalNodeSelector[key] = value
+			}
+
+			seenNodes := make(map[string]struct{}, len(pods))
+			for i := range pods {
+				pod := &pods[i]
+				require.NotEmpty(t, pod.Spec.NodeName, "DaemonSet pod %s was not assigned to a Kubernetes node", pod.Name)
+				require.NotEmpty(t, pod.Spec.Hostname, "DaemonSet pod %s has no Slurm hostname", pod.Name)
+				require.NotContains(t, seenNodes, pod.Spec.NodeName, "multiple DaemonSet pods were assigned to Kubernetes node %s", pod.Spec.NodeName)
+				seenNodes[pod.Spec.NodeName] = struct{}{}
+				require.Equal(t, string(slinkyv1beta1.ScalingModeDaemonset), pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode])
+				require.Empty(t, pod.Labels[slinkyv1beta1.LabelNodeSetPodIndex], "DaemonSet pod must not have a StatefulSet ordinal")
+				require.Equal(t, pod.Spec.Hostname, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+			}
+
+			selectedNode = pods[0].Spec.NodeName
+			workerHostname = pods[0].Spec.Hostname
+			workerPod = pods[0].Name
+			return ctx
+		}).
+		Assess("DaemonSet worker participates in the Slurm cluster", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			test.WaitForCommand(
+				ctx,
+				t,
+				"kubectl",
+				[]string{"exec", "-n", namespace, workerPod, "--", "scontrol", "ping"},
+				"",
+				"",
+				nil,
+				80*time.Second,
+				5*time.Second,
+			)
+
+			test.WaitForCommand(
+				ctx,
+				t,
+				"kubectl",
+				[]string{"exec", "-n", namespace, workerPod, "--", "sinfo", "-N", "-n", workerHostname, "--Format=StateLong", "-h"},
+				"idle",
+				"kubectl",
+				[]string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"},
+				80*time.Second,
+				5*time.Second,
+			)
+
+			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", workerHostname)
+			return ctx
+		}).
+		Assess("DaemonSet scales down when the NodeSet selects one Kubernetes node", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			selectedKubeNode := &corev1.Node{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Name: selectedNode}, selectedKubeNode), "failed to get selected Kubernetes node")
+			hostnameLabel := selectedKubeNode.Labels[corev1.LabelHostname]
+			require.NotEmpty(t, hostnameLabel, "selected Kubernetes node %s has no %s label", selectedNode, corev1.LabelHostname)
+
+			nodeset := &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+			nodeSelector := make(map[string]string, len(originalNodeSelector)+1)
+			for key, value := range originalNodeSelector {
+				nodeSelector[key] = value
+			}
+			nodeSelector[corev1.LabelHostname] = hostnameLabel
+			nodeset.Spec.Template.PodSpecWrapper.NodeSelector = nodeSelector
+			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restrict DaemonSet NodeSet to one Kubernetes node")
+
+			_, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, 1)
+			require.Equal(t, selectedNode, pods[0].Spec.NodeName)
+			return ctx
+		}).
+		Assess("DaemonSet scales up when the original node selector is restored", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			nodeset := &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+			nodeset.Spec.Template.PodSpecWrapper.NodeSelector = originalNodeSelector
+			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restore DaemonSet NodeSet node selector")
+
+			_, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, initialDesired)
+			seenNodes := make(map[string]struct{}, len(pods))
+			for i := range pods {
+				require.NotContains(t, seenNodes, pods[i].Spec.NodeName, "multiple DaemonSet pods were assigned to Kubernetes node %s", pods[i].Spec.NodeName)
+				seenNodes[pods[i].Spec.NodeName] = struct{}{}
+			}
 			return ctx
 		}).Feature()
 }

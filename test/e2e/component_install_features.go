@@ -137,10 +137,15 @@ func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 			crClient, err := GetControllerRuntimeClient(config)
 			require.NoError(t, err, "failed to get controller-runtime client")
 
-			checkNodeSetReplicas(crClient, ctx, t, config, crclient.ObjectKey{
+			nodesetKey := crclient.ObjectKey{
 				Namespace: slurmConfig.Namespace,
 				Name:      "slurm-worker-slinky",
-			})
+			}
+			if slurmConfig.DaemonSet {
+				waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, -1)
+			} else {
+				checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+			}
 			return ctx
 		})
 
@@ -199,6 +204,10 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 	if slurmConfig.Metrics {
 		opts = append(opts, helm.WithArgs("--set 'controller.metrics.enabled=true'"))
 		opts = append(opts, helm.WithArgs("--set 'controller.metrics.serviceMonitor.enabled=true'"))
+	}
+
+	if slurmConfig.DaemonSet {
+		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.scalingMode=DaemonSet'"))
 	}
 
 	if slurmConfig.Pyxis {
