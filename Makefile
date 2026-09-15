@@ -129,6 +129,11 @@ KIND_CLUSTER_NAME ?= slurm-operator-dev
 kind-start: ## Create a Kind cluster and deploy the Slurm Operator stack.
 	./hack/kind.sh --core $(KIND_CLUSTER_NAME)
 
+.PHONY: kind-e2e-start
+kind-e2e-start: ## Create a Kind cluster with the operator and E2E dependencies, but no Slurm installation.
+	./hack/kind.sh --recreate --prereqs --crds --operator $(KIND_CLUSTER_NAME)
+	./hack/kind.sh --existing-cluster --extras
+
 .PHONY: kind-stop
 kind-stop: ## Delete the development Kind cluster.
 	./hack/kind.sh --delete $(KIND_CLUSTER_NAME)
@@ -153,6 +158,7 @@ debug: values-dev deploy-crds ## Run Delve-enabled Slurm Operator components and
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
+E2E_ARTIFACTS_DIR ?= $(shell pwd)/e2e-artifacts
 
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -177,6 +183,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 GOVULNCHECK ?= $(LOCALBIN)/govulncheck-$(GOVULNCHECK_VERSION)
+GOTESTSUM ?= $(LOCALBIN)/gotestsum-$(GOTESTSUM_VERSION)
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
@@ -189,6 +196,7 @@ OPERATOR_SDK_VERSION ?= v1.42.0
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= v1.3.0
+GOTESTSUM_VERSION ?= v1.13.0
 GOLANGCI_LINT_VERSION ?= v2.9.0
 GOLANGCI_LINT_BASE_REV ?= HEAD
 HELM_DOCS_VERSION ?= v1.14.2
@@ -210,6 +218,11 @@ $(ENVTEST): $(LOCALBIN)
 govulncheck-bin: $(GOVULNCHECK) ## Download govulncheck locally if necessary.
 $(GOVULNCHECK): $(LOCALBIN)
 	$(call go-install-tool,$(GOVULNCHECK),golang.org/x/vuln/cmd/govulncheck,$(GOVULNCHECK_VERSION))
+
+.PHONY: gotestsum-bin
+gotestsum-bin: $(GOTESTSUM) ## Download gotestsum locally if necessary.
+$(GOTESTSUM): $(LOCALBIN)
+	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
 
 .PHONY: golangci-lint-bin
 golangci-lint-bin: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
@@ -444,7 +457,7 @@ CODECOV_PERCENT ?= 66
 test: envtest ## Run tests.
 	rm -f cover.out cover.html
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go test `go list ./... | grep -v "/api"` -v -coverprofile cover.out
+	go test `go list ./... | grep -v "/api" | grep -v "/e2e" | grep -v '/test'` -v -coverprofile cover.out
 	go tool cover -func cover.out
 	go tool cover -html cover.out -o cover.html
 	@percentage=$$(go tool cover -func=cover.out | grep ^total | awk '{print $$3}' | tr -d '%'); \
@@ -453,3 +466,18 @@ test: envtest ## Run tests.
 			echo "Total test coverage ($${percentage}%) is less than the coverage threshold ($(CODECOV_PERCENT)%)."; \
 			exit 1; \
 		fi
+
+## Launch end-to-end tests
+##
+## Running e2e tests requires that the current Kubeconfig references a cluster
+## with Slurm-operator and its CRDs installed. Test-only dependencies are added
+## to the current cluster without replacing the developer Slurm installation.
+.PHONY: test-e2e
+test-e2e: $(GOTESTSUM)
+	./hack/kind.sh --existing-cluster --extras
+	mkdir -p "$(E2E_ARTIFACTS_DIR)"
+	E2E_ARTIFACTS_DIR="$(E2E_ARTIFACTS_DIR)" $(GOTESTSUM) \
+		--format testname \
+		--junitfile "$(E2E_ARTIFACTS_DIR)/junit.xml" \
+		--jsonfile "$(E2E_ARTIFACTS_DIR)/test-output.json" \
+		-- -timeout 30m ./test/e2e

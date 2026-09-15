@@ -3,7 +3,6 @@ apiVersion: k8s.mariadb.com/v1alpha1
 kind: MariaDB
 metadata:
   name: mariadb
-  namespace: slurm
 spec:
   rootPasswordSecretKeyRef:
     name: mariadb-root
