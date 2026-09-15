@@ -723,6 +723,8 @@ nodesetDefaults:
   enabled: true
   # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
   scalingMode: StatefulSet
+  # -- Prefer Node-derived Slurm names for pinned, non-oversubscribed StatefulSets; otherwise use Pod hostnames. Immutable preference, defaults to true; set false to opt out. DaemonSet naming is unchanged.
+  preferKubernetesNodeName: true
   # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
   replicas: 1
   # -- Pin pods to their initially assigned Kubernetes nodes.
@@ -765,7 +767,7 @@ nodesetDefaults:
       # - name: nfs-home
       #   mountPath: /home
     # -- (corev1.Lifecycle) The container lifecycle hooks.
-    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';`
+    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down as the pod terminates: `scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`
     # Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
     lifecycle: {}
       # The block below is the operator default. Uncomment and edit it to run
@@ -775,7 +777,8 @@ nodesetDefaults:
       #     command:
       #       - /usr/bin/sh
       #       - -c
-      #       - scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
+      #       - >-
+      #         scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';
   # LogFile sidecar configurations.
   logfile:
     # -- (string \| object) The image to use.

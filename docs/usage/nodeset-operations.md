@@ -24,9 +24,11 @@ primitives. For design-level details, see
   - [External Drain Preservation](#external-drain-preservation)
   - [External Health Checker Integration Pattern](#external-health-checker-integration-pattern)
   - [Node Identity](#node-identity)
+    - [DaemonSet Mode](#daemonset-mode)
     - [StatefulSet Mode](#statefulset-mode)
       - [Node Pinning](#node-pinning)
-    - [DaemonSet Mode](#daemonset-mode)
+        - [Kubernetes Node Names in Slurm](#kubernetes-node-names-in-slurm)
+    - [Pruning Slurm Node Records](#pruning-slurm-node-records)
 
 <!-- mdformat-toc end -->
 
@@ -258,7 +260,7 @@ marks its Slurm node down, so the Slurm controller stops assigning work to a
 node that is going away:
 
 ```sh
-scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
+scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';
 ```
 
 Set `spec.slurmd.lifecycle.preStop` on the NodeSet to run something else
@@ -279,7 +281,8 @@ spec:
           command:
             - /usr/bin/sh
             - -c
-            - scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
+            - >-
+              scontrol update nodename="$SLURM_NODE_NAME" state=drain reason='slurm-operator: Pod is terminating';
 ```
 
 The equivalent through the `slurm` Helm chart:
@@ -294,7 +297,8 @@ nodesets:
             command:
               - /usr/bin/sh
               - -c
-              - scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
+              - >-
+                scontrol update nodename="$SLURM_NODE_NAME" state=drain reason='slurm-operator: Pod is terminating';
 ```
 
 Points to keep in mind:
@@ -363,26 +367,36 @@ See [Override with Node Annotation](#override-with-node-annotation) and
 
 ## Node Identity
 
-A Nodeset's scalingMode will determine whether its pods, which represent Slurm
-nodes, are loosely or strictly mapped to the Kubernetes nodes they run on.
+A NodeSet's `scalingMode` determines whether its Pods, which represent Slurm
+nodes, are loosely or strictly mapped to the Kubernetes Nodes they run on.
+
+### DaemonSet Mode
+
+When using `scalingMode=DaemonSet`, NodeSet Pods are strictly mapped to
+Kubernetes Nodes. Their hostname is the Node's
+`nodeset.slinky.slurm.net/hostname-override` value, if set, otherwise the Node
+name up to the first dot.
 
 ### StatefulSet Mode
 
-When using `scalingMode=StatefulSet`, Nodeset pods are loosely mapped to
-Kubernetes nodes and may be rescheduled freely.
+When using `scalingMode=StatefulSet`, NodeSet Pods may be loosely mapped to
+Kubernetes Nodes and may be rescheduled freely.
+
+Pod names remain ordinal-based. The configured `spec.hostname` is the Pod
+template's hostname prefix plus ordinal, or the Pod name if no prefix is set.
+Without node pinning, Slurm uses this configured hostname as the node name.
 
 If a stricter node mapping is preferred, node pinning can be enabled on the
 NodeSet.
 
 #### Node Pinning
 
-When enabled, NodeSet pods are pinned to the Kubernetes node it was first
-scheduled on. Once a pod is assigned to a node, subsequent recreations of that
-pod (e.g. after eviction, deletion, or node maintenance) will always land on the
-same physical node. If the node is unavailable, the pod remains in `Pending`
-state until the node comes back. However, node pinnings will be removed under
-specific conditions: if the node no longer exists; or if the new NodeSet pod no
-longer matches the node it was pinned to (e.g. affinity, nodeSelector).
+When enabled, each NodeSet Pod is pinned to the Kubernetes Node it was first
+scheduled on. Subsequent recreations of that Pod (e.g. after eviction, deletion,
+or node maintenance) return to the same Node while the pin remains valid. If the
+Node is unavailable, the Pod remains in `Pending` state until the Node comes
+back. The pin is removed if the Node no longer exists or no longer matches the
+Pod template (e.g. affinity, nodeSelector).
 
 To use node pinning, set `pinToNode=true` on a NodeSet in the Slurm Helm chart:
 
@@ -404,21 +418,108 @@ spec:
   replicas: 4
 ```
 
-When enabled, the controller:
+With node pinning enabled:
 
-1. The pod is initially scheduled like normal.
-1. Records the node-to-pod mapping in `status.nodeToOrdinal`.
+1. The Pod is initially scheduled normally.
+1. The controller records the node-to-pod mapping in `status.nodeToOrdinal`.
 1. On subsequent pod recreations, a [node affinity][node-affinity] is added to
    the pod such that it can only be scheduled to the recorded node.
-1. Reset the node in the node-to-pod map if:
+1. The controller resets the node in the node-to-pod map if:
    - the Kubernetes node no longer exists
    - the NodeSet pod template no longer matches the recorded Kubernetes Node
      (e.g. affinity, nodeSelector).
 
-### DaemonSet Mode
+##### Kubernetes Node Names in Slurm
 
-When using `scalingMode=Daemonset`, Nodeset pods are strictly mapped to
-Kubernetes nodes and share the hostname of the node they run on.
+Pinning controls placement; `spec.preferKubernetesNodeName` also lets pinned
+StatefulSet workers register in Slurm using the Node's hostname override or
+short name instead of the Pod hostname. This boolean defaults to `true` when
+omitted or set to YAML `null`. Set it to `false` when creating a NodeSet to keep
+Pod-hostname naming even with pinning enabled. Node-derived naming requires both
+`pinToNode: true` and `oversubscribeNode: false`.
+
+To use the same Node-derived naming rule as DaemonSet mode while retaining
+replica-based scaling:
+
+```yaml
+nodesets:
+  slinky:
+    scalingMode: StatefulSet
+    preferKubernetesNodeName: true
+    pinToNode: true
+    oversubscribeNode: false
+```
+
+These fields can also be set directly on the NodeSet's `spec`. Disabling pinning
+or enabling oversubscription falls back to Pod-hostname naming, which uses the
+Pod's configured `spec.hostname` as its Slurm name.
+
+Node-derived naming changes only the Slurm name. The StatefulSet Pod's name and
+configured `spec.hostname` remain ordinal-based on both first creation and
+pinned recreation.
+
+With Node-derived naming enabled, the operator passes the Node's hostname
+override or short name explicitly to slurmd. Resolved names must be valid Pod
+hostnames (a DNS label of at most 63 characters). The binding webhook rejects
+invalid names before the Pod starts.
+
+During autoscaling, worker Pods can wait for Nodes that do not exist yet. Their
+Slurm names remain unresolved until binding; unresolved workers are excluded
+from Slurm operations while still counting toward Kubernetes replicas.
+
+The preference itself is immutable after creation, but `pinToNode` and
+`oversubscribeNode` remain mutable.
+
+The operator-managed `nodeset.slinky.slurm.net/pod-hostname` label records the
+Pod's Slurm node name in both scaling modes. Despite its historical name, this
+Slurm node name label need not match the Pod's configured `spec.hostname` or
+runtime hostname. In a StatefulSet using Node-derived naming, it holds the
+Node-derived Slurm name while `spec.hostname` remains ordinal-based. The label
+can be empty until binding resolves the name if no valid pin is available; an
+empty value means unresolved, not a fallback to the Pod hostname.
+
+The slurmd container sources `SLURM_NODE_NAME` from this label through the
+Downward API and passes it to slurmd's native `-N` option. The default
+termination hook uses the same variable. Custom images and startup overrides
+must preserve the recorded Slurm identity. The separate
+`nodeset.slinky.slurm.net/slurm-node-name-mode` Pod label is reserved for the
+operator.
+
+With host networking, the runtime hostname may differ from `spec.hostname`;
+slurmd still uses the explicitly supplied Slurm name.
+
+Legacy host-networked StatefulSet workers using implicit Node names must be
+drained before upgrading and recreated with the new controller.
+
+To change the preference itself, create a new NodeSet and retire the old one
+after draining its workloads.
+
+If a pin is released, the replacement Pod can run on another Node and register
+under that Node's name. Existing scheduling and eviction policies still apply;
+this option does not force deletion of Pods on `NotReady` Nodes.
+
+For cleanup of Slurm records after node replacement, see
+[Pruning Slurm Node Records](#pruning-slurm-node-records).
+
+### Pruning Slurm Node Records
+
+`spec.pruneSlurmNodeRecords` controls cleanup of owned, defunct Slurm node
+records. The default `Never` policy leaves records in place for manual cleanup.
+Set it to `NodeNotFound` to allow the operator to remove records after their
+Node-backed identity changes or their pin is lost, including records left behind
+by hostname overrides.
+
+In the Slurm Helm chart:
+
+```yaml
+nodesets:
+  slinky:
+    pruneSlurmNodeRecords: NodeNotFound
+```
+
+This field can also be set directly on the NodeSet's `spec`. A valid pin retains
+the record across Pod restarts. Deleting a Pod does not itself delete its Slurm
+record.
 
 <!-- Links -->
 

@@ -6,6 +6,7 @@ package webhook
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,55 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
+
+func TestSlurmNodeNameModeBinding(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		nodeName string
+		override string
+		wantName string
+		legacy   bool
+		dryRun   bool
+		wantErr  bool
+	}{
+		{name: "node name", nodeName: "kube-node", wantName: "kube-node"},
+		{name: "full domain name", nodeName: "kube-node.example.com", wantName: "kube-node"},
+		{name: "hostname override", nodeName: "kube-node.example.com", override: "gpu-01", wantName: "gpu-01"},
+		{name: "invalid override", nodeName: "kube-node", override: "invalid.name", wantErr: true},
+		{name: "maximum label length", nodeName: strings.Repeat("a", 63), wantName: strings.Repeat("a", 63)},
+		{name: "reject long name", nodeName: strings.Repeat("a", 64), wantErr: true},
+		{name: "legacy identity unchanged", nodeName: "kube-node", legacy: true},
+		{name: "dry run does not mutate", nodeName: "kube-node", dryRun: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "worker-0", Namespace: "slurm", Labels: map[string]string{
+				labels.AppLabel: labels.WorkerApp,
+				slinkyv1beta1.LabelNodeSetSlurmNodeNameMode: string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode),
+			}}}
+			if test.legacy {
+				delete(pod.Labels, slinkyv1beta1.LabelNodeSetSlurmNodeNameMode)
+			}
+			node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: test.nodeName, Annotations: map[string]string{slinkyv1beta1.AnnotationNodeHostnameOverride: test.override}}}
+			kubeClient := fake.NewClientBuilder().WithObjects(pod, node).Build()
+			webhook := &PodBindingWebhook{Client: kubeClient}
+			ctx := admission.NewContextWithRequest(context.Background(), admission.Request{AdmissionRequest: v1.AdmissionRequest{DryRun: &test.dryRun}})
+			binding := &corev1.Binding{ObjectMeta: pod.ObjectMeta, Target: corev1.ObjectReference{Name: node.Name}}
+			if test.wantErr {
+				require.Error(t, webhook.Default(ctx, binding))
+				return
+			}
+			require.NoError(t, webhook.Default(ctx, binding))
+			require.NoError(t, webhook.Default(ctx, binding))
+			require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), pod))
+			if test.dryRun || test.legacy {
+				require.Empty(t, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+			} else {
+				require.Equal(t, test.wantName, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
+				require.Equal(t, map[string]string{slinkyv1beta1.AnnotationNodeTopologySpec: ""}, pod.Annotations)
+			}
+		})
+	}
+}
 
 func TestPodBindingWebhook_Default(t *testing.T) {
 	workerPod := &corev1.Pod{

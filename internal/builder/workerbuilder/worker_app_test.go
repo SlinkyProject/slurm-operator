@@ -23,6 +23,28 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
+func TestSlurmdContainerNodeName(t *testing.T) {
+	const hostnameFieldPath = "metadata.labels['" + slinkyv1beta1.LabelNodeSetPodHostname + "']"
+	nodeset := &slinkyv1beta1.NodeSet{}
+	container := New(fake.NewFakeClient()).slurmdContainer(nodeset, &slinkyv1beta1.Controller{})
+	require.Empty(t, container.Command)
+	require.GreaterOrEqual(t, len(container.Args), 3)
+	require.Equal(t, []string{"-Z", "-N", "$(SLURM_NODE_NAME)"}, container.Args[:3])
+	require.Contains(t, container.Env, corev1.EnvVar{
+		Name: "SLURM_NODE_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: hostnameFieldPath},
+		},
+	})
+	require.NotNil(t, container.Lifecycle)
+	require.NotNil(t, container.Lifecycle.PreStop)
+	require.NotNil(t, container.Lifecycle.PreStop.Exec)
+	require.Equal(t, []string{
+		"/usr/bin/sh", "-c",
+		`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';`,
+	}, container.Lifecycle.PreStop.Exec.Command)
+}
+
 func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 	type fields struct {
 		client client.Client
