@@ -4,74 +4,38 @@
 package e2e
 
 import (
-	"fmt"
+	"flag"
 	"os"
 	"testing"
 
-	"helm.sh/helm/v3/pkg/action"
+	"sigs.k8s.io/e2e-framework/klient/conf"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
-	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
 	"sigs.k8s.io/e2e-framework/pkg/types"
-	"sigs.k8s.io/e2e-framework/support/kind"
 
 	"github.com/SlinkyProject/slurm-operator/test"
 )
 
+func parseE2EFlags(imageConfig *test.SlurmImageConfig) {
+	flag.StringVar(&imageConfig.Repo, "e2e-image-repo", "ghcr.io/slinkyproject", "container registry + repo providing Slurm container images")
+	flag.StringVar(&imageConfig.Tag, "e2e-image-tag", "26.05-ubuntu26.04", "image tag to use for Slurm images")
+	flag.Parse()
+}
+
 // TestMain configures the environment within which all e2e-tests are run
 func TestMain(m *testing.M) {
-	test.Testenv = env.New()
-	kindClusterName := envconf.RandomName("test-e2e", 16)
+	parseE2EFlags(&test.SlurmImage)
+
+	path := conf.ResolveKubeConfigFile()
+	cfg := envconf.NewWithKubeConfig(path)
+	test.Testenv = env.NewWithConfig(cfg)
 	test.Basepath = test.GetBasePath()
-
-	// Build images for Slurm-operator and Slurm-operator-webhook
-	test.TestUID = envconf.RandomName("testing", 16)
-	operatorName := "ghcr.io/slinkyproject/slurm-operator:" + test.TestUID
-	webhookName := "ghcr.io/slinkyproject/slurm-operator-webhook:" + test.TestUID
-	err := test.BuildOperatorImages(operatorName, webhookName)
-	if err != nil {
-		fmt.Printf("Failed to build images for Slurm-operator: %v", err)
-		os.Exit(1)
-	}
-
-	// Build the slurm-operator-crds Helm chart
-	slurmOperatorCRDs := action.Package{
-		DependencyUpdate: true,
-		Destination:      test.Basepath + "helm/slurm-operator/charts",
-	}
-	_, err = slurmOperatorCRDs.Run(test.Basepath+"helm/slurm-operator-crds", nil)
-	if err != nil {
-		fmt.Printf("Failed to build Helm chart for Slurm-operator: %v", err)
-		os.Exit(1)
-	}
-
-	// Use pre-defined environment funcs to create a kind cluster prior to test run
-	test.Testenv.Setup(
-		envfuncs.CreateClusterWithConfig(kind.NewProvider(), kindClusterName, test.Basepath+"hack/kind.yaml"),
-		envfuncs.LoadDockerImageToCluster(kindClusterName, operatorName),
-		envfuncs.LoadDockerImageToCluster(kindClusterName, webhookName),
-		envfuncs.CreateNamespace("slinky"),
-		envfuncs.CreateNamespace("slurm"),
-		envfuncs.CreateNamespace("cert-manager"),
-		envfuncs.CreateNamespace("mariadb"),
-		envfuncs.CreateNamespace("prometheus"),
-	)
-
-	// Use pre-defined environment funcs to teardown kind cluster after tests
-	test.Testenv.Finish(
-		envfuncs.DeleteNamespace("slinky"),
-		envfuncs.DeleteNamespace("slurm"),
-		envfuncs.DeleteNamespace("cert-manager"),
-		envfuncs.DeleteNamespace("mariadb"),
-		envfuncs.DeleteNamespace("prometheus"),
-		envfuncs.DestroyCluster(kindClusterName),
-	)
 
 	// launch package tests
 	os.Exit(test.Testenv.Run(m))
 }
 
-func TestInstallation(t *testing.T) {
+func TestSlurmChart(t *testing.T) {
 	tests := []struct {
 		name         string
 		install      bool
@@ -80,36 +44,13 @@ func TestInstallation(t *testing.T) {
 		config       test.SlurmInstallationConfig
 	}{
 		{
-			name: "Install slurm-operator",
-			dependencies: []types.Feature{
-				installCertMgr(),
-				installSlurmOperatorCRDS(),
-				installSlurmOperator(),
-			},
-		},
-		{
-			name:    "Install Slurm",
-			install: true,
-			test:    true,
-			config:  test.SlurmInstallationConfig{},
-		},
-		{
-			name:    "Install Slurm with login",
-			install: true,
-			test:    true,
+			name: "Validate Slurm-operator deployment",
 			config: test.SlurmInstallationConfig{
-				Login: true,
-			},
-		},
-		{
-			name:    "Install Slurm with metrics",
-			install: true,
-			test:    true,
-			config: test.SlurmInstallationConfig{
-				Metrics: true,
+				Namespace: "slurm",
 			},
 			dependencies: []types.Feature{
-				installPrometheus(),
+				testCertMgr(),
+				testSlurmOperator(),
 			},
 		},
 		{
@@ -118,10 +59,49 @@ func TestInstallation(t *testing.T) {
 			test:    true,
 			config: test.SlurmInstallationConfig{
 				Accounting: true,
+				Namespace:  "slurm-e2e-accounting",
 			},
 			dependencies: []types.Feature{
-				installMariadbOperator(),
-				applyMariaDBYaml(),
+				testMariadbOperator(),
+				applyMariaDBYaml("slurm-e2e-accounting"),
+			},
+		},
+		{
+			name:    "Install Slurm",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Namespace: "slurm-e2e-basic",
+			},
+		},
+		{
+			name:    "Install Slurm with DaemonSet scaling",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				DaemonSet: true,
+				Namespace: "slurm-e2e-daemonset",
+			},
+		},
+		{
+			name:    "Install Slurm with login",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Login:     true,
+				Namespace: "slurm-e2e-login",
+			},
+		},
+		{
+			name:    "Install Slurm with metrics",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Metrics:   true,
+				Namespace: "slurm-e2e-metrics",
+			},
+			dependencies: []types.Feature{
+				testPrometheus(),
 			},
 		},
 		{
@@ -129,7 +109,8 @@ func TestInstallation(t *testing.T) {
 			install: true,
 			test:    true,
 			config: test.SlurmInstallationConfig{
-				Pyxis: true,
+				Namespace: "slurm-e2e-pyxis",
+				Pyxis:     true,
 			},
 		},
 		{
@@ -137,22 +118,40 @@ func TestInstallation(t *testing.T) {
 			config: test.SlurmInstallationConfig{
 				Pyxis:      true,
 				Accounting: true,
-			},
-		},
-		{
-			name: "Uninstall slurm-operator",
-			dependencies: []types.Feature{
-				uninstallSlurmOperator(),
-				uninstallSlurmOperatorCRDs(),
+				Namespace:  "slurm-e2e-pyxis-accounting",
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
-
 		t.Run(tt.name, func(t *testing.T) {
-			_ = test.Testenv.Test(t, steps...)
+			steps := getFeaturesFromConfig(tt.install, tt.test, tt.config, tt.dependencies)
+			if len(steps) == 0 {
+				t.Skip("scenario is not configured with any E2E features")
+			}
+
+			installAttempted := false
+			for _, feature := range steps {
+				if feature.Name() == "Helm install slurm" {
+					installAttempted = true
+				}
+				_ = test.Testenv.Test(t, feature)
+				if t.Failed() {
+					test.CaptureFailureDiagnostics(
+						t,
+						feature.Name(),
+						tt.config.Namespace,
+						test.SlinkyNamespace,
+					)
+					break
+				}
+			}
+
+			// Keep cleanup separate from the feature loop so a failed feature can
+			// be diagnosed before its resources are removed.
+			if installAttempted {
+				_ = test.Testenv.Test(t, uninstallSlurm(tt.config.Namespace))
+			}
 		})
 	}
 }
