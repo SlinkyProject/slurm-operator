@@ -9,12 +9,78 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
 func Test_strategicMergePatch(t *testing.T) {
 	test_strategicMergePatch_pod(t)
+	test_strategicMergePatch_explicitZeroValues(t)
+}
+
+// Explicitly-set zero values are meaningful in the Kubernetes API and must
+// survive the merge: `allowPrivilegeEscalation: false` is required by the
+// restricted Pod Security Standard, `privileged: false` is the only way to
+// override a `true` in the base spec, and `runAsUser: 0` is an explicit
+// request for root.
+func test_strategicMergePatch_explicitZeroValues(t *testing.T) {
+	// The pod template path, as used by BuildPodTemplate.
+	base := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "app",
+					Image: "app",
+				},
+			},
+		},
+	}
+	patch := &corev1.Pod{
+		Spec: corev1.PodSpec{
+			AutomountServiceAccountToken:  ptr.To(false),
+			TerminationGracePeriodSeconds: ptr.To(int64(0)),
+			SecurityContext: &corev1.PodSecurityContext{
+				RunAsUser: ptr.To(int64(0)),
+			},
+		},
+	}
+
+	got := structutils.StrategicMergePatch(base, patch)
+
+	require.Equal(t, ptr.To(false), got.Spec.AutomountServiceAccountToken)
+	require.Equal(t, ptr.To(int64(0)), got.Spec.TerminationGracePeriodSeconds)
+	require.NotNil(t, got.Spec.SecurityContext)
+	require.Equal(t, ptr.To(int64(0)), got.Spec.SecurityContext.RunAsUser)
+	// Fields only present in the base are untouched by the patch.
+	require.Len(t, got.Spec.Containers, 1)
+	require.Equal(t, "app", got.Spec.Containers[0].Image)
+
+	// The container path, as used by BuildContainer, where the container is
+	// the root of the merge.
+	baseContainer := &corev1.Container{
+		Name:  "login",
+		Image: "login",
+		SecurityContext: &corev1.SecurityContext{
+			Privileged:               ptr.To(true),
+			AllowPrivilegeEscalation: ptr.To(true),
+		},
+	}
+	patchContainer := &corev1.Container{
+		SecurityContext: &corev1.SecurityContext{
+			Privileged:               ptr.To(false),
+			AllowPrivilegeEscalation: ptr.To(false),
+			ReadOnlyRootFilesystem:   ptr.To(false),
+		},
+	}
+
+	gotContainer := structutils.StrategicMergePatch(baseContainer, patchContainer)
+
+	require.NotNil(t, gotContainer.SecurityContext)
+	require.Equal(t, ptr.To(false), gotContainer.SecurityContext.AllowPrivilegeEscalation)
+	require.Equal(t, ptr.To(false), gotContainer.SecurityContext.Privileged)
+	require.Equal(t, ptr.To(false), gotContainer.SecurityContext.ReadOnlyRootFilesystem)
+	require.Equal(t, "login", gotContainer.Image)
 }
 
 func test_strategicMergePatch_pod(t *testing.T) {
