@@ -12,10 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
@@ -105,6 +107,12 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 				return nil
 			},
 		},
+		{
+			Name: "Pod Labels",
+			SyncFn: func(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+				return r.syncPodLabels(ctx, loginset)
+			},
+		},
 	}
 
 	if err := syncsteps.Sync(ctx, r.eventRecorder, loginset, steps); err != nil {
@@ -117,4 +125,39 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	}
 
 	return r.syncStatus(ctx, loginset)
+}
+
+// syncPodLabels ensures every pod belonging to the LoginSet carries LabelLoginSetPodName. Unlike
+// NodeSet, LoginSet's pods are created indirectly by the Deployment's ReplicaSet, so the pod name
+// isn't known when the pod template is built; label it here instead, once the pod exists.
+func (r *LoginSetReconciler) syncPodLabels(ctx context.Context, loginset *slinkyv1beta1.LoginSet) error {
+	podList := &corev1.PodList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(loginset.Namespace),
+		client.MatchingLabels(labels.NewBuilder().WithLoginSelectorLabels(loginset).Build()),
+	}
+	if err := r.List(ctx, podList, listOpts...); err != nil {
+		return fmt.Errorf("failed to list login pods: %w", err)
+	}
+
+	mutateFn := func(pod *corev1.Pod) error {
+		if pod.Labels == nil {
+			pod.Labels = map[string]string{}
+		}
+		pod.Labels[slinkyv1beta1.LabelLoginSetPodName] = pod.Name
+		return nil
+	}
+
+	errs := []error{}
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+			// The pod can be deleted between the List and the Patch, by a scale down,
+			// rolling update, or eviction. There is nothing left to label.
+			if !apierrors.IsNotFound(err) {
+				errs = append(errs, fmt.Errorf("failed to patch login pod (%s): %w", klog.KObj(pod), err))
+			}
+		}
+	}
+	return utilerrors.NewAggregate(errs)
 }
