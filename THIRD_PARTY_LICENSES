@@ -8,7 +8,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### cel.dev/expr
 - Name: cel.dev/expr
-- Version: v0.25.1
+- Version: v0.25.2
 - License: Apache-2.0
 
 ### github.com/Masterminds/semver/v3
@@ -523,12 +523,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.43.0
+- Version: v1.44.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.43.0
+- Version: v1.44.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/trace
@@ -628,17 +628,17 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### google.golang.org/genproto/googleapis/api
 - Name: google.golang.org/genproto/googleapis/api
-- Version: v0.0.0-20260414002931-afd174a4e478
+- Version: v0.0.0-20260526163538-3dc84a4a5aaa
 - License: Apache-2.0
 
 ### google.golang.org/genproto/googleapis/rpc
 - Name: google.golang.org/genproto/googleapis/rpc
-- Version: v0.0.0-20260414002931-afd174a4e478
+- Version: v0.0.0-20260526163538-3dc84a4a5aaa
 - License: Apache-2.0
 
 ### google.golang.org/grpc
 - Name: google.golang.org/grpc
-- Version: v1.82.1
+- Version: v1.83.2
 - License: Apache-2.0
 
 ### google.golang.org/protobuf
