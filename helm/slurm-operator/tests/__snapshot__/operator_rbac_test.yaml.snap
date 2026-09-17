@@ -43,6 +43,8 @@ manifest should match snapshot:
         verbs:
           - get
           - list
+          - patch
+          - update
           - watch
       - apiGroups:
           - ""

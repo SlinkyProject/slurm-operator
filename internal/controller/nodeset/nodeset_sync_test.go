@@ -228,6 +228,268 @@ func extractSlurmdPreStopReason(pod *corev1.Pod) string {
 	return ""
 }
 
+func newMappedNodeSet() *slinkyv1beta1.NodeSet {
+	nodeset := newNodeSet("foo", "slurm", 1)
+	nodeset.UID = types.UID("foo-uid")
+	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+	nodeset.Spec.PinToNode = true
+	nodeset.Spec.PublishSlurmNodeName = ptr.To(true)
+	nodeset.Spec.OversubscribeNode = false
+	return nodeset
+}
+
+func newMappedPod(nodeset *slinkyv1beta1.NodeSet, ordinal int, nodeName string) *corev1.Pod {
+	controller := &slinkyv1beta1.Controller{ObjectMeta: metav1.ObjectMeta{Name: "slurm"}}
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, ordinal, "")
+	pod.Spec.NodeName = nodeName
+	pod.Status.Phase = corev1.PodRunning
+	return pod
+}
+
+func TestShouldManageSlurmNodeNames(t *testing.T) {
+	tests := []struct {
+		name          string
+		publish       bool
+		scalingMode   slinkyv1beta1.ScalingModeType
+		pinToNode     bool
+		oversubscribe bool
+		want          bool
+	}{
+		{name: "enabled pinned non-oversubscribed StatefulSet", publish: true, scalingMode: slinkyv1beta1.ScalingModeStatefulset, pinToNode: true, want: true},
+		{name: "publication disabled", scalingMode: slinkyv1beta1.ScalingModeStatefulset, pinToNode: true, want: false},
+		{name: "unpinned StatefulSet", publish: true, scalingMode: slinkyv1beta1.ScalingModeStatefulset, want: false},
+		{name: "oversubscribed StatefulSet", publish: true, scalingMode: slinkyv1beta1.ScalingModeStatefulset, pinToNode: true, oversubscribe: true, want: false},
+		{name: "DaemonSet", publish: true, scalingMode: slinkyv1beta1.ScalingModeDaemonset, pinToNode: true, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeset := newMappedNodeSet()
+			nodeset.Spec.PublishSlurmNodeName = ptr.To(tt.publish)
+			nodeset.Spec.ScalingMode = tt.scalingMode
+			nodeset.Spec.PinToNode = tt.pinToNode
+			nodeset.Spec.OversubscribeNode = tt.oversubscribe
+			require.Equal(t, tt.want, shouldManageSlurmNodeNames(nodeset))
+		})
+	}
+}
+
+func TestSyncSlurmNodeNameLabels(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("publishes an owned mapping", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-a")
+		kubeClient := fake.NewClientBuilder().WithObjects(&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		err := r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-a"})
+		require.NoError(t, err)
+
+		node := &corev1.Node{}
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+		require.Equal(t, "foo-0", node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+		require.Equal(t, "default/foo", node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwner])
+		require.Equal(t, "foo-uid", node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID])
+	})
+
+	t.Run("preserves a matching external mapping", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-a")
+		node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "worker-a",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+		}}
+		kubeClient := fake.NewClientBuilder().WithObjects(node).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		require.NoError(t, r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-a"}))
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+		require.Empty(t, node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID])
+	})
+
+	t.Run("rejects a competing owner", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-a")
+		node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "worker-a",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "bar-0"},
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "bar-uid",
+			},
+		}}
+		r := newNodeSetController(fake.NewClientBuilder().WithObjects(node).Build(), nil)
+
+		err := r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-a"})
+		require.ErrorContains(t, err, "owned by NodeSet UID")
+	})
+
+	t.Run("rejects a collision with an unlabeled Kubernetes Node name", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-a")
+		pod.Spec.Hostname = "worker-b"
+		nodes := []client.Object{
+			&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}},
+			&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}},
+		}
+		r := newNodeSetController(fake.NewClientBuilder().WithObjects(nodes...).Build(), nil)
+
+		err := r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-a"})
+		require.ErrorContains(t, err, "already mapped by Kubernetes Node")
+	})
+
+	t.Run("rejects multiple Slurm identities on one Kubernetes Node", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		nodeset.Spec.Replicas = ptr.To[int32](2)
+		pod0 := newMappedPod(nodeset, 0, "worker-a")
+		pod1 := newMappedPod(nodeset, 1, "worker-a")
+		r := newNodeSetController(fake.NewClientBuilder().WithObjects(&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}).Build(), nil)
+
+		err := r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod0, pod1}, map[string]string{"0": "worker-a", "1": "worker-a"})
+		require.ErrorContains(t, err, "assigned to multiple Slurm nodes")
+	})
+
+	t.Run("retains a mapping while a desired ordinal pod is recreated", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "worker-a",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+			},
+		}}
+		kubeClient := fake.NewClientBuilder().WithObjects(node).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		require.NoError(t, r.syncSlurmNodeNameLabels(ctx, nodeset, nil, map[string]string{"0": "worker-a"}))
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+		require.Equal(t, "foo-0", node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	})
+
+	t.Run("moves an owned mapping after a pin reset", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-b")
+		oldNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "worker-a",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+			},
+		}}
+		newNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}}
+		kubeClient := fake.NewClientBuilder().WithObjects(oldNode, newNode).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		require.NoError(t, r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-b"}))
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, oldNode))
+		require.Empty(t, oldNode.Labels[slinkyv1beta1.LabelSlurmNodeName])
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-b"}, newNode))
+		require.Equal(t, "foo-0", newNode.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	})
+
+	t.Run("rejects a pin move that exposes a colliding Node name", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		pod := newMappedPod(nodeset, 0, "worker-b")
+		oldNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "foo-0",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+			},
+		}}
+		newNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}}
+		kubeClient := fake.NewClientBuilder().WithObjects(oldNode, newNode).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		err := r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-b"})
+		require.ErrorContains(t, err, "already mapped by Kubernetes Node")
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "foo-0"}, oldNode))
+		require.Equal(t, "foo-0", oldNode.Labels[slinkyv1beta1.LabelSlurmNodeName])
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-b"}, newNode))
+		require.Empty(t, newNode.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	})
+
+	t.Run("does not publish a mapping while deleting", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		now := metav1.Now()
+		nodeset.DeletionTimestamp = &now
+		pod := newMappedPod(nodeset, 0, "worker-a")
+		node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}
+		kubeClient := fake.NewClientBuilder().WithObjects(node).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		require.NoError(t, r.syncSlurmNodeNameLabels(ctx, nodeset, []*corev1.Pod{pod}, map[string]string{"0": "worker-a"}))
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+		require.Empty(t, node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	})
+
+	t.Run("removes a mapping after scale down", func(t *testing.T) {
+		nodeset := newMappedNodeSet()
+		nodeset.Spec.Replicas = ptr.To[int32](0)
+		node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+			Name:   "worker-a",
+			Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeSlurmNameOwner:    "default/foo",
+				slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+			},
+		}}
+		kubeClient := fake.NewClientBuilder().WithObjects(node).Build()
+		r := newNodeSetController(kubeClient, nil)
+
+		require.NoError(t, r.syncSlurmNodeNameLabels(ctx, nodeset, nil, map[string]string{"0": "worker-a"}))
+		require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+		require.Empty(t, node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+		require.Empty(t, node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID])
+	})
+}
+
+func TestSyncSlurmNodeNameFinalizerCleansMappings(t *testing.T) {
+	ctx := context.Background()
+	nodeset := newMappedNodeSet()
+	nodeset.Finalizers = []string{slinkyv1beta1.FinalizerNodeSetSlurmNodeName}
+	now := metav1.Now()
+	nodeset.DeletionTimestamp = &now
+	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+		Name:   "worker-a",
+		Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+		Annotations: map[string]string{
+			slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+		},
+	}}
+	kubeClient := fake.NewClientBuilder().WithObjects(nodeset.DeepCopy(), node).Build()
+	r := newNodeSetController(kubeClient, nil)
+
+	require.NoError(t, r.syncSlurmNodeNameFinalizer(ctx, nodeset))
+	require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+	require.Empty(t, node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	require.NotContains(t, nodeset.Finalizers, slinkyv1beta1.FinalizerNodeSetSlurmNodeName)
+}
+
+func TestSyncSlurmNodeNameFinalizerCleansMappingsWhenDisabled(t *testing.T) {
+	ctx := context.Background()
+	nodeset := newMappedNodeSet()
+	nodeset.Spec.PublishSlurmNodeName = ptr.To(false)
+	nodeset.Finalizers = []string{slinkyv1beta1.FinalizerNodeSetSlurmNodeName}
+	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{
+		Name:   "worker-a",
+		Labels: map[string]string{slinkyv1beta1.LabelSlurmNodeName: "foo-0"},
+		Annotations: map[string]string{
+			slinkyv1beta1.AnnotationNodeSlurmNameOwner:    "default/foo",
+			slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID: "foo-uid",
+		},
+	}}
+	kubeClient := fake.NewClientBuilder().WithObjects(nodeset.DeepCopy(), node).Build()
+	r := newNodeSetController(kubeClient, nil)
+
+	require.NoError(t, r.syncSlurmNodeNameFinalizer(ctx, nodeset))
+	require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "worker-a"}, node))
+	require.Empty(t, node.Labels[slinkyv1beta1.LabelSlurmNodeName])
+	require.Empty(t, node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwner])
+	require.Empty(t, node.Annotations[slinkyv1beta1.AnnotationNodeSlurmNameOwnerUID])
+	require.NotContains(t, nodeset.Finalizers, slinkyv1beta1.FinalizerNodeSetSlurmNodeName)
+}
+
 func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
