@@ -90,7 +90,6 @@ Third-party Dependencies:
 - github.com/prometheus/client_model/go (Apache-2.0)
 - github.com/prometheus/common (Apache-2.0)
 - github.com/prometheus/procfs (Apache-2.0)
-- github.com/puttsk/hostlist (MIT)
 - github.com/robfig/cron/v3 (MIT)
 - github.com/santhosh-tekuri/jsonschema/v6 (Apache-2.0)
 - github.com/sethvargo/go-envconfig (Apache-2.0)

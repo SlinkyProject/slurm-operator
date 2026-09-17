@@ -3,7 +3,7 @@ module github.com/SlinkyProject/slurm-operator
 go 1.26.6
 
 require (
-	github.com/SlinkyProject/slurm-client v1.2.2
+	github.com/SlinkyProject/slurm-client v1.2.3-0.20260917145014-383f02721838
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
@@ -12,7 +12,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.89.0
-	github.com/puttsk/hostlist v0.1.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.56.0
 	golang.org/x/text v0.41.0
