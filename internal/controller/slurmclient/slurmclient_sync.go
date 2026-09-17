@@ -83,11 +83,15 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 		return nil
 	}
 
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.IdleConnTimeout = 10 * time.Second
+
 	config := &slurmclient.Config{
 		Server:    server,
 		AuthToken: authToken,
 		HTTPClient: &http.Client{
-			Timeout: 5 * time.Minute,
+			Timeout:   5 * time.Minute,
+			Transport: transport,
 		},
 	}
 	slurmClient, err := slurmclient.NewClient(config)
