@@ -3,13 +3,12 @@ module github.com/SlinkyProject/slurm-operator
 go 1.26.6
 
 require (
-	github.com/SlinkyProject/slurm-client v1.0.6
+	github.com/SlinkyProject/slurm-client v1.0.7-0.20260917142937-647f6af2fb4c
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
-	github.com/puttsk/hostlist v0.1.0
 	golang.org/x/crypto v0.56.0
 	golang.org/x/text v0.41.0
 	k8s.io/api v0.35.2
