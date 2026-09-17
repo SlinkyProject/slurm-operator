@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/puttsk/hostlist"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -25,6 +24,7 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+	"github.com/SlinkyProject/slurm-client/pkg/hostlist"
 	"github.com/SlinkyProject/slurm-client/pkg/object"
 	"github.com/SlinkyProject/slurm-client/pkg/types"
 
