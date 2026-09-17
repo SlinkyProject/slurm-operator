@@ -35,6 +35,15 @@ const (
 const (
 	// NodeSet Condition Type
 	NodeSetConditionReservationCreated = "ReservationCreated"
+
+	// Controller Condition Type
+	ControllerConditionSlurmReachable = "SlurmReachable"
+
+	// RestApi Condition Type
+	RestApiConditionAvailable = "Available"
+
+	// Accounting Condition Type
+	AccountingConditionAvailable = "Available"
 )
 
 func IsConditionTrue(status *corev1.PodStatus, condType corev1.PodConditionType) bool {
