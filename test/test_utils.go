@@ -18,9 +18,8 @@ import (
 
 	dockerbuild "github.com/docker/docker/api/types/build"
 	dockerclient "github.com/docker/docker/client"
-	ptr "k8s.io/utils/ptr"
-
 	"github.com/moby/go-archive"
+	ptr "k8s.io/utils/ptr"
 )
 
 // getBasePath returns the fully qualified path of the slurm-operator repo within the context in which `go test` is called
