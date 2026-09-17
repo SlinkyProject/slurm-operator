@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/test"
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +19,9 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/test"
 )
 
 func getFeaturesFromConfig(install bool, test bool, config test.SlurmInstallationConfig, beforeSteps []types.Feature) []types.Feature {

@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SlinkyProject/slurm-client/pkg/hostlist"
-
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -22,6 +20,7 @@ import (
 
 	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
+	"github.com/SlinkyProject/slurm-client/pkg/hostlist"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 

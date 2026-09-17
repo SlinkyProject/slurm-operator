@@ -8,13 +8,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SlinkyProject/slurm-operator/test"
 	"helm.sh/helm/v3/pkg/action"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 	"sigs.k8s.io/e2e-framework/support/kind"
+
+	"github.com/SlinkyProject/slurm-operator/test"
 )
 
 // TestMain configures the environment within which all e2e-tests are run

@@ -6,10 +6,11 @@ package metadata
 import (
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestNewBuilder(t *testing.T) {
