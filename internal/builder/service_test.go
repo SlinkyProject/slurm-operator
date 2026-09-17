@@ -6,8 +6,6 @@ package builder
 import (
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -15,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 func TestBuilder_BuildService(t *testing.T) {

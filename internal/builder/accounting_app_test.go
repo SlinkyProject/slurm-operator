@@ -7,13 +7,14 @@ import (
 	_ "embed"
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 )
 
 func TestBuilder_BuildAccounting(t *testing.T) {
