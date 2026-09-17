@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -21,7 +22,6 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
-	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 type SyncStep struct {
