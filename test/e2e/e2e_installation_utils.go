@@ -8,12 +8,12 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/SlinkyProject/slurm-operator/test"
-
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
+
+	"github.com/SlinkyProject/slurm-operator/test"
 )
 
 // Dependency Installation
