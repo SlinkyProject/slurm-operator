@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/puttsk/hostlist"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +24,7 @@ import (
 	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+	"github.com/SlinkyProject/slurm-client/pkg/hostlist"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
