@@ -6,8 +6,9 @@ package labels
 import (
 	"testing"
 
-	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"k8s.io/apimachinery/pkg/api/equality"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestNewBuilder(t *testing.T) {

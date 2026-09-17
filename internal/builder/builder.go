@@ -4,8 +4,9 @@
 package builder
 
 import (
-	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
 const (
