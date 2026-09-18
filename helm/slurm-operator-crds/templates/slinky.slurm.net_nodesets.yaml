@@ -271,6 +271,12 @@ spec:
                 - enabled
                 - sssdConfRef
                 type: object
+              syncTopology:
+                default: true
+                description: |-
+                  SyncTopology controls whether topology is synced from Kubernetes node
+                  annotations into Slurm node records.
+                type: boolean
               template:
                 description: |-
                   Template is the object that describes the pod that will be created if

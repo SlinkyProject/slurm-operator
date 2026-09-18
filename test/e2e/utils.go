@@ -37,6 +37,10 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 			steps = append(steps, testSlurmJWTKeyRotation(config.Namespace))
 		}
 
+		if config.Topology {
+			steps = append(steps, testSlurmNodeSetTopologySync(config.Namespace))
+		}
+
 		if config.Accounting {
 			steps = append(steps, testSlurmAccounting(config.Namespace))
 		}

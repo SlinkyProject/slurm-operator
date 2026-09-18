@@ -100,6 +100,12 @@ type NodeSetSpec struct {
 	// +optional
 	PersistentVolumeClaimRetentionPolicy NodeSetPersistentVolumeClaimRetentionPolicy `json:"persistentVolumeClaimRetentionPolicy,omitempty"`
 
+	// SyncTopology controls whether topology is synced from Kubernetes node
+	// annotations into Slurm node records.
+	// +optional
+	// +default:=true
+	SyncTopology *bool `json:"syncTopology,omitempty"`
+
 	// minReadySeconds is the minimum number of seconds for which a newly
 	// created NodeSet Pod should be ready without any of its container crashing,
 	// for it to be considered available.

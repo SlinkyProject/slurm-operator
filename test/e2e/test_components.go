@@ -21,6 +21,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -35,6 +36,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/test"
 )
 
@@ -180,7 +182,7 @@ func checkHostnameResolution(ctx context.Context, t *testing.T, namespace, sourc
 	)
 
 	for attempt := range attempts {
-		nodeInfo, err := test.GetSlurmNodeInfo(namespace, nodeName)
+		nodeInfo, err := test.GetSlurmNodeInfo(ctx, namespace, nodeName)
 		if err != nil {
 			lastErr = err
 		} else {
@@ -307,6 +309,12 @@ func testSlurmRestAPI(namespace string, withAccounting bool) types.Feature {
 
 // NodeSet tests
 
+const (
+	// topologySyncDisabledObservation spans the NodeSet controller's 30-second periodic reconcile.
+	topologySyncDisabledObservation = 35 * time.Second
+	topologyReadTimeout             = 5 * time.Second
+)
+
 func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, nodesetKey crclient.ObjectKey) {
 	t.Helper()
 
@@ -416,6 +424,119 @@ func testSlurmNodeSet(namespace string) types.Feature {
 			require.NoError(t, err, "failed to Update() NodeSet using controller-runtime client")
 
 			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+
+			return ctx
+		}).Feature()
+}
+
+func testSlurmNodeSetTopologySync(namespace string) types.Feature {
+	return features.New("Assess NodeSet topology annotation synchronization").
+		Assess("syncTopology controls topology annotation synchronization", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			nodesetKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-worker-slinky",
+			}
+			nodeset := &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+
+			podKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-worker-slinky-0",
+			}
+			workerPod := &corev1.Pod{}
+			require.NoError(t, crClient.Get(ctx, podKey, workerPod), "failed to get NodeSet Pod")
+			require.NotEmpty(t, workerPod.Spec.NodeName, "NodeSet Pod %s/%s has empty spec.nodeName", workerPod.Namespace, workerPod.Name)
+
+			slurmNodeName := workerPod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
+			require.NotEmpty(t, slurmNodeName, "NodeSet Pod %s/%s has no Slurm node name label", workerPod.Namespace, workerPod.Name)
+
+			node := &corev1.Node{}
+			nodeKey := crclient.ObjectKey{Name: workerPod.Spec.NodeName}
+			require.NoError(t, crClient.Get(ctx, nodeKey, node), "failed to get Kubernetes Node %s", nodeKey.Name)
+
+			var originalSyncTopology *bool
+			if nodeset.Spec.SyncTopology != nil {
+				originalSyncTopology = ptr.To(*nodeset.Spec.SyncTopology)
+			}
+			var originalNodeTopology *string
+			if topology, ok := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]; ok {
+				originalNodeTopology = ptr.To(topology)
+			}
+
+			targetTopology := "topo-e2e:b0"
+			if ptr.Deref(originalNodeTopology, "") == targetTopology {
+				targetTopology = "topo-e2e:b1"
+			}
+
+			restored := false
+			restore := func(restoreCtx context.Context) error {
+				if err := updateNodeTopologyAnnotation(restoreCtx, crClient, nodeKey, originalNodeTopology); err != nil {
+					return fmt.Errorf("restore Kubernetes Node topology annotation: %w", err)
+				}
+				if err := updateNodeSetSyncTopology(restoreCtx, crClient, nodesetKey, originalSyncTopology); err != nil {
+					return fmt.Errorf("restore NodeSet topology synchronization: %w", err)
+				}
+				return nil
+			}
+			t.Cleanup(func() {
+				if restored {
+					return
+				}
+				cleanupCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+				if err := restore(cleanupCtx); err != nil {
+					t.Errorf("failed to clean up topology synchronization test: %v", err)
+				}
+			})
+
+			waitForNodeSetTopology(ctx, t, crClient, podKey, namespace, slurmNodeName, ptr.Deref(originalNodeTopology, ""))
+
+			require.NoError(
+				t,
+				updateNodeSetSyncTopology(ctx, crClient, nodesetKey, ptr.To(false)),
+				"failed to disable NodeSet topology synchronization",
+			)
+			require.Eventually(t, func() bool {
+				current := &slinkyv1beta1.NodeSet{}
+				if err := crClient.Get(ctx, nodesetKey, current); err != nil {
+					return false
+				}
+				return current.Spec.SyncTopology != nil &&
+					!*current.Spec.SyncTopology &&
+					current.Status.ObservedGeneration == current.Generation
+			}, time.Minute, time.Second, "timed out waiting for NodeSet to observe syncTopology=false")
+
+			originalPodTopology, originalSlurmTopology, err := readNodeSetTopologies(ctx, crClient, podKey, namespace, slurmNodeName)
+			require.NoError(t, err, "failed to read topology before changing the Kubernetes Node annotation")
+
+			require.NoError(
+				t,
+				updateNodeTopologyAnnotation(ctx, crClient, nodeKey, ptr.To(targetTopology)),
+				"failed to update Kubernetes Node topology annotation",
+			)
+			checkNodeSetTopologyUnchanged(
+				ctx,
+				t,
+				crClient,
+				podKey,
+				namespace,
+				slurmNodeName,
+				originalPodTopology,
+				originalSlurmTopology,
+			)
+
+			require.NoError(
+				t,
+				updateNodeSetSyncTopology(ctx, crClient, nodesetKey, ptr.To(true)),
+				"failed to enable NodeSet topology synchronization",
+			)
+			waitForNodeSetTopology(ctx, t, crClient, podKey, namespace, slurmNodeName, targetTopology)
+
+			require.NoError(t, restore(ctx), "failed to restore topology synchronization test resources")
+			restored = true
 
 			return ctx
 		}).Feature()
@@ -611,6 +732,137 @@ func testSlurmDaemonSet(namespace string) types.Feature {
 			}
 			return ctx
 		}).Feature()
+}
+
+func updateNodeSetSyncTopology(
+	ctx context.Context,
+	crClient crclient.Client,
+	nodesetKey crclient.ObjectKey,
+	enabled *bool,
+) error {
+	nodeset := &slinkyv1beta1.NodeSet{}
+	if err := crClient.Get(ctx, nodesetKey, nodeset); err != nil {
+		return fmt.Errorf("get NodeSet %s: %w", nodesetKey, err)
+	}
+	return objectutils.PatchObject(crClient, ctx, nodeset, func(nodeset *slinkyv1beta1.NodeSet) error {
+		nodeset.Spec.SyncTopology = enabled
+		return nil
+	})
+}
+
+func updateNodeTopologyAnnotation(
+	ctx context.Context,
+	crClient crclient.Client,
+	nodeKey crclient.ObjectKey,
+	topology *string,
+) error {
+	node := &corev1.Node{}
+	if err := crClient.Get(ctx, nodeKey, node); err != nil {
+		return fmt.Errorf("get Kubernetes Node %s: %w", nodeKey, err)
+	}
+	return objectutils.PatchObject(crClient, ctx, node, func(node *corev1.Node) error {
+		if topology == nil {
+			delete(node.Annotations, slinkyv1beta1.AnnotationNodeTopologySpec)
+			return nil
+		}
+		if node.Annotations == nil {
+			node.Annotations = make(map[string]string)
+		}
+		node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = *topology
+		return nil
+	})
+}
+
+func checkNodeSetTopologyUnchanged(
+	ctx context.Context,
+	t *testing.T,
+	crClient crclient.Client,
+	podKey crclient.ObjectKey,
+	namespace string,
+	slurmNodeName string,
+	wantPodTopology string,
+	wantSlurmTopology string,
+) {
+	t.Helper()
+
+	deadline := time.Now().Add(topologySyncDisabledObservation)
+	for {
+		readCtx, cancel := context.WithTimeout(ctx, topologyReadTimeout)
+		podTopology, slurmTopology, err := readNodeSetTopologies(readCtx, crClient, podKey, namespace, slurmNodeName)
+		cancel()
+
+		if ctx.Err() != nil {
+			t.Fatalf("context ended while checking disabled topology synchronization: %v", ctx.Err())
+		}
+		require.NoError(t, err, "failed to read topology while syncTopology=false")
+		require.Equal(t, wantPodTopology, podTopology, "NodeSet Pod topology changed while syncTopology=false")
+		require.Equal(t, wantSlurmTopology, slurmTopology, "Slurm node topology changed while syncTopology=false")
+
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("context ended while checking disabled topology synchronization: %v", ctx.Err())
+		case <-time.After(min(time.Second, remaining)):
+		}
+	}
+}
+
+func readNodeSetTopologies(
+	ctx context.Context,
+	crClient crclient.Client,
+	podKey crclient.ObjectKey,
+	namespace string,
+	slurmNodeName string,
+) (string, string, error) {
+	pod := &corev1.Pod{}
+	if err := crClient.Get(ctx, podKey, pod); err != nil {
+		return "", "", fmt.Errorf("get NodeSet Pod %s: %w", podKey, err)
+	}
+	nodeInfo, err := test.GetSlurmNodeInfo(ctx, namespace, slurmNodeName)
+	if err != nil {
+		return "", "", fmt.Errorf("get Slurm node %s: %w", slurmNodeName, err)
+	}
+	return pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], nodeInfo["Topology"], nil
+}
+
+func waitForNodeSetTopology(
+	ctx context.Context,
+	t *testing.T,
+	crClient crclient.Client,
+	podKey crclient.ObjectKey,
+	namespace string,
+	slurmNodeName string,
+	want string,
+) {
+	t.Helper()
+
+	var (
+		podTopology   string
+		slurmTopology string
+		lastErr       error
+	)
+	err := wait.For(
+		func(waitCtx context.Context) (bool, error) {
+			podTopology, slurmTopology, lastErr = readNodeSetTopologies(waitCtx, crClient, podKey, namespace, slurmNodeName)
+			return lastErr == nil && podTopology == want && slurmTopology == want, nil
+		},
+		wait.WithContext(ctx),
+		wait.WithTimeout(2*time.Minute),
+		wait.WithInterval(2*time.Second),
+		wait.WithImmediate(),
+	)
+	require.NoError(
+		t,
+		err,
+		"timed out waiting for NodeSet topology synchronization: Pod got %q, Slurm got %q, want %q; last read error: %v",
+		podTopology,
+		slurmTopology,
+		want,
+		lastErr,
+	)
 }
 
 func testSlurmJWTKeyRotation(namespace string) types.Feature {

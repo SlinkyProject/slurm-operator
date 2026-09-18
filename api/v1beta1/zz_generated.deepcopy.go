@@ -624,6 +624,11 @@ func (in *NodeSetSpec) DeepCopyInto(out *NodeSetSpec) {
 	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
 	out.PersistentVolumeClaimRetentionPolicy = in.PersistentVolumeClaimRetentionPolicy
+	if in.SyncTopology != nil {
+		in, out := &in.SyncTopology, &out.SyncTopology
+		*out = new(bool)
+		**out = **in
+	}
 	if in.WorkloadDisruptionProtection != nil {
 		in, out := &in.WorkloadDisruptionProtection, &out.WorkloadDisruptionProtection
 		*out = new(bool)

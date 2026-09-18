@@ -33,6 +33,7 @@ manifest should match snapshot:
         lifecycle: {}
         resources: {}
         volumeMounts: []
+      syncTopology: true
       template:
         metadata:
           labels:

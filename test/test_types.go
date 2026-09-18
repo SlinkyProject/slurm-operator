@@ -17,6 +17,7 @@ type SlurmInstallationConfig struct {
 	Metrics    bool
 	Namespace  string
 	Pyxis      bool
+	Topology   bool
 }
 
 var (

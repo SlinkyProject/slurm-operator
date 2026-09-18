@@ -23,6 +23,14 @@ topology. A topology file is required for dynamic topology to work.
 If there is a misconfiguration of `topology.yaml` or the Kubernetes node
 annotation, an error will be reported in the operator logs.
 
+This feature can be disabled by setting NodeSet `spec.syncTopology` to "false".
+Disabling this feature will leave existing topology information in the
+associated Slurm node records and will stop syncing new topology information
+from node annotations. To remove topology information from Slurm nodes as well,
+first remove the `topology.slinky.slurm.net/spec` annotation from all Kubernetes
+nodes, with `syncTopology` set to `true`. After the topology information is
+removed from the associated Slurm nodes, `syncTopology` may be set to `false`.
+
 ## Kubernetes
 
 Each Kubernetes node should be annotated with `topology.slinky.slurm.net/spec`.

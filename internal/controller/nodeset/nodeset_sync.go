@@ -795,6 +795,10 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 	nodeset *slinkyv1beta1.NodeSet,
 	pods []*corev1.Pod,
 ) error {
+	if !ptr.Deref(nodeset.Spec.SyncTopology, defaults.DefaultNodeSetSyncTopology) {
+		return nil
+	}
+
 	syncSlurmTopologyFn := func(i int) error {
 		pod := pods[i]
 

@@ -72,6 +72,7 @@ func TestSlurmChart(t *testing.T) {
 			test:    true,
 			config: test.SlurmInstallationConfig{
 				Namespace: "slurm-e2e-basic",
+				Topology:  true,
 			},
 		},
 		{

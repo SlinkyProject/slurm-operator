@@ -81,14 +81,14 @@ func WaitForCommand(ctx context.Context, t *testing.T, command string, args []st
 }
 
 // GetSlurmNodeInfo uses scontrol to get details on a Slurm node
-func GetSlurmNodeInfo(namespace, nodeName string) (map[string]string, error) {
+func GetSlurmNodeInfo(ctx context.Context, namespace, nodeName string) (map[string]string, error) {
 	command := "kubectl"
 	args := []string{
 		"exec", "-n", namespace, "slurm-controller-0", "--",
 		"scontrol", "show", "node", nodeName,
 	}
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("failed executing %s %s: %w; combined output: %q", command, strings.Join(args, " "), err, strings.TrimSpace(string(output)))
