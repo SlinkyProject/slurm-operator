@@ -31,13 +31,13 @@ spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
   {{- if (include "slurm.worker.extraConf" $nodeset) }}
-  extraConf: {{ include "slurm.worker.extraConf" $nodeset }}
+  extraConf: {{ include "slurm.worker.extraConf" $nodeset | quote }}
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}
   {{- with $nodeset.partition }}
   partition:
     enabled: {{ .enabled }}
     {{- if (include "slurm.worker.partitionConfig" .) }}
-    config: {{ include "slurm.worker.partitionConfig" . }}
+    config: {{ include "slurm.worker.partitionConfig" . | quote }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" .) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
   {{- with $nodeset.ssh }}
