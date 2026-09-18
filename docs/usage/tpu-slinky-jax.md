@@ -64,7 +64,9 @@ ______________________________________________________________________
 
 ### 2. Install Operator Prerequisites
 
-Slinky requires `cert-manager` to manage admission webhook certificates.
+The default slurm-operator chart configuration uses `cert-manager` to manage
+admission webhook certificates. The chart can instead generate a self-signed
+certificate when installed with `certManager.enabled=false`.
 
 #### 2.1. Install Cert-Manager
 
@@ -144,9 +146,6 @@ nodesets:
     replicas: 1  # Deploy 1 worker pod on our single 8-chip node
 
     slurmd:
-      image:
-        repository: ghcr.io/slinkyproject/slurmd
-        tag: 25.11-ubuntu24.04
       resources:
         limits:
           google.com/tpu: 8  # Request all 8 chips on the node
@@ -156,11 +155,6 @@ nodesets:
       volumeMounts:
         - name: host-dev
           mountPath: /dev
-
-    logfile:
-      image:
-        repository: docker.io/library/alpine
-        tag: latest
 
     extraConfMap:
       Gres: ["tpu:8"]
@@ -214,7 +208,6 @@ Expected output:
 
 ```
 HOSTNAMES GRES
-slinky-0 (null)
 tpu-0 tpu:8
 ```
 
@@ -235,8 +228,9 @@ ______________________________________________________________________
 
 Since the default Slinky `slurmd` image is a minimal Ubuntu image without Python
 packages, we will write a submission script that installs `python3-pip` and
-`python3-venv` inside the container at runtime (made possible because Slurm jobs
-run as `root` inside Slurm-operator by default).
+`python3-venv` inside the container at runtime. In this flow, `sbatch` is
+invoked as `root` in the worker container, so the resulting job also runs as
+`root`.
 
 #### 6.1. Create the JAX Test Script (`jax_test.py`)
 

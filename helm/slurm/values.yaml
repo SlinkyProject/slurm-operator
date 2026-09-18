@@ -186,10 +186,10 @@ epilogScriptRefs: []
 controller:
   # -- Configures this component as external (not in Kubernetes).
   external: false
-  # Details required to communicate with an external slurmdbd.
+  # Details required to communicate with an external slurmctld.
   # When `external=true`, `externalConfig` is used and all other fields are ignored.
   externalConfig:
-    # -- The slurmdbd host address or IP.
+    # -- The slurmctld host address or IP.
     host: slurmctld.example.com
     # -- The slurmctld port. Default is 6817.
     port: null
@@ -249,7 +249,7 @@ controller:
     # -- Indicates if HA mode should be used.
     # When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required.
     enabled: false
-    # -- Indicates how may secondary (backup) controllers to deploy.
+    # -- Indicates how many secondary (backup) controllers to deploy.
     backups: 1
   # Enable persistence using Persistent Volume Claims.
   # Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
@@ -575,7 +575,7 @@ accounting:
 # Cluster SSSD configuration.
 sssd:
   # -- (secretKeyRef) The `sssd.conf` by ref.
-  # NOTE: Takes presence over `conf` if not empty.
+  # NOTE: Takes precedence over `conf` if not empty.
   secretRef: {}
     # name: slurm-sssd-conf
     # key: sssd.conf
@@ -723,7 +723,7 @@ nodesetDefaults:
   enabled: true
   # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
   scalingMode: StatefulSet
-  # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
+  # -- Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`.
   replicas: 1
   # -- Pin pods to their initially assigned Kubernetes nodes.
   pinToNode: false
@@ -808,7 +808,7 @@ nodesetDefaults:
   partition:
     # -- Enable NodeSet partition creation.
     enabled: false
-    # -- (string) Raw Slurm partition configuration options added to the partition line added to the partition line.
+    # -- (string) Raw Slurm partition configuration options added to the partition line.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
     config: null
     # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.

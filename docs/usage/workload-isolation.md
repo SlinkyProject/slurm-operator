@@ -34,13 +34,13 @@ set of pods that lack a matching toleration. Tolerations are the mechanism that
 Kubernetes provides that allow the scheduler to schedule pods on nodes with
 matching taints.
 
-Apply a taint to the nodes that will only run Slurm pods:
+Label and taint the nodes dedicated to Slurm workers:
 
 ```bash
-kubectl taint nodes kind-worker2 slinky.slurm.net/slurm:NoExecute
-kubectl taint nodes kind-worker3 slinky.slurm.net/slurm:NoExecute
-kubectl taint nodes kind-worker4 slinky.slurm.net/slurm:NoExecute
-kubectl taint nodes kind-worker5 slinky.slurm.net/slurm:NoExecute
+kubectl label nodes kind-worker2 kind-worker3 kind-worker4 kind-worker5 \
+  slinky.slurm.net/role=worker
+kubectl taint nodes kind-worker2 kind-worker3 kind-worker4 kind-worker5 \
+  slinky.slurm.net/slurm=worker:NoSchedule
 ```
 
 Confirm that the taint was applied:
@@ -49,66 +49,53 @@ Confirm that the taint was applied:
 $ kubectl get nodes -o jsonpath="{range .items[*]}{.metadata.name}:{' '}{range .spec.taints[*]}{.key}={.value}:{.effect},{' '}{end}{'\n'}{end}"
 kind-control-plane: node-role.kubernetes.io/control-plane=:NoSchedule,
 kind-worker:
-kind-worker2: slinky.slurm.net/slurm=:NoExecute
-kind-worker3: slinky.slurm.net/slurm=:NoExecute
-kind-worker4: slinky.slurm.net/slurm=:NoExecute
-kind-worker5: slinky.slurm.net/slurm=:NoExecute
+kind-worker2: slinky.slurm.net/slurm=worker:NoSchedule
+kind-worker3: slinky.slurm.net/slurm=worker:NoSchedule
+kind-worker4: slinky.slurm.net/slurm=worker:NoSchedule
+kind-worker5: slinky.slurm.net/slurm=worker:NoSchedule
 ```
 
-Next, configure the tolerations on the `slurm-operator` components. Each of the
-components of `slurm-operator` can have their `tolerations` set from within
-`values.yaml`. Update the `tolerations` section of all components to match the
-`taint` that you applied in step 1. This will need to be done for all components
-in both the `slurm` and `slurm-operator` Helm charts.
-
-```yaml
-  # -- Tolerations for pod assignment.
-  # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations:
-    - key: slinky.slurm.net/slurm
-      operator: Exists
-      effect: NoSchedule
-```
-
-## Pod Anti-Affinity
-
-In some cases [anti-affinity] must be configured in order to prevent multiple
-NodeSet pods (slurmd) from being scheduled on the same node. Pod [anti-affinity]
-can be configured under the `podSpec.affinity` section of a NodeSet. To ensure
-that multiple NodeSet pods cannot be scheduled on the same node, add the
-following to the `podSpec.affinity` section:
+Next, configure the NodeSet's pod template to select and tolerate the dedicated
+nodes. The toleration permits scheduling onto the tainted nodes; the node
+selector prevents these worker pods from also scheduling onto general-purpose
+nodes.
 
 ```yaml
 nodesets:
   slinky:
     podSpec:
-      # -- Affinity for pod assignment.
-      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - topologyKey: kubernetes.io/hostname
-            labelSelector:
-              matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                - slurmctld
-                - slurmdbd
-                - slurmrestd
-                - mariadb
-                - slurmd
+      nodeSelector:
+        slinky.slurm.net/role: worker
+      tolerations:
+        - key: slinky.slurm.net/slurm
+          operator: Equal
+          value: worker
+          effect: NoSchedule
 ```
 
-After applying the Helm chart with `affinity` set in `values.yaml`, the
-`affinity` section can be observed in the `NodeSet` by running:
+## Pod Anti-Affinity
+
+By default, the NodeSet controller adds required pod anti-affinity on
+`kubernetes.io/hostname`, preventing more than one slurmd pod from being
+scheduled on a Kubernetes node. This is controlled by `oversubscribeNode`, whose
+default is `false`; no additional affinity configuration is needed.
+
+To deliberately permit multiple NodeSet pods on the same Kubernetes node, set:
+
+```yaml
+nodesets:
+  slinky:
+    oversubscribeNode: true
+```
+
+After applying the Helm chart, the controller-generated pod anti-affinity can be
+observed on a worker pod by running:
 
 ```bash
-kubectl describe NodeSet --namespace slurm
+kubectl get pod --namespace slurm <worker-pod> -o yaml
 ```
 
 <!-- links -->
 
-[anti-affinity]: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
 [quickstart guide]: ../installation.md
 [taints and tolerations]: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/

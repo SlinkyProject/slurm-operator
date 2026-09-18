@@ -167,7 +167,7 @@ spec:
 Check [ScaledObject] documentation for a full list of allowable options.
 
 In this scenario, the ScaledObject `scale-radar` will query the Slurm metric
-`slurm_partition_pending_jobs` from Prometheus with the label
+`slurm_partition_jobs_pending` from Prometheus with the label
 `partition="radar"`.
 
 When there is activity on the trigger (at least one pending job), KEDA will
@@ -206,11 +206,11 @@ scaledobject.keda.sh/scale-radar created
 
 $ kubectl get -n slurm scaledobjects
 NAME           SCALETARGETKIND                     SCALETARGETNAME        MIN   MAX   TRIGGERS     AUTHENTICATION   READY   ACTIVE   FALLBACK   PAUSED    AGE
-scale-radar    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-radar    1     5     prometheus                    True    False    Unknown    Unknown   28s
+scale-radar    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-radar    1     3     prometheus                    True    False    Unknown    Unknown   28s
 
 $ kubectl get -n slurm hpa
 NAME                    REFERENCE                      TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
-keda-hpa-scale-radar    NodeSet/slurm-worker-radar    <unknown>/5   1         5         0          32s
+keda-hpa-scale-radar    NodeSet/slurm-worker-radar    <unknown>/5   1         3         0          32s
 ```
 
 Once the [ScaledObject] and HPA are created, initiate some jobs to test that the
@@ -231,7 +231,7 @@ will remain at `minReplicaCount`.
 > to 1. In this case, HPA will continue to scale up NodeSet as long as there is
 > a pending job, until it reaches the `maxReplicaCount`.
 
-After the default `coolDownPeriod` of 5 minutes without activity on the trigger,
+After the default `cooldownPeriod` of 5 minutes without activity on the trigger,
 KEDA will scale the NodeSet down to 0.
 
 <!-- Links -->

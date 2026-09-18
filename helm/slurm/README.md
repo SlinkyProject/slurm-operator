@@ -54,11 +54,11 @@ Kubernetes: `>= 1.29.0-0`
 | clusterName | string | `nil` | The cluster name, which uniquely identifies the Slurm cluster. If empty, one will be derived from the Controller CR object. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName |
 | configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
 | controller.external | bool | `false` | Configures this component as external (not in Kubernetes). |
-| controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmdbd host address or IP. |
+| controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmctld host address or IP. |
 | controller.externalConfig.port | string | `nil` | The slurmctld port. Default is 6817. |
 | controller.extraConf | string | `nil` | Raw extra Slurm configuration lines appended to `slurm.conf`. Ref: https://slurm.schedmd.com/slurm.conf.html |
 | controller.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra Slurm configuration lines appended to `slurm.conf`. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html |
-| controller.ha.backups | int | `1` | Indicates how may secondary (backup) controllers to deploy. |
+| controller.ha.backups | int | `1` | Indicates how many secondary (backup) controllers to deploy. |
 | controller.ha.enabled | bool | `false` | Indicates if HA mode should be used. When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required. |
 | controller.inplaceReconfigure | bool | `false` | Indicates how reconfigure is handled when Slurm configuration changes. When true, the reconfigure sidecar will do reconfigure inplace. When false, the pod will be recreated and reconfigure done only on startup. |
 | controller.logfile.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -141,7 +141,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesetDefaults.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | nodesetDefaults.ordinalPadding | int | `0` | How many places to pad with zeroes when constructing the pod ordinal. |
 | nodesetDefaults.oversubscribeNode | bool | `false` | Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity). WARNING: This option is **NOT** recommended for production usage. |
-| nodesetDefaults.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
+| nodesetDefaults.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.configMap | map[string]string \| map[string][]string | `{}` | The Slurm partition configuration options added to the partition line. If `config` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.enabled | bool | `false` | Enable NodeSet partition creation. |
 | nodesetDefaults.pinToNode | bool | `false` | Pin pods to their initially assigned Kubernetes nodes. |
@@ -153,7 +153,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesetDefaults.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | nodesetDefaults.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | nodesetDefaults.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never; NodeNotFound; Auto. |
-| nodesetDefaults.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is daemonset. |
+| nodesetDefaults.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`. |
 | nodesetDefaults.scalingMode | string | `"StatefulSet"` | Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node). |
 | nodesetDefaults.slurmd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS |
 | nodesetDefaults.slurmd.env | list | `[]` | Environment passed to the image. |
@@ -206,7 +206,7 @@ Kubernetes: `>= 1.29.0-0`
 | slurmKey.create | bool | `true` | The secret will be created when true. |
 | slurmKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
 | sssd.conf | string | `"[sssd]\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nid_provider = proxy\nproxy_lib_name = files\nauth_provider = proxy\nproxy_pam_target = sssd-shadowutils\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
-| sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes presence over `conf` if not empty. |
+| sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes precedence over `conf` if not empty. |
 | vendor.google.a3mega | list | `[]` | A3 Mega configurations. List of objects corresponding to nodesets. |
 | vendor.google.a3ultra | list | `[]` | A3 Ultra configurations. List of objects corresponding to nodesets. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |

@@ -107,10 +107,10 @@ drain reason string.
 
 ### Drain and Cordon Design
 
-The operator implements a unidirectional Kubernetes-to-Slurm cordon model.
-Cordoning a Kubernetes node or annotating a pod triggers a Slurm drain;
-uncordoning reverses it. The operator never initiates a cordon on its own — it
-only reacts to external signals.
+The operator implements a Kubernetes-to-Slurm cordon model. Cordoning a
+Kubernetes node or annotating a pod triggers a Slurm drain; uncordoning reverses
+it. The controller also adds the pod-cordon annotation itself when it selects a
+pod for scale-in or replacement.
 
 ```mermaid
 flowchart TD
