@@ -156,3 +156,23 @@ tests:
       - equal:
           path: spec.template.spec.priorityClassName
           value: foo-priorityclass
+  - it: should set a custom preStop hook on slurmd
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          slurmd:
+            lifecycle:
+              preStop:
+                exec:
+                  command:
+                    - /usr/bin/sh
+                    - -c
+                    - scontrol update nodename=$(hostname) state=drain reason='draining';
+    asserts:
+      - equal:
+          path: spec.slurmd.lifecycle.preStop.exec.command
+          value:
+            - /usr/bin/sh
+            - -c
+            - scontrol update nodename=$(hostname) state=drain reason='draining';
