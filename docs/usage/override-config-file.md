@@ -70,6 +70,11 @@ created above.
 nodesets:
   slinky:
     slurmd:
+      volumeMounts:
+      - name: enroot-config
+        mountPath: "/etc/enroot/enroot.conf"
+        subPath: "enroot.conf"
+    podSpec:
       volumes:
       - name: enroot-config
         configMap:
@@ -77,11 +82,6 @@ nodesets:
           items:
             - key: enroot
               path: "enroot.conf"
-    podSpec:
-      volumeMounts:
-      - name: enroot-config
-        mountPath: "/etc/enroot/enroot.conf"
-        subPath: "enroot.conf"
 ```
 
 At this point, the Helm chart may be installed. The NodeSet that was modified
