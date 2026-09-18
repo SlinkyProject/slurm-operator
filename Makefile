@@ -153,6 +153,7 @@ debug: values-dev deploy-crds ## Run Delve-enabled Slurm Operator components and
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
+E2E_ARTIFACTS_DIR ?= $(shell pwd)/e2e-artifacts
 
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -162,13 +163,15 @@ $(LOCALBIN):
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
-@[ -f $(1) ] || { \
-set -e; \
-package=$(2)@$(3) ;\
-echo "Downloading $${package}" ;\
-GOBIN=$(LOCALBIN) go install $${package} ;\
-mv "$$(echo "$(1)" | $(SED) "s/-$(3)$$//")" $(1) ;\
-}
+@[ -f "$(1)-$(3)" ] || { \
+	set -e; \
+	package=$(2)@$(3) ;\
+	echo "Downloading $${package}" ;\
+	rm -f $(1) || true ;\
+	GOBIN=$(LOCALBIN) go install $${package} ;\
+	mv $(1) $(1)-$(3) ;\
+} ;\
+ln -sf $(1)-$(3) $(1)
 endef
 
 # helm-install-plugin will 'helm plugin install' if missing or wrong version
@@ -203,15 +206,16 @@ endef
 
 ## Tool Binaries
 KUBECTL ?= kubectl
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
-ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
-GOVULNCHECK ?= $(LOCALBIN)/govulncheck-$(GOVULNCHECK_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+GOVULNCHECK ?= $(LOCALBIN)/govulncheck
+GOTESTSUM ?= $(LOCALBIN)/gotestsum
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
-HELM_DOCS ?= $(LOCALBIN)/helm-docs-$(HELM_DOCS_VERSION)
+HELM_DOCS ?= $(LOCALBIN)/helm-docs
 PANDOC ?= $(LOCALBIN)/pandoc-$(PANDOC_VERSION)
 HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
-COSIGN ?= $(LOCALBIN)/cosign-$(COSIGN_VERSION)
+COSIGN ?= $(LOCALBIN)/cosign
 HELM_CONFIG_HOME ?= $(LOCALBIN)/helm-config
 HELM_CACHE_HOME ?= $(LOCALBIN)/helm-cache
 HELM_DATA_HOME ?= $(LOCALBIN)/helm-data
@@ -225,6 +229,7 @@ OPERATOR_SDK_VERSION ?= v1.42.0
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 GOVULNCHECK_VERSION ?= v1.3.0
+GOTESTSUM_VERSION ?= v1.13.0
 # Written by `make govulncheck`: CSV (see file header comments). CI uploads as an artifact.
 GOVULNCHECK_REPORT ?= govulncheck-vulns.csv
 
@@ -250,6 +255,11 @@ $(ENVTEST): $(LOCALBIN)
 govulncheck-bin: $(GOVULNCHECK) ## Download govulncheck locally if necessary.
 $(GOVULNCHECK): $(LOCALBIN)
 	$(call go-install-tool,$(GOVULNCHECK),golang.org/x/vuln/cmd/govulncheck,$(GOVULNCHECK_VERSION))
+
+.PHONY: gotestsum-bin
+gotestsum-bin: $(GOTESTSUM) ## Download gotestsum locally if necessary.
+$(GOTESTSUM): $(LOCALBIN)
+	$(call go-install-tool,$(GOTESTSUM),gotest.tools/gotestsum,$(GOTESTSUM_VERSION))
 
 .PHONY: golangci-lint-bin
 golangci-lint-bin: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
@@ -437,7 +447,7 @@ golangci-lint-fmt: golangci-lint-bin ## Run golangci-lint fmt.
 GO_MODULE ?= $(shell sed -n 's/^module[[:space:]]\{1,\}//p' go.mod)
 GO_LICENSES_VERSION ?= v2.0.1
 GO_LICENSES_PACKAGE ?= github.com/google/go-licenses/v2
-GO_LICENSES ?= $(LOCALBIN)/go-licenses-$(GO_LICENSES_VERSION)
+GO_LICENSES ?= $(LOCALBIN)/go-licenses
 LICENSE_PACKAGE_PATTERN ?= ./...
 LEGAL_GOOS ?= linux
 LEGAL_GOARCH ?= amd64
@@ -522,6 +532,17 @@ test: envtest ## Run tests.
 			exit 1; \
 		fi
 
+## Launch end-to-end tests
+##
+## Running e2e tests requires that the current Kubeconfig references a cluster
+## with Slurm-operator and its CRDs installed. Test-only dependencies are added
+## to the current cluster without replacing the developer Slurm installation.
 .PHONY: test-e2e
-test-e2e:
-	go test -v -timeout 30m ./test/e2e
+test-e2e: $(GOTESTSUM)
+	./hack/kind.sh --existing-cluster --extras
+	mkdir -p "$(E2E_ARTIFACTS_DIR)"
+	E2E_ARTIFACTS_DIR="$(E2E_ARTIFACTS_DIR)" $(GOTESTSUM) \
+		--format testname \
+		--junitfile "$(E2E_ARTIFACTS_DIR)/junit.xml" \
+		--jsonfile "$(E2E_ARTIFACTS_DIR)/test-output.json" \
+		-- -timeout 30m ./test/e2e

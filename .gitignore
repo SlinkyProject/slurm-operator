@@ -24,6 +24,7 @@ govulncheck-vulns.csv
 # Output of the go coverage tooling, specifically when used with LiteIDE
 *.out
 cover.html
+e2e-artifacts/
 
 # Dependency directories (remove the comment below to include it)
 !vendor/**/zz_generated.*
