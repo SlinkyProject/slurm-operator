@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: test partitions
+templates:
+  - nodeset/nodeset-cr.yaml
+release:
+  name: test-release
+  namespace: test-namespace
+chart:
+  version: 1.2.3
+  appVersion: 1.2.3
+tests:
+  - it: should render nodeset partition config with a trailing comment intact
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          partition:
+            enabled: true
+            config: "MaxNodes=4 State=UP # reserved for rack 1"
+    asserts:
+      - equal:
+          path: spec.partition.config
+          value: "MaxNodes=4 State=UP # reserved for rack 1"
