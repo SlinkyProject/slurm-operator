@@ -39,13 +39,13 @@ spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
   {{- if (include "slurm.worker.extraConf" $nodeset) }}
-  extraConf: {{ include "slurm.worker.extraConf" $nodeset }}
+  extraConf: {{ include "slurm.worker.extraConf" $nodeset | quote }}
   {{- end -}}{{- /* if (include "slurm.worker.extraConf" $nodeset) */}}
   {{- with $nodeset.partition }}
   partition:
     enabled: {{ $nodeset.partition.enabled }}
     {{- if (include "slurm.worker.partitionConfig" $nodeset.partition) }}
-    config: {{ include "slurm.worker.partitionConfig" $nodeset.partition }}
+    config: {{ include "slurm.worker.partitionConfig" $nodeset.partition | quote }}
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" $nodeset.partition) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
   {{- with $nodeset.ssh }}
