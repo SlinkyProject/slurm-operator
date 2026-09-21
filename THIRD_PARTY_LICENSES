@@ -228,8 +228,13 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/moby/spdystream
 - Name: github.com/moby/spdystream
-- Version: v0.5.0
+- Version: v0.5.1
 - License: Apache-2.0
+
+### github.com/moby/spdystream/spdy
+- Name: github.com/moby/spdystream/spdy
+- Version: v0.5.1
+- License: BSD-3-Clause
 
 ### github.com/modern-go/concurrent
 - Name: github.com/modern-go/concurrent

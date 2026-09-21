@@ -52,6 +52,7 @@ Third-party Dependencies:
 - github.com/json-iterator/go (MIT)
 - github.com/mariadb-operator/mariadb-operator (MIT)
 - github.com/moby/spdystream (Apache-2.0)
+- github.com/moby/spdystream/spdy (BSD-3-Clause)
 - github.com/modern-go/concurrent (Apache-2.0)
 - github.com/modern-go/reflect2 (Apache-2.0)
 - github.com/munnerz/goautoneg (BSD-3-Clause)
