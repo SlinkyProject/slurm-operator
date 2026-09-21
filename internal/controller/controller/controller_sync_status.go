@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -24,6 +25,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller/slurmcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
 // syncStatus handles determining and updating the status.
@@ -32,11 +34,13 @@ func (r *ControllerReconciler) syncStatus(
 	controller *slinkyv1beta1.Controller,
 	errors ...error,
 ) error {
-	if err := r.syncControllerStatus(ctx, controller); err != nil {
+	pings, pingErr := r.slurmControl.GetActiveHAController(ctx, controller)
+
+	if err := r.syncControllerStatus(ctx, controller, pingErr); err != nil {
 		errors = append(errors, err)
 	}
 
-	if err := r.syncHAStatus(ctx, controller); err != nil {
+	if err := r.syncHAStatus(ctx, controller, pings, pingErr); err != nil {
 		errors = append(errors, err)
 	}
 
@@ -46,6 +50,7 @@ func (r *ControllerReconciler) syncStatus(
 func (r *ControllerReconciler) syncControllerStatus(
 	ctx context.Context,
 	controller *slinkyv1beta1.Controller,
+	pingErr error,
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -53,6 +58,7 @@ func (r *ControllerReconciler) syncControllerStatus(
 		Conditions: []metav1.Condition{},
 	}
 	newStatus.Conditions = append(newStatus.Conditions, controller.Status.Conditions...)
+	applySlurmReachableCondition(&newStatus.Conditions, controller.Generation, pingErr)
 
 	if apiequality.Semantic.DeepEqual(controller.Status, newStatus) {
 		logger.V(2).Info("Controller Status has not changed, skipping status update",
@@ -66,6 +72,30 @@ func (r *ControllerReconciler) syncControllerStatus(
 	}
 
 	return nil
+}
+
+func applySlurmReachableCondition(conditions *[]metav1.Condition, generation int64, pingErr error) {
+	condition := metav1.Condition{
+		Type:               slurmconditions.ControllerConditionSlurmReachable,
+		ObservedGeneration: generation,
+	}
+
+	switch {
+	case pingErr == nil:
+		condition.Status = metav1.ConditionTrue
+		condition.Reason = "Reachable"
+		condition.Message = "Slurm responded to a controller ping"
+	case errors.Is(pingErr, slurmcontrol.ErrNoSlurmClient):
+		condition.Status = metav1.ConditionFalse
+		condition.Reason = "NoSlurmClient"
+		condition.Message = "No Slurm client is registered for this Controller"
+	default:
+		condition.Status = metav1.ConditionFalse
+		condition.Reason = "Unreachable"
+		condition.Message = "Slurm did not respond to a controller ping"
+	}
+
+	meta.SetStatusCondition(conditions, condition)
 }
 
 func (r *ControllerReconciler) updateStatus(
@@ -98,14 +128,18 @@ func (r *ControllerReconciler) updateStatus(
 func (r *ControllerReconciler) syncHAStatus(
 	ctx context.Context,
 	controller *slinkyv1beta1.Controller,
+	pings []slurmcontrol.ControllerPing,
+	pingErr error,
 ) error {
 	if controller.Spec.External {
 		return nil
 	}
 
-	pings, err := r.slurmControl.GetActiveHAController(ctx, controller)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-		return err
+	// The active label is part of the controller Service selector. When Slurm cannot be asked
+	// which controller is active, leave the current label alone rather than routing traffic back
+	// to the primary on a guess.
+	if pingErr != nil && !errors.Is(pingErr, slurmcontrol.ErrNoSlurmClient) {
+		return nil
 	}
 
 	activePodName := controller.PodName(0)

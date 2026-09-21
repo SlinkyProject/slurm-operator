@@ -8,11 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
 var _ = Describe("Accounting controller", func() {
@@ -64,6 +66,16 @@ var _ = Describe("Accounting controller", func() {
 			statefulset := &appsv1.StatefulSet{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, statefulsetKey, statefulset)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Expecting the Available condition to resolve the real StatefulSet")
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, accountingKey, createdAccounting)).To(Succeed())
+				condition := meta.FindStatusCondition(createdAccounting.Status.Conditions,
+					slurmconditions.AccountingConditionAvailable)
+				g.Expect(condition).NotTo(BeNil())
+				// envtest runs no kubelet, so the StatefulSet never reports ready replicas.
+				g.Expect(condition.Reason).To(Equal("NoReplicasAvailable"))
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 

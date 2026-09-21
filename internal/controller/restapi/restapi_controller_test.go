@@ -8,11 +8,13 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	testutils "github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
+	slurmconditions "github.com/SlinkyProject/slurm-operator/pkg/conditions"
 )
 
 var _ = Describe("RestApi Controller", func() {
@@ -63,6 +65,16 @@ var _ = Describe("RestApi Controller", func() {
 			deployment := &appsv1.Deployment{}
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, deploymentKey, deployment)).To(Succeed())
+			}, testutils.Timeout, testutils.Interval).Should(Succeed())
+
+			By("Expecting the Available condition to resolve the real Deployment")
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, restapiKey, createdRestapi)).To(Succeed())
+				condition := meta.FindStatusCondition(createdRestapi.Status.Conditions,
+					slurmconditions.RestApiConditionAvailable)
+				g.Expect(condition).NotTo(BeNil())
+				// envtest runs no kubelet, so the Deployment never reports available replicas.
+				g.Expect(condition.Reason).To(Equal("NoReplicasAvailable"))
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 		}, SpecTimeout(testutils.Timeout))
 
