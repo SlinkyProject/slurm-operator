@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
-	"k8s.io/utils/integer"
 )
 
 const (
@@ -34,7 +33,7 @@ func SlowStartBatch(count, initialBatchSize int, fn func(i int) error) (int, err
 	remaining := count
 	successes := 0
 	index := 0
-	for batchSize := integer.IntMin(remaining, initialBatchSize); batchSize > 0; batchSize = integer.IntMin(2*batchSize, remaining) {
+	for batchSize := min(remaining, initialBatchSize); batchSize > 0; batchSize = min(2*batchSize, remaining) {
 		errCh := make(chan error, batchSize)
 		var wg sync.WaitGroup
 		wg.Add(batchSize)
