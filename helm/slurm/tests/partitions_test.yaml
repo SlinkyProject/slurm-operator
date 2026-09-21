@@ -194,6 +194,20 @@ tests:
           path: spec.partition.config
           value: MaxNodes=8 State=DRAIN
 
+  - it: should render nodeset partition config with a trailing comment intact
+    template: nodeset/nodeset-cr.yaml
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          partition:
+            enabled: true
+            config: "MaxNodes=4 State=UP # reserved for rack 1"
+    asserts:
+      - equal:
+          path: spec.partition.config
+          value: "MaxNodes=4 State=UP # reserved for rack 1"
+
   - it: should omit spec.partition when nodeset partition is null
     template: nodeset/nodeset-cr.yaml
     set:

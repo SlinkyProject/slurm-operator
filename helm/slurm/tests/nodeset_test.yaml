@@ -231,6 +231,48 @@ tests:
             - /usr/bin/sh
             - -c
             - scontrol update nodename=$(hostname) state=drain reason='draining';
+  - it: should render extraConf containing a colon separator
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          extraConf: "State=DRAIN Reason='disk swap: rack 1'"
+    asserts:
+      - equal:
+          path: spec.extraConf
+          value: "State=DRAIN Reason='disk swap: rack 1'"
+  - it: should render extraConf containing a hash without truncating it
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          extraConfMap:
+            Reason: "'rack #1 offline'"
+            State: DRAIN
+    asserts:
+      - equal:
+          path: spec.extraConf
+          value: "Reason='rack #1 offline' State=DRAIN"
+  - it: should render extraConf containing a double quote
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          extraConf: 'State=DRAIN Reason="disk swap"'
+    asserts:
+      - equal:
+          path: spec.extraConf
+          value: 'State=DRAIN Reason="disk swap"'
+  - it: should render extraConf containing an ampersand
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          extraConf: "State=DRAIN Reason='power & cooling'"
+    asserts:
+      - equal:
+          path: spec.extraConf
+          value: "State=DRAIN Reason='power & cooling'"
   - it: should format repository and tag on logfile
     set:
       nodesets:
