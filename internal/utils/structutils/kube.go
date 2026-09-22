@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-
-	"github.com/SlinkyProject/slurm-operator/internal/utils/reflectutils"
 )
 
 // StrategicMergePatch merges two objects via kubernetes StrategicMergePatch
@@ -65,10 +63,11 @@ func cleanAndMarshal(obj any) ([]byte, error) {
 	return out, nil
 }
 
-// removeEmpty will recursively walk a map, deleting fields if its value is empty.
+// removeEmpty will recursively walk a map, deleting fields that carry no
+// information: nulls, empty strings and empty objects.
 func removeEmpty(m map[string]any) {
 	for k, v := range m {
-		if v == nil || reflectutils.IsEmpty(v) {
+		if v == nil || v == "" {
 			delete(m, k)
 		} else if subMap, ok := v.(map[string]any); ok {
 			removeEmpty(subMap)
