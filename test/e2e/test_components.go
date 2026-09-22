@@ -310,6 +310,8 @@ func testSlurmRestAPI(namespace string, withAccounting bool) types.Feature {
 // NodeSet tests
 
 const (
+	nodeSetReadyAttempts = 25
+
 	// topologySyncDisabledObservation spans the NodeSet controller's 30-second periodic reconcile.
 	topologySyncDisabledObservation = 35 * time.Second
 	topologyReadTimeout             = 5 * time.Second
@@ -321,7 +323,7 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 	nodeset := &slinkyv1beta1.NodeSet{}
 	started := time.Now()
 
-	for retry := range 16 {
+	for retry := range nodeSetReadyAttempts {
 
 		err := crClient.Get(ctx, nodesetKey, nodeset)
 		require.NoError(t, err, "failed to Get() NodeSet using controller-runtime client")
@@ -330,7 +332,7 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 			break
 		}
 
-		if retry == 15 {
+		if retry == nodeSetReadyAttempts-1 {
 			t.Fatalf(
 				"timed out after %s waiting for NodeSet %s/%s replicas to become available: spec.replicas=%d; observed status=%s",
 				time.Since(started).Round(time.Millisecond),
