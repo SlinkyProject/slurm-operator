@@ -78,6 +78,9 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 
 	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 	mutateFn := func(pod *corev1.Pod) error {
+		if pod.Annotations == nil {
+			pod.Annotations = make(map[string]string)
+		}
 		pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 		return nil
 	}

@@ -766,6 +766,9 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 		deadline := nodeDeadlines.Peek(slurmNodeName)
 
 		mutateFn := func(pod *corev1.Pod) error {
+			if pod.Annotations == nil {
+				pod.Annotations = make(map[string]string)
+			}
 			if deadline.IsZero() {
 				delete(pod.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 			} else {
@@ -818,6 +821,9 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 
 		topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 		mutateFn := func(pod *corev1.Pod) error {
+			if pod.Annotations == nil {
+				pod.Annotations = make(map[string]string)
+			}
 			pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
 			return nil
 		}
