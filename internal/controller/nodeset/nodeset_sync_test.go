@@ -5572,3 +5572,92 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 		})
 	}
 }
+
+// TestNodeSetReconciler_syncSlurmDeadline_NilAnnotations verifies that
+// syncSlurmDeadline does not panic when a pod has nil Annotations.
+// With no running jobs the deadline is zero and the delete-on-nil path runs,
+// but the nil-check initializer is still exercised.
+func TestNodeSetReconciler_syncSlurmDeadline_NilAnnotations(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+
+	// Pod with intentionally nil Annotations.
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pod.Status.Phase = corev1.PodRunning
+	pod.Annotations = nil
+
+	// Empty slurm client — GetNodeDeadlines returns ErrNoSlurmClient which
+	// syncSlurmDeadline tolerates; all deadlines evaluate to zero.
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{})
+	clientMap := newClientMap(controller.Name, sclient)
+
+	k8sClient := fake.NewFakeClient(controller.DeepCopy(), nodeset.DeepCopy(), pod.DeepCopy())
+	r := newNodeSetController(k8sClient, clientMap)
+
+	// Must not panic even though pod.Annotations is nil.
+	require.NotPanics(t, func() {
+		err := r.syncSlurmDeadline(context.TODO(), nodeset, []*corev1.Pod{pod})
+		require.NoError(t, err)
+	})
+
+	// Verify the function completed without error. With no running jobs the
+	// deadline is zero and no annotation is written, but the nil-check path
+	// is still exercised and must not panic.
+	gotPod := &corev1.Pod{}
+	require.NoError(t, k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(pod), gotPod))
+}
+
+// TestNodeSetReconciler_syncSlurmTopology_NilAnnotations verifies that
+// syncSlurmTopology does not panic when a pod has nil Annotations, and that
+// the topology annotation is correctly propagated from the k8s Node.
+func TestNodeSetReconciler_syncSlurmTopology_NilAnnotations(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.SyncTopology = ptr.To(true)
+
+	// Pod with nil Annotations scheduled onto a node.
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pod.Status.Phase = corev1.PodRunning
+	pod.Spec.NodeName = "kube-node-1"
+	pod.Annotations = nil
+
+	kubeNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kube-node-1",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationNodeTopologySpec: "switch:s1,block:b1",
+			},
+		},
+	}
+
+	// Empty slurm client — syncSlurmTopology calls UpdateNodeTopology which
+	// tolerates ErrNoSlurmClient, so an empty client map is fine here.
+	sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{})
+	clientMap := newClientMap(controller.Name, sclient)
+
+	k8sClient := fake.NewFakeClient(controller.DeepCopy(), nodeset.DeepCopy(), pod.DeepCopy(), kubeNode)
+	r := newNodeSetController(k8sClient, clientMap)
+
+	// Must not panic even though pod.Annotations is nil.
+	require.NotPanics(t, func() {
+		err := r.syncSlurmTopology(context.TODO(), nodeset, []*corev1.Pod{pod})
+		require.NoError(t, err)
+	})
+
+	// Verify the topology annotation was written.
+	gotPod := &corev1.Pod{}
+	require.NoError(t, k8sClient.Get(context.TODO(), client.ObjectKeyFromObject(pod), gotPod))
+	require.NotNil(t, gotPod.Annotations, "pod annotations should be initialized after syncSlurmTopology")
+	require.Equal(t, "switch:s1,block:b1", gotPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec],
+		"topology annotation should be propagated from the k8s Node")
+}
