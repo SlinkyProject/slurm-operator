@@ -126,7 +126,7 @@ first. The full sort order (first match wins):
 1. More recently ready before longer-ready
 1. More recently created before older
 
-The following are the annotations are honored on a best-effort basis and do not
+The following annotations are honored on a best-effort basis and do not
 guarantee deletion order.
 
 ### Pod Deletion Cost

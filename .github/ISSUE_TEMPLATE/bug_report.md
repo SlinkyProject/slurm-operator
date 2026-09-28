@@ -19,7 +19,7 @@ Describe the problem being encountered.
 ## Steps to Reproduce
 
 <!--
-Provide step to reproduce the bug.
+Provide steps to reproduce the bug.
 What environment/version does this occur?
 -->
 
