@@ -64,8 +64,8 @@ Inspect the [OCI artifacts][oci-slurm-operator] for specific details.
 ### Hardware
 
 The operator benefits from more cores and memory due to handling requests over
-the network and responding. The amount of cores and memory depends on how how
-many worker threads were configured and how busy the operator is.
+the network and responding. The amount of cores and memory depends on how many
+worker threads were configured and how busy the operator is.
 
 > [!NOTE]
 > It is impossible for us to provide a minimum system requirement for your

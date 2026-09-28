@@ -477,7 +477,7 @@ NodeSets should request GPUs in accordance with [device plugins][device-plugins]
 or [DRA]. In addition, `extraConf` or `extraConfMap` needs to define a [GRES] in
 accordance with the GPUs it should be allocated to.
 
-The following is an example is of a `gpu-gb200` NodeSet which has 4 GB200 GPUs.
+The following is an example of a `gpu-gb200` NodeSet which has 4 GB200 GPUs.
 This example assumes that the [NVIDIA gpu-operator][nvidia-gpu-operator] is
 running on the Kubernetes cluster.
 
@@ -547,7 +547,7 @@ automate the management and allocation of the IMEX daemons. This can be
 installed using the [NVIDIA GPU Operator][nvidia-gpu-operator].
 
 Historically, baremetal implementations of IMEX domain management with Slurm
-made use of complicated prolog and epilog scripts to standup IMEX channels on
+made use of complicated prolog and epilog scripts to stand up IMEX channels on
 nodes prior to job launch, and to clean them up after job completion. With
 Slurm-operator, these scripts should not be used, as they may interfere with the
 operations of the [GPU DRA driver][dra-driver-nvidia-gpu].

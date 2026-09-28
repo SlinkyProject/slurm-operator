@@ -164,7 +164,7 @@ DaemonSet
 
 The operator supports NodeSet scale to zero, scaling the resource down
 to zero replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also
-support scale to zero can be best paired with NodeSets.
+supports scale to zero can be best paired with NodeSets.
 
 NodeSets can be resolved by hostname. This enables hostname-based
 resolution between login pods and worker pods, enabling direct
@@ -179,13 +179,13 @@ which manage user identity via SSSD.
 
 The operator supports LoginSet scale to zero, scaling the resource down
 to zero replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also
-support scale to zero can be best paired with LoginSets.
+supports scale to zero can be best paired with LoginSets.
 
 Hybrid Support
 ~~~~~~~~~~~~~~
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRDs are designed support these use
+Kubernetes. The operator and its CRDs are designed to support these use
 cases.
 
 Slurm

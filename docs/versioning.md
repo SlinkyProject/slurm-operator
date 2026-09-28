@@ -41,7 +41,7 @@ contain. Hence Slurm daemon images are versioned in alignment with Slurm proper.
     (`X.Y.0-rcW` where `W > 0`) as necessary.
 - `X.Y.0` (Branch: `release-X.Y`)
   - Final release, cut from the `release-X.Y` branch.
-  - `X.Y.0` occur after `X.(Y-1).0`.
+  - `X.Y.0` occurs after `X.(Y-1).0`.
 - `X.Y.Z`, `Z > 0` (Branch: `release-X.Y`)
   - Patch releases are released as we cherry-pick commits into the `release-X.Y`
     branch, as needed.
@@ -59,10 +59,10 @@ any kind (e.g., component flag changes).
 [CRDs] have their own [versioning][crd-versioning] (e.g. `v1alpha1`, `v1alpha2`,
 `v1beta1`). The Slinky version does not strongly correlate with the CRD version.
 
-New CRD version should be completely backwards compatible with old CRD versions;
-old CRD versions will automatically be converted to the new CRD version (if
-applicable). Therefore, if `v1beta2` was the latest installed CRD version, then
-resources that are installed as `v1beta1` will still work.
+New CRD versions should be completely backwards compatible with old CRD
+versions; old CRD versions will automatically be converted to the new CRD
+version (if applicable). Therefore, if `v1beta2` was the latest installed CRD
+version, then resources that are installed as `v1beta1` will still work.
 
 Slinky `v1.Y` releases may introduce new fields to existing CRD versions and
 deprecate certain fields. Only a new CRD version can safely remove deprecated
