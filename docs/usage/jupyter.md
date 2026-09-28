@@ -140,7 +140,7 @@ jupyter lab --port=9999 --no-browser
 
 ## Accessing a JupyterLab Instance Running in a Slinky Cluster
 
-After submitting the above sbatch script, after the resultant job has been
+After submitting the above sbatch script, once the resultant job has been
 allocated resources, an instance of JupyterHub will be served on port 9999 of
 the Slurm worker pod on which it was scheduled.
 

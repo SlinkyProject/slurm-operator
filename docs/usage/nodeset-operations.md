@@ -94,10 +94,10 @@ cordoned and the drain reason was set by the operator.
 ## Custom Drain Reasons
 
 When a Kubernetes node is cordoned, the operator cordons all NodeSet pods on the
-Kubernetes node by ensure the Slurm node is drained. By default, the drain
+Kubernetes node by ensuring the Slurm node is drained. By default, the drain
 reason propagated to Slurm is a generic message.
 
-It should be noted that the operator always prefixed the Slurm node drain reason
+It should be noted that the operator always prefixes the Slurm node drain reason
 with `slurm-operator:`. This is done to indicate if the reason was set by the
 operator, or some other source. If set by the operator, it can freely manage the
 drain state, otherwise it will not make changes to drain state until cleared by
@@ -198,7 +198,7 @@ first. The full sort order (first match wins):
 1. More recently ready before longer-ready
 1. More recently created before older
 
-The following are the annotations are honored on a best-effort basis and do not
+The following annotations are honored on a best-effort basis and do not
 guarantee deletion order.
 
 ### Pod Deletion Cost
@@ -376,7 +376,7 @@ NodeSet.
 
 #### Node Pinning
 
-When enabled, NodeSet pods are pinned to the Kubernetes node it was first
+When enabled, NodeSet pods are pinned to the Kubernetes node they were first
 scheduled on. Once a pod is assigned to a node, subsequent recreations of that
 pod (e.g. after eviction, deletion, or node maintenance) will always land on the
 same physical node. If the node is unavailable, the pod remains in `Pending`

@@ -31,7 +31,7 @@ documentation to install [Prometheus], [Metrics Server], and [KEDA].
 Prometheus will install tools to report metrics and view them with Grafana. The
 Metrics Server is needed to report CPU and memory usage for tools like
 `kubectl top`. KEDA is recommended for autoscaling as it provides usability
-improvements over standard the Horizontal Pod Autoscaler ([HPA]).
+improvements over the standard Horizontal Pod Autoscaler ([HPA]).
 
 To install the Prometheus helm chart, run the following:
 
@@ -229,7 +229,7 @@ will remain at `minReplicaCount`.
 > [!NOTE]
 > This example only works well for single node jobs, unless `threshold` is set
 > to 1. In this case, HPA will continue to scale up NodeSet as long as there is
-> a pending job until up until it reaches the `maxReplicaCount`.
+> a pending job, until it reaches the `maxReplicaCount`.
 
 After the default `coolDownPeriod` of 5 minutes without activity on the trigger,
 KEDA will scale the NodeSet down to 0.

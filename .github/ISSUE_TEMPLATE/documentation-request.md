@@ -29,7 +29,7 @@ ______________________________________________________________________
 ## Report needed documentation
 
 **Report needed documentation** A clear and concise description of what
-documentation you believe it is needed and why.
+documentation you believe is needed and why.
 
 **Describe the documentation you'd like** A clear and concise description of
 what you want to happen.
