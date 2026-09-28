@@ -83,29 +83,30 @@ in both the `slurm` and `slurm-operator` Helm charts.
 
 In some cases [anti-affinity] must be configured in order to prevent multiple
 NodeSet pods (slurmd) from being scheduled on the same node. Pod [anti-affinity]
-can be configured under the `affinity` section of a NodeSet. To ensure that
-multiple NodeSet pods cannot be scheduled on the same node, add the following to
-the `affinity` section:
+can be configured under the `podSpec.affinity` section of a NodeSet. To ensure
+that multiple NodeSet pods cannot be scheduled on the same node, add the
+following to the `podSpec.affinity` section:
 
 ```yaml
 nodesets:
   slinky:
-    # -- Affinity for pod assignment.
-    # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-        - topologyKey: kubernetes.io/hostname
-          labelSelector:
-            matchExpressions:
-            - key: app.kubernetes.io/name
-              operator: In
-              values:
-              - slurmctld
-              - slurmdbd
-              - slurmrestd
-              - mariadb
-              - slurmd
+    podSpec:
+      # -- Affinity for pod assignment.
+      # Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - slurmctld
+                - slurmdbd
+                - slurmrestd
+                - mariadb
+                - slurmd
 ```
 
 After applying the Helm chart with `affinity` set in `values.yaml`, the
