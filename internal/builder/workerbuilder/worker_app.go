@@ -201,7 +201,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 			Args: slurmdArgs(nodeset, controller),
 			Env: []corev1.EnvVar{
 				{
-					Name: "SLINKY_TOPOLOGY",
+					Name: "POD_TOPOLOGY",
 					ValueFrom: &corev1.EnvVarSource{
 						FieldRef: &corev1.ObjectFieldSelector{
 							FieldPath: fmt.Sprintf("metadata.annotations['%s']", slinkyv1beta1.AnnotationNodeTopologySpec),
@@ -319,7 +319,6 @@ func ParseExtraConf(extraConf string) (map[string][]string, error) {
 func slurmdConfArgs(nodeset *slinkyv1beta1.NodeSet) []string {
 	confMap := map[string]string{
 		"Features": strings.Join(baselineFeatures(nodeset), ","),
-		"Topology": `'"$SLINKY_TOPOLOGY"'`,
 	}
 
 	// The NodeSet webhook validates ExtraConf at admission, but it is a separate,
