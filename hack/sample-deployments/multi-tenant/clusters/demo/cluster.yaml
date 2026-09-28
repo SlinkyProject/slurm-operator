@@ -1,0 +1,4 @@
+---
+cluster:
+  name: demo
+  server: https://kubernetes.default.svc

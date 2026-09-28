@@ -1,0 +1,77 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: slurm-platform-applications
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: [missingkey=error]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/EXAMPLE_ORG/EXAMPLE_GITOPS.git
+              revision: main
+              files:
+                - path: hack/sample-deployments/multi-tenant/clusters/OVERLAY_REQUIRED/cluster.yaml
+              pathParamPrefix: clusterConfig
+          - list:
+              elements:
+                - name: cert-manager
+                  namespace: cert-manager
+                  repoURL: https://charts.jetstack.io
+                  chart: cert-manager
+                  path: ''
+                  targetRevision: v1.16.2
+                  helmValues: |
+                    crds:
+                      enabled: true
+                    global:
+                      leaderElection:
+                        namespace: cert-manager
+                - name: slurm-operator-crds
+                  namespace: slinky
+                  repoURL: https://github.com/SlinkyProject/slurm-operator
+                  chart: ''
+                  path: helm/slurm-operator-crds
+                  targetRevision: v1.2.1
+                  helmValues: ''
+                - name: slurm-operator
+                  namespace: slinky
+                  repoURL: https://github.com/SlinkyProject/slurm-operator
+                  chart: ''
+                  path: helm/slurm-operator
+                  targetRevision: v1.2.1
+                  helmValues: |
+                    crds:
+                      enabled: false
+                    operator:
+                      namespaces: ''
+                    webhook:
+                      namespaces: ''
+  template:
+    metadata:
+      name: '{{.cluster.name}}-{{.name}}'
+    spec:
+      project: slurm-multi
+      source:
+        repoURL: '{{.repoURL}}'
+        chart: '{{.chart}}'
+        path: '{{.path}}'
+        targetRevision: '{{.targetRevision}}'
+        helm:
+          releaseName: '{{.name}}'
+          values: '{{.helmValues}}'
+      destination:
+        server: '{{.cluster.server}}'
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 10

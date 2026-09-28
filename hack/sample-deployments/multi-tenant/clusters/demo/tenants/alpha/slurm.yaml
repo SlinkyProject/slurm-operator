@@ -1,0 +1,32 @@
+---
+clusterName: alpha
+sssd:
+  conf: |
+    [sssd]
+    services = nss,pam
+    domains = LDAP
+
+    [domain/LDAP]
+    id_provider = ldap
+    auth_provider = ldap
+    access_provider = permit
+    ldap_uri = ldap://openldap:389
+    ldap_search_base = dc=alpha,dc=example
+    ldap_user_search_base = ou=users,dc=alpha,dc=example
+    ldap_group_search_base = ou=groups,dc=alpha,dc=example
+    ldap_schema = rfc2307
+    ldap_id_use_start_tls = true
+    # This demo skips certificate validation; trust the LDAP CA and set hard for real deployments.
+    ldap_tls_reqcert = never
+    ldap_id_mapping = false
+    fallback_homedir = /home/%u
+    default_shell = /bin/bash
+loginsets:
+  login:
+    enabled: true
+nodesets:
+  compute:
+    enabled: true
+    replicas: 1
+    partition:
+      enabled: true

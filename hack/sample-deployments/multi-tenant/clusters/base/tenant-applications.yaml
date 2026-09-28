@@ -1,0 +1,109 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: slurm-tenant-applications
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: [missingkey=error]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/EXAMPLE_ORG/EXAMPLE_GITOPS.git
+              revision: main
+              files:
+                - path: hack/sample-deployments/multi-tenant/clusters/OVERLAY_REQUIRED/cluster.yaml
+              pathParamPrefix: clusterConfig
+          - git:
+              repoURL: https://github.com/EXAMPLE_ORG/EXAMPLE_GITOPS.git
+              revision: main
+              directories:
+                - path: '{{.clusterConfig.path.path}}/tenants/*'
+              pathParamPrefix: tenant
+  template:
+    metadata:
+      name: '{{.cluster.name}}-{{.tenant.path.basenameNormalized}}-slurm'
+    spec:
+      project: slurm-multi
+      sources:
+        # Apply only the tenant's LDIF ConfigMap; slurm.yaml is a Helm values file.
+        - repoURL: https://github.com/EXAMPLE_ORG/EXAMPLE_GITOPS.git
+          targetRevision: main
+          ref: values
+          path: '{{.tenant.path.path}}'
+          directory:
+            include: ldif.yaml
+        - repoURL: https://jp-gouin.github.io/helm-openldap/
+          chart: openldap-stack-ha
+          targetRevision: 4.3.3
+          helm:
+            releaseName: openldap
+            values: |
+              fullnameOverride: openldap
+              replicaCount: 1
+              readOnlyReplicaCount: 0
+              replication:
+                enabled: false
+              persistence:
+                enabled: false
+              ltb-passwd:
+                enabled: false
+              phpldapadmin:
+                enabled: false
+              customLdifCm: openldap-custom-ldif
+              global:
+                existingSecret: openldap-bootstrap
+                ldapDomain: '{{.tenant.path.basename}}.example'
+              env:
+                LDAP_ALLOW_ANON_BINDING: 'yes'
+              customAcls: |-
+                dn: olcDatabase={2}mdb,cn=config
+                changetype: modify
+                replace: olcAccess
+                olcAccess: {0}to *
+                  by dn.exact=gidNumber=0+uidNumber=1001,cn=peercred,cn=external,cn=auth manage
+                  by * break
+                olcAccess: {1}to attrs=userPassword,shadowLastChange
+                  by self write
+                  by dn="cn=admin,dc={{.tenant.path.basename}},dc=example" write
+                  by anonymous auth
+                  by * none
+                olcAccess: {2}to *
+                  by dn="cn=admin,dc={{.tenant.path.basename}},dc=example" write
+                  by self read
+                  by * read
+        - repoURL: https://github.com/SlinkyProject/slurm-operator
+          path: helm/slurm
+          targetRevision: v1.2.1
+          helm:
+            releaseName: slurm
+            valueFiles:
+              - '$values/{{.tenant.path.path}}/slurm.yaml'
+      destination:
+        server: '{{.cluster.server}}'
+        namespace: 'tenant-{{.tenant.path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 10
+      ignoreDifferences:
+        - group: ''
+          kind: Secret
+          name: slurm-auth-slurm
+          namespace: 'tenant-{{.tenant.path.basename}}'
+          jsonPointers:
+            - /data
+        - group: ''
+          kind: Secret
+          name: slurm-auth-jwt
+          namespace: 'tenant-{{.tenant.path.basename}}'
+          jsonPointers:
+            - /data
