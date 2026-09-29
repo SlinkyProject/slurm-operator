@@ -95,8 +95,13 @@ func checkControllerHealth(crClient crclient.Client, ctx context.Context, t *tes
 	// Get Controller StatefulSet using controller CR
 	statefulSetKey := controller.Key()
 	statefulSet := &appsv1.StatefulSet{}
-	err = crClient.Get(ctx, statefulSetKey, statefulSet)
-	require.NoError(t, err, "failed to Get() statefulset using controller-runtime client")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.NoError(
+			collect,
+			crClient.Get(ctx, statefulSetKey, statefulSet),
+			"failed to Get() statefulset using controller-runtime client",
+		)
+	}, 30*time.Second, time.Second, "timed out waiting for controller StatefulSet %s", statefulSetKey)
 
 	// Confirm ownership of controller statefulset
 	for _, owner := range statefulSet.OwnerReferences {
@@ -241,8 +246,13 @@ func checkRestAPIHealth(crClient crclient.Client, ctx context.Context, t *testin
 	// Get RestAPI Deployment using RestAPI CR
 	deploymentKey := restapi.Key()
 	deployment := &appsv1.Deployment{}
-	err = crClient.Get(ctx, deploymentKey, deployment)
-	require.NoError(t, err, "failed to Get() deployment using controller-runtime client")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.NoError(
+			collect,
+			crClient.Get(ctx, deploymentKey, deployment),
+			"failed to Get() deployment using controller-runtime client",
+		)
+	}, 30*time.Second, time.Second, "timed out waiting for REST API Deployment %s", deploymentKey)
 
 	// Confirm ownership of RestAPI deployment
 	for _, owner := range deployment.OwnerReferences {
@@ -297,13 +307,15 @@ func testSlurmRestAPI(namespace string, withAccounting bool) types.Feature {
 
 // NodeSet tests
 
+const nodeSetReadyAttempts = 25
+
 func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *testing.T, config *envconf.Config, nodesetKey crclient.ObjectKey) {
 	t.Helper()
 
 	nodeset := &slinkyv1beta1.NodeSet{}
 	started := time.Now()
 
-	for retry := range 16 {
+	for retry := range nodeSetReadyAttempts {
 
 		err := crClient.Get(ctx, nodesetKey, nodeset)
 		require.NoError(t, err, "failed to Get() NodeSet using controller-runtime client")
@@ -312,7 +324,7 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 			break
 		}
 
-		if retry == 15 {
+		if retry == nodeSetReadyAttempts-1 {
 			t.Fatalf(
 				"timed out after %s waiting for NodeSet %s/%s replicas to become available: spec.replicas=%d; observed status=%s",
 				time.Since(started).Round(time.Millisecond),
@@ -633,8 +645,13 @@ func checkAccountingHealth(crClient crclient.Client, ctx context.Context, t *tes
 	// Get Accounting StatefulSet using accounting CR
 	statefulSetKey := accounting.Key()
 	statefulSet := &appsv1.StatefulSet{}
-	err = crClient.Get(ctx, statefulSetKey, statefulSet)
-	require.NoError(t, err, "failed to Get() statefulset using controller-runtime client")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.NoError(
+			collect,
+			crClient.Get(ctx, statefulSetKey, statefulSet),
+			"failed to Get() statefulset using controller-runtime client",
+		)
+	}, 30*time.Second, time.Second, "timed out waiting for accounting StatefulSet %s", statefulSetKey)
 
 	// Confirm ownership of controller statefulset
 	for _, owner := range statefulSet.OwnerReferences {
@@ -764,8 +781,13 @@ func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testi
 	// Get loginSet Deployment using loginSet CR
 	deploymentKey := loginSet.Key()
 	deployment := &appsv1.Deployment{}
-	err = crClient.Get(ctx, deploymentKey, deployment)
-	require.NoError(t, err, "failed to Get() deployment using controller-runtime client")
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		assert.NoError(
+			collect,
+			crClient.Get(ctx, deploymentKey, deployment),
+			"failed to Get() deployment using controller-runtime client",
+		)
+	}, 30*time.Second, time.Second, "timed out waiting for LoginSet Deployment %s", deploymentKey)
 
 	// Confirm ownership of loginSet deployment
 	for _, owner := range deployment.OwnerReferences {
