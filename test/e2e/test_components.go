@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"context"
+	"maps"
 	"os/exec"
 	"strings"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
 	"sigs.k8s.io/e2e-framework/klient/wait"
@@ -619,6 +621,207 @@ func podReady(pod *corev1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.PodReady {
 			return condition.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
+	return features.New("Assess DaemonSet NodeSet recreation on a cordoned node").
+		Assess("NodeSet pod is recreated on a cordoned Kubernetes node", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "failed to get controller-runtime client")
+
+			nodesetKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-worker-slinky",
+			}
+			nodeset := &slinkyv1beta1.NodeSet{}
+			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
+
+			workerPod := &corev1.Pod{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-worker-slinky-0",
+			}, workerPod), "failed to get StatefulSet NodeSet pod")
+			require.NotEmpty(t, workerPod.Spec.NodeName, "NodeSet pod %s/%s has empty spec.nodeName", workerPod.Namespace, workerPod.Name)
+
+			targetNodeName := workerPod.Spec.NodeName
+			targetNode := &corev1.Node{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Name: targetNodeName}, targetNode), "failed to get Node %s", targetNodeName)
+			targetHostname := targetNode.Labels[corev1.LabelHostname]
+			if targetHostname == "" {
+				targetHostname = targetNodeName
+			}
+
+			originalScalingMode := nodeset.Spec.ScalingMode
+			originalReplicas := int32(1)
+			if nodeset.Spec.Replicas != nil {
+				originalReplicas = *nodeset.Spec.Replicas
+			}
+			originalSelector := maps.Clone(nodeset.Spec.Template.PodSpecWrapper.NodeSelector)
+
+			t.Cleanup(func() {
+				cleanupCtx := context.Background()
+				setNodeUnschedulable(cleanupCtx, t, crClient, targetNodeName, false)
+				restoreNodeSetStatefulSet(cleanupCtx, t, crClient, nodesetKey, originalScalingMode, originalReplicas, originalSelector)
+			})
+
+			pinNodeSetToDaemonNode(ctx, t, crClient, nodesetKey, targetHostname)
+			daemonPod := waitForNodeSetPodOnNode(ctx, t, crClient, namespace, nodesetKey.Name, targetNodeName, "", slinkyv1beta1.ScalingModeDaemonset)
+			require.True(
+				t,
+				hasUnschedulableToleration(daemonPod),
+				"DaemonSet NodeSet pod %s/%s missing %s=NoSchedule toleration; got tolerations=%v",
+				daemonPod.Namespace,
+				daemonPod.Name,
+				corev1.TaintNodeUnschedulable,
+				daemonPod.Spec.Tolerations,
+			)
+
+			setNodeUnschedulable(ctx, t, crClient, targetNodeName, true)
+			require.NoError(t, crClient.Delete(ctx, daemonPod), "failed to delete DaemonSet NodeSet pod %s/%s", daemonPod.Namespace, daemonPod.Name)
+
+			replacement := waitForNodeSetPodOnNode(ctx, t, crClient, namespace, nodesetKey.Name, targetNodeName, daemonPod.UID, slinkyv1beta1.ScalingModeDaemonset)
+			require.True(
+				t,
+				hasUnschedulableToleration(replacement),
+				"replacement DaemonSet NodeSet pod %s/%s missing %s=NoSchedule toleration; got tolerations=%v",
+				replacement.Namespace,
+				replacement.Name,
+				corev1.TaintNodeUnschedulable,
+				replacement.Spec.Tolerations,
+			)
+
+			setNodeUnschedulable(ctx, t, crClient, targetNodeName, false)
+			restoreNodeSetStatefulSet(ctx, t, crClient, nodesetKey, originalScalingMode, originalReplicas, originalSelector)
+			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+
+			return ctx
+		}).Feature()
+}
+
+func pinNodeSetToDaemonNode(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, nodeName string) {
+	t.Helper()
+
+	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+		selector := maps.Clone(nodeset.Spec.Template.PodSpecWrapper.NodeSelector)
+		if selector == nil {
+			selector = map[string]string{}
+		}
+		selector["kubernetes.io/hostname"] = nodeName
+		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = selector
+	})
+}
+
+func restoreNodeSetStatefulSet(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, scalingMode slinkyv1beta1.ScalingModeType, replicas int32, nodeSelector map[string]string) {
+	t.Helper()
+
+	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+		nodeset.Spec.ScalingMode = scalingMode
+		nodeset.Spec.Replicas = &replicas
+		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = maps.Clone(nodeSelector)
+	})
+}
+
+func mutateNodeSet(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, mutate func(*slinkyv1beta1.NodeSet)) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		nodeset := &slinkyv1beta1.NodeSet{}
+		if err := crClient.Get(ctx, nodesetKey, nodeset); err != nil {
+			t.Logf("failed to get NodeSet %s/%s: %v", nodesetKey.Namespace, nodesetKey.Name, err)
+			return false
+		}
+		mutate(nodeset)
+		if err := crClient.Update(ctx, nodeset); err != nil {
+			t.Logf("failed to update NodeSet %s/%s: %v", nodesetKey.Namespace, nodesetKey.Name, err)
+			return false
+		}
+		return true
+	}, 30*time.Second, 500*time.Millisecond, "timed out updating NodeSet %s/%s", nodesetKey.Namespace, nodesetKey.Name)
+}
+
+func setNodeUnschedulable(ctx context.Context, t *testing.T, crClient crclient.Client, nodeName string, unschedulable bool) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		node := &corev1.Node{}
+		if err := crClient.Get(ctx, crclient.ObjectKey{Name: nodeName}, node); err != nil {
+			t.Logf("failed to get Node %s: %v", nodeName, err)
+			return false
+		}
+		if node.Spec.Unschedulable == unschedulable {
+			return true
+		}
+		node.Spec.Unschedulable = unschedulable
+		if err := crClient.Update(ctx, node); err != nil {
+			t.Logf("failed to update Node %s unschedulable=%t: %v", nodeName, unschedulable, err)
+			return false
+		}
+		return true
+	}, 30*time.Second, 500*time.Millisecond, "timed out setting Node %s unschedulable=%t", nodeName, unschedulable)
+}
+
+func waitForNodeSetPodOnNode(
+	ctx context.Context,
+	t *testing.T,
+	crClient crclient.Client,
+	namespace string,
+	nodesetName string,
+	nodeName string,
+	excludeUID k8stypes.UID,
+	scalingMode slinkyv1beta1.ScalingModeType,
+) *corev1.Pod {
+	t.Helper()
+
+	var found *corev1.Pod
+	require.Eventually(t, func() bool {
+		pods := &corev1.PodList{}
+		err := crClient.List(ctx, pods,
+			crclient.InNamespace(namespace),
+			crclient.MatchingLabels{
+				"app.kubernetes.io/name":     "slurmd",
+				"app.kubernetes.io/instance": nodesetName,
+			},
+		)
+		if err != nil {
+			t.Logf("failed to list NodeSet pods for %s/%s: %v", namespace, nodesetName, err)
+			return false
+		}
+		for i := range pods.Items {
+			pod := &pods.Items[i]
+			if pod.DeletionTimestamp != nil {
+				continue
+			}
+			if excludeUID != "" && pod.UID == excludeUID {
+				continue
+			}
+			if slinkyv1beta1.ScalingModeType(pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode]) != scalingMode {
+				continue
+			}
+			if pod.Spec.NodeName != nodeName {
+				continue
+			}
+			if !podReady(pod) {
+				continue
+			}
+			found = pod.DeepCopy()
+			return true
+		}
+		return false
+	}, 4*time.Minute, 2*time.Second,
+		"timed out waiting for ready %s NodeSet pod of %s/%s on node %s (excluding uid %s)",
+		scalingMode, namespace, nodesetName, nodeName, excludeUID,
+	)
+	return found
+}
+
+func hasUnschedulableToleration(pod *corev1.Pod) bool {
+	for _, toleration := range pod.Spec.Tolerations {
+		if toleration.Key == corev1.TaintNodeUnschedulable && toleration.Effect == corev1.TaintEffectNoSchedule {
+			return true
 		}
 	}
 	return false

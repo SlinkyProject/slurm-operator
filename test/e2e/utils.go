@@ -33,6 +33,10 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 			steps = append(steps, testSlurmNodeSet(config.Namespace))
 		}
 
+		if !config.Accounting && !config.DaemonSet && !config.Login && !config.Metrics && !config.Pyxis {
+			steps = append(steps, testSlurmNodeSetDaemonCordon(config.Namespace))
+		}
+
 		if config.Accounting {
 			steps = append(steps, testSlurmAccounting(config.Namespace))
 		}
