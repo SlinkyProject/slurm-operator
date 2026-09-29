@@ -730,7 +730,7 @@ nodesetDefaults:
   # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
   # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
   workloadDisruptionProtection: true
-  # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
+  # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound; Auto.
   pruneSlurmNodeRecords: Never
   # -- Control whether Slurm-operator syncs K8s node topology annotations to Slurm
   syncTopology: true

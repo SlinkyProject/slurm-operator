@@ -193,6 +193,7 @@ spec:
                 enum:
                 - Never
                 - NodeNotFound
+                - Auto
                 type: string
               replicas:
                 default: 1

@@ -59,6 +59,8 @@ const (
 	SyncFinalizerFailedReason = "SyncFinalizerFailed"
 	// NodeCordonReason is added to an event when a pod is cordoned due to its Kubernetes node being cordoned.
 	NodeCordonReason = "NodeCordon"
+	// SlurmnodeInvalidRegReason is added to an event when a pod is deleted because its Slurm node has INVALID_REG state
+	SlurmNodeInvalidRegReason = "SlurmNodeInvalidReg"
 	// SlurmNodeNotRegisteredReason is added to an event when a pod is deleted because its Slurm node is not registered.
 	SlurmNodeNotRegisteredReason = "SlurmNodeNotRegistered"
 	// DefunctSlurmNodePrunedReason is added to an event when a defunct Slurm node is pruned.

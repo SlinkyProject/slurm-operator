@@ -139,7 +139,7 @@ type NodeSetSpec struct {
 
 	// PruneSlurmNodeRecords controls when the operator deletes Slurm node records.
 	// +optional
-	// +kubebuilder:validation:Enum=Never;NodeNotFound
+	// +kubebuilder:validation:Enum=Never;NodeNotFound;Auto
 	// +kubebuilder:default:=Never
 	PruneSlurmNodeRecords NodeSetPruneSlurmNodeRecordType `json:"pruneSlurmNodeRecords,omitempty"`
 
@@ -329,6 +329,9 @@ const (
 	// will only be pruned when the backing Kubernetes node does not exist.
 	// Only works for `ScalingMode=DaemonSet`.
 	NodeSetPruneNodeRecordTypeNodeNotFound NodeSetPruneSlurmNodeRecordType = "NodeNotFound"
+
+	// NodeSetPruneNodeRecordTypeAuto indicates that Slurm node records will be pruned when a node enters an unrecoverable state, such as INVALID_REG.
+	NodeSetPruneNodeRecordTypeAuto NodeSetPruneSlurmNodeRecordType = "Auto"
 )
 
 // NodeSetStatus defines the observed state of NodeSet
