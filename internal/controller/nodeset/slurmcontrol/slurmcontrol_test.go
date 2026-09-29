@@ -3651,6 +3651,57 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 	}
 }
 
+func Test_realSlurmControl_MakeNodeDrain_invalidReg(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	node := &types.V0044Node{
+		V0044Node: api.V0044Node{
+			Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+			State: ptr.To([]api.V0044NodeState{
+				api.V0044NodeStateDOWN,
+				api.V0044NodeStateINVALIDREG,
+			}),
+		},
+	}
+	sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(node).Build()
+	r := NewSlurmControl(testutils.NewClientMap(controller.Name, nodeset.Namespace, sclient))
+	err := r.MakeNodeDrain(ctx, nodeset, pod, "test", false)
+	require.ErrorIs(t, err, ErrNodeInvalidReg, "MakeNodeDrain() on INVALID_REG node must return ErrNodeInvalidReg")
+}
+
+func Test_realSlurmControl_MakeNodeUndrain_invalidReg(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	node := &types.V0044Node{
+		V0044Node: api.V0044Node{
+			Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+			State: ptr.To([]api.V0044NodeState{
+				api.V0044NodeStateDOWN,
+				api.V0044NodeStateDRAIN,
+				api.V0044NodeStateINVALIDREG,
+			}),
+		},
+	}
+	sclient := fake.NewClientBuilder().WithUpdateFn(slurmUpdateFn).WithObjects(node).Build()
+	r := NewSlurmControl(testutils.NewClientMap(controller.Name, nodeset.Namespace, sclient))
+	err := r.MakeNodeUndrain(ctx, nodeset, pod, "test")
+	require.ErrorIs(t, err, ErrNodeInvalidReg, "MakeNodeUndrain() on INVALID_REG node must return ErrNodeInvalidReg")
+}
+
 func Test_realSlurmControl_DeleteNode(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{

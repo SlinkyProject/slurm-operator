@@ -82,6 +82,10 @@ type SlurmControlInterface interface {
 
 var ErrNoSlurmClient = errors.New("NoSlurmClient")
 
+// ErrNodeInvalidReg is returned when a state-mutating operation is attempted on a
+// node in INVALID_REG state, which Slurm rejects with "Invalid node state transition".
+var ErrNodeInvalidReg = errors.New("NodeInvalidReg")
+
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
 	clientMap *clientmap.ClientMap
@@ -316,6 +320,12 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		return nil
 	}
 
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG) {
+		logger.V(1).Info("Node has INVALID_REG state, skipping drain request",
+			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
+		return ErrNodeInvalidReg
+	}
+
 	logger.V(1).Info("make slurm node drain",
 		"pod", klog.KObj(pod))
 	req := slurmapi.V0044UpdateNodeMsg{
@@ -361,6 +371,12 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		logger.V(1).Info("Node is already undrained, skipping undrain request",
 			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
 		return nil
+	}
+
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG) {
+		logger.V(1).Info("Node has INVALID_REG state, skipping undrain request",
+			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
+		return ErrNodeInvalidReg
 	}
 
 	// If the reason is not empty, prefix it with nodeReasonPrefix

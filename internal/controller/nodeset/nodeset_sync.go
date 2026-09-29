@@ -1509,7 +1509,8 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	}
 
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil &&
-		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 
@@ -1554,7 +1555,8 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 	}
 
 	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil &&
-		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 
