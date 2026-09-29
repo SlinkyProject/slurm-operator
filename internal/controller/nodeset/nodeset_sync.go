@@ -1305,6 +1305,7 @@ func (r *NodeSetReconciler) newNodeSetPodDaemon(
 	hostnameOverride := node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride]
 
 	pod := nodesetutils.NewNodeSetDaemonSetPod(client, nodeset, controller, nodeName, hostnameOverride, revisionHash)
+
 	return pod, nil
 }
 
@@ -1330,6 +1331,7 @@ func newSimulatedDaemonPod(
 	}
 
 	pod := nodesetutils.NewNodeSetSimulatedPod(client, nodeset, controller, nodeName)
+
 	return pod, nil
 }
 
