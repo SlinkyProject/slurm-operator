@@ -1,0 +1,74 @@
+---
+# Scale test fixture. See "Scale testing with KWOK" in docs/development.md.
+# No RestApi CR, so Slurm calls return ErrNoSlurmClient, which the operator
+# tolerates. Slurm-side status stays zero; readyReplicas still tracks pods.
+# Images are never pulled: KWOK runs pods without a kubelet.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: slurm-kwok-auth-slurm
+stringData:
+  slurm.key: kwok-scale-test-not-a-real-key
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: slurm-kwok-auth-jwt
+stringData:
+  jwt_hs256.key: kwok-scale-test-not-a-real-key
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: Controller
+metadata:
+  name: slurm-kwok
+spec:
+  clusterName: slurm-kwok
+  # Stops the operator creating a real slurmctld. The key refs are still
+  # required, because worker pods mount them.
+  external: true
+  externalConfig:
+    host: slurm-kwok.invalid
+    port: 6817
+  slurmKeyRef:
+    name: slurm-kwok-auth-slurm
+    key: slurm.key
+  jwtHs256KeyRef:
+    name: slurm-kwok-auth-jwt
+    key: jwt_hs256.key
+---
+apiVersion: slinky.slurm.net/v1beta1
+kind: NodeSet
+metadata:
+  name: slurm-kwok
+spec:
+  controllerRef:
+    name: slurm-kwok
+  replicas: 100
+  # Drops the one-pod-per-node anti-affinity, so replicas do not need a fake
+  # node each. Not for production.
+  oversubscribeNode: true
+  slurmd:
+    image: ghcr.io/slinkyproject/slurmd:latest
+  logfile:
+    image: docker.io/library/alpine:latest
+  template:
+    spec:
+      # Atomic list: this replaces the operator's worker toleration, so that
+      # one has to be repeated here.
+      tolerations:
+        - key: nodeset.slinky.slurm.net/worker
+          operator: Equal
+          effect: NoExecute
+        - key: kwok.x-k8s.io/node
+          operator: Equal
+          value: fake
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kwok.x-k8s.io/node
+                    operator: In
+                    values:
+                      - fake

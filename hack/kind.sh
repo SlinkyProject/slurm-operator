@@ -12,6 +12,9 @@ DIR="$(readlink -f "$(dirname "$0")/")"
 KUBE_PROMETHEUS_STACK_CHART_REPO="https://prometheus-community.github.io/helm-charts"
 KUBE_PROMETHEUS_STACK_CHART_VERSION="88.6.2"
 
+KWOK_CHART_REPO="https://kwok.sigs.k8s.io/charts/"
+KWOK_CHART_VERSION="0.3.0"
+
 function kind::prerequisites() {
 	go install sigs.k8s.io/kind@latest
 	go install sigs.k8s.io/cloud-provider-kind@latest
@@ -223,6 +226,21 @@ function keda::install() {
 	fi
 }
 
+function kwok::install() {
+	echo "[kwok] Installing the KWOK controller and fast stage configuration..."
+	helm repo add kwok "$KWOK_CHART_REPO" --force-update
+	helm upgrade --install kwok kwok/kwok \
+		--version "$KWOK_CHART_VERSION" \
+		--namespace kube-system \
+		--wait --timeout=300s
+
+	# Without stages, pods on fake nodes never reach Running.
+	helm upgrade --install kwok-stage-fast kwok/stage-fast \
+		--version "$KWOK_CHART_VERSION" \
+		--namespace kube-system \
+		--wait --timeout=300s
+}
+
 function nfs::install() {
 	local chartName=nfs-server-provisioner
 	helm repo add nfs-ganesha https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
@@ -287,7 +305,7 @@ $(basename "$0") - Manage a kind cluster for local testing/development
 	usage: $(basename "$0") [--config=KIND_CONFIG_PATH] [--existing-cluster]
 	        [--recreate|--delete]
 	        [--core|--prereqs][--extras][--mariadb][--keda][--metrics]
-	        [--nfs][--ldap][--all] [--registry=REPO]
+	        [--nfs][--ldap][--kwok][--all] [--registry=REPO]
 	        [--crds][--operator][--slurm]
 	        [-h|--help] [KIND_CLUSTER_NAME]
 
@@ -307,6 +325,7 @@ HELM OPTIONS:
 	--metrics           Install metrics-server and kube-prometheus-stack.
 	--nfs               Install the NFS provisioner and example PVCs.
 	--ldap              Install OpenLDAP.
+	--kwok              Install KWOK. Create nodes with hack/kwok-nodes.sh.
 	--core              Equivalent of: --crds --operator --slurm
 	--prereqs           Install operator prerequisites only (cert-manager).
 	--crds              Install the operator CRDs chart.
@@ -356,9 +375,10 @@ OPT_KEDA=false
 OPT_NFS=false
 OPT_LDAP=false
 OPT_METRICS=false
+OPT_KWOK=false
 
 SHORT="+h"
-LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,mariadb,keda,metrics,nfs,ldap,core,prereqs,help"
+LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,mariadb,keda,metrics,nfs,ldap,kwok,core,prereqs,help"
 OPTS="$(getopt -a --options "$SHORT" --longoptions "$LONG" -- "$@")"
 eval set -- "${OPTS}"
 while :; do
@@ -422,6 +442,10 @@ while :; do
 		;;
 	--keda)
 		OPT_KEDA=true
+		shift
+		;;
+	--kwok)
+		OPT_KWOK=true
 		shift
 		;;
 	--metrics)
@@ -507,6 +531,9 @@ function main() {
 	fi
 	if $OPT_LDAP; then
 		ldap::install
+	fi
+	if $OPT_KWOK; then
+		kwok::install
 	fi
 
 	if $OPT_OPERATOR_CRDS; then
