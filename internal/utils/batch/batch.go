@@ -6,12 +6,13 @@ package batch
 
 import (
 	"sync"
-
-	kubecontroller "k8s.io/kubernetes/pkg/controller"
 )
 
 const (
-	SlowStartInitialBatchSize = kubecontroller.SlowStartInitialBatchSize
+	// When batching pod creates, SlowStartInitialBatchSize is the size of the
+	// initial batch. The size of each successive batch is twice the size of
+	// the previous batch.
+	SlowStartInitialBatchSize = 1
 )
 
 func SlowStartBatchDefault(count int, fn func(i int) error) (int, error) {
