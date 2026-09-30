@@ -121,7 +121,7 @@ scaling (like a StatefulSet) or one-pod-per-node scaling (like a DaemonSet).
   (e.g. node name) rather than an ordinal.
 
 The operator supports NodeSet scale to zero, scaling the resource down to zero
-replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also support scale to
+replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also supports scale to
 zero can be best paired with NodeSets.
 
 NodeSets can be resolved by hostname. This enables hostname-based resolution
@@ -134,13 +134,13 @@ A set of homogeneous login nodes (submit node, jump host) for Slurm, which
 manage user identity via SSSD.
 
 The operator supports LoginSet scale to zero, scaling the resource down to zero
-replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also support scale to
+replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also supports scale to
 zero can be best paired with LoginSets.
 
 ### Hybrid Support
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRDs are designed support these use cases.
+Kubernetes. The operator and its CRDs are designed to support these use cases.
 
 ### Slurm
 
