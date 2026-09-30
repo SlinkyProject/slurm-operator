@@ -1247,8 +1247,8 @@ func (r *NodeSetReconciler) doPodScale(
 	// prevented from spamming the API service with the pod create requests
 	// after one of its pods fails. Conveniently, this also prevents the
 	// event spam that those failures would generate.
-	createPodFn := func(index int) error {
-		pod := podsToCreate[index]
+	createPodFn := func(i int) error {
+		pod := podsToCreate[i]
 		if err := r.podControl.CreateNodeSetPod(ctx, nodeset, pod); err != nil {
 			if apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
 				// if the namespace is being terminated, we don't have to do
@@ -1291,10 +1291,10 @@ func (r *NodeSetReconciler) doPodScale(
 		errs = append(errs, err)
 	}
 
-	deletePodFn := func(index int) error {
-		pod := podsToDelete[index]
+	deletePodFn := func(i int) error {
+		pod := podsToDelete[i]
 		podKey := kubecontroller.PodKey(pod)
-		if err := r.processCondemned(ctx, nodeset, podsToDelete, index); err != nil {
+		if err := r.processCondemned(ctx, nodeset, podsToDelete, i); err != nil {
 			// Decrement the expected number of deletes because the informer won't observe this deletion
 			r.expectations.DeletionObserved(logger, key, podKey)
 			if !apierrors.IsNotFound(err) {
@@ -1473,10 +1473,10 @@ func (r *NodeSetReconciler) doPodProcessing(
 		errs = append(errs, err)
 	}
 
-	deletePodFn := func(index int) error {
-		pod := podsToDelete[index]
+	deletePodFn := func(i int) error {
+		pod := podsToDelete[i]
 		podKey := kubecontroller.PodKey(pod)
-		if err := r.processCondemned(ctx, nodeset, podsToDelete, index); err != nil {
+		if err := r.processCondemned(ctx, nodeset, podsToDelete, i); err != nil {
 			// Decrement the expected number of deletes because the informer won't observe this deletion
 			r.expectations.DeletionObserved(logger, key, podKey)
 			if !apierrors.IsNotFound(err) {
