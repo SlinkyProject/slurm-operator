@@ -1,3 +1,28 @@
+## v1.0.7
+
+### Fixed
+
+- GO-2026-6354 GO-2026-6355.
+- Replace /readyz probe with StartedChecker instead of a ping.
+- Add CAP_SYS_RESOURCE to slurmd container.
+- GO-2026-6348 GO-2026-6441 GO-2026-6443.
+- Add a 10 second idle connection timeout to all Slurm RESTAPI calls.
+- Match Slurm host-list expansion when calculating node deadlines.
+- Cross-namespace owner reference error on NodeSet Service/PDB sync.
+- GO-2026-4958.
+- NodeSet extraConf and partition config are now quoted, so values containing
+  YAML-significant characters no longer break the render or get silently
+  truncated.
+- Fixed case where a NodeSet in StatefulSet mode would count an out of band pod
+  termination against the total when deciding to scale, causing spurious pod
+  recreations.
+- Skip drain/undrain requests for Slurm nodes in INVALID_REG state.
+
+### Changed
+
+- Increase e2e nodeset timeout.
+- Wait for generated workloads in e2e tests.
+
 ## v1.0.6
 
 ### Fixed
