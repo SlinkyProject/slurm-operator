@@ -78,7 +78,7 @@ PRETTY_NAME="Alpine Linux v3.21"
 ```
 
 > [!WARNING]
-> SPANK plugins will only work on specific Slurm node that have them and is
+> SPANK plugins will only work on specific Slurm nodes that have them and are
 > configured to use them. It is best to constrain where jobs run with
 > `--partition=<partition>`, `--batch=<features>`, and/or
 > `--constraint=<features>` to ensure a compatible computing environment.

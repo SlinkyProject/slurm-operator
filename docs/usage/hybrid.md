@@ -24,7 +24,7 @@
 
 A hybrid cluster is one that combines more than one type of infrastructure
 orchestration -- bare-metal, Virtual Machines (VMs), containers (e.g.
-Kubernetes, Docker), and cloud infrastrcture (e.g. AWS, GCP, Azure, OpenStack).
+Kubernetes, Docker), and cloud infrastructure (e.g. AWS, GCP, Azure, OpenStack).
 
 Through the slurm-operator and its CRDs, a hybrid Slurm cluster can be expressed
 such that some Slurm cluster components live in Kubernetes and other components
@@ -59,8 +59,8 @@ pod traffic, which is a flat network with DNS. External-Internal communication
 typically involves external traffic being proxied via NAT to a pod.
 
 Slurm expects a fully connected network with bidirectional communication between
-all Slurm daemons and clients This means NAT type networks will generally impede
-communication.
+all Slurm daemons and clients. This means NAT-type networks will generally
+impede communication.
 
 Therefore, the network configuration needs to be configured to allow Slurm
 components to directly communicate over the network. There are two setups to
@@ -121,7 +121,7 @@ kubectl create secret generic external-auth-jwt \
 ```
 
 When configuring the Slurm helm chart, set the Slurm key and JWT key to the
-secrets that were copied into Kubernetes otherwise Slurm components will be
+secrets that were copied into Kubernetes; otherwise, Slurm components will be
 unable to authenticate with the rest of the Slurm cluster.
 
 ```yaml
@@ -191,7 +191,7 @@ slurm-operator can use it to correctly take action on Slurm resources within
 kubernetes.
 
 You may still have a slurmrestd that is accessible outside of Kubernetes to
-handles requests outside of Kubernetes.
+handle requests outside of Kubernetes.
 
 <!-- Links -->
 

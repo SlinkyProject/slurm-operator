@@ -34,7 +34,7 @@ removed from the associated Slurm nodes, `syncTopology` may be set to `false`.
 ## Kubernetes
 
 Each Kubernetes node should be annotated with `topology.slinky.slurm.net/spec`.
-its value is transparently used by the operator to update Slurm node topology
+Its value is transparently used by the operator to update Slurm node topology
 information, only if running as a NodeSet pod.
 
 For example, the following Kubernetes Node snippet has the Slinky topology

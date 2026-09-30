@@ -34,7 +34,7 @@ For more information on SR-IOV's performance implications, see:
 ## Pre-requisites
 
 Neither of the deployment methods outlined in this document, nor their
-dependencies, have the capability to enable, manage, and create VFs on the
+dependencies, has the capability to enable, manage, and create VFs on the
 hardware level. Configuration and creation of VFs must be conducted manually,
 prior to attempting these methods.
 
@@ -47,7 +47,7 @@ For more information on configuring SR-IOV on Intel and Mellanox hardware, see:
 - [Setting up Virtual Functions]
 
 Before attempting either deployment method below, enable SR-IOV on your
-clusters' nodes, and create VFs. When done successfully, Virtual Functions will
+cluster's nodes, and create VFs. When done successfully, Virtual Functions will
 be visible in the output of `lspci`.
 
 ```console
@@ -87,7 +87,7 @@ site-specific.
 Prior to attempting installation of [dra-driver-sriov], one must:
 
 - Install a compatible CNI meta-plugin ([reference][install-multus])
-- Create a SR-IOV CRD for that CNI ([reference][sriov-crd])
+- Create an SR-IOV CRD for that CNI ([reference][sriov-crd])
 - Install [sriov-cni]
 - Install [sriov-network-device-plugin]
 
