@@ -408,7 +408,7 @@ func (r *NodeSetReconciler) sync(
 		{
 			Name: "SlurmNodeRecords",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				return r.syncSlurmNodeRecords(ctx, nodeset)
+				return r.syncSlurmNodeRecords(ctx, nodeset, pods)
 			},
 		},
 		{
@@ -599,10 +599,43 @@ func (r *NodeSetReconciler) syncCordon(
 	return nil
 }
 
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	for _, pod := range pods {
+		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) {
+			continue
+		}
+		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
+		if err != nil {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				continue
+			}
+			return err
+		}
+		if !isInvalidReg {
+			continue
+		}
+		invalidNode := nodesetutils.GetSlurmNodeName(pod)
+		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
+			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // syncSlurmNodeRecords prunes Slurm node records under certain conditions.
 func (r *NodeSetReconciler) syncSlurmNodeRecords(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
 ) error {
 	switch nodeset.Spec.PruneSlurmNodeRecords {
 	default:
@@ -611,6 +644,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecords(
 		return nil
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound:
 		return r.syncSlurmNodeRecordsNodeNotFound(ctx, nodeset)
+	case slinkyv1beta1.NodeSetPruneNodeRecordTypeAuto:
+		return r.syncSlurmNodeRecordsAuto(ctx, nodeset, pods)
 	}
 }
 
@@ -1509,7 +1544,8 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	}
 
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil &&
-		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 
@@ -1554,7 +1590,8 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 	}
 
 	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil &&
-		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 

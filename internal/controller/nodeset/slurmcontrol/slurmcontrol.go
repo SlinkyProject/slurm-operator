@@ -52,6 +52,8 @@ type SlurmControlInterface interface {
 	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string, overrideReason bool) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
 	MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
+	// IsNodeInvalidReg checks if the node has the INVALID_REG state.
+	IsNodeInvalidReg(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrain checks if the slurm node has the DRAIN state.
 	IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrained checks if the slurm node is drained.
@@ -81,6 +83,10 @@ type SlurmControlInterface interface {
 }
 
 var ErrNoSlurmClient = errors.New("NoSlurmClient")
+
+// ErrNodeInvalidReg is returned when a state-mutating operation is attempted on a
+// node in INVALID_REG state, which Slurm rejects with "Invalid node state transition".
+var ErrNodeInvalidReg = errors.New("NodeInvalidReg")
 
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
@@ -316,6 +322,12 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 		return nil
 	}
 
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG) {
+		logger.V(1).Info("Node has INVALID_REG state, skipping drain request",
+			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
+		return ErrNodeInvalidReg
+	}
+
 	logger.V(1).Info("make slurm node drain",
 		"pod", klog.KObj(pod))
 	req := slurmapi.V0044UpdateNodeMsg{
@@ -363,6 +375,12 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 		return nil
 	}
 
+	if slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG) {
+		logger.V(1).Info("Node has INVALID_REG state, skipping undrain request",
+			"node", slurmNode.GetKey(), "nodeState", slurmNode.State)
+		return ErrNodeInvalidReg
+	}
+
 	// If the reason is not empty, prefix it with nodeReasonPrefix
 	prefixedReason := ""
 	if reason != "" {
@@ -383,6 +401,25 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	}
 
 	return nil
+}
+
+func (r *realSlurmControl) IsNodeInvalidReg(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do IsNodeInvalidReg()",
+			"pod", klog.KObj(pod))
+		return false, ErrNoSlurmClient
+	}
+
+	slurmNode := &slurmtypes.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		return false, err
+	}
+	isInvalidReg := slurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateINVALIDREG)
+	return isInvalidReg, nil
 }
 
 // IsNodeDrain implements SlurmControlInterface.

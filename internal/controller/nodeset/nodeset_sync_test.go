@@ -39,6 +39,7 @@ import (
 	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	sinterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
 	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
@@ -5349,7 +5350,10 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			clientMap := newClientMap(controller.Name, sclient)
 			r := NewReconciler(kclient, clientMap, nil)
 
-			err := r.syncSlurmNodeRecords(context.Background(), nodeset)
+			podList := &corev1.PodList{}
+			pods := structutils.ReferenceList(podList.Items)
+
+			err := r.syncSlurmNodeRecords(context.Background(), nodeset, pods)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -5434,6 +5438,137 @@ func Test_sanitizeSlurmReason(t *testing.T) {
 
 			require.Equal(t, tt.want, got)
 			require.LessOrEqual(t, utf8.RuneCountInString(got), maxSlurmReasonLength)
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "slurm",
+			Namespace: corev1.NamespaceDefault,
+		},
+	}
+	nodeset := newNodeSet("nodeset-a", controller.Name, 1)
+	nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeAuto
+
+	newRunningPod := func(ordinal int) *corev1.Pod {
+		p := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, ordinal, "")
+		return makePodHealthy(p)
+	}
+
+	invalidRegState := ptr.To([]slurmapi.V0044NodeState{
+		slurmapi.V0044NodeStateDOWN,
+		slurmapi.V0044NodeStateINVALIDREG,
+	})
+	idleState := ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE})
+
+	tests := []struct {
+		name                  string
+		pod                   *corev1.Pod
+		slurmNodeList         *slurmtypes.V0044NodeList
+		wantNodeRecordDeleted bool
+	}{
+		{
+			name: "running pod with INVALID_REG deletes node record",
+			pod:  newRunningPod(0),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
+						State: invalidRegState,
+					}},
+				},
+			},
+			wantNodeRecordDeleted: true,
+		},
+		{
+			name: "running pod without INVALID_REG does not delete node record",
+			pod:  newRunningPod(0),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
+						State: idleState,
+					}},
+				},
+			},
+			wantNodeRecordDeleted: false,
+		},
+		{
+			name: "pending pod with INVALID_REG does not delete node record",
+			pod: func() *corev1.Pod {
+				p := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+				return makePodCreated(p)
+			}(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
+						State: invalidRegState,
+					}},
+				},
+			},
+			wantNodeRecordDeleted: false,
+		},
+		{
+			name: "terminating pod with INVALID_REG does not delete node record",
+			pod: func() *corev1.Pod {
+				p := newRunningPod(0)
+				now := metav1.Now()
+				p.DeletionTimestamp = &now
+				p.Finalizers = []string{"test"}
+				return p
+			}(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
+						State: invalidRegState,
+					}},
+				},
+			},
+			wantNodeRecordDeleted: false,
+		},
+		{
+			name: "running-but-not-ready pod with INVALID_REG deletes node record",
+			pod:  makePodRunningNotReady(nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{V0044Node: slurmapi.V0044Node{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
+						State: invalidRegState,
+					}},
+				},
+			},
+			wantNodeRecordDeleted: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pod := tt.pod.DeepCopy()
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, tt.slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+			k8sClient := fake.NewFakeClient(nodeset.DeepCopy(), pod)
+			r := newNodeSetController(k8sClient, clientMap)
+
+			err := r.syncSlurmNodeRecordsAuto(ctx, nodeset.DeepCopy(), []*corev1.Pod{pod})
+			require.NoError(t, err)
+
+			// Pod should never be deleted — remediation deletes the Slurm node record, not the pod.
+			gotPod := &corev1.Pod{}
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod), gotPod), "pod should not be deleted")
+
+			// Verify whether the Slurm node record was deleted.
+			nodeName := nodesetutils.GetSlurmNodeName(pod)
+			slurmNode := &slurmtypes.V0044Node{}
+			getErr := slurmClient.Get(ctx, slurmobject.ObjectKey(nodeName), slurmNode)
+			if tt.wantNodeRecordDeleted {
+				require.True(t, errors.Is(getErr, slurmerrors.ErrNotFound), "Slurm node record should have been deleted (got : %v)", getErr)
+			} else {
+				require.NoError(t, getErr, "Slurm node record should not have been deleted")
+			}
 		})
 	}
 }
