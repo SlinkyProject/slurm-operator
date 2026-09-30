@@ -2445,3 +2445,58 @@ func Test_nodeState(t *testing.T) {
 		})
 	}
 }
+
+func Test_realSlurmControl_MakeNodeDrain_invalidReg(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	node := &types.V0044Node{
+		V0044Node: api.V0044Node{
+			Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+			State: ptr.To([]api.V0044NodeState{
+				api.V0044NodeStateDOWN,
+				api.V0044NodeStateINVALIDREG,
+			}),
+		},
+	}
+	sclient := fake.NewClientBuilder().WithObjects(node).Build()
+	r := NewSlurmControl(newSlurmClientMap(controller.Name, sclient))
+	err := r.MakeNodeDrain(ctx, nodeset, pod, "test", false)
+	if !errors.Is(err, ErrNodeInvalidReg) {
+		t.Errorf("MakeNodeDrain() on INVALID_REG node error = %v, want %v", err, ErrNodeInvalidReg)
+	}
+}
+
+func Test_realSlurmControl_MakeNodeUndrain_invalidReg(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	node := &types.V0044Node{
+		V0044Node: api.V0044Node{
+			Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+			State: ptr.To([]api.V0044NodeState{
+				api.V0044NodeStateDOWN,
+				api.V0044NodeStateDRAIN,
+				api.V0044NodeStateINVALIDREG,
+			}),
+		},
+	}
+	sclient := fake.NewClientBuilder().WithObjects(node).Build()
+	r := NewSlurmControl(newSlurmClientMap(controller.Name, sclient))
+	err := r.MakeNodeUndrain(ctx, nodeset, pod, "test")
+	if !errors.Is(err, ErrNodeInvalidReg) {
+		t.Errorf("MakeNodeUndrain() on INVALID_REG node error = %v, want %v", err, ErrNodeInvalidReg)
+	}
+}

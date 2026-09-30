@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -36,6 +37,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils"
@@ -1209,7 +1211,7 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 		reason = "unknown"
 	}
 
-	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil {
+	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil && !errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 
@@ -1253,7 +1255,7 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 		return err
 	}
 
-	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil {
+	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil && !errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
 
