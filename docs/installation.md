@@ -358,9 +358,9 @@ NodeSets should request GPUs in accordance with [device plugins][device-plugins]
 or [DRA]. In addition, `extraConf` or `extraConfMap` needs to define a [GRES] in
 accordance with the GPUs it should be allocated to.
 
-The following is an example is of a `gpu-h100` NodeSet which has 8 H100 GPUs.
-This example assumes that the [NVIDIA gpu-operator][nvidia-gpu-operator] is
-running on the Kubernetes cluster.
+The following is an example of a `gpu-h100` NodeSet which has 8 H100 GPUs. This
+example assumes that the [NVIDIA gpu-operator][nvidia-gpu-operator] is running
+on the Kubernetes cluster.
 
 ```yaml
 nodesets:
