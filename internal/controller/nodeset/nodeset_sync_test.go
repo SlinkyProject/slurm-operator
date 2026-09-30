@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -461,7 +462,13 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
-	utilruntime.Must(slinkyv1beta1.AddToScheme(clientgoscheme.Scheme))
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	hash := "test-hash"
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
@@ -472,19 +479,196 @@ func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
 		pods    []*corev1.Pod
 		hash    string
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+	type testCaseFields struct {
+		name            string
+		fields          fields
+		args            args
+		wantPods        int
+		wantErr         bool
+		wantCordoned    []*corev1.Pod
+		wantNotCordoned []*corev1.Pod
+	}
+	tests := []testCaseFields{
+		{
+			name: "Scale up from 0 to 2 creates pods",
+			fields: fields{
+				Client: fake.NewFakeClient(controller.DeepCopy()),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 2),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantPods: 2,
+			wantErr:  false,
+		},
+		func() testCaseFields {
+			ns := newNodeSet("foo", controller.Name, 2)
+			pod0 := nodesetutils.NewNodeSetPod(ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod1 := nodesetutils.NewNodeSetPod(ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Steady state with matching replica count processes pods",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy()},
+					hash:    hash,
+				},
+				wantPods: 2,
+				wantErr:  false,
+			}
+		}(),
+		func() testCaseFields {
+			ns := newNodeSet("foo", controller.Name, 1)
+			pod0 := nodesetutils.NewNodeSetPod(ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod1 := nodesetutils.NewNodeSetPod(ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			pod2 := nodesetutils.NewNodeSetPod(ns, controller, 2, hash)
+			makePodHealthy(pod2)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+					*newNodeSetPodSlurmNode(pod2),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Scale down from 3 to 1 deletes excess pods",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()},
+					hash:    hash,
+				},
+				wantPods: 1,
+				wantErr:  false,
+			}
+		}(),
+		{
+			name: "Scale up fails when Controller CR is missing",
+			fields: fields{
+				Client: fake.NewFakeClient(),
+				ClientMap: func() *clientmap.ClientMap {
+					nodeList := &slurmtypes.V0044NodeList{}
+					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+					return newClientMap(controller.Name, sclient)
+				}(),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: newNodeSet("foo", controller.Name, 2),
+				pods:    []*corev1.Pod{},
+				hash:    hash,
+			},
+			wantErr: true,
+		},
+		func() testCaseFields {
+			// ReplicaSet FilterActivePods: terminating pods are not active, so
+			// they must not count toward surplus (or SplitActivePods picks the
+			// highest-ordinal healthy pod instead).
+			ns := newNodeSet("foo", controller.Name, 2)
+			now := metav1.Now()
+			pod0 := nodesetutils.NewNodeSetPod(ns, controller, 0, hash)
+			makePodHealthy(pod0)
+			pod0.DeletionTimestamp = &now
+			pod0.Finalizers = []string{"slinky.slurm.net/test"}
+			pod1 := nodesetutils.NewNodeSetPod(ns, controller, 1, hash)
+			makePodHealthy(pod1)
+			pod2 := nodesetutils.NewNodeSetPod(ns, controller, 2, hash)
+			makePodHealthy(pod2)
+			nodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					*newNodeSetPodSlurmNode(pod0),
+					*newNodeSetPodSlurmNode(pod1),
+					*newNodeSetPodSlurmNode(pod2),
+				},
+			}
+			sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+			return testCaseFields{
+				name: "Scale-down does not drain a healthy pod when another is already terminating",
+				fields: fields{
+					Client:    fake.NewFakeClient(controller.DeepCopy(), ns.DeepCopy(), pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()),
+					ClientMap: newClientMap(controller.Name, sclient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: ns.DeepCopy(),
+					pods:    []*corev1.Pod{pod0.DeepCopy(), pod1.DeepCopy(), pod2.DeepCopy()},
+					hash:    hash,
+				},
+				wantPods:        3,
+				wantErr:         false,
+				wantNotCordoned: []*corev1.Pod{pod1, pod2},
+			}
+		}(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncNodeSet(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash); (err != nil) != tt.wantErr {
-				t.Errorf("NodeSetReconciler.syncNodeSet() error = %v, wantErr %v", err, tt.wantErr)
+			err := r.syncNodeSet(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			podList := &corev1.PodList{}
+			optsList := &client.ListOptions{
+				Namespace: tt.args.nodeset.Namespace,
+			}
+			err = tt.fields.Client.List(ctx, podList, optsList)
+			require.NoError(t, err)
+
+			// If we are not scaling down, podList.Items should reflect current state
+			if len(tt.args.pods) <= tt.wantPods {
+				require.Equal(t, tt.wantPods, len(podList.Items))
+			}
+
+			// If we are scaling down, we need to sync again
+			if len(tt.args.pods) > tt.wantPods {
+				err = r.syncNodeSet(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.hash)
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+				err = tt.fields.Client.List(ctx, podList, optsList)
+				require.NoError(t, err)
+			}
+
+			for _, pod := range tt.wantCordoned {
+				gotPod := &corev1.Pod{}
+				require.NoError(t, r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod))
+				require.True(t, podutils.IsPodCordon(gotPod), "pod %s should remain cordoned after scale-up", pod.Name)
+			}
+			for _, pod := range tt.wantNotCordoned {
+				gotPod := &corev1.Pod{}
+				require.NoError(t, r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod))
+				require.False(t, podutils.IsPodCordon(gotPod), "pod %s should not be cordoned for scale-in", pod.Name)
 			}
 		})
 	}

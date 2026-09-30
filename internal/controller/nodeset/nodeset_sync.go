@@ -483,16 +483,17 @@ func (r *NodeSetReconciler) syncNodeSet(
 	// Handle replica scaling by comparing the known pods to the target number of replicas.
 	// Create or delete pods as needed to reach the target number.
 	replicaCount := int(ptr.Deref(nodeset.Spec.Replicas, 0))
-	diff := len(pods) - replicaCount
-	if diff < 0 {
-		diff = -diff
+	// ReplicaSet: terminating/failed/succeeded pods are not active and do not count
+	// toward surplus. StatefulSet: they still occupy their ordinal, so scale-up
+	// uses the full list (usedOrdinals in doPodScaleOut) rather than len(activePods).
+	activePods := kubecontroller.FilterActivePods(klog.FromContext(ctx), pods)
+	if diff := replicaCount - len(pods); diff > 0 {
 		logger.V(2).Info("Too few NodeSet pods", "need", replicaCount, "creating", diff)
 		return r.doPodScaleOut(ctx, nodeset, pods, diff, hash)
 	}
-
-	if diff > 0 {
+	if diff := len(activePods) - replicaCount; diff > 0 {
 		logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
-		podsToDelete, podsToKeep := nodesetutils.SplitActivePods(pods, diff)
+		podsToDelete, podsToKeep := nodesetutils.SplitActivePods(activePods, diff)
 		return r.doPodScaleIn(ctx, nodeset, podsToDelete, podsToKeep)
 	}
 
