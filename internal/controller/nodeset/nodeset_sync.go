@@ -51,6 +51,11 @@ import (
 )
 
 const (
+	// BurstReplicas is a rate limiter for booting pods on a lot of pods across nodes.
+	// If this value is too high, it can cause registry DoS issues.
+	//
+	// DaemonSet uses a value of 250.
+	// ReplicaSet uses a value of 500.
 	burstReplicas = 250
 
 	// FailedDaemonPodReason is added to an event when the status of a Pod of a DaemonSet is 'Failed'.
