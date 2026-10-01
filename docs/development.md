@@ -21,6 +21,36 @@ current chart defaults before applying these overrides. If an older file is a
 full copy of `values.yaml`, replace it with `{}` so it does not pin defaults
 from an older checkout.
 
+## Scale testing with KWOK
+
+[KWOK] runs pods on fake nodes without starting containers, so a laptop can hold
+thousands of NodeSet pods. Create a cluster with the operator and KWOK, then add
+100 fake nodes:
+
+```sh
+./hack/kind.sh --crds --operator --kwok
+./hack/kwok-nodes.sh
+```
+
+Each fake node fits 110 pods. For more nodes, run `./hack/kwok-nodes.sh COUNT`
+with the total you need.
+
+Apply the test NodeSet, then scale it:
+
+```sh
+kubectl apply -f hack/resources/kwok-nodeset.yaml
+kubectl scale nodeset/slurm-kwok --replicas=1000
+kubectl get nodeset/slurm-kwok --watch
+```
+
+The fixture has no RestApi, so the operator skips its Slurm calls and only the
+Kubernetes side is exercised. To remove the fake nodes without deleting the
+cluster, run:
+
+```sh
+kubectl delete nodes --selector=app.kubernetes.io/managed-by=slurm-operator-kwok
+```
+
 ## Remote cluster
 
 ### Update an existing Slinky installation
@@ -79,3 +109,7 @@ make prereqs
 
 The prerequisites-only command requires Helm and kubectl, but does not require
 Skaffold or a local container build toolchain.
+
+<!-- Links -->
+
+[kwok]: https://kwok.sigs.k8s.io/
