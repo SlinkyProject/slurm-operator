@@ -56,7 +56,7 @@ const (
 	//
 	// DaemonSet uses a value of 250.
 	// ReplicaSet uses a value of 500.
-	burstReplicas = 250
+	burstReplicas = 256
 
 	// FailedDaemonPodReason is added to an event when the status of a Pod of a DaemonSet is 'Failed'.
 	FailedDaemonPodReason = "FailedDaemonPod"
