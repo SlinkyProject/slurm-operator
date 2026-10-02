@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,16 @@ func ConfiglessArgs(controller *slinkyv1beta1.Controller) []string {
 		fmt.Sprintf("%s:%d", host, port),
 	}
 	return args
+}
+
+// ControllerSlurmdPort returns the SlurmdPort set in the controller's ExtraConf,
+// which overrides the default written to slurm.conf.
+func ControllerSlurmdPort(controller *slinkyv1beta1.Controller) int32 {
+	port, err := strconv.ParseUint(parseSlurmConfKV(controller.Spec.ExtraConf)["slurmdport"], 10, 16)
+	if err != nil || port == 0 {
+		return SlurmdPort
+	}
+	return int32(port)
 }
 
 //go:embed scripts/logfile.sh
