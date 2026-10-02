@@ -1037,7 +1037,7 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			}
 			// Don't uncordon existing pods during scale; syncRollingUpdate may be
 			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
-			return r.doPodScale(ctx, nodeset, nil, podsToDelete, podsToCreate)
+			return r.doPodScale(ctx, nodeset, podsToDelete, podsToCreate)
 		}
 	} else {
 		logger.V(2).Info("Processing NodeSet pods in StatefulSet mode")
@@ -1072,7 +1072,7 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 				"Creating %d Pod(s) to stabilize at %d replicas", diff, replicaCount)
 			// Don't uncordon existing pods during scale-up; syncRollingUpdate may be
 			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
-			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
+			return r.doPodScale(ctx, nodeset, nil, podsToCreate)
 		}
 		if diff := len(activePods) - replicaCount; diff > 0 {
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
@@ -1083,7 +1083,7 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			// cordoned pods for deletion, but if more pods are already cordoned/draining
 			// than diff can delete this reconcile, the overflow lands in the keep set;
 			// doPodProcessing will uncordon survivors once counts stabilize.
-			return r.doPodScale(ctx, nodeset, nil, podsToDelete, nil)
+			return r.doPodScale(ctx, nodeset, podsToDelete, nil)
 		}
 	}
 
@@ -1092,19 +1092,15 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 }
 
 // doPodScale manages NodeSet pod creation and deletion
-// podsToKeep - should be uncordoned and undrained.
 // podsToDelete - should be cordoned and drained, then deleted.
 // podsToCreate - should be newly created.
-// Any pod that appears in both podsToKeep and podsToDelete is automatically
-// removed from podsToKeep to prevent syncPodUncordon from fighting the drain
 // initiated by processCondemned.
 func (r *NodeSetReconciler) doPodScale(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
-	podsToKeep, podsToDelete, podsToCreate []*corev1.Pod,
+	podsToDelete, podsToCreate []*corev1.Pod,
 ) error {
 	logger := log.FromContext(ctx)
-	podsToKeep = nodesetutils.ExcludePods(podsToKeep, podsToDelete)
 	key := objectutils.KeyFunc(nodeset)
 	errs := []error{}
 
@@ -1127,14 +1123,6 @@ func (r *NodeSetReconciler) doPodScale(
 	// into a performance bottleneck. We should generate a UID for the pod
 	// beforehand and store it via ExpectCreations.
 	r.expectations.RaiseExpectations(logger, key, len(podsToCreate[:numCreate]), 0)
-
-	uncordonFn := func(i int) error {
-		pod := podsToKeep[i]
-		return r.syncPodUncordon(ctx, nodeset, pod)
-	}
-	if _, err := batch.SlowStartBatchDefault(len(podsToKeep), uncordonFn); err != nil {
-		errs = append(errs, err)
-	}
 
 	// Batch the pod creates. Batch sizes start at SlowStartInitialBatchSize
 	// and double with each successful iteration in a kind of "slow start".
@@ -1584,7 +1572,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 			"unhealthyPods", len(unhealthyPods))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, RollingUpdateReason, "RollingUpdate",
 			"Rolling update: deleting %d unhealthy old pod(s)", len(unhealthyPods))
-		if err := r.doPodScale(ctx, nodeset, nil, unhealthyPods, nil); err != nil {
+		if err := r.doPodScale(ctx, nodeset, unhealthyPods, nil); err != nil {
 			return err
 		}
 	}
@@ -1595,7 +1583,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 			"delete", len(podsToDelete))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, RollingUpdateReason, "RollingUpdate",
 			"Rolling update: replacing %d old pod(s) with updated revision", len(podsToDelete))
-		if err := r.doPodScale(ctx, nodeset, nil, podsToDelete, nil); err != nil {
+		if err := r.doPodScale(ctx, nodeset, podsToDelete, nil); err != nil {
 			return err
 		}
 	}
@@ -1758,7 +1746,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 			"unhealthyPods", len(unhealthyPods))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, "Scheduled Update", "ScheduledUpdate",
 			"Scheduled update: deleting %d unhealthy old pod(s)", len(unhealthyPods))
-		if err := r.doPodScale(ctx, nodeset, nil, unhealthyPods, nil); err != nil {
+		if err := r.doPodScale(ctx, nodeset, unhealthyPods, nil); err != nil {
 			return err
 		}
 	}
@@ -1772,7 +1760,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 			"delete", len(podsToDelete))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, "Scheduled Update", "ScheduledUpdate",
 			"Scheduled update: replacing %d old pod(s) with updated revision", len(podsToDelete))
-		if err := r.doPodScale(ctx, nodeset, nil, podsToDelete, nil); err != nil {
+		if err := r.doPodScale(ctx, nodeset, podsToDelete, nil); err != nil {
 			return err
 		}
 	}
