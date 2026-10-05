@@ -379,20 +379,6 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
-			Name: "RefreshNodeCache",
-			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil {
-					if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-						return err
-					}
-				}
-				return nil
-			},
-			// We need to ensure the Slurm client cache is refreshed before proceeding
-			// because stale cache could cause incorrect action to be taken.
-			StopOnError: true,
-		},
-		{
 			Name: "SlurmDeadline",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmDeadline(ctx, nodeset, pods)
@@ -781,6 +767,19 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 			// Cannot determine if Slurm node should be registered at this time.
 			return nil
 		}
+
+		isRegistered, err := r.slurmControl.IsNodeRegistered(ctx, nodeset, pod, true)
+		if err != nil {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				isRegistered = false
+			} else {
+				return err
+			}
+		}
+		if isRegistered {
+			return nil
+		}
+
 		logger.Info("Deleting NodeSet pod, Slurm node is not registered but pod is healthy",
 			"pod", klog.KObj(pod))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
@@ -1428,7 +1427,7 @@ func (r *NodeSetReconciler) processCondemned(
 		return nil
 	}
 
-	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
+	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod, false)
 	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
@@ -1442,6 +1441,14 @@ func (r *NodeSetReconciler) processCondemned(
 		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
 		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true)
+	}
+
+	isDrained, err = r.slurmControl.IsNodeDrained(ctx, nodeset, pod, true)
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		return err
+	}
+	if !isDrained {
+		return errors.New("slurm node is not drained, cannot delete pod")
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in")

@@ -686,6 +686,87 @@ func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
 	}
 }
 
+func Test_realSlurmControl_IsNodeRegistered(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
+	type fields struct {
+		clientMap *clientmap.ClientMap
+	}
+	type args struct {
+		ctx      context.Context
+		nodeset  *slinkyv1beta1.NodeSet
+		pod      *corev1.Pod
+		liveData bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "found",
+			fields: func() fields {
+				node := &api.V0044Node{
+					Name: new(nodesetutils.GetSlurmNodeName(pod)),
+					State: new([]api.V0044NodeState{
+						api.V0044NodeStateIDLE,
+					}),
+				}
+				sclient := fake.NewClientBuilder().WithObjects(node).Build()
+				return fields{
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "not found",
+			fields: func() fields {
+				sclient := fake.NewFakeClient()
+				return fields{
+					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
+				}
+			}(),
+			args: args{
+				ctx:     ctx,
+				nodeset: nodeset,
+				pod:     pod,
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &realSlurmControl{
+				clientMap: tt.fields.clientMap,
+			}
+			got, err := r.IsNodeRegistered(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.liveData)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
@@ -700,9 +781,10 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 		clientMap *clientmap.ClientMap
 	}
 	type args struct {
-		ctx     context.Context
-		nodeset *slinkyv1beta1.NodeSet
-		pod     *corev1.Pod
+		ctx      context.Context
+		nodeset  *slinkyv1beta1.NodeSet
+		pod      *corev1.Pod
+		liveData bool
 	}
 	tests := []struct {
 		name    string
@@ -940,7 +1022,7 @@ func Test_realSlurmControl_IsNodeDrained(t *testing.T) {
 			r := &realSlurmControl{
 				clientMap: tt.fields.clientMap,
 			}
-			got, err := r.IsNodeDrained(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			got, err := r.IsNodeDrained(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.liveData)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
