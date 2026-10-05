@@ -21,6 +21,16 @@ func IsPodCordonedByNode(pod *corev1.Pod) bool {
 	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource] == slinkyv1beta1.PodCordonSourceNode
 }
 
+// IsPodCordonedByOperator returns true if the pod's cordon was set by the operator itself, for any reason.
+func IsPodCordonedByOperator(pod *corev1.Pod) bool {
+	switch pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource] {
+	case slinkyv1beta1.PodCordonSourceNode, slinkyv1beta1.PodCordonSourceTermination:
+		return true
+	default:
+		return false
+	}
+}
+
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.
 func IsRunningAndReady(pod *corev1.Pod) bool {
 	return IsRunning(pod) && podutil.IsPodReady(pod)

@@ -417,3 +417,71 @@ func TestIsPodCordonedByNode(t *testing.T) {
 		})
 	}
 }
+
+func TestIsPodCordonedByOperator(t *testing.T) {
+	withSource := func(source string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:       "true",
+					slinkyv1beta1.AnnotationPodCordonSource: source,
+				},
+			},
+		}
+	}
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "no annotations",
+			args: args{
+				pod: &corev1.Pod{},
+			},
+			want: false,
+		},
+		{
+			name: "cordon without source",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon: "true",
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "cordon propagated from the node",
+			args: args{
+				pod: withSource(slinkyv1beta1.PodCordonSourceNode),
+			},
+			want: true,
+		},
+		{
+			name: "cordon for termination",
+			args: args{
+				pod: withSource(slinkyv1beta1.PodCordonSourceTermination),
+			},
+			want: true,
+		},
+		{
+			name: "unknown source",
+			args: args{
+				pod: withSource("user"),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsPodCordonedByOperator(tt.args.pod))
+		})
+	}
+}

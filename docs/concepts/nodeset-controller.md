@@ -125,13 +125,20 @@ flowchart TD
     CheckPodCordon -->|No| UndrainSlurm["Undrain Slurm node"]
 ```
 
-When the operator cordons a pod because its Kubernetes node was cordoned, it
-also sets `nodeset.slinky.slurm.net/pod-cordon-source=node` on the pod. This
-marker is what lets uncordoning the node reverse the cordon, and only that one:
-a pod that was already cordoned before its node was (for example, by a user)
-stays cordoned after the node is uncordoned. Scale-in removes the marker when it
-drains a pod for termination, so uncordoning the node does not undrain a pod
-that is pending termination.
+The operator records why it cordoned a pod in the
+`nodeset.slinky.slurm.net/pod-cordon-source` annotation, and only ever releases
+a cordon that it set itself:
+
+- `node`: the pod's Kubernetes node was cordoned. Uncordoning the node reverses
+  this cordon, and only this one: a pod that was already cordoned before its
+  node was (for example, by a user) stays cordoned after the node is uncordoned.
+- `termination`: the pod is pending termination, for scale-in or a rolling
+  update. If the pod is kept after all, the operator uncordons it. Termination
+  takes over a `node` cordon, so uncordoning the node does not undrain a pod
+  that is pending termination.
+
+A pod-cordon without a source, such as one set by a user, stays until whoever
+set it removes it.
 
 The operator prefixes all drain reasons it sets with `slurm-operator:`. Drain
 reasons without this prefix are treated as externally owned and are never

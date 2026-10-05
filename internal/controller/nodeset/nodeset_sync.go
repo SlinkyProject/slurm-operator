@@ -582,8 +582,8 @@ func (r *NodeSetReconciler) syncCordon(
 			}
 
 		// If the pod was cordoned only because its Kubernetes node was, and that node is no longer
-		// cordoned, reverse it: uncordon the pod and undrain the Slurm node. A pod-cordon set by
-		// anything else carries no source and falls through to the next case, which keeps it.
+		// cordoned, reverse it: uncordon the pod and undrain the Slurm node. Any other pod-cordon
+		// falls through to the next case, which keeps it.
 		case podIsCordoned && podCordonedByNode:
 			logger.Info("Kubernetes node uncordoned externally, uncordoning pod",
 				"pod", klog.KObj(pod), "node", node.Name)
@@ -1454,7 +1454,7 @@ func (r *NodeSetReconciler) processCondemned(
 		durationStore.Push(nodesetKey, 30*time.Second)
 		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
 		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
-		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true, "")
+		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true, slinkyv1beta1.PodCordonSourceTermination)
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in")
@@ -1575,13 +1575,11 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 
 // makePodCordon will cordon the pod, recording why in AnnotationPodCordonSource.
 //
-// With source PodCordonSourceNode the cordon is propagated from the Kubernetes node: a pod that is not
-// cordoned yet gets the cordon together with the source, so that uncordoning the node can reverse it.
-// A pod that is already cordoned for another reason keeps that cordon unmarked -- the node must not
-// take over, and later release, a cordon it did not set.
-//
-// With an empty source the operator cordons the pod for its own reasons (e.g. pending termination), or
-// keeps a cordon set by a user, so any node source is dropped: the cordon no longer follows the node.
+// A pod that is not cordoned yet gets the cordon together with the given source; an empty source leaves
+// it unmarked. A pod that is already cordoned keeps its source, so that a cordon is only ever released by
+// whoever set it: neither the node nor termination may take over, and later release, a cordon set by a
+// user. The one exception is termination taking over a cordon propagated from the node, so that
+// uncordoning the node does not undrain a pod pending termination.
 func (r *NodeSetReconciler) makePodCordon(
 	ctx context.Context,
 	pod *corev1.Pod,
@@ -1591,9 +1589,12 @@ func (r *NodeSetReconciler) makePodCordon(
 
 	cordoned := podutils.IsPodCordon(pod)
 	current := pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource]
-	want := ""
-	if source == slinkyv1beta1.PodCordonSourceNode && (!cordoned || current == slinkyv1beta1.PodCordonSourceNode) {
-		want = slinkyv1beta1.PodCordonSourceNode
+	want := current
+	switch {
+	case !cordoned:
+		want = source
+	case source == slinkyv1beta1.PodCordonSourceTermination && current == slinkyv1beta1.PodCordonSourceNode:
+		want = slinkyv1beta1.PodCordonSourceTermination
 	}
 	if cordoned && current == want {
 		return nil
@@ -1674,6 +1675,12 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 	if r.isNodeCordoned(ctx, pod) {
 		logger.V(1).Info("Skipping uncordon for pod on externally cordoned node",
 			"node", pod.Spec.NodeName)
+		return nil // Skip
+	}
+
+	// The pod may have been cordoned by a user, whose cordon is not ours to release
+	if podutils.IsPodCordon(pod) && !podutils.IsPodCordonedByOperator(pod) {
+		logger.V(1).Info("Skipping uncordon for pod which was not cordoned by the operator")
 		return nil // Skip
 	}
 

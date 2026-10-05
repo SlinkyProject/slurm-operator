@@ -19,10 +19,10 @@ const (
 	// AnnotationPodCordon indicates NodeSet Pods that should be DRAIN[ING|ED] in Slurm.
 	AnnotationPodCordon = NodeSetPrefix + "pod-cordon"
 
-	// AnnotationPodCordonSource records why the operator set AnnotationPodCordon on a NodeSet Pod. It is set to
-	// PodCordonSourceNode only when the operator cordons the Pod because the Kubernetes node it runs on was cordoned,
-	// so that uncordoning that node reverses this cordon, and only this one. A pod-cordon set by anything else, a user
-	// included, carries no source and is left in place when the node is uncordoned.
+	// AnnotationPodCordonSource records why the operator set AnnotationPodCordon on a NodeSet Pod, so that the operator
+	// only ever releases a cordon that it set itself: PodCordonSourceNode when the Kubernetes node the Pod runs on was
+	// cordoned, PodCordonSourceTermination when the Pod is pending termination. A pod-cordon set by anything else, a
+	// user included, carries no source and is left in place until whoever set it removes it.
 	// NOTE: this annotation is managed by the operator and should not be set by users.
 	AnnotationPodCordonSource = NodeSetPrefix + "pod-cordon-source"
 
@@ -43,6 +43,9 @@ const (
 const (
 	// PodCordonSourceNode marks a pod-cordon that the operator propagated from a cordoned Kubernetes node.
 	PodCordonSourceNode = "node"
+	// PodCordonSourceTermination marks a pod-cordon that the operator set to drain a Pod pending termination, e.g. for
+	// scale-in or a rolling update.
+	PodCordonSourceTermination = "termination"
 )
 
 // Well Known Annotations for Objects of type corev1.Node
