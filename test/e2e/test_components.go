@@ -1054,7 +1054,19 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 
 			setNodeUnschedulable(ctx, t, crClient, targetNodeName, false)
 			restoreNodeSetStatefulSet(ctx, t, crClient, nodesetKey, originalScalingMode, originalReplicas, originalSelector)
-			checkNodeSetReplicas(crClient, ctx, t, config, nodesetKey)
+			// Replica counts can still describe the DaemonSet pod. Wait for the
+			// named StatefulSet pod before the next feature uses it.
+			err = wait.For(
+				conditions.New(config.Client().Resources()).ResourceMatch(workerPod, func(object k8s.Object) bool {
+					pod := object.(*corev1.Pod)
+					return pod.DeletionTimestamp.IsZero() && podReady(pod)
+				}),
+				wait.WithContext(ctx),
+				wait.WithTimeout(2*time.Minute),
+				wait.WithInterval(5*time.Second),
+				wait.WithImmediate(),
+			)
+			require.NoError(t, err, "timed out waiting for restored StatefulSet NodeSet pod %s/%s to be ready", workerPod.Namespace, workerPod.Name)
 
 			return ctx
 		}).Feature()
