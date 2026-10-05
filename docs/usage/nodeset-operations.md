@@ -91,6 +91,20 @@ kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-
 The operator will undrain the Slurm node, provided the Kubernetes node is not
 cordoned and the drain reason was set by the operator.
 
+A pod cordoned this way stays cordoned when its Kubernetes node is cordoned and
+later uncordoned. Uncordoning a node reverses only the cordons that the operator
+propagated from that node, which it marks with the
+`nodeset.slinky.slurm.net/pod-cordon-source=node` annotation. To keep such a
+propagated cordon after the node is uncordoned, remove the marker:
+
+```sh
+kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-source-
+```
+
+Pods that an operator version without this marker cordoned for their node keep
+the cordon after the node is uncordoned; remove the `pod-cordon` annotation from
+them once, as shown above.
+
 ## Custom Drain Reasons
 
 When a Kubernetes node is cordoned, the operator cordons all NodeSet pods on the

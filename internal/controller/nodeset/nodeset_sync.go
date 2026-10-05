@@ -515,6 +515,7 @@ func (r *NodeSetReconciler) syncCordon(
 
 		nodeIsCordoned := node.Spec.Unschedulable
 		podIsCordoned := podutils.IsPodCordon(pod)
+		podCordonedByNode := podutils.IsPodCordonedByNode(pod)
 		slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
 		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
@@ -529,10 +530,12 @@ func (r *NodeSetReconciler) syncCordon(
 		case !ourReason, slurmNodeIsUnresponsive:
 			return nil
 
-		// If Kubernetes node is cordoned but pod isn't, cordon the pod
+		// If Kubernetes node is cordoned, cordon the pod
 		case nodeIsCordoned:
-			logger.Info("Kubernetes node cordoned externally, cordoning pod",
-				"pod", klog.KObj(pod), "node", node.Name)
+			if !podIsCordoned {
+				logger.Info("Kubernetes node cordoned externally, cordoning pod",
+					"pod", klog.KObj(pod), "node", node.Name)
+			}
 			reason := fmt.Sprintf("Node (%s) was cordoned, Pod (%s) must be cordoned",
 				pod.Spec.NodeName, klog.KObj(pod))
 
@@ -568,17 +571,33 @@ func (r *NodeSetReconciler) syncCordon(
 				}
 			}
 
-			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
-				"Cordoning Pod %s: Kubernetes node %s was cordoned", klog.KObj(pod), name)
+			if !podIsCordoned {
+				r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeCordonReason, "Cordon",
+					"Cordoning Pod %s: Kubernetes node %s was cordoned", klog.KObj(pod), name)
+			}
 
-			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
+			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false,
+				slinkyv1beta1.PodCordonSourceNode); err != nil {
+				return err
+			}
+
+		// If the pod was cordoned only because its Kubernetes node was, and that node is no longer
+		// cordoned, reverse it: uncordon the pod and undrain the Slurm node. A pod-cordon set by
+		// anything else carries no source and falls through to the next case, which keeps it.
+		case podIsCordoned && podCordonedByNode:
+			logger.Info("Kubernetes node uncordoned externally, uncordoning pod",
+				"pod", klog.KObj(pod), "node", node.Name)
+			r.eventRecorder.Eventf(nodeset, pod, corev1.EventTypeNormal, NodeUncordonReason, "Uncordon",
+				"Uncordoning Pod %s: Kubernetes node %s was uncordoned", klog.KObj(pod), node.Name)
+			reason := fmt.Sprintf("Node (%s) was uncordoned", pod.Spec.NodeName)
+			if err := r.makePodUncordonAndUndrain(ctx, nodeset, pod, reason); err != nil {
 				return err
 			}
 
 		// If pod is cordoned, drain the Slurm node
 		case podIsCordoned:
 			reason := fmt.Sprintf("Pod (%s) was cordoned", klog.KObj(pod))
-			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
+			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false, ""); err != nil {
 				return err
 			}
 
@@ -1435,7 +1454,7 @@ func (r *NodeSetReconciler) processCondemned(
 		durationStore.Push(nodesetKey, 30*time.Second)
 		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
 		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
-		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true)
+		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true, "")
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in")
@@ -1528,14 +1547,16 @@ func (r *NodeSetReconciler) processNodeSetPod(
 }
 
 // makePodCordonAndDrain will cordon the pod and drain the corresponding Slurm node.
+// See makePodCordon for the meaning of source.
 func (r *NodeSetReconciler) makePodCordonAndDrain(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	pod *corev1.Pod,
 	reason string,
 	overrideReason bool,
+	source string,
 ) error {
-	if err := r.makePodCordon(ctx, pod); err != nil {
+	if err := r.makePodCordon(ctx, pod, source); err != nil {
 		return err
 	}
 
@@ -1552,23 +1573,45 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	return nil
 }
 
-// makePodCordon will cordon the pod.
+// makePodCordon will cordon the pod, recording why in AnnotationPodCordonSource.
+//
+// With source PodCordonSourceNode the cordon is propagated from the Kubernetes node: a pod that is not
+// cordoned yet gets the cordon together with the source, so that uncordoning the node can reverse it.
+// A pod that is already cordoned for another reason keeps that cordon unmarked -- the node must not
+// take over, and later release, a cordon it did not set.
+//
+// With an empty source the operator cordons the pod for its own reasons (e.g. pending termination), or
+// keeps a cordon set by a user, so any node source is dropped: the cordon no longer follows the node.
 func (r *NodeSetReconciler) makePodCordon(
 	ctx context.Context,
 	pod *corev1.Pod,
+	source string,
 ) error {
 	logger := log.FromContext(ctx)
 
-	if podutils.IsPodCordon(pod) {
+	cordoned := podutils.IsPodCordon(pod)
+	current := pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource]
+	want := ""
+	if source == slinkyv1beta1.PodCordonSourceNode && (!cordoned || current == slinkyv1beta1.PodCordonSourceNode) {
+		want = slinkyv1beta1.PodCordonSourceNode
+	}
+	if cordoned && current == want {
 		return nil
 	}
 
-	logger.Info("Cordon Pod, pending deletion", "Pod", klog.KObj(pod))
+	if !cordoned {
+		logger.Info("Cordon Pod, pending deletion", "Pod", klog.KObj(pod))
+	}
 	mutateFn := func(pod *corev1.Pod) error {
 		if pod.Annotations == nil {
 			pod.Annotations = make(map[string]string)
 		}
 		pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+		if want != "" {
+			pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = want
+		} else {
+			delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
+		}
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
@@ -1598,17 +1641,22 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 	return nil
 }
 
-// makePodUncordonAndUndrain will uncordon the pod.
+// makePodUncordon will uncordon the pod, dropping AnnotationPodCordonSource with it.
 func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod) error {
 	logger := log.FromContext(ctx)
 
-	if !podutils.IsPodCordon(pod) {
+	_, hasSource := pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource]
+	cordoned := podutils.IsPodCordon(pod)
+	if !cordoned && !hasSource {
 		return nil
 	}
 
-	logger.Info("Uncordon Pod", "Pod", klog.KObj(pod))
+	if cordoned {
+		logger.Info("Uncordon Pod", "Pod", klog.KObj(pod))
+	}
 	mutateFn := func(pod *corev1.Pod) error {
 		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordon)
+		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
