@@ -396,7 +396,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: generate-docs
 generate-docs: pandoc-bin
 # Use pandoc to generate index.rst from README.md
-	$(PANDOC) --quiet README.md -o docs/index.rst
+	$(PANDOC) --quiet --from=markdown+alerts README.md -o docs/index.rst
 
 # Add a newline at the base of index.rst
 	printf '\n' >> docs/index.rst
