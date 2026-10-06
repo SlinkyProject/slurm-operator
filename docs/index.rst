@@ -117,8 +117,10 @@ Changes to the Slurm configuration files are automatically detected and
 the Slurm cluster is reconfigured seamlessly with zero downtime of the
 Slurm control-plane.
 
-   [!NOTE] The kubelet’s ``configMapAndSecretChangeDetectionStrategy``
-   and ``syncFrequency`` settings directly affect when pods have their
+.. note::
+
+   The kubelet’s ``configMapAndSecretChangeDetectionStrategy`` and
+   ``syncFrequency`` settings directly affect when pods have their
    mounted ConfigMaps and Secrets updated. By default, the kubelet is in
    ``Watch`` mode with a polling frequency of 60 seconds.
 
