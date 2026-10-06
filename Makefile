@@ -125,6 +125,10 @@ clean: ## Clean executable files.
 
 KIND_CLUSTER_NAME ?= slurm-operator-dev
 
+.PHONY: kind-image
+kind-image: ## Print the pinned Kind node image for KUBERNETES_VERSION.
+	@./hack/kind.sh --print-image
+
 .PHONY: kind-start
 kind-start: ## Create a Kind cluster and deploy the Slurm Operator stack.
 	./hack/kind.sh --core $(KIND_CLUSTER_NAME)
@@ -154,6 +158,7 @@ debug: values-dev deploy-crds ## Run Delve-enabled Slurm Operator components and
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 E2E_ARTIFACTS_DIR ?= $(shell pwd)/e2e-artifacts
+E2E_KUBE_CONTEXT ?= kind-$(KIND_CLUSTER_NAME)
 
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -334,7 +339,7 @@ endif
 .PHONY: install-dev
 install-dev: ## Install binaries for development environment.
 	go install github.com/go-delve/delve/cmd/dlv@latest
-	go install sigs.k8s.io/kind@latest
+	go install sigs.k8s.io/kind@v0.33.0
 	go install sigs.k8s.io/cloud-provider-kind@latest
 
 .PHONY: helm-validate
@@ -571,14 +576,14 @@ test: envtest ## Run tests.
 
 ## Launch end-to-end tests
 ##
-## Running e2e tests requires that the current Kubeconfig references a cluster
-## with Slurm-operator and its CRDs installed. Test-only dependencies are added
-## to the current cluster without replacing the developer Slurm installation.
+## E2E_KUBE_CONTEXT must name a cluster with Slurm-operator and its CRDs installed.
+## Test-only dependencies are added to that cluster without replacing the developer
+## Slurm installation.
 .PHONY: test-e2e
-test-e2e: $(GOTESTSUM)
-	./hack/kind.sh --existing-cluster --extras
+test-e2e: $(GOTESTSUM) ## Run end-to-end tests against E2E_KUBE_CONTEXT.
 	mkdir -p "$(E2E_ARTIFACTS_DIR)"
-	E2E_ARTIFACTS_DIR="$(E2E_ARTIFACTS_DIR)" $(GOTESTSUM) \
+	E2E_ARTIFACTS_DIR="$(E2E_ARTIFACTS_DIR)" E2E_KUBE_CONTEXT="$(E2E_KUBE_CONTEXT)" \
+		./hack/test-e2e.sh $(GOTESTSUM) \
 		--format testname \
 		--junitfile "$(E2E_ARTIFACTS_DIR)/junit.xml" \
 		--jsonfile "$(E2E_ARTIFACTS_DIR)/test-output.json" \
