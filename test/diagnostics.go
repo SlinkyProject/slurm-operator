@@ -119,11 +119,17 @@ func captureKubectl(t *testing.T, dir, filename string, args ...string) {
 	t.Helper()
 
 	output, err := runKubectl(args...)
-	header := []byte("$ kubectl " + strings.Join(args, " ") + "\n")
+	header := []byte("$ kubectl --context " + os.Getenv(E2EKubeContextEnvironment) + " " + strings.Join(args, " ") + "\n")
 	writeDiagnosticFile(t, filepath.Join(dir, filename), append(header, diagnosticOutput(err, output)...))
 }
 
 func runKubectl(args ...string) ([]byte, error) {
+	kubeContext := os.Getenv(E2EKubeContextEnvironment)
+	if kubeContext == "" {
+		return nil, fmt.Errorf("%s must name the kubeconfig context of the e2e cluster", E2EKubeContextEnvironment)
+	}
+	args = append([]string{"--context", kubeContext}, args...)
+
 	ctx, cancel := context.WithTimeout(context.Background(), diagnosticTimeout)
 	defer cancel()
 
