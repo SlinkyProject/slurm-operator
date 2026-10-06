@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -686,6 +687,166 @@ func TestNodeSetReconciler_Sync_DeletionStillSyncsStatus(t *testing.T) {
 		"status must still be synced while a NodeSet is terminating")
 }
 
+// TestNodeSetReconciler_sync_NodeUncordonUndrains guards against regressing to a pod-cordon, and
+// the Slurm DRAIN behind it, that outlives the Kubernetes node cordon it was propagated from. Only
+// RollingUpdate used to reverse it, as a side effect of syncPodUncordon; OnDelete and ScheduledUpdate
+// never process pods there, so the Slurm node stayed drained after `kubectl uncordon`.
+func TestNodeSetReconciler_sync_NodeUncordonUndrains(t *testing.T) {
+	for _, strategy := range []slinkyv1beta1.NodeSetUpdateStrategyType{
+		slinkyv1beta1.RollingUpdateNodeSetStrategyType,
+		slinkyv1beta1.OnDeleteNodeSetStrategyType,
+		slinkyv1beta1.ScheduledUpdateNodeSetStrategyType,
+	} {
+		t.Run(string(strategy), func(t *testing.T) {
+			ctx := context.TODO()
+			hash := "test-hash"
+			controller := &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: corev1.NamespaceDefault,
+					Name:      "slurm",
+				},
+			}
+			nodeset := newNodeSet("foo", controller.Name, 1)
+			nodeset.Spec.UpdateStrategy.Type = strategy
+			pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+			pod.Spec.NodeName = "kube-node-0"
+			pod.Status.Phase = corev1.PodRunning
+			pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+			node := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: pod.Spec.NodeName},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			}
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{*newNodeSetPodSlurmNode(pod)},
+			}
+			k8sClient := fake.NewClientBuilder().
+				WithObjects(controller, nodeset, pod, node).
+				WithStatusSubresource(&corev1.Pod{}).
+				Build()
+			r := newNodeSetController(k8sClient, newClientMap(controller.Name, newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)))
+
+			syncAndGet := func() *corev1.Pod {
+				t.Helper()
+				gotNodeSet := &slinkyv1beta1.NodeSet{}
+				require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(nodeset), gotNodeSet))
+				gotPod := &corev1.Pod{}
+				require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod), gotPod))
+				require.NoError(t, r.sync(ctx, gotNodeSet, []*corev1.Pod{gotPod}, hash))
+				require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod), gotPod))
+				return gotPod
+			}
+
+			gotPod := syncAndGet()
+			require.True(t, podutils.IsPodCordon(gotPod), "pod must be cordoned while its node is")
+			isDrain, err := r.slurmControl.IsNodeDrain(ctx, nodeset, gotPod)
+			require.NoError(t, err)
+			require.True(t, isDrain, "Slurm node must be drained while its Kubernetes node is cordoned")
+
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(node), node))
+			node.Spec.Unschedulable = false
+			require.NoError(t, r.Update(ctx, node))
+
+			gotPod = syncAndGet()
+			require.False(t, podutils.IsPodCordon(gotPod), "pod must be uncordoned with its node")
+			require.NotContains(t, gotPod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
+			isDrain, err = r.slurmControl.IsNodeDrain(ctx, nodeset, gotPod)
+			require.NoError(t, err)
+			require.False(t, isDrain, "Slurm node must be undrained once its Kubernetes node is uncordoned")
+		})
+	}
+}
+
+// newCordonSyncEnv returns a reconciler with one running, up-to-date NodeSet pod with the given annotations on a
+// schedulable Kubernetes node, and a sync function that runs the full sync on the pod and returns it updated.
+func newCordonSyncEnv(
+	t *testing.T,
+	strategy slinkyv1beta1.NodeSetUpdateStrategyType,
+	annotations map[string]string,
+	slurmNodeReason string,
+) (*NodeSetReconciler, *slinkyv1beta1.NodeSet, func() *corev1.Pod) {
+	t.Helper()
+	ctx := context.TODO()
+	hash := "test-hash"
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.Spec.UpdateStrategy.Type = strategy
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
+	pod.Spec.NodeName = "kube-node-0"
+	pod.Status.Phase = corev1.PodRunning
+	pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+	maps.Copy(pod.Annotations, annotations)
+	node := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: pod.Spec.NodeName}}
+	slurmNode := newNodeSetPodSlurmNode(pod)
+	if slurmNodeReason != "" {
+		slurmNode.State = ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN})
+		slurmNode.Reason = ptr.To(slurmcontrol.FormatNodeReason(slurmNodeReason))
+	}
+	slurmNodeList := &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{*slurmNode}}
+	k8sClient := fake.NewClientBuilder().
+		WithObjects(controller, nodeset, pod, node).
+		WithStatusSubresource(&corev1.Pod{}).
+		Build()
+	r := newNodeSetController(k8sClient, newClientMap(controller.Name, newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)))
+
+	syncAndGet := func() *corev1.Pod {
+		t.Helper()
+		gotNodeSet := &slinkyv1beta1.NodeSet{}
+		require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(nodeset), gotNodeSet))
+		gotPod := &corev1.Pod{}
+		require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod), gotPod))
+		require.NoError(t, r.sync(ctx, gotNodeSet, []*corev1.Pod{gotPod}, hash))
+		require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod), gotPod))
+		return gotPod
+	}
+	return r, nodeset, syncAndGet
+}
+
+// TestNodeSetReconciler_sync_UserPodCordonHolds guards against regressing to a pod-cordon set by a user that the
+// operator releases on its own. Under RollingUpdate, syncPodUncordon used to uncordon every pod it kept, so a user's
+// cordon was undone in the same reconcile that drained the Slurm node for it.
+func TestNodeSetReconciler_sync_UserPodCordonHolds(t *testing.T) {
+	for _, strategy := range []slinkyv1beta1.NodeSetUpdateStrategyType{
+		slinkyv1beta1.RollingUpdateNodeSetStrategyType,
+		slinkyv1beta1.OnDeleteNodeSetStrategyType,
+		slinkyv1beta1.ScheduledUpdateNodeSetStrategyType,
+	} {
+		t.Run(string(strategy), func(t *testing.T) {
+			r, nodeset, syncAndGet := newCordonSyncEnv(t, strategy,
+				map[string]string{slinkyv1beta1.AnnotationPodCordon: "true"}, "")
+			for range 2 {
+				gotPod := syncAndGet()
+				require.True(t, podutils.IsPodCordon(gotPod), "a user's pod-cordon must hold")
+				require.NotContains(t, gotPod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
+				isDrain, err := r.slurmControl.IsNodeDrain(context.TODO(), nodeset, gotPod)
+				require.NoError(t, err)
+				require.True(t, isDrain, "Slurm node must stay drained while a user cordons its pod")
+			}
+		})
+	}
+}
+
+// TestNodeSetReconciler_sync_KeptPodUncordoned checks that syncPodUncordon still releases the cordon the operator
+// set on a pod pending termination, once the pod is kept after all (e.g. the update or scale-in was reverted).
+func TestNodeSetReconciler_sync_KeptPodUncordoned(t *testing.T) {
+	r, nodeset, syncAndGet := newCordonSyncEnv(t, slinkyv1beta1.RollingUpdateNodeSetStrategyType,
+		map[string]string{
+			slinkyv1beta1.AnnotationPodCordon:       "true",
+			slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+		},
+		"Pod (default/foo-0) is pending termination for scale-in")
+	gotPod := syncAndGet()
+	require.False(t, podutils.IsPodCordon(gotPod), "a kept pod must be uncordoned")
+	require.NotContains(t, gotPod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
+	isDrain, err := r.slurmControl.IsNodeDrain(context.TODO(), nodeset, gotPod)
+	require.NoError(t, err)
+	require.False(t, isDrain, "Slurm node of a kept pod must be undrained")
+}
+
 func TestNodeSetReconciler_sync(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -952,6 +1113,7 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 				pod0.Annotations = make(map[string]string)
 			}
 			pod0.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+			pod0.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceTermination
 			slurmNodeName := nodesetutils.GetSlurmNodeName(pod0)
 			nodeList := &slurmtypes.V0044NodeList{
 				Items: []slurmtypes.V0044Node{
@@ -1006,6 +1168,7 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 					pod.Annotations = make(map[string]string)
 				}
 				pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+				pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceTermination
 				return pod
 			}
 			pod1 := cordonedPod(1)
@@ -1160,6 +1323,8 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 		wantDrain      bool
 		wantDelete     bool
 		wantPodDeleted bool
+		// wantPodCordonSource is checked for pods that are kept, and must be cordoned
+		wantPodCordonSource string
 	}
 	tests := []testCaseFields{
 		func() testCaseFields {
@@ -1210,10 +1375,132 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:        false,
-				wantDrain:      true,
-				wantDelete:     false,
-				wantPodDeleted: false,
+				wantErr:             false,
+				wantDrain:           true,
+				wantDelete:          false,
+				wantPodDeleted:      false,
+				wantPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			pods := []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "pod-0",
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon:       "true",
+							slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			}
+			podList := &corev1.PodList{
+				Items: structutils.DereferenceList(pods),
+			}
+			client := fake.NewFakeClient(nodeset, podList)
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+
+			// Scale-in takes over a cordon propagated from the Kubernetes node, so that
+			// uncordoning the node can no longer undrain a pod pending termination.
+			return testCaseFields{
+				name: "drain takes over a cordon propagated from the node",
+				fields: fields{
+					Client:    client,
+					ClientMap: clientMap,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset,
+					condemned: pods,
+					i:         0,
+				},
+				wantErr:             false,
+				wantDrain:           true,
+				wantDelete:          false,
+				wantPodDeleted:      false,
+				wantPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			pods := []*corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: corev1.NamespaceDefault,
+						Name:      "pod-0",
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon: "true",
+						},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodRunning,
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			}
+			podList := &corev1.PodList{
+				Items: structutils.DereferenceList(pods),
+			}
+			client := fake.NewFakeClient(nodeset, podList)
+			slurmNodeList := &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			clientMap := newClientMap(controller.Name, slurmClient)
+
+			// Scale-in does not take over a cordon set by a user, so that the cordon
+			// stays the user's to release if the pod is kept after all.
+			return testCaseFields{
+				name: "drain keeps a user cordon unmarked",
+				fields: fields{
+					Client:    client,
+					ClientMap: clientMap,
+				},
+				args: args{
+					ctx:       context.TODO(),
+					nodeset:   nodeset,
+					condemned: pods,
+					i:         0,
+				},
+				wantErr:             false,
+				wantDrain:           true,
+				wantDelete:          false,
+				wantPodDeleted:      false,
+				wantPodCordonSource: "",
 			}
 		}(),
 		func() testCaseFields {
@@ -1422,10 +1709,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 					condemned: pods,
 					i:         0,
 				},
-				wantErr:        false,
-				wantDrain:      true,
-				wantDelete:     false,
-				wantPodDeleted: false,
+				wantErr:             false,
+				wantDrain:           true,
+				wantDelete:          false,
+				wantPodDeleted:      false,
+				wantPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
 			}
 		}(),
 		func() testCaseFields {
@@ -1578,6 +1866,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 			}
 			if !tt.wantPodDeleted && !tt.wantErr {
 				require.True(t, podStillExists, "expected pod to still exist")
+				if tt.wantDrain {
+					require.True(t, podutils.IsPodCordon(pod), "a pod pending termination must be cordoned")
+					require.Equal(t, tt.wantPodCordonSource, pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource],
+						"pod-cordon-source annotation")
+				}
 			}
 		})
 	}
@@ -1604,6 +1897,18 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		return p
 	}
 
+	newPodCordonedByNode := func() *corev1.Pod {
+		p := newPod(true)
+		p.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceNode
+		return p
+	}
+
+	newPodCordonedForTermination := func() *corev1.Pod {
+		p := newPod(true)
+		p.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceTermination
+		return p
+	}
+
 	slurmNodeName := nodesetutils.GetSlurmNodeName(newPod(false))
 
 	tests := []struct {
@@ -1616,6 +1921,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		wantPodCordoned          bool
 		wantSlurmDrain           bool
 		wantReasonSub            string
+		wantPodCordonSource      string
 	}{
 		{
 			name: "kubernetes node cordoned cordons pod and drains slurm",
@@ -1634,9 +1940,10 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 					},
 				},
 			},
-			wantPodCordoned: true,
-			wantSlurmDrain:  true,
-			wantReasonSub:   "kube-node-1",
+			wantPodCordoned:     true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			wantSlurmDrain:      true,
+			wantReasonSub:       "kube-node-1",
 		},
 		{
 			name: "kubernetes node cordon reason annotation is propagated to slurm",
@@ -1660,9 +1967,10 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 					},
 				},
 			},
-			wantPodCordoned: true,
-			wantSlurmDrain:  true,
-			wantReasonSub:   "custom maintenance window",
+			wantPodCordoned:     true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			wantSlurmDrain:      true,
+			wantReasonSub:       "custom maintenance window",
 		},
 		{
 			name: "cordoned pod on schedulable node drains slurm",
@@ -1778,6 +2086,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			},
 			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeDiskPressure},
 			wantPodCordoned:          true,
+			wantPodCordonSource:      slinkyv1beta1.PodCordonSourceNode,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "(KubeletHasDiskPressure: POD has insufficient ephemeral storage)",
 		},
@@ -1818,9 +2127,10 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				corev1.NodeMemoryPressure,
 				corev1.NodeDiskPressure,
 			},
-			wantPodCordoned: true,
-			wantSlurmDrain:  true,
-			wantReasonSub:   "(KubeletHasInsufficientMemory: Memory pressure); (KubeletHasDiskPressure: Disk pressure)",
+			wantPodCordoned:     true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			wantSlurmDrain:      true,
+			wantReasonSub:       "(KubeletHasInsufficientMemory: Memory pressure); (KubeletHasDiskPressure: Disk pressure)",
 		},
 		{
 			name: "propagated type not true falls back to default cordon reason",
@@ -1851,6 +2161,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			},
 			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeDiskPressure},
 			wantPodCordoned:          true,
+			wantPodCordonSource:      slinkyv1beta1.PodCordonSourceNode,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "kube-node-1",
 		},
@@ -1883,6 +2194,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			},
 			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodeMemoryPressure},
 			wantPodCordoned:          true,
+			wantPodCordonSource:      slinkyv1beta1.PodCordonSourceNode,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "kube-node-1",
 		},
@@ -1920,8 +2232,161 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			},
 			propagatedNodeConditions: []corev1.NodeConditionType{corev1.NodePIDPressure},
 			wantPodCordoned:          true,
+			wantPodCordonSource:      slinkyv1beta1.PodCordonSourceNode,
 			wantSlurmDrain:           true,
 			wantReasonSub:            "annotation overrides conditions",
+		},
+		{
+			name: "kubernetes node cordoned keeps a user pod cordon unmarked",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+		},
+		{
+			name: "kubernetes node uncordoned reverses the pod cordon propagated from it",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPodCordonedByNode(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+							Reason: ptr.To("slurm-operator: Node (kube-node-1) was cordoned, Pod (default/nodeset-a-0) must be cordoned"),
+						},
+					},
+				},
+			},
+			wantPodCordoned: false,
+			wantSlurmDrain:  false,
+		},
+		{
+			name: "kubernetes node uncordoned keeps a user pod cordon",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+							Reason: ptr.To("slurm-operator: Pod (default/nodeset-a-0) was cordoned"),
+						},
+					},
+				},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+		},
+		{
+			name: "kubernetes node uncordoned keeps a pod cordoned for termination",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPodCordonedForTermination(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+							Reason: ptr.To("slurm-operator: Pod (default/nodeset-a-0) is pending termination for scale-in"),
+						},
+					},
+				},
+			},
+			wantPodCordoned:     true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+			wantSlurmDrain:      true,
+		},
+		{
+			name: "kubernetes node cordoned keeps a pod cordoned for termination",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPodCordonedForTermination(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+							Reason: ptr.To("slurm-operator: Pod (default/nodeset-a-0) is pending termination for scale-in"),
+						},
+					},
+				},
+			},
+			wantPodCordoned:     true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+			wantSlurmDrain:      true,
+		},
+		{
+			name: "kubernetes node uncordoned leaves an external slurm drain alone",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: newPodCordonedByNode(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:   ptr.To(slurmNodeName),
+							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+							Reason: ptr.To("manual operator drain outside slurm-operator"),
+						},
+					},
+				},
+			},
+			wantPodCordoned:     true,
+			wantSlurmDrain:      true,
+			wantPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+		},
+		{
+			name: "stale pod cordon source is dropped from an uncordoned pod",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: func() *corev1.Pod {
+				p := newPod(false)
+				p.Annotations = map[string]string{slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode}
+				return p
+			}(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name:  ptr.To(slurmNodeName),
+							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						},
+					},
+				},
+			},
+			wantPodCordoned: false,
+			wantSlurmDrain:  false,
 		},
 	}
 	for _, tt := range tests {
@@ -1942,6 +2407,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			gotPod := &corev1.Pod{}
 			require.NoError(t, r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod))
 			require.Equal(t, tt.wantPodCordoned, podutils.IsPodCordon(gotPod), "IsPodCordon() result")
+			require.Equal(t, tt.wantPodCordonSource, gotPod.Annotations[slinkyv1beta1.AnnotationPodCordonSource],
+				"pod-cordon-source annotation")
 
 			gotNode := &slurmtypes.V0044Node{}
 			mapKey := types.NamespacedName{
@@ -2472,7 +2939,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				Namespace: nodeset.Namespace,
 				Name:      nodeset.Spec.ControllerRef.Name,
 			}
-			err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
+			err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason, "")
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -2512,19 +2979,47 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 			},
 		},
 	}
+	pod3 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-2",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationPodCordon:       "true",
+				slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			},
+		},
+	}
+	pod4 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-3",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationPodCordon:       "true",
+				slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceTermination,
+			},
+		},
+	}
+	pod5 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-4",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			},
+		},
+	}
 	type fields struct {
 		Client    client.Client
 		ClientMap *clientmap.ClientMap
 	}
 	type args struct {
-		ctx context.Context
-		pod *corev1.Pod
+		ctx    context.Context
+		pod    *corev1.Pod
+		source string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name       string
+		fields     fields
+		args       args
+		wantErr    bool
+		wantSource string
 	}{
 
 		{
@@ -2560,11 +3055,126 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "not cordoned, cordoned for its node",
+			fields: fields{
+				Client: fake.NewFakeClient(pod1.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod1.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceNode,
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceNode,
+		},
+		{
+			name: "cordoned for its node, cordoned for its node again",
+			fields: fields{
+				Client: fake.NewFakeClient(pod3.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod3.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceNode,
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceNode,
+		},
+		{
+			name: "cordoned otherwise, node does not take the cordon over",
+			fields: fields{
+				Client: fake.NewFakeClient(pod2.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod2.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceNode,
+			},
+			wantErr:    false,
+			wantSource: "",
+		},
+		{
+			name: "cordoned for its node, termination takes the cordon over",
+			fields: fields{
+				Client: fake.NewFakeClient(pod3.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod3.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceTermination,
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceTermination,
+		},
+		{
+			name: "cordoned for its node, kept as is without a source",
+			fields: fields{
+				Client: fake.NewFakeClient(pod3.DeepCopy()),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: pod3.DeepCopy(),
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceNode,
+		},
+		{
+			name: "not cordoned, cordoned for termination",
+			fields: fields{
+				Client: fake.NewFakeClient(pod1.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod1.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceTermination,
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceTermination,
+		},
+		{
+			name: "cordoned otherwise, termination does not take the cordon over",
+			fields: fields{
+				Client: fake.NewFakeClient(pod2.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod2.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceTermination,
+			},
+			wantErr:    false,
+			wantSource: "",
+		},
+		{
+			name: "cordoned for termination, node does not take the cordon over",
+			fields: fields{
+				Client: fake.NewFakeClient(pod4.DeepCopy()),
+			},
+			args: args{
+				ctx:    context.TODO(),
+				pod:    pod4.DeepCopy(),
+				source: slinkyv1beta1.PodCordonSourceNode,
+			},
+			wantErr:    false,
+			wantSource: slinkyv1beta1.PodCordonSourceTermination,
+		},
+		{
+			name: "not cordoned, stale source is replaced",
+			fields: fields{
+				Client: fake.NewFakeClient(pod5.DeepCopy()),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: pod5.DeepCopy(),
+			},
+			wantErr:    false,
+			wantSource: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			err := r.makePodCordon(tt.args.ctx, tt.args.pod)
+			err := r.makePodCordon(tt.args.ctx, tt.args.pod, tt.args.source)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -2576,6 +3186,8 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 				require.True(t, apierrors.IsNotFound(getErr), "client.Get() error = %v", getErr)
 			} else if !tt.wantErr {
 				require.True(t, podutils.IsPodCordon(gotPod), "IsPodCordon() = false")
+				require.Equal(t, tt.wantSource, gotPod.Annotations[slinkyv1beta1.AnnotationPodCordonSource],
+					"pod-cordon-source annotation")
 			}
 		})
 	}
@@ -2755,6 +3367,23 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 			Name: "pod-1",
 		},
 	}
+	pod3 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-2",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationPodCordon:       "true",
+				slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			},
+		},
+	}
+	pod4 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-3",
+			Annotations: map[string]string{
+				slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+			},
+		},
+	}
 	type fields struct {
 		Client client.Client
 	}
@@ -2801,6 +3430,28 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "cordoned for its node",
+			fields: fields{
+				Client: fake.NewFakeClient(pod3.DeepCopy()),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: pod3.DeepCopy(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "stale cordon source",
+			fields: fields{
+				Client: fake.NewFakeClient(pod4.DeepCopy()),
+			},
+			args: args{
+				ctx: context.TODO(),
+				pod: pod4.DeepCopy(),
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2817,6 +3468,8 @@ func TestNodeSetReconciler_makePodUncordon(t *testing.T) {
 				require.True(t, apierrors.IsNotFound(getErr), "client.Get() error = %v", getErr)
 			} else if !tt.wantErr {
 				require.False(t, podutils.IsPodCordon(gotPod), "IsPodCordon() = true, want false")
+				require.NotContains(t, gotPod.Annotations, slinkyv1beta1.AnnotationPodCordonSource,
+					"pod-cordon-source annotation must go with the cordon")
 			}
 		})
 	}
@@ -4097,7 +4750,34 @@ func Test_syncPodUncordon(t *testing.T) {
 	nodeset := newNodeSet("foo", controller.Name, 2)
 	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pod.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
+	pod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceTermination
 	pod.Spec.NodeName = "test-node"
+	userCordonedPod := pod.DeepCopy()
+	delete(userCordonedPod.Annotations, slinkyv1beta1.AnnotationPodCordonSource)
+	nodeCordonedPod := pod.DeepCopy()
+	nodeCordonedPod.Annotations[slinkyv1beta1.AnnotationPodCordonSource] = slinkyv1beta1.PodCordonSourceNode
+	schedulableNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-node",
+		},
+	}
+	drainedByOperator := func(reason string) *clientmap.ClientMap {
+		nodeList := &slurmtypes.V0044NodeList{
+			Items: []slurmtypes.V0044Node{
+				{
+					V0044Node: slurmapi.V0044Node{
+						Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+						State: ptr.To([]slurmapi.V0044NodeState{
+							slurmapi.V0044NodeStateIDLE,
+							slurmapi.V0044NodeStateDRAIN,
+						}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason(reason)),
+					},
+				},
+			},
+		}
+		return newClientMap(controller.Name, newFakeClientList(sinterceptor.Funcs{}, nodeList))
+	}
 
 	type fields struct {
 		Client    client.Client
@@ -4273,6 +4953,36 @@ func Test_syncPodUncordon(t *testing.T) {
 			wantErr:              false,
 			wantPodCordoned:      true,
 			wantSlurmNodeDrained: true,
+		},
+		{
+			name: "skip - pod not uncordoned when a user cordoned it",
+			fields: fields{
+				Client:    fake.NewFakeClient(nodeset.DeepCopy(), userCordonedPod.DeepCopy(), schedulableNode.DeepCopy()),
+				ClientMap: drainedByOperator("Pod (default/foo-0) was cordoned"),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     userCordonedPod.DeepCopy(),
+			},
+			wantErr:              false,
+			wantPodCordoned:      true,
+			wantSlurmNodeDrained: true,
+		},
+		{
+			name: "success - pod cordoned for its node uncordoned when node not cordoned",
+			fields: fields{
+				Client:    fake.NewFakeClient(nodeset.DeepCopy(), nodeCordonedPod.DeepCopy(), schedulableNode.DeepCopy()),
+				ClientMap: drainedByOperator("Node (test-node) was cordoned, Pod (default/foo-0) must be cordoned"),
+			},
+			args: args{
+				ctx:     context.TODO(),
+				nodeset: nodeset.DeepCopy(),
+				pod:     nodeCordonedPod.DeepCopy(),
+			},
+			wantErr:              false,
+			wantPodCordoned:      false,
+			wantSlurmNodeDrained: false,
 		},
 	}
 	for _, tt := range tests {
