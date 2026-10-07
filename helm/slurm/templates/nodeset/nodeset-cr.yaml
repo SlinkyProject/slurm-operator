@@ -63,6 +63,7 @@ spec:
   ordinalPadding: {{ $nodeset.ordinalPadding }}
   syncTopology: {{ $nodeset.syncTopology }}
   pinToNode: {{ $nodeset.pinToNode }}
+  publishSlurmNodeName: {{ $nodeset.publishSlurmNodeName }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
   pruneSlurmNodeRecords: {{ $nodeset.pruneSlurmNodeRecords }}
   oversubscribeNode: {{ $nodeset.oversubscribeNode }}
