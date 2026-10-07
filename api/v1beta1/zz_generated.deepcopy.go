@@ -629,6 +629,11 @@ func (in *NodeSetSpec) DeepCopyInto(out *NodeSetSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.PreferKubernetesNodeName != nil {
+		in, out := &in.PreferKubernetesNodeName, &out.PreferKubernetesNodeName
+		*out = new(bool)
+		**out = **in
+	}
 	if in.WorkloadDisruptionProtection != nil {
 		in, out := &in.WorkloadDisruptionProtection, &out.WorkloadDisruptionProtection
 		*out = new(bool)
