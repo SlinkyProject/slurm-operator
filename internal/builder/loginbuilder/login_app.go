@@ -299,6 +299,12 @@ func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinky
 					},
 				},
 			},
+			// Allow supervisord and its children to lower their OOM scores.
+			SecurityContext: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{
+					Add: []corev1.Capability{"SYS_RESOURCE"},
+				},
+			},
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
 				{Name: SackdVolume, MountPath: SackdDir},
