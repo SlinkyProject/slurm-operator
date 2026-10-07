@@ -704,6 +704,8 @@ loginsets: {}
 nodesetDefaults:
   # -- Enable use of this NodeSet.
   enabled: true
+  # -- Prefer Node-derived Slurm names for pinned, non-oversubscribed StatefulSets; otherwise use Pod hostnames. Immutable preference, defaults to true; set false to opt out. DaemonSet naming is unchanged.
+  preferKubernetesNodeName: true
   # -- Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`.
   replicas: 1
   # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
@@ -744,7 +746,7 @@ nodesetDefaults:
       # - name: nfs-home
       #   mountPath: /home
     # -- (corev1.Lifecycle) The container lifecycle hooks.
-    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down and drains it as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';`
+    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down and drains it as the pod terminates: `scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename="$SLURM_NODE_NAME" state=drain reason='slurm-operator: Pod is terminating';`
     # Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
     lifecycle: {}
       # The block below is the operator default. Uncomment and edit it to run
@@ -754,7 +756,9 @@ nodesetDefaults:
       #     command:
       #       - /usr/bin/sh
       #       - -c
-      #       - scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
+      #       - >-
+      #         scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating';
+      #         scontrol update nodename="$SLURM_NODE_NAME" state=drain reason='slurm-operator: Pod is terminating';
   # LogFile sidecar configurations.
   logfile:
     # -- (string \| object) The image to use.
