@@ -72,7 +72,7 @@ func (r *LoginSetWebhook) validateLoginSet(loginset *slinkyv1beta1.LoginSet) (ad
 		errs = append(errs, errors.New("controllerRef.name must not be empty"))
 	}
 
-	if loginset.Spec.SssdConfRef.Name == "" {
+	if loginset.Spec.SssdConfRef != nil && loginset.Spec.SssdConfRef.Name == "" { //nolint:staticcheck // SA1019
 		errs = append(errs, errors.New("sssdConfRef.name must not be empty"))
 	}
 

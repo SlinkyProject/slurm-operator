@@ -244,7 +244,10 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 				},
 			},
 		},
-		{
+	}
+
+	if loginset.Spec.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		volume := corev1.Volume{
 			Name: SssdConfVolume,
 			VolumeSource: corev1.VolumeSource{
 				Projected: &corev1.ProjectedVolumeSource{
@@ -263,8 +266,10 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 					},
 				},
 			},
-		},
+		}
+		out = append(out, volume)
 	}
+
 	return out
 }
 
@@ -293,10 +298,14 @@ func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinky
 			Name: SshConfigVolume, MountPath: SshdConfigFilePath, SubPath: SshdConfigFile, ReadOnly: true,
 		})
 	}
-	volumeMounts = append(volumeMounts,
-		corev1.VolumeMount{Name: SshConfigVolume, MountPath: rootAuthorizedKeysFilePath, SubPath: authorizedKeysFile, ReadOnly: true},
-		corev1.VolumeMount{Name: SssdConfVolume, MountPath: SssdConfFilePath, SubPath: SssdConfFile, ReadOnly: true},
-	)
+	volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		Name: SshConfigVolume, MountPath: rootAuthorizedKeysFilePath, SubPath: authorizedKeysFile, ReadOnly: true,
+	})
+	if loginset.Spec.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: SssdConfVolume, MountPath: SssdConfFilePath, SubPath: SssdConfFile, ReadOnly: true,
+		})
+	}
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.LoginApp,
@@ -355,19 +364,21 @@ func (b *LoginBuilder) getLoginHashes(ctx context.Context, loginset *slinkyv1bet
 		}
 	}
 
-	SssdSecret := &corev1.Secret{}
-	SssdSecretKey := loginset.SssdSecretKey()
-	if err := b.client.Get(ctx, SssdSecretKey, SssdSecret); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(SssdSecret), err)
+	var sssdConf []byte
+	if loginset.Spec.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		sssdSecret := &corev1.Secret{}
+		if err := b.client.Get(ctx, loginset.SssdSecretKey(), sssdSecret); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sssdSecret), err)
+			}
 		}
+		sssdConf = sssdSecret.Data[loginset.SssdSecretRef().Key]
 	}
-	sssdConfRefKey := loginset.SssdSecretRef().Key
 
 	hashMap := map[string]string{
 		common.AnnotationSshHostKeysHash: crypto.CheckSumFromMap(SshHostKeys.Data),
 		common.AnnotationSshdConfHash:    crypto.CheckSum([]byte(SshConfig.Data[SshdConfigFile])),
-		common.AnnotationSssdConfHash:    crypto.CheckSum(SssdSecret.Data[sssdConfRefKey]),
+		common.AnnotationSssdConfHash:    crypto.CheckSum(sssdConf),
 	}
 
 	return hashMap, nil

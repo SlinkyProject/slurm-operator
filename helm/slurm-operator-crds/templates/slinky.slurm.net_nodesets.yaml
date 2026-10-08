@@ -295,8 +295,10 @@ spec:
                       Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
                     type: string
                   sssdConfRef:
-                    description: SssdConfRef is a reference to a secret containing
-                      the `sssd.conf`.
+                    description: |-
+                      SssdConfRef is a reference to a secret containing the `sssd.conf`.
+
+                      Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -321,7 +323,6 @@ spec:
                     x-kubernetes-map-type: atomic
                 required:
                 - enabled
-                - sssdConfRef
                 type: object
               syncTopology:
                 default: true

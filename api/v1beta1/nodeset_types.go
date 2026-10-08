@@ -241,8 +241,10 @@ type NodeSetSsh struct {
 	ExtraSshdConfig *string `json:"extraSshdConfig,omitempty"`
 
 	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
-	// +required
-	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
+	// +optional
+	//
+	// Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
+	SssdConfRef *corev1.SecretKeySelector `json:"sssdConfRef,omitempty"`
 }
 
 // NodeSetUpdateStrategy indicates the strategy that the NodeSet

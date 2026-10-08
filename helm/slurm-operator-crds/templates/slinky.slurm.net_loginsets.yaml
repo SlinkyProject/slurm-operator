@@ -147,8 +147,10 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               sssdConfRef:
-                description: SssdConfRef is a reference to a secret containing the
-                  `sssd.conf`.
+                description: |-
+                  SssdConfRef is a reference to a secret containing the `sssd.conf`.
+
+                  Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -258,7 +260,6 @@ spec:
                 type: object
             required:
             - controllerRef
-            - sssdConfRef
             type: object
           status:
             description: LoginSetStatus defines the observed state of LoginSet

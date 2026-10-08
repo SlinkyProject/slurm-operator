@@ -100,8 +100,10 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		}
 	}
 
-	if nodeset.Spec.Ssh.Enabled && nodeset.Spec.Ssh.SssdConfRef.Name == "" {
-		errs = append(errs, errors.New("ssh.sssdConfRef.name must not be empty when ssh is enabled"))
+	if nodeset.Spec.Ssh.Enabled {
+		if nodeset.Spec.Ssh.SssdConfRef != nil && nodeset.Spec.Ssh.SssdConfRef.Name == "" { //nolint:staticcheck // SA1019
+			errs = append(errs, errors.New("ssh.sssdConfRef.name must not be empty when ssh is enabled"))
+		}
 	}
 
 	hostname := nodeset.Spec.Template.PodSpecWrapper.Hostname

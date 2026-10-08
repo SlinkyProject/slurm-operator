@@ -26,19 +26,26 @@ func (o *NodeSet) HeadlessServiceKey() types.NamespacedName {
 }
 
 func (o *NodeSet) SssdSecretKey() types.NamespacedName {
+	name := ""
+	if o.Spec.Ssh.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		name = o.Spec.Ssh.SssdConfRef.Name //nolint:staticcheck // SA1019
+	}
 	return types.NamespacedName{
-		Name:      o.Spec.Ssh.SssdConfRef.Name,
+		Name:      name,
 		Namespace: o.Namespace,
 	}
 }
 
 func (o *NodeSet) SssdSecretRef() corev1.SecretKeySelector {
+	if o.Spec.Ssh.SssdConfRef == nil { //nolint:staticcheck // SA1019
+		return corev1.SecretKeySelector{}
+	}
 	key := o.SssdSecretKey()
 	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: key.Name,
 		},
-		Key: o.Spec.Ssh.SssdConfRef.Key,
+		Key: o.Spec.Ssh.SssdConfRef.Key, //nolint:staticcheck // SA1019
 	}
 }
 
