@@ -22,6 +22,7 @@ manifest should match snapshot:
         name: test-release-slurm-auth-slurm
       slurmdbd:
         args: []
+        env: []
         image: ghcr.io/slinkyproject/slurmdbd:v1.2.3
         imagePullPolicy: IfNotPresent
         resources: {}

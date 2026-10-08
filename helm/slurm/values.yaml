@@ -201,6 +201,13 @@ controller:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 26.05-ubuntu26.04
       digest: null
+    # -- Environment passed to the image.
+    # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_ENVIRONMENT-VARIABLES
+    env: []
+      # - name: ABORT_ON_FATAL
+      #   value: ""
+      # - name: SLURM_DEBUG_FLAGS
+      #   value: "accrue"
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS
     args: []
@@ -481,6 +488,11 @@ accounting:
       repository: ghcr.io/slinkyproject/slurmdbd
       tag: 26.05-ubuntu26.04
       digest: null
+    # -- Environment passed to the image.
+    # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_ENVIRONMENT-VARIABLES
+    env: []
+      # - name: ABORT_ON_FATAL
+      #   value: ""
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS
     args: []
