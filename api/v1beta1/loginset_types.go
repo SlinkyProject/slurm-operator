@@ -50,7 +50,7 @@ type LoginSetSpec struct {
 	// +optional
 	Template PodTemplate `json:"template,omitempty"`
 
-	// RootSshAuthorizedKeys is `root/.ssh/authorized_keys`.
+	// RootSshAuthorizedKeys is written to `/root/.ssh/authorized_keys`.
 	// +optional
 	RootSshAuthorizedKeys string `json:"rootSshAuthorizedKeys,omitzero"`
 

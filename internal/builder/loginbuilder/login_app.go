@@ -61,8 +61,8 @@ const (
 	SssdConfDir      = "/etc/sssd"
 	SssdConfFilePath = SssdConfDir + "/" + SssdConfFile
 
-	authorizedKeysVolume = "authorized-keys"
-	authorizedKeysFile   = "authorized_keys"
+	// authorizedKeysVolume = "authorized-keys"
+	authorizedKeysFile = "authorized_keys"
 
 	rootAuthorizedKeysFilePath = "/root/.ssh/" + authorizedKeysFile
 )

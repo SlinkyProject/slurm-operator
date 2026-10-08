@@ -95,7 +95,7 @@ spec:
                 format: int32
                 type: integer
               rootSshAuthorizedKeys:
-                description: RootSshAuthorizedKeys is `root/.ssh/authorized_keys`.
+                description: RootSshAuthorizedKeys is written to `/root/.ssh/authorized_keys`.
                 type: string
               service:
                 description: Service defines a template for a Kubernetes Service object.
