@@ -143,7 +143,7 @@ func (b *LoginBuilder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev
 			AutomountServiceAccountToken: ptr.To(false),
 			EnableServiceLinks:           ptr.To(false),
 			Containers: []corev1.Container{
-				b.loginContainer(spec.Login.Container, controller),
+				b.loginContainer(spec.Login.Container, controller, loginset),
 			},
 			InitContainers: []corev1.Container{
 				b.CommonBuilder.InitconfContainer(spec.InitConf),
@@ -162,6 +162,15 @@ func (b *LoginBuilder) loginPodTemplate(loginset *slinkyv1beta1.LoginSet) (corev
 }
 
 func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Controller) []corev1.Volume {
+	sshConfigItems := []corev1.KeyToPath{
+		{Key: authorizedKeysFile, Path: authorizedKeysFile, Mode: ptr.To[int32](0o600)},
+	}
+	if loginset.Spec.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+		sshConfigItems = append([]corev1.KeyToPath{
+			{Key: SshdConfigFile, Path: SshdConfigFile, Mode: ptr.To[int32](0o600)},
+		}, sshConfigItems...)
+	}
+
 	out := []corev1.Volume{
 		common.EtcSlurmVolume(),
 		{
@@ -228,10 +237,7 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: loginset.SshConfigKey().Name,
 								},
-								Items: []corev1.KeyToPath{
-									{Key: SshdConfigFile, Path: SshdConfigFile, Mode: ptr.To[int32](0o600)},
-									{Key: authorizedKeysFile, Path: authorizedKeysFile, Mode: ptr.To[int32](0o600)},
-								},
+								Items: sshConfigItems,
 							},
 						},
 					},
@@ -262,7 +268,7 @@ func loginVolumes(loginset *slinkyv1beta1.LoginSet, controller *slinkyv1beta1.Co
 	return out
 }
 
-func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinkyv1beta1.Controller) corev1.Container {
+func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinkyv1beta1.Controller, loginset *slinkyv1beta1.LoginSet) corev1.Container {
 	// Allow user to override SSH port for HostNetwork
 	sshPort := LoginPort
 	if len(merge.Ports) > 0 {
@@ -272,6 +278,25 @@ func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinky
 			}
 		}
 	}
+	volumeMounts := []corev1.VolumeMount{
+		{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
+		{Name: SackdVolume, MountPath: SackdDir},
+		{Name: SshHostKeysVolume, MountPath: SshHostRsaKeyFilePath, SubPath: SshHostRsaKeyFile, ReadOnly: true},
+		{Name: SshHostKeysVolume, MountPath: SshHostRsaKeyPubFilePath, SubPath: SshHostRsaPubKeyFile, ReadOnly: true},
+		{Name: SshHostKeysVolume, MountPath: SshHostEd25519KeyFilePath, SubPath: SshHostEd25519KeyFile, ReadOnly: true},
+		{Name: SshHostKeysVolume, MountPath: SshHostEd25519PubKeyFilePath, SubPath: SshHostEd25519PubKeyFile, ReadOnly: true},
+		{Name: SshHostKeysVolume, MountPath: SshHostEcdsaKeyFilePath, SubPath: SshHostEcdsaKeyFile, ReadOnly: true},
+		{Name: SshHostKeysVolume, MountPath: SshHostEcdsaPubKeyFilePath, SubPath: SshHostEcdsaPubKeyFile, ReadOnly: true},
+	}
+	if loginset.Spec.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: SshConfigVolume, MountPath: SshdConfigFilePath, SubPath: SshdConfigFile, ReadOnly: true,
+		})
+	}
+	volumeMounts = append(volumeMounts,
+		corev1.VolumeMount{Name: SshConfigVolume, MountPath: rootAuthorizedKeysFilePath, SubPath: authorizedKeysFile, ReadOnly: true},
+		corev1.VolumeMount{Name: SssdConfVolume, MountPath: SssdConfFilePath, SubPath: SssdConfFile, ReadOnly: true},
+	)
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.LoginApp,
@@ -305,19 +330,7 @@ func (b *LoginBuilder) loginContainer(merge corev1.Container, controller *slinky
 					Add: []corev1.Capability{"SYS_RESOURCE"},
 				},
 			},
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
-				{Name: SackdVolume, MountPath: SackdDir},
-				{Name: SshHostKeysVolume, MountPath: SshHostRsaKeyFilePath, SubPath: SshHostRsaKeyFile, ReadOnly: true},
-				{Name: SshHostKeysVolume, MountPath: SshHostRsaKeyPubFilePath, SubPath: SshHostRsaPubKeyFile, ReadOnly: true},
-				{Name: SshHostKeysVolume, MountPath: SshHostEd25519KeyFilePath, SubPath: SshHostEd25519KeyFile, ReadOnly: true},
-				{Name: SshHostKeysVolume, MountPath: SshHostEd25519PubKeyFilePath, SubPath: SshHostEd25519PubKeyFile, ReadOnly: true},
-				{Name: SshHostKeysVolume, MountPath: SshHostEcdsaKeyFilePath, SubPath: SshHostEcdsaKeyFile, ReadOnly: true},
-				{Name: SshHostKeysVolume, MountPath: SshHostEcdsaPubKeyFilePath, SubPath: SshHostEcdsaPubKeyFile, ReadOnly: true},
-				{Name: SshConfigVolume, MountPath: SshdConfigFilePath, SubPath: SshdConfigFile, ReadOnly: true},
-				{Name: SshConfigVolume, MountPath: rootAuthorizedKeysFilePath, SubPath: authorizedKeysFile, ReadOnly: true},
-				{Name: SssdConfVolume, MountPath: SssdConfFilePath, SubPath: SssdConfFile, ReadOnly: true},
-			},
+			VolumeMounts: volumeMounts,
 		},
 		Merge: merge,
 	}

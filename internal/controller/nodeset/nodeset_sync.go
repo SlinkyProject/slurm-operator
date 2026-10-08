@@ -1982,8 +1982,7 @@ func (r *NodeSetReconciler) syncSshConfig(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
-	// Only create SSH config keys if SSH is enabled
-	if !nodeset.Spec.Ssh.Enabled {
+	if !nodeset.Spec.Ssh.Enabled || nodeset.Spec.Ssh.ExtraSshdConfig == nil { //nolint:staticcheck // SA1019
 		return nil
 	}
 

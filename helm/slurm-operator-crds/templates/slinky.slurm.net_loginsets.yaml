@@ -70,6 +70,8 @@ spec:
                 description: |-
                   ExtraSshdConfig is added to the end of `sshd_config`.
                   Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
+
+                  Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
                 type: string
               initconf:
                 description: |-

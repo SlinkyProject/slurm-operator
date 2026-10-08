@@ -42,7 +42,25 @@ func TestBuilder_BuildLoginSshConfig(t *testing.T) {
 						RootSshAuthorizedKeys: strings.Join([]string{
 							"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@example.com",
 						}, "\n"),
-						ExtraSshdConfig: `LoginGraceTime 600`,
+					},
+				},
+			},
+		},
+		{
+			name: "with sshd config",
+			fields: fields{
+				client: fake.NewFakeClient(),
+			},
+			args: args{
+				loginset: &slinkyv1beta1.LoginSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "slurm",
+					},
+					Spec: slinkyv1beta1.LoginSetSpec{
+						RootSshAuthorizedKeys: strings.Join([]string{
+							"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx user@example.com",
+						}, "\n"),
+						ExtraSshdConfig: new(`LoginGraceTime 600`), //nolint:staticcheck // SA1019
 					},
 				},
 			},
@@ -60,7 +78,11 @@ func TestBuilder_BuildLoginSshConfig(t *testing.T) {
 
 			require.NoError(t, err)
 			require.True(t, got.Data[authorizedKeysFile] != "" || got.BinaryData[authorizedKeysFile] != nil)
-			require.True(t, got.Data[SshdConfigFile] != "" || got.BinaryData[SshdConfigFile] != nil)
+			if tt.args.loginset.Spec.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+				require.Contains(t, got.Data[SshdConfigFile], *tt.args.loginset.Spec.ExtraSshdConfig) //nolint:staticcheck // SA1019
+			} else {
+				require.Empty(t, got.Data[SshdConfigFile])
+			}
 		})
 	}
 }

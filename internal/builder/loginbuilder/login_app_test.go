@@ -293,7 +293,7 @@ func TestLoginContainerOOMCapability(t *testing.T) {
 					AllowPrivilegeEscalation: ptr.To(false),
 				}
 			}
-			got := b.loginContainer(merge, &slinkyv1beta1.Controller{})
+			got := b.loginContainer(merge, &slinkyv1beta1.Controller{}, &slinkyv1beta1.LoginSet{})
 			require.NotNil(t, got.SecurityContext)
 			require.NotNil(t, got.SecurityContext.Capabilities)
 			require.Contains(t, got.SecurityContext.Capabilities.Add, corev1.Capability("SYS_RESOURCE"))

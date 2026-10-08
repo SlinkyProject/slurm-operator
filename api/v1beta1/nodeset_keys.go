@@ -42,6 +42,7 @@ func (o *NodeSet) SssdSecretRef() corev1.SecretKeySelector {
 	}
 }
 
+// Deprecated: Do not use this anymore.
 func (o *NodeSet) SshConfigKey() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      fmt.Sprintf("%s-ssh-config", o.Name),

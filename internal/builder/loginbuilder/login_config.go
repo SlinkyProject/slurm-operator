@@ -23,8 +23,11 @@ func (b *LoginBuilder) BuildLoginSshConfig(loginset *slinkyv1beta1.LoginSet) (*c
 		},
 		Data: map[string]string{
 			authorizedKeysFile: buildAuthorizedKeys(spec.RootSshAuthorizedKeys),
-			SshdConfigFile:     buildSshdConfig(spec.ExtraSshdConfig),
 		},
+	}
+
+	if spec.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+		opts.Data[SshdConfigFile] = buildSshdConfig(*spec.ExtraSshdConfig) //nolint:staticcheck // SA1019
 	}
 
 	return b.CommonBuilder.BuildConfigMap(opts, loginset)

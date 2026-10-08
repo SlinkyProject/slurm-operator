@@ -236,7 +236,9 @@ type NodeSetSsh struct {
 	// ExtraSshdConfig is added to the end of `sshd_config`.
 	// Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
 	// +optional
-	ExtraSshdConfig string `json:"extraSshdConfig,omitzero"`
+	//
+	// Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
+	ExtraSshdConfig *string `json:"extraSshdConfig,omitempty"`
 
 	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
 	// +required
