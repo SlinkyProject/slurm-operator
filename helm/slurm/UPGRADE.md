@@ -6,10 +6,21 @@
 
 - [Upgrade](#upgrade)
   - [Table of Contents](#table-of-contents)
+  - [From 1.2.x to 1.3.x](#from-12x-to-13x)
   - [From 1.1.x to 1.2.x](#from-11x-to-12x)
   - [From 1.0.x to 1.1.x](#from-10x-to-11x)
 
 <!-- mdformat-toc end -->
+
+## From 1.2.x to 1.3.x
+
+The helm chart interface has changed. Please review the following changes and
+the migration steps.
+
+- NodeSet value fields `ScalingMode`, `Replicas`, `OrdinalPadding`, and
+  `PinToNode` were omitted in favor of using the `ScaleStrategy` object, which
+  contains all of those fields. Old fields will take priority over
+  `ScaleStrategy`.
 
 ## From 1.1.x to 1.2.x
 

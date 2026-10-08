@@ -47,7 +47,6 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* if .enabled */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
-  scalingMode: {{ $nodeset.scalingMode }}
   replicas: {{ $nodeset.replicas }}
   slurmd:
     {{- $_ := set $slurmd "imagePullPolicy" (get $slurmd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
@@ -56,14 +55,38 @@ spec:
     {{- $_ := set $logfile "imagePullPolicy" (get $logfile "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
     {{- include "slurm.format-container" $logfile | nindent 4 }}
   {{- include "slurm.format-podTemplate" $podTemplate | nindent 2 }}
+  {{- /* === DEPRECATED SECTION START : Use scaleStrategy instead === */}}
+  {{- if hasKey $nodeset "scalingMode" }}
+  scalingMode: {{ $nodeset.scalingMode }}
+  {{- end }}{{- /* if hasKey $nodeset "scalingMode" */}}
+  {{- if hasKey $nodeset "ordinalPadding" }}
+  ordinalPadding: {{ $nodeset.ordinalPadding }}
+  {{- end }}{{- /* if hasKey $nodeset "ordinalPadding" */}}
+  {{- if hasKey $nodeset "pinToNode" }}
+  pinToNode: {{ $nodeset.pinToNode }}
+  {{- end }}{{- /* if hasKey $nodeset "pinToNode" */}}
+  {{- /* === DEPRECATED SECTION END === */}}
+  {{- with $nodeset.scaleStrategy }}
+  {{- /* === DEPRECATED SECTION START : Use scaleStrategy instead === */}}
+  {{- if hasKey $nodeset "scalingMode" }}
+  {{- $_ := set . "mode" $nodeset.scalingMode }}
+  {{- end }}{{- /* if hasKey $nodeset "scalingMode" */}}
+  {{- if hasKey $nodeset "ordinalPadding" }}
+  {{- $_ := set .statefulset "ordinalPadding" $nodeset.ordinalPadding }}
+  {{- end }}{{- /* if hasKey $nodeset "ordinalPadding" */}}
+  {{- if hasKey $nodeset "pinToNode" }}
+  {{- $_ := set .statefulset "pinToNode" $nodeset.pinToNode }}
+  {{- end }}{{- /* if hasKey $nodeset "pinToNode" */}}
+  {{- /* === DEPRECATED SECTION END === */}}
+  scaleStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}{{- /* with $nodeset.scaleStrategy */}}
   {{- with $nodeset.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}{{- /* with $nodeset.updateStrategy */}}
-  ordinalPadding: {{ $nodeset.ordinalPadding }}
-  syncTopology: {{ $nodeset.syncTopology }}
-  pinToNode: {{ $nodeset.pinToNode }}
   workloadDisruptionProtection: {{ $nodeset.workloadDisruptionProtection }}
+  syncTopology: {{ $nodeset.syncTopology }}
   pruneSlurmNodeRecords: {{ $nodeset.pruneSlurmNodeRecords }}
   oversubscribeNode: {{ $nodeset.oversubscribeNode }}
 {{- end }}{{- /* $nodeset.enabled */}}
