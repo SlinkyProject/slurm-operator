@@ -9,7 +9,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
@@ -34,7 +33,6 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			ControllerRef: corev1.LocalObjectReference{
 				Name: controllerName,
 			},
-			Replicas: ptr.To(replicas),
 			Template: slinkyv1beta1.PodTemplate{
 				Metadata: slinkyv1beta1.Metadata{
 					Labels: map[string]string{
@@ -53,6 +51,7 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 					Image: "alpine",
 				},
 			},
+			Replicas: new(replicas),
 		},
 	}
 }

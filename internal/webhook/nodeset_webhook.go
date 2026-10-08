@@ -115,8 +115,22 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		errs = append(errs, fmt.Errorf("invalid extraConf: %w", err))
 	}
 
+	// ----- Deprecation Warnings -----
+
 	if nodeset.Spec.PruneSlurmNodeRecords == slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound { //nolint:staticcheck // SA1019
 		warns = append(warns, "PruneSlurmNodeRecords: 'NodeNotFound' is deprecated, use 'Auto' instead.")
+	}
+
+	if nodeset.Spec.ScalingMode != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "ScalingMode is deprecated, use `.spec.scaleStrategy.mode` instead.")
+	}
+
+	if nodeset.Spec.OrdinalPadding != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "OrdinalPadding is deprecated, use `.spec.scaleStrategy.statefulset.ordinalPadding` instead.")
+	}
+
+	if nodeset.Spec.PinToNode != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "PinToNode is deprecated, use `.spec.scaleStrategy.statefulset.pinToNode` instead.")
 	}
 
 	return warns, errs

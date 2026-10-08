@@ -117,10 +117,12 @@ spec:
                 format: int32
                 type: integer
               ordinalPadding:
-                default: 0
                 description: |-
                   OrdinalPadding indicates how many digit places to pad with zeroes when constructing the pod ordinal.
                   This is used only when `scalingMode=StatefulSet`.
+
+                  Deprecated: Use `ScaleStrategy.StatefulSet.OrdinalPadding` instead.
+                nullable: true
                 type: integer
               oversubscribeNode:
                 default: false
@@ -176,15 +178,17 @@ spec:
                     type: string
                 type: object
               pinToNode:
-                default: false
                 description: |-
                   PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
                   When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
                   Kubernetes node pinnings are reset when:
                   * The Node does not exist.
-                  * The new NodeSet pod no longer matches the Node it was pinned to.
+                  * The Pod affinity no longer matches the Node it was pinned to.
                   When disabled, all stored node pinnings are removed.
                   Used only when `scalingMode=StatefulSet`.
+
+                  Deprecated: Use `ScaleStrategy.StatefulSet.PinToNode` instead.
+                nullable: true
                 type: boolean
               pruneSlurmNodeRecords:
                 default: Never
@@ -202,9 +206,10 @@ spec:
                   replicas is the desired number of replicas of the given Template.
                   These are replicas in the sense that they are instantiations of the
                   same Template, but individual replicas also have a consistent identity.
-                  If unspecified, defaults to 1.
-                  When ScalingMode is daemonset, this field is ignored.
+                  If unspecified, defaults to 1. Can be set to 0.
+                  Used when `scaleStrategy.mode=StatefulSet` (or `ScalingMode=StatefulSet`).
                 format: int32
+                nullable: true
                 type: integer
               revisionHistoryLimit:
                 default: 0
@@ -215,14 +220,57 @@ spec:
                   NodeSetSpec version. The default value is 0.
                 format: int32
                 type: integer
+              scaleStrategy:
+                description: scaleStrategy indicates how pods are scaled.
+                properties:
+                  daemonset:
+                    description: |-
+                      DaemonSet is used to communicate parameters when Mode is
+                      ScalingModeDaemonset.
+                    nullable: true
+                    type: object
+                  mode:
+                    description: |-
+                      Mode controls how the NodeSet scales pods.
+                      "StatefulSet" uses a fixed replica count; "DaemonSet" schedules one pod per matching node.
+                    enum:
+                    - DaemonSet
+                    - StatefulSet
+                    nullable: true
+                    type: string
+                  statefulset:
+                    description: |-
+                      StatefulSet is used to communicate parameters when Mode is
+                      ScalingModeStatefulset.
+                    nullable: true
+                    properties:
+                      ordinalPadding:
+                        description: OrdinalPadding indicates how many digit places
+                          to pad with zeroes when constructing the pod ordinal.
+                        nullable: true
+                        type: integer
+                      pinToNode:
+                        description: |-
+                          PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
+                          When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
+                          Kubernetes node pinnings are reset when:
+                          * The Node does not exist.
+                          * The Pod affinity no longer matches the Node it was pinned to.
+                          When disabled, all stored node pinnings are removed.
+                        nullable: true
+                        type: boolean
+                    type: object
+                type: object
               scalingMode:
-                default: StatefulSet
                 description: |-
                   ScalingMode controls how the NodeSet scales pods.
                   "StatefulSet" uses a fixed replica count; "DaemonSet" schedules one pod per matching node.
+
+                  Deprecated: Use `ScaleStrategy.Mode` instead.
                 enum:
                 - DaemonSet
                 - StatefulSet
+                nullable: true
                 type: string
               slurmd:
                 description: |-

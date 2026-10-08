@@ -5,6 +5,7 @@ package nodeset
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -270,4 +271,23 @@ func TestNodeSetReconciler_getNodeSetRevisions(t *testing.T) {
 			require.Equal(t, tt.want2, got2)
 		})
 	}
+}
+
+func TestGetPatchIncludesOrdinalPadding(t *testing.T) {
+	padding := uint(3)
+	nodeset := &slinkyv1beta1.NodeSet{}
+	nodeset.Spec.Template.Metadata.Labels = map[string]string{"app": "slurmd"}
+	nodeset.Spec.ScaleStrategy.StatefulSet.OrdinalPadding = &padding
+
+	patch, err := getPatch(nodeset)
+	require.NoError(t, err)
+
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(patch, &raw))
+	spec := raw["spec"].(map[string]any)
+	_, atRoot := spec["ordinalPadding"]
+	require.False(t, atRoot)
+	scaleStrategy := spec["scaleStrategy"].(map[string]any)
+	statefulset := scaleStrategy["statefulset"].(map[string]any)
+	require.Equal(t, float64(padding), statefulset["ordinalPadding"])
 }

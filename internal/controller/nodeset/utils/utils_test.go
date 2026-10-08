@@ -40,7 +40,7 @@ func newNodeSet(name string) *slinkyv1beta1.NodeSet {
 
 func newNodeSetDaemonset(name string, hostname string) *slinkyv1beta1.NodeSet {
 	ns := newNodeSet(name)
-	ns.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	ns.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	if hostname != "" {
 		ns.Spec.Template.PodSpecWrapper.Hostname = hostname
 	}
@@ -89,8 +89,6 @@ func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMount
 			UID:       types.UID("test"),
 		},
 		Spec: slinkyv1beta1.NodeSetSpec{
-			Replicas:    ptr.To[int32](1),
-			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
 			Slurmd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image:        "nginx",
@@ -99,6 +97,10 @@ func newNodeSetWithVolumes(name string, petMounts []corev1.VolumeMount, podMount
 			},
 			Template:             template,
 			VolumeClaimTemplates: claims,
+			Replicas:             new(int32(1)),
+			ScaleStrategy: slinkyv1beta1.NodeSetScaleStrategy{
+				Mode: slinkyv1beta1.ScalingModeStatefulset,
+			},
 			UpdateStrategy: slinkyv1beta1.NodeSetUpdateStrategy{
 				Type: slinkyv1beta1.RollingUpdateNodeSetStrategyType,
 			},
@@ -508,7 +510,7 @@ func TestIsIdentityMatch(t *testing.T) {
 			args: args{
 				nodeset: func() *slinkyv1beta1.NodeSet {
 					ns := newNodeSet("foo")
-					ns.Spec.OrdinalPadding = 2
+					ns.Spec.ScaleStrategy.StatefulSet.OrdinalPadding = new(uint(2))
 					return ns
 				}(),
 				pod: func() *corev1.Pod {
@@ -860,7 +862,9 @@ func TestGetPersistentVolumeClaims(t *testing.T) {
 						},
 					},
 					Spec: slinkyv1beta1.NodeSetSpec{
-						ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
+						ScaleStrategy: slinkyv1beta1.NodeSetScaleStrategy{
+							Mode: slinkyv1beta1.ScalingModeStatefulset,
+						},
 					},
 				}
 				return args{

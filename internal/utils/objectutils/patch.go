@@ -214,7 +214,8 @@ func SyncObject(c client.Client, ctx context.Context, eventRecorder events.Event
 			}
 			obj.Spec.MinReadySeconds = o.Spec.MinReadySeconds
 			obj.Spec.PersistentVolumeClaimRetentionPolicy = o.Spec.PersistentVolumeClaimRetentionPolicy
-			obj.Spec.Replicas = o.Spec.Replicas
+			obj.Spec.Replicas = o.Spec.Replicas //nolint:staticcheck // SA1019
+			obj.Spec.ScaleStrategy = o.Spec.ScaleStrategy
 			obj.Spec.Template = o.Spec.Template
 			obj.Spec.UpdateStrategy = o.Spec.UpdateStrategy
 			return nil
