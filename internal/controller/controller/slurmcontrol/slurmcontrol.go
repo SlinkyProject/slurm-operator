@@ -11,8 +11,8 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
-	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
@@ -48,7 +48,7 @@ func (r *realSlurmControl) GetActiveHAController(ctx context.Context, controller
 	opts := &slurmclient.ListOptions{
 		SkipCache: true,
 	}
-	controllerPingList := &slurmtypes.V0044ControllerPingList{}
+	controllerPingList := &api.V0044ControllerPingObjectList{}
 	if err := slurmClient.List(ctx, controllerPingList, opts); err != nil {
 		return nil, err
 	}

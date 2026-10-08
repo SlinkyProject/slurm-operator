@@ -41,7 +41,7 @@ import (
 	sinterceptor "github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
-	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+	slurmutils "github.com/SlinkyProject/slurm-client/pkg/utils"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
@@ -170,11 +170,9 @@ func newDaemonPodForNodeSet(name, nodeName string, nodeset *slinkyv1beta1.NodeSe
 	return pod
 }
 
-func newNodeSetPodSlurmNode(pod *corev1.Pod) *slurmtypes.V0044Node {
-	node := &slurmtypes.V0044Node{
-		V0044Node: slurmapi.V0044Node{
-			Name: ptr.To(pod.GetName()),
-		},
+func newNodeSetPodSlurmNode(pod *corev1.Pod) *slurmapi.V0044Node {
+	node := &slurmapi.V0044Node{
+		Name: ptr.To(pod.GetName()),
 	}
 	switch {
 	case podutils.IsPending(pod):
@@ -237,7 +235,7 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	nonZeroReservation := &slurmtypes.V0044ReservationInfo{}
+	nonZeroReservation := &slurmapi.V0044ReservationInfo{}
 
 	// Configure times for testing
 	now, err := time.Parse(time.RFC3339, "2026-03-04T00:00:00Z")
@@ -245,15 +243,14 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 	startTime := now.Unix()
 	endTime := now.Add(time.Hour).Unix()
 
-	nodeList := &slurmtypes.V0044NodeList{}
-	reservationList := &slurmtypes.V0044ReservationInfoList{
-		Items: []slurmtypes.V0044ReservationInfo{
+	nodeList := &slurmapi.V0044NodeObjectList{}
+	reservationList := &slurmapi.V0044ReservationInfoObjectList{
+		Items: []slurmapi.V0044ReservationInfo{
 			{
-				V0044ReservationInfo: slurmapi.V0044ReservationInfo{
-					Name:      ptr.To("SlurmOperatorMaint-foo"),
-					StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime), Set: ptr.To(true)},
-					EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime), Set: ptr.To(true)},
-				},
+
+				Name:      ptr.To("SlurmOperatorMaint-foo"),
+				StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime), Set: ptr.To(true)},
+				EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime), Set: ptr.To(true)},
 			},
 		},
 	}
@@ -269,7 +266,7 @@ func TestNodeSetReconciler_syncReservationFinalizer(t *testing.T) {
 	type args struct {
 		nodeset    *slinkyv1beta1.NodeSet
 		controller *slinkyv1beta1.Controller
-		getRes     *slurmtypes.V0044ReservationInfo
+		getRes     *slurmapi.V0044ReservationInfo
 	}
 	tests := []struct {
 		name           string
@@ -752,7 +749,7 @@ func TestNodeSetReconciler_sync(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(controller.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{}
+					nodeList := &slurmapi.V0044NodeObjectList{}
 					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
 					return newClientMap(controller.Name, sclient)
 				}(),
@@ -846,7 +843,7 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(controller.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{}
+					nodeList := &slurmapi.V0044NodeObjectList{}
 					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
 					return newClientMap(controller.Name, sclient)
 				}(),
@@ -866,8 +863,8 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			makePodHealthy(pod0)
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 1, hash)
 			makePodHealthy(pod1)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod0),
 					*newNodeSetPodSlurmNode(pod1),
 				},
@@ -897,8 +894,8 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			makePodHealthy(pod1)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 2, hash)
 			makePodHealthy(pod2)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod0),
 					*newNodeSetPodSlurmNode(pod1),
 					*newNodeSetPodSlurmNode(pod2),
@@ -926,7 +923,7 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{}
+					nodeList := &slurmapi.V0044NodeObjectList{}
 					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
 					return newClientMap(controller.Name, sclient)
 				}(),
@@ -953,14 +950,12 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			}
 			pod0.Annotations[slinkyv1beta1.AnnotationPodCordon] = "true"
 			slurmNodeName := nodesetutils.GetSlurmNodeName(pod0)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:   ptr.To(slurmNodeName),
-							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
-							Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
-						},
+						Name:   ptr.To(slurmNodeName),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
 					},
 				},
 			}
@@ -1011,17 +1006,15 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			pod1 := cordonedPod(1)
 			pod2 := cordonedPod(2)
 			pod3 := cordonedPod(3)
-			drainedSlurmNode := func(pod *corev1.Pod) slurmtypes.V0044Node {
-				return slurmtypes.V0044Node{
-					V0044Node: slurmapi.V0044Node{
-						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
-						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
-					},
+			drainedSlurmNode := func(pod *corev1.Pod) slurmapi.V0044Node {
+				return slurmapi.V0044Node{
+					Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+					State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+					Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod pending termination for scale-in")),
 				}
 			}
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod0),
 					drainedSlurmNode(pod1),
 					drainedSlurmNode(pod2),
@@ -1063,8 +1056,8 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 			makePodHealthy(pod1)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), ns, controller, 2, hash)
 			makePodHealthy(pod2)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod0),
 					*newNodeSetPodSlurmNode(pod1),
 					*newNodeSetPodSlurmNode(pod2),
@@ -1185,13 +1178,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			client := fake.NewFakeClient(nodeset, podList)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -1283,16 +1274,14 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			client := fake.NewFakeClient(nodeset, podList)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name: ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: ptr.To([]slurmapi.V0044NodeState{
-								slurmapi.V0044NodeStateIDLE,
-								slurmapi.V0044NodeStateDRAIN,
-							}),
-						},
+						Name: ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+						State: ptr.To([]slurmapi.V0044NodeState{
+							slurmapi.V0044NodeStateIDLE,
+							slurmapi.V0044NodeStateDRAIN,
+						}),
 					},
 				},
 			}
@@ -1343,13 +1332,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			client := fake.NewFakeClient(nodeset, podList)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -1397,13 +1384,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			client := fake.NewFakeClient(nodeset, podList)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
 					},
 				},
 			}
@@ -1461,13 +1446,11 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				}).
 				WithRuntimeObjects(nodeset, podList).
 				Build()
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -1515,12 +1498,10 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				Items: structutils.DereferenceList(pods),
 			}
 			client := fake.NewFakeClient(nodeset, podList)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name: ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
-						},
+						Name: ptr.To(nodesetutils.GetSlurmNodeName(pods[0])),
 					},
 				},
 			}
@@ -1610,7 +1591,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		name                     string
 		kubeNode                 *corev1.Node
 		pod                      *corev1.Pod
-		slurmNodeList            *slurmtypes.V0044NodeList
+		slurmNodeList            *slurmapi.V0044NodeObjectList
 		propagatedNodeConditions []corev1.NodeConditionType
 		wantErr                  bool
 		wantPodCordoned          bool
@@ -1624,13 +1605,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec:       corev1.NodeSpec{Unschedulable: true},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1650,13 +1629,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec: corev1.NodeSpec{Unschedulable: true},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1671,13 +1648,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec:       corev1.NodeSpec{Unschedulable: false},
 			},
 			pod: newPod(true),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1691,16 +1666,14 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec:       corev1.NodeSpec{Unschedulable: false},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name: ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{
-								slurmapi.V0044NodeStateIDLE,
-								slurmapi.V0044NodeStateDRAIN,
-							}),
-						},
+						Name: ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{
+							slurmapi.V0044NodeStateIDLE,
+							slurmapi.V0044NodeStateDRAIN,
+						}),
 					},
 				},
 			},
@@ -1714,14 +1687,12 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec:       corev1.NodeSpec{Unschedulable: false},
 			},
 			pod: newPod(true),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:   ptr.To(slurmNodeName),
-							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-							Reason: ptr.To("manual operator drain outside slurm-operator"),
-						},
+						Name:   ptr.To(slurmNodeName),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						Reason: ptr.To("manual operator drain outside slurm-operator"),
 					},
 				},
 			},
@@ -1735,14 +1706,12 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				Spec:       corev1.NodeSpec{Unschedulable: false},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:   ptr.To(slurmNodeName),
-							State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN}),
-							Reason: ptr.To("Not responding to ping"),
-						},
+						Name:   ptr.To(slurmNodeName),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDOWN}),
+						Reason: ptr.To("Not responding to ping"),
 					},
 				},
 			},
@@ -1766,13 +1735,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1804,13 +1771,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1839,13 +1804,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1871,13 +1834,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1908,13 +1869,11 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				},
 			},
 			pod: newPod(false),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(slurmNodeName),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(slurmNodeName),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			},
@@ -1943,7 +1902,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			require.NoError(t, r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod))
 			require.Equal(t, tt.wantPodCordoned, podutils.IsPodCordon(gotPod), "IsPodCordon() result")
 
-			gotNode := &slurmtypes.V0044Node{}
+			gotNode := &slurmapi.V0044Node{}
 			mapKey := types.NamespacedName{
 				Namespace: nodeset.Namespace,
 				Name:      nodeset.Spec.ControllerRef.Name,
@@ -1951,7 +1910,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			sc := r.ClientMap.Get(mapKey)
 			require.NotNil(t, sc)
 			require.NoError(t, sc.Get(context.Background(), slurmclient.ObjectKey(slurmNodeName), gotNode))
-			require.Equal(t, tt.wantSlurmDrain, gotNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN), "Slurm node DRAIN")
+			require.Equal(t, tt.wantSlurmDrain, slurmutils.GetStateAsSet(gotNode.State).Has(slurmapi.V0044NodeStateDRAIN), "Slurm node DRAIN")
 			if tt.wantReasonSub != "" {
 				reason := ptr.Deref(gotNode.Reason, "")
 				require.True(t, strings.Contains(reason, tt.wantReasonSub), "Slurm node Reason = %q, want substring %q", reason, tt.wantReasonSub)
@@ -1992,7 +1951,7 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{}
+					nodeList := &slurmapi.V0044NodeObjectList{}
 					sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
 					return newClientMap(controller.Name, sclient)
 				}(),
@@ -2009,8 +1968,8 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 		func() testCaseFields {
 			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			makePodHealthy(pod0)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod0),
 				},
 			}
@@ -2034,13 +1993,11 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 		func() testCaseFields {
 			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			makePodHealthy(pod0)
-			nodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			nodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
 					},
 				},
 			}
@@ -2278,13 +2235,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-								},
+								Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 							},
 						},
 					}
@@ -2306,17 +2261,15 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-									Reason: ptr.To("preserve me"),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
+								Reason: ptr.To("preserve me"),
 							},
 						},
 					}
@@ -2339,17 +2292,15 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-									Reason: ptr.To("override me"),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
+								Reason: ptr.To("override me"),
 							},
 						},
 					}
@@ -2372,14 +2323,12 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
-									Reason: ptr.To("test reason"),
-								},
+								Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateDRAIN}),
+								Reason: ptr.To("test reason"),
 							},
 						},
 					}
@@ -2411,13 +2360,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 					WithRuntimeObjects(nodeset.DeepCopy(), pod.DeepCopy()).
 					Build(),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-								},
+								Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 							},
 						},
 					}
@@ -2438,13 +2385,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-								},
+								Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 							},
 						},
 					}
@@ -2487,11 +2432,11 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 			}
 			sc := r.ClientMap.Get(mapKey)
 			require.NotNil(t, sc)
-			gotSlurmNode := &slurmtypes.V0044Node{}
+			gotSlurmNode := &slurmapi.V0044Node{}
 			if getErr := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); getErr != nil {
 				require.True(t, getErr.Error() == http.StatusText(http.StatusNotFound), "slurmclient.Get() error = %v", getErr)
 			}
-			require.True(t, gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN), "SlurmNode Has DRAIN = false")
+			require.True(t, slurmutils.GetStateAsSet(gotSlurmNode.State).Has(slurmapi.V0044NodeStateDRAIN), "SlurmNode Has DRAIN = false")
 			gotNodeReason := ptr.Deref(gotSlurmNode.Reason, "")
 			require.Equal(t, tt.wantNodeReason, gotNodeReason)
 		})
@@ -2611,16 +2556,14 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
 							},
 						},
 					}
@@ -2650,16 +2593,14 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 					WithRuntimeObjects(nodeset.DeepCopy(), pod.DeepCopy()).
 					Build(),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
 							},
 						},
 					}
@@ -2679,16 +2620,14 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 			fields: fields{
 				Client: fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy()),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
 							},
 						},
 					}
@@ -2725,7 +2664,7 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 				require.False(t, podutils.IsPodCordon(gotPod), "IsPodCordon() = true, want false")
 			}
 			// Check Slurm Node State
-			gotSlurmNode := &slurmtypes.V0044Node{}
+			gotSlurmNode := &slurmapi.V0044Node{}
 			mapKey := types.NamespacedName{
 				Namespace: nodeset.Namespace,
 				Name:      nodeset.Spec.ControllerRef.Name,
@@ -2735,7 +2674,7 @@ func TestNodeSetReconciler_makePodUncordonAndUndrain(t *testing.T) {
 			if getErr := sc.Get(tt.args.ctx, slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(tt.args.pod)), gotSlurmNode); getErr != nil {
 				require.True(t, getErr.Error() == http.StatusText(http.StatusNotFound), "slurmclient.Get() error = %v", getErr)
 			} else if !tt.wantErr {
-				require.False(t, gotSlurmNode.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN), "SlurmNode Has DRAIN = true, want false")
+				require.False(t, slurmutils.GetStateAsSet(gotSlurmNode.State).Has(slurmapi.V0044NodeStateDRAIN), "SlurmNode Has DRAIN = true, want false")
 			}
 		})
 	}
@@ -2852,19 +2791,15 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -2893,19 +2828,15 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -2936,30 +2867,24 @@ func TestNodeSetReconciler_syncUpdate(t *testing.T) {
 			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, hash)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
-			slurmReservationList := &slurmtypes.V0044ReservationInfoList{
-				Items: []slurmtypes.V0044ReservationInfo{
+			slurmReservationList := &slurmapi.V0044ReservationInfoObjectList{
+				Items: []slurmapi.V0044ReservationInfo{
 					{
-						V0044ReservationInfo: slurmapi.V0044ReservationInfo{
-							Name:      ptr.To("SlurmOperatorMaint-foo"),
-							StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
-							EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
-						},
+						Name:      ptr.To("SlurmOperatorMaint-foo"),
+						StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
+						EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
 					},
 				},
 			}
@@ -3031,19 +2956,15 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -3075,19 +2996,15 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, hash)
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -3117,13 +3034,11 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			makePodHealthy(pod1)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
@@ -3154,8 +3069,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod1),
 					*newNodeSetPodSlurmNode(pod2),
 				},
@@ -3192,8 +3107,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2, pod3)
 			// pod2 is deliberately absent: an unhealthy pod that never
 			// registered with Slurm.
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod1),
 					*newNodeSetPodSlurmNode(pod3),
 				},
@@ -3231,8 +3146,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2, pod3)
 			// pod2 is deliberately absent: an unhealthy pod that never
 			// registered with Slurm.
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					*newNodeSetPodSlurmNode(pod1),
 					*newNodeSetPodSlurmNode(pod3),
 				},
@@ -3334,30 +3249,24 @@ func TestNodeSetReconciler_syncScheduledUpdate(t *testing.T) {
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
-			slurmReservationList := &slurmtypes.V0044ReservationInfoList{
-				Items: []slurmtypes.V0044ReservationInfo{
+			slurmReservationList := &slurmapi.V0044ReservationInfoObjectList{
+				Items: []slurmapi.V0044ReservationInfo{
 					{
-						V0044ReservationInfo: slurmapi.V0044ReservationInfo{
-							Name:      ptr.To("SlurmOperatorMaint-foo"),
-							StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
-							EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
-						},
+						Name:      ptr.To("SlurmOperatorMaint-foo"),
+						StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
+						EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
 					},
 				},
 			}
@@ -3390,30 +3299,24 @@ func TestNodeSetReconciler_syncScheduledUpdate(t *testing.T) {
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, hash)
 			makePodHealthy(pod2)
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod2)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
-			slurmReservationList := &slurmtypes.V0044ReservationInfoList{
-				Items: []slurmtypes.V0044ReservationInfo{
+			slurmReservationList := &slurmapi.V0044ReservationInfoObjectList{
+				Items: []slurmapi.V0044ReservationInfo{
 					{
-						V0044ReservationInfo: slurmapi.V0044ReservationInfo{
-							Name:      ptr.To("SlurmOperatorMaint-foo"),
-							StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
-							EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
-						},
+						Name:      ptr.To("SlurmOperatorMaint-foo"),
+						StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
+						EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
 					},
 				},
 			}
@@ -3446,24 +3349,20 @@ func TestNodeSetReconciler_syncScheduledUpdate(t *testing.T) {
 			makePodHealthy(pod1)
 			pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 			k8sclient := fake.NewFakeClient(nodeset, pod1, pod2)
-			slurmNodeList := &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
-							State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-						},
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 					},
 				},
 			}
-			slurmReservationList := &slurmtypes.V0044ReservationInfoList{
-				Items: []slurmtypes.V0044ReservationInfo{
+			slurmReservationList := &slurmapi.V0044ReservationInfoObjectList{
+				Items: []slurmapi.V0044ReservationInfo{
 					{
-						V0044ReservationInfo: slurmapi.V0044ReservationInfo{
-							Name:      ptr.To("SlurmOperatorMaint-foo"),
-							StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
-							EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
-						},
+						Name:      ptr.To("SlurmOperatorMaint-foo"),
+						StartTime: &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(startTime.Unix()), Set: ptr.To(true)},
+						EndTime:   &slurmapi.V0044Uint64NoValStruct{Number: ptr.To(endTime.Unix()), Set: ptr.To(true)},
 					},
 				},
 			}
@@ -4133,16 +4032,14 @@ func Test_syncPodUncordon(t *testing.T) {
 					},
 				),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
 							},
 						},
 					}
@@ -4175,16 +4072,14 @@ func Test_syncPodUncordon(t *testing.T) {
 					},
 				),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
 							},
 						},
 					}
@@ -4211,17 +4106,15 @@ func Test_syncPodUncordon(t *testing.T) {
 						pod.DeepCopy(),
 					),
 					ClientMap: func() *clientmap.ClientMap {
-						nodeList := &slurmtypes.V0044NodeList{
-							Items: []slurmtypes.V0044Node{
+						nodeList := &slurmapi.V0044NodeObjectList{
+							Items: []slurmapi.V0044Node{
 								{
-									V0044Node: slurmapi.V0044Node{
-										Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-										State: ptr.To([]slurmapi.V0044NodeState{
-											slurmapi.V0044NodeStateDOWN,
-											slurmapi.V0044NodeStateDRAIN,
-										}),
-										Reason: ptr.To(preStopReason),
-									},
+									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+									State: ptr.To([]slurmapi.V0044NodeState{
+										slurmapi.V0044NodeStateDOWN,
+										slurmapi.V0044NodeStateDRAIN,
+									}),
+									Reason: ptr.To(preStopReason),
 								},
 							},
 						}
@@ -4247,17 +4140,15 @@ func Test_syncPodUncordon(t *testing.T) {
 					pod.DeepCopy(),
 				),
 				ClientMap: func() *clientmap.ClientMap {
-					nodeList := &slurmtypes.V0044NodeList{
-						Items: []slurmtypes.V0044Node{
+					nodeList := &slurmapi.V0044NodeObjectList{
+						Items: []slurmapi.V0044Node{
 							{
-								V0044Node: slurmapi.V0044Node{
-									Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-									State: ptr.To([]slurmapi.V0044NodeState{
-										slurmapi.V0044NodeStateIDLE,
-										slurmapi.V0044NodeStateDRAIN,
-									}),
-									Reason: ptr.To("manual cluster admin drain"),
-								},
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+									slurmapi.V0044NodeStateDRAIN,
+								}),
+								Reason: ptr.To("manual cluster admin drain"),
 							},
 						},
 					}
@@ -4358,15 +4249,13 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 			nodeset.Spec.SyncTopology = tt.syncTopology
 			pod := tt.pod.DeepCopy()
 			kubeClient := fake.NewFakeClient(node.DeepCopy(), pod.DeepCopy())
-			slurmNodeList := &slurmtypes.V0044NodeList{}
+			slurmNodeList := &slurmapi.V0044NodeObjectList{}
 			if pod.Spec.NodeName != "" {
-				slurmNodeList.Items = []slurmtypes.V0044Node{
+				slurmNodeList.Items = []slurmapi.V0044Node{
 					{
-						V0044Node: slurmapi.V0044Node{
-							Name:     ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-							State:    ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-							Topology: ptr.To(existingTopology),
-						},
+						Name:     ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+						State:    ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+						Topology: ptr.To(existingTopology),
 					},
 				}
 			}
@@ -4383,7 +4272,7 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 				return
 			}
 
-			gotSlurmNode := &slurmtypes.V0044Node{}
+			gotSlurmNode := &slurmapi.V0044Node{}
 			slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
 			require.NoError(t, sclient.Get(ctx, slurmNodeKey, gotSlurmNode), "Get() failed")
 			require.Equal(t, tt.wantTopology, ptr.Deref(gotSlurmNode.Topology, ""), "syncSlurmTopology() Slurm node topology")
@@ -4450,24 +4339,22 @@ func TestNodeSetReconciler_syncSlurmFeatures(t *testing.T) {
 	prefix := slinkyv1beta1.NodeFeaturePrefix
 	// slurmNodeForPod returns a one-node list for the pod's Slurm node, seeded with
 	// the given features in both available and active (e.g. the registration baseline).
-	slurmNodeForPod := func(p *corev1.Pod, features ...string) *slurmtypes.V0044NodeList {
-		n := slurmtypes.V0044Node{
-			V0044Node: slurmapi.V0044Node{
-				Name:  ptr.To(nodesetutils.GetSlurmNodeName(p)),
-				State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-			},
+	slurmNodeForPod := func(p *corev1.Pod, features ...string) *slurmapi.V0044NodeObjectList {
+		n := slurmapi.V0044Node{
+			Name:  ptr.To(nodesetutils.GetSlurmNodeName(p)),
+			State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 		}
 		if len(features) > 0 {
 			n.Features = ptr.To(slurmapi.V0044CsvString(features))
 			n.ActiveFeatures = ptr.To(slurmapi.V0044CsvString(features))
 		}
-		return &slurmtypes.V0044NodeList{Items: []slurmtypes.V0044Node{n}}
+		return &slurmapi.V0044NodeObjectList{Items: []slurmapi.V0044Node{n}}
 	}
 
 	tests := []struct {
 		name         string
 		client       client.Client
-		slurmNodes   *slurmtypes.V0044NodeList // Slurm node registered for the pod, or nil
+		slurmNodes   *slurmapi.V0044NodeObjectList // Slurm node registered for the pod, or nil
 		nodeset      *slinkyv1beta1.NodeSet
 		pods         []*corev1.Pod
 		wantFeatures []string
@@ -4571,7 +4458,7 @@ func TestNodeSetReconciler_syncSlurmFeatures(t *testing.T) {
 				if sclient == nil {
 					continue
 				}
-				slurmNode := &slurmtypes.V0044Node{}
+				slurmNode := &slurmapi.V0044Node{}
 				slurmNodeKey := slurmclient.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
 				if err := sclient.Get(ctx, slurmNodeKey, slurmNode); err != nil {
 					t.Errorf("Get() failed: %v", err)
@@ -5009,10 +4896,10 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			pod0 := newNodeSetPodWithStatus(nodeset, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 			pod1 := newNodeSetPodWithStatus(nodeset, controller, 1, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 			kclient := fake.NewFakeClient(nodeset, pod0, pod1)
-			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod0))}},
-					{V0044Node: slurmapi.V0044Node{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod1))}},
+			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod0))},
+					{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod1))},
 				},
 			})
 			clientMap := newClientMap(controller.Name, sclient)
@@ -5032,12 +4919,12 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			pod0 := newNodeSetPodWithStatus(nodeset, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 			pod1 := newNodeSetPodWithStatus(nodeset, controller, 1, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 			kclient := fake.NewFakeClient(nodeset, pod0, pod1)
-			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod0))}},
-					// {V0044Node: slurmapi.V0044Node{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod1))}}, // unregistered
-				},
-			})
+			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod0))}},
+				// {Name: ptr.To(nodesetutils.GetSlurmNodeName(pod1))}}, // unregistered
+			},
+			)
 			clientMap := newClientMap(controller.Name, sclient)
 			return testCase{
 				name:      "one unregistered pod",
@@ -5122,7 +5009,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		scalingMode       slinkyv1beta1.ScalingModeType
 		pruneSlurmRecords slinkyv1beta1.NodeSetPruneSlurmNodeRecordType
 		selector          map[string]string
-		setup             func(ns *slinkyv1beta1.NodeSet) (kubeObjs []runtime.Object, slurmNodes []slurmtypes.V0044Node, stillExist, pruned []string)
+		setup             func(ns *slinkyv1beta1.NodeSet) (kubeObjs []runtime.Object, slurmNodes []slurmapi.V0044Node, stillExist, pruned []string)
 		interceptor       sinterceptor.Funcs
 		wantErr           bool
 	}{
@@ -5130,7 +5017,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "prunes defunct ghost node but keeps node backed by running pod",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				pod := newNodeSetPodWithStatus(ns, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 				pod.Spec.Hostname = "worker-b"
 				if pod.Labels == nil {
@@ -5140,17 +5027,17 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-b"}}
 				existingSlurmName := nodesetutils.GetSlurmNodeName(pod)
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("foo-ghost"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, defunctPodName, "worker-a"),
-					}},
-					{V0044Node: slurmapi.V0044Node{
+					},
+					{
 						Name:    ptr.To(existingSlurmName),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, pod.Name, "worker-b"),
-					}},
+					},
 				}
 				return []runtime.Object{pod, kubeNode}, nodes, []string{existingSlurmName}, []string{"foo-ghost"}
 			},
@@ -5159,15 +5046,15 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "skips when kube node still maps to slurm node by default (no selectors)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("worker-a"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, ghostPodName, "worker-a"),
-					}},
+					},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
 			},
@@ -5176,7 +5063,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "skips when kube node still maps to slurm node by default (selectors match)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
@@ -5186,12 +5073,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 						},
 					},
 				}
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("worker-a"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, ghostPodName, "worker-a"),
-					}},
+					},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"worker-a"}, nil
 			},
@@ -5203,7 +5090,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "prunes when kube node maps to slurm nodes and selectors don't match",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
@@ -5213,12 +5100,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 						},
 					},
 				}
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("worker-a"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, ghostPodName, "worker-a"),
-					}},
+					},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{}, []string{"worker-a"}
 			},
@@ -5230,7 +5117,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "skips when kube node override still maps to slurm node",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
@@ -5240,12 +5127,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 						},
 					},
 				}
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("slurm-node-x"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, ghostPodName, "worker-a"),
-					}},
+					},
 				}
 				return []runtime.Object{kubeNode}, nodes, []string{"slurm-node-x"}, nil
 			},
@@ -5254,7 +5141,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "prunes when kube node override no longer maps to slurm node",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
 					ObjectMeta: metav1.ObjectMeta{
@@ -5264,12 +5151,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 						},
 					},
 				}
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("stale-name"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, ghostPodName, "worker-a"),
-					}},
+					},
 				}
 				return []runtime.Object{kubeNode}, nodes, nil, []string{"stale-name"}
 			},
@@ -5278,14 +5165,14 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "skips when prune gate disabled",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNever,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("foo-ghost"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, defunctPodName, "worker-a"),
-					}},
+					},
 				}
 				return nil, nodes, []string{"foo-ghost"}, nil
 			},
@@ -5294,14 +5181,14 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "skips for statefulset scaling mode",
 			scalingMode:       "",
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("foo-ghost"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, defunctPodName, "worker-a"),
-					}},
+					},
 				}
 				return nil, nodes, []string{"foo-ghost"}, nil
 			},
@@ -5310,14 +5197,14 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			name:              "error when slurm delete fails (e.g. reservation conflict)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
 			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
-			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmtypes.V0044Node, []string, []string) {
+			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
-				nodes := []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+				nodes := []slurmapi.V0044Node{
+					{
 						Name:    ptr.To("reserved-node"),
 						State:   defunctNodeState,
 						Comment: podInfo(ns, defunctPodName, "worker-a"),
-					}},
+					},
 				}
 				return nil, nodes, []string{"reserved-node"}, nil
 			},
@@ -5346,7 +5233,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			initObjs := append([]runtime.Object{nodeset}, kubeObjs...)
 
 			kclient := fake.NewFakeClient(initObjs...)
-			sclient := newFakeClientList(tt.interceptor, &slurmtypes.V0044NodeList{Items: slurmNodes})
+			sclient := newFakeClientList(tt.interceptor, &slurmapi.V0044NodeObjectList{Items: slurmNodes})
 			clientMap := newClientMap(controller.Name, sclient)
 			r := NewReconciler(kclient, clientMap, nil)
 
@@ -5361,10 +5248,10 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 			}
 
 			for _, name := range stillExist {
-				require.NoError(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}), "expected Slurm node %q to remain", name)
+				require.NoError(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmapi.V0044Node{}), "expected Slurm node %q to remain", name)
 			}
 			for _, name := range pruned {
-				require.Error(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmtypes.V0044Node{}), "expected Slurm node %q to be pruned", name)
+				require.Error(t, sclient.Get(context.Background(), slurmclient.ObjectKey(name), &slurmapi.V0044Node{}), "expected Slurm node %q to be pruned", name)
 			}
 		})
 	}
@@ -5467,18 +5354,18 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 	tests := []struct {
 		name                  string
 		pod                   *corev1.Pod
-		slurmNodeList         *slurmtypes.V0044NodeList
+		slurmNodeList         *slurmapi.V0044NodeObjectList
 		wantNodeRecordDeleted bool
 	}{
 		{
 			name: "running pod with INVALID_REG deletes node record",
 			pod:  newRunningPod(0),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
 						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
 						State: invalidRegState,
-					}},
+					},
 				},
 			},
 			wantNodeRecordDeleted: true,
@@ -5486,12 +5373,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 		{
 			name: "running pod without INVALID_REG does not delete node record",
 			pod:  newRunningPod(0),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
 						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
 						State: idleState,
-					}},
+					},
 				},
 			},
 			wantNodeRecordDeleted: false,
@@ -5502,12 +5389,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 				p := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 				return makePodCreated(p)
 			}(),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
 						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
 						State: invalidRegState,
-					}},
+					},
 				},
 			},
 			wantNodeRecordDeleted: false,
@@ -5521,12 +5408,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 				p.Finalizers = []string{"test"}
 				return p
 			}(),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
 						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
 						State: invalidRegState,
-					}},
+					},
 				},
 			},
 			wantNodeRecordDeleted: false,
@@ -5534,12 +5421,12 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 		{
 			name: "running-but-not-ready pod with INVALID_REG deletes node record",
 			pod:  makePodRunningNotReady(nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")),
-			slurmNodeList: &slurmtypes.V0044NodeList{
-				Items: []slurmtypes.V0044Node{
-					{V0044Node: slurmapi.V0044Node{
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
 						Name:  ptr.To(nodesetutils.GetSlurmNodeName(newRunningPod(0))),
 						State: invalidRegState,
-					}},
+					},
 				},
 			},
 			wantNodeRecordDeleted: true,
@@ -5562,7 +5449,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAuto(t *testing.T) {
 
 			// Verify whether the Slurm node record was deleted.
 			nodeName := nodesetutils.GetSlurmNodeName(pod)
-			slurmNode := &slurmtypes.V0044Node{}
+			slurmNode := &slurmapi.V0044Node{}
 			getErr := slurmClient.Get(ctx, slurmobject.ObjectKey(nodeName), slurmNode)
 			if tt.wantNodeRecordDeleted {
 				require.True(t, errors.Is(getErr, slurmerrors.ErrNotFound), "Slurm node record should have been deleted (got : %v)", getErr)

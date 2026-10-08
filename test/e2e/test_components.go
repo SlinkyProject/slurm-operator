@@ -32,9 +32,9 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 
+	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
-	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
@@ -967,7 +967,7 @@ func testSlurmJWTKeyRotation(namespace string) types.Feature {
 			require.NoError(t, err, "failed to create Slurm client")
 
 			require.Eventually(t, func() bool {
-				pings := &slurmtypes.V0044ControllerPingList{}
+				pings := &slurmapi.V0044ControllerPingObjectList{}
 				err := operatorClient.List(ctx, pings, &slurmclient.ListOptions{SkipCache: true})
 				return err == nil
 			}, 2*time.Minute, 2*time.Second, "timed out waiting for a controller ping using the rotated JWT key")
