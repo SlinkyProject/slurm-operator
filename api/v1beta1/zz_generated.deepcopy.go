@@ -629,6 +629,11 @@ func (in *NodeSetSpec) DeepCopyInto(out *NodeSetSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.PublishSlurmNodeName != nil {
+		in, out := &in.PublishSlurmNodeName, &out.PublishSlurmNodeName
+		*out = new(bool)
+		**out = **in
+	}
 	if in.WorkloadDisruptionProtection != nil {
 		in, out := &in.WorkloadDisruptionProtection, &out.WorkloadDisruptionProtection
 		*out = new(bool)

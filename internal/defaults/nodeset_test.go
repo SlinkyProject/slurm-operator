@@ -26,6 +26,7 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		require.Equal(t, DefaultNodeSetScalingMode, ns.Spec.ScalingMode)
 		require.Equal(t, ptr.To(DefaultNodeSetSyncTopology), ns.Spec.SyncTopology)
 		require.Equal(t, ptr.To(DefaultNodeSetWorkloadDisruptionProtection), ns.Spec.WorkloadDisruptionProtection)
+		require.Equal(t, ptr.To(DefaultNodeSetPublishSlurmNodeName), ns.Spec.PublishSlurmNodeName)
 		require.Equal(t, DefaultNodeSetUpdateStrategyType, ns.Spec.UpdateStrategy.Type)
 		require.NotNil(t, ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
 		require.Equal(t, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted)
@@ -37,6 +38,7 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		ns := &slinkyv1beta1.NodeSet{}
 		ns.Spec.Replicas = ptr.To(int32(3))
 		ns.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+		ns.Spec.PublishSlurmNodeName = ptr.To(false)
 		ns.Spec.UpdateStrategy.Type = slinkyv1beta1.OnDeleteNodeSetStrategyType
 		maxUnavailable := intstr.FromString("57%")
 		ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable = ptr.To(maxUnavailable)
@@ -49,6 +51,7 @@ func TestSetNodeSetDefaults(t *testing.T) {
 		require.Equal(t, ptr.To(int32(3)), ns.Spec.Replicas)
 		require.Equal(t, slinkyv1beta1.ScalingModeDaemonset, ns.Spec.ScalingMode)
 		require.Equal(t, ptr.To(false), ns.Spec.SyncTopology)
+		require.Equal(t, ptr.To(false), ns.Spec.PublishSlurmNodeName)
 		require.Equal(t, ptr.To(maxUnavailable), ns.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable)
 		require.Equal(t, slinkyv1beta1.OnDeleteNodeSetStrategyType, ns.Spec.UpdateStrategy.Type)
 		require.Equal(t, slinkyv1beta1.DeletePersistentVolumeClaimRetentionPolicyType, ns.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted)
