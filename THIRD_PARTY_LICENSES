@@ -458,7 +458,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/crypto
 - Name: golang.org/x/crypto
-- Version: v0.56.0
+- Version: v0.57.0
 - License: BSD-3-Clause
 
 ### golang.org/x/exp/slices
@@ -468,7 +468,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/net
 - Name: golang.org/x/net
-- Version: v0.58.0
+- Version: v0.60.0
 - License: BSD-3-Clause
 
 ### golang.org/x/oauth2
@@ -478,22 +478,22 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/sync
 - Name: golang.org/x/sync
-- Version: v0.22.0
+- Version: v0.23.0
 - License: BSD-3-Clause
 
 ### golang.org/x/sys/unix
 - Name: golang.org/x/sys/unix
-- Version: v0.47.0
+- Version: v0.48.0
 - License: BSD-3-Clause
 
 ### golang.org/x/term
 - Name: golang.org/x/term
-- Version: v0.45.0
+- Version: v0.46.0
 - License: BSD-3-Clause
 
 ### golang.org/x/text
 - Name: golang.org/x/text
-- Version: v0.41.0
+- Version: v0.42.0
 - License: BSD-3-Clause
 
 ### golang.org/x/time/rate
