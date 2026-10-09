@@ -199,6 +199,9 @@ func getPatch(nodeset *slinkyv1beta1.NodeSet) ([]byte, error) {
 	// revision patch must be manually added here.
 	specCopy["ordinalPadding"] = nodeset.Spec.OrdinalPadding
 	specCopy["oversubscribeNode"] = nodeset.Spec.OversubscribeNode
+	if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset && nodeset.Spec.EffectiveSlurmNodeNameMode() == slinkyv1beta1.SlurmNodeNameModeKubernetesNode {
+		specCopy["preferKubernetesNodeName"] = true
+	}
 	if slurmd, ok := spec["slurmd"].(map[string]any); ok {
 		slurmd["$patch"] = "replace"
 		specCopy["slurmd"] = slurmd

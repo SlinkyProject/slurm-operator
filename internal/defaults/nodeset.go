@@ -14,6 +14,7 @@ import (
 const (
 	DefaultNodeSetReplicas                     int32                                         = 1
 	DefaultNodeSetSyncTopology                 bool                                          = true
+	DefaultNodeSetPreferKubernetesNodeName     bool                                          = true
 	DefaultNodeSetWorkloadDisruptionProtection bool                                          = true
 	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType                 = slinkyv1beta1.ScalingModeStatefulset
 	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType       = slinkyv1beta1.RollingUpdateNodeSetStrategyType
@@ -41,6 +42,10 @@ func SetNodeSetDefaults(nodeset *slinkyv1beta1.NodeSet) {
 
 	if s.SyncTopology == nil {
 		s.SyncTopology = ptr.To(DefaultNodeSetSyncTopology)
+	}
+
+	if s.PreferKubernetesNodeName == nil {
+		s.PreferKubernetesNodeName = ptr.To(DefaultNodeSetPreferKubernetesNodeName)
 	}
 
 	if s.WorkloadDisruptionProtection == nil {
