@@ -92,6 +92,60 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 	}
 }
 
+func TestBuilder_BuildWorkerPodTemplate_SlurmdPort(t *testing.T) {
+	tests := []struct {
+		name      string
+		extraConf string
+		want      int32
+	}{
+		{
+			name: "default",
+			want: common.SlurmdPort,
+		},
+		{
+			name:      "custom",
+			extraConf: "SlurmdPort=6828",
+			want:      6828,
+		},
+		{
+			name:      "out of range",
+			extraConf: "SlurmdPort=70000",
+			want:      common.SlurmdPort,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nodeset := &slinkyv1beta1.NodeSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "slurm-foo",
+				},
+				Spec: slinkyv1beta1.NodeSetSpec{
+					ControllerRef: corev1.LocalObjectReference{
+						Name: "slurm",
+					},
+				},
+			}
+			controller := &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "slurm",
+				},
+				Spec: slinkyv1beta1.ControllerSpec{
+					ExtraConf: tt.extraConf,
+				},
+			}
+
+			got := New(fake.NewFakeClient()).BuildWorkerPodTemplate(nodeset, controller)
+			container := got.Spec.Containers[0]
+
+			require.Equal(t, labels.WorkerApp, container.Ports[0].Name)
+			require.Equal(t, tt.want, container.Ports[0].ContainerPort)
+			for _, probe := range []*corev1.Probe{container.StartupProbe, container.LivenessProbe, container.ReadinessProbe} {
+				require.Equal(t, intstr.FromString(labels.WorkerApp), probe.HTTPGet.Port)
+			}
+		})
+	}
+}
+
 func BenchmarkBuilder_BuildWorkerPodTemplate(b *testing.B) {
 	type fields struct {
 		client client.Client
