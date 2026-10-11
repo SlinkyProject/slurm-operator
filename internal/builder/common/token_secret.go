@@ -44,12 +44,7 @@ func (b *CommonBuilder) BuildTokenSecret(token *slinkyv1beta1.Token) (*corev1.Se
 		Immutable: !ptr.Deref(token.Spec.Refresh, defaults.DefaultTokenRefresh),
 	}
 
-	jwtSecret := &corev1.Secret{}
-	if err := b.client.Get(ctx, token.JwtKey(), jwtSecret); err != nil {
-		return nil, err
-	}
-
-	o, err := b.BuildSecret(opts, jwtSecret)
+	o, err := b.BuildSecret(opts, token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build token secret: %w", err)
 	}
