@@ -425,7 +425,7 @@ func (r *NodeSetReconciler) syncCordon(
 
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncCordonFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncCordonFn); err != nil {
 		return err
 	}
 
@@ -460,7 +460,7 @@ func (r *NodeSetReconciler) syncTaint(
 
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(kubeNodeList.Items), syncTaintFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(kubeNodeList.Items), syncTaintFn); err != nil {
 		return err
 	}
 
@@ -501,7 +501,7 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		}
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncSlurmNodesFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodesFn); err != nil {
 		return err
 	}
 
@@ -541,7 +541,7 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncSlurmDeadlineFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmDeadlineFn); err != nil {
 		return err
 	}
 
@@ -593,7 +593,7 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncSlurmTopologyFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmTopologyFn); err != nil {
 		return err
 	}
 
@@ -1072,7 +1072,6 @@ func getPodKeys(pods []*corev1.Pod) []string {
 }
 
 // processCondemned will gracefully terminate the condemned NodeSet pod.
-// NOTE: intended to be used by batch.SlowStartBatchDefault().
 func (r *NodeSetReconciler) processCondemned(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
@@ -1142,7 +1141,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		pod := podsToKeep[i]
 		return r.syncPodUncordon(ctx, nodeset, pod)
 	}
-	if _, err := batch.SlowStartBatchDefault(len(podsToKeep), uncordonFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(podsToKeep), uncordonFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1160,7 +1159,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		}
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(podsToDelete), deletePodFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(podsToDelete), deletePodFn); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -1168,7 +1167,7 @@ func (r *NodeSetReconciler) doPodProcessing(
 		pod := pods[i]
 		return r.processNodeSetPod(ctx, nodeset, pod)
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), processNodeSetPodFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), processNodeSetPodFn); err != nil {
 		errs = append(errs, err)
 	}
 
