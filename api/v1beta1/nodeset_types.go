@@ -332,7 +332,10 @@ const (
 	// Deprecated: Use NodeSetPruneNodeRecordTypeAuto instead.
 	NodeSetPruneNodeRecordTypeNodeNotFound NodeSetPruneSlurmNodeRecordType = "NodeNotFound"
 
-	// NodeSetPruneNodeRecordTypeAuto indicates that Slurm node records will be pruned when a node enters an unrecoverable state, such as INVALID_REG.
+	// NodeSetPruneNodeRecordTypeAuto indicates that Slurm node records will
+	// automatically be pruned when:
+	// - Slurm node backing Kubernetes Node does not exist.
+	// - Slurm node has an invalid registration (node record conflict).
 	NodeSetPruneNodeRecordTypeAuto NodeSetPruneSlurmNodeRecordType = "Auto"
 )
 

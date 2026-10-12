@@ -594,45 +594,6 @@ func (r *NodeSetReconciler) syncCordon(
 	return nil
 }
 
-func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
-	ctx context.Context,
-	nodeset *slinkyv1beta1.NodeSet,
-	pods []*corev1.Pod,
-) error {
-	logger := log.FromContext(ctx)
-
-	syncSlurmNodeRecordsFn := func(i int) error {
-		pod := pods[i]
-		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) {
-			return nil
-		}
-		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
-		if err != nil {
-			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-				return nil
-			}
-			return err
-		}
-		if !isInvalidReg {
-			return nil
-		}
-		invalidNode := nodesetutils.GetSlurmNodeName(pod)
-		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
-		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
-			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
-		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
-			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-			return err
-		}
-		return nil
-	}
-	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodeRecordsFn); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // syncSlurmNodeRecords prunes Slurm node records under certain conditions.
 func (r *NodeSetReconciler) syncSlurmNodeRecords(
 	ctx context.Context,
@@ -645,14 +606,36 @@ func (r *NodeSetReconciler) syncSlurmNodeRecords(
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNever:
 		return nil
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound: //nolint:staticcheck // SA1019
-		return r.syncSlurmNodeRecordsNodeNotFound(ctx, nodeset)
+		return r.syncSlurmNodeRecordsAutoForNodeNotFound(ctx, nodeset)
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeAuto:
 		return r.syncSlurmNodeRecordsAuto(ctx, nodeset, pods)
 	}
 }
 
-// syncSlurmNodeRecordsNodeNotFound handles Slurm node record pruning for NodeNotFound.
-func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
+// syncSlurmNodeRecordsAuto handles Slurm node record pruning for Auto.
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	errs := []error{}
+
+	if err := r.syncSlurmNodeRecordsAutoForNodeNotFound(ctx, nodeset); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := r.syncSlurmNodeRecordsAutoForInvalidReg(ctx, nodeset, pods); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForNodeNotFound(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
@@ -743,6 +726,44 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 
 		return nil
 	}
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	syncSlurmNodeRecordsFn := func(i int) error {
+		pod := pods[i]
+		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) {
+			return nil
+		}
+		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
+		if err != nil {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				return nil
+			}
+			return err
+		}
+		if !isInvalidReg {
+			return nil
+		}
+		invalidNode := nodesetutils.GetSlurmNodeName(pod)
+		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
+		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
+			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return err
+		}
+		return nil
+	}
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodeRecordsFn); err != nil {
+		return err
+	}
+	return nil
 }
 
 // syncSlurmNodes handles Slurm node drift where nodes may become unregistered but its pod is running and healthy.
