@@ -85,7 +85,7 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 		}
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncSlurmStatusFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmStatusFn); err != nil {
 		return err
 	}
 
@@ -513,7 +513,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 		}
 		return nil
 	}
-	if _, err := batch.SlowStartBatchDefault(len(pods), syncPodPDBLabelsFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncPodPDBLabelsFn); err != nil {
 		return err
 	}
 

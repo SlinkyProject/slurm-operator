@@ -5,7 +5,13 @@
 package batch
 
 import (
+	"context"
 	"sync"
+	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
+
+	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 )
 
 const (
@@ -13,6 +19,10 @@ const (
 	// initial batch. The size of each successive batch is twice the size of
 	// the previous batch.
 	SlowStartInitialBatchSize = 1
+
+	// When batching requests, ConcurrentLimitDefault is the maximum number of
+	// concurrent requests allowed to be in-flight at any given time.
+	ConcurrentLimitDefault = 32
 )
 
 func SlowStartBatchDefault(count int, fn func(i int) error) (int, error) {
@@ -56,4 +66,49 @@ func SlowStartBatch(count, initialBatchSize int, fn func(i int) error) (int, err
 		remaining -= batchSize
 	}
 	return successes, nil
+}
+
+func ConcurrentStartBatchDefault(ctx context.Context, count int, fn func(index int) error) (int, error) {
+	limit := mathutils.Clamp(count, ConcurrentLimitDefault, count/ConcurrentLimitDefault)
+	return ConcurrentStartBatch(ctx, count, limit, fn)
+}
+
+// ConcurrentStartBatch calls fn for each index in [0, count), with at most limit
+// calls in flight.
+//
+// If there are any failures, all remaining batches are skipped after waiting
+// for the in-flight batch to complete.
+//
+// It returns the number of successful calls to the function.
+func ConcurrentStartBatch(ctx context.Context, count, limit int, fn func(index int) error) (int, error) {
+	var successCount atomic.Int64
+
+	if limit == 0 {
+		limit = -1
+	}
+
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(limit)
+
+	for i := range count {
+		if err := gCtx.Err(); err != nil {
+			break
+		}
+		g.Go(func() error {
+			if gCtx.Err() != nil {
+				return nil //nolint:nilerr
+			}
+			if err := fn(i); err != nil {
+				return err
+			}
+			successCount.Add(1)
+			return nil
+		})
+	}
+
+	err := g.Wait()
+	if err == nil {
+		err = ctx.Err()
+	}
+	return int(successCount.Load()), err
 }
