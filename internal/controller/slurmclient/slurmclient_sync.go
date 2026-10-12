@@ -16,10 +16,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	slurmapi "github.com/SlinkyProject/slurm-client/api/v0044"
 	slurmclient "github.com/SlinkyProject/slurm-client/pkg/client"
 	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
 	slurmobject "github.com/SlinkyProject/slurm-client/pkg/object"
-	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/restapibuilder"
@@ -87,7 +87,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 
 	opts := &slurmclient.ClientOptions{
 		DisableFor: []slurmobject.Object{
-			&slurmtypes.V0044ControllerPing{},
+			&slurmapi.V0044ControllerPing{},
 		},
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()

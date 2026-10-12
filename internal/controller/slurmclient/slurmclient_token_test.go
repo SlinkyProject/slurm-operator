@@ -9,9 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	api "github.com/SlinkyProject/slurm-client/api/v0044"
 	client "github.com/SlinkyProject/slurm-client/pkg/client"
 	clienttoken "github.com/SlinkyProject/slurm-client/pkg/client/token"
-	"github.com/SlinkyProject/slurm-client/pkg/types"
 )
 
 type trackingSlurmClient struct {
@@ -95,7 +95,7 @@ func TestSetTokenProviderUpdatesNextRequest(t *testing.T) {
 
 	listPing := func() {
 		t.Helper()
-		list := &types.V0045ControllerPingList{}
+		list := &api.V0044ControllerPingObjectList{}
 		if err := slurmClient.List(context.Background(), list, &client.ListOptions{SkipCache: true}); err != nil {
 			t.Fatalf("List() error = %v", err)
 		}

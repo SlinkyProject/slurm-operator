@@ -19,7 +19,7 @@ import (
 	"github.com/SlinkyProject/slurm-client/pkg/client/fake"
 	"github.com/SlinkyProject/slurm-client/pkg/client/interceptor"
 	"github.com/SlinkyProject/slurm-client/pkg/object"
-	slurmtypes "github.com/SlinkyProject/slurm-client/pkg/types"
+	"github.com/SlinkyProject/slurm-client/pkg/utils"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
@@ -29,7 +29,7 @@ import (
 func newFakeClientList(interceptorFuncs interceptor.Funcs, initObjLists ...object.ObjectList) slurmclient.Client {
 	updateFn := func(_ context.Context, obj object.Object, req any, opts ...slurmclient.UpdateOption) error {
 		switch o := obj.(type) {
-		case *slurmtypes.V0044Node:
+		case *slurmapi.V0044Node:
 			r, ok := req.(slurmapi.V0044UpdateNodeMsg)
 			if !ok {
 				return errors.New("failed to cast request object")
@@ -217,19 +217,17 @@ var _ = Describe("Slurm NodeSet", func() {
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
 			By("Simulating Slurm functionality")
-			slurmNodes := make([]slurmtypes.V0044Node, 0)
+			slurmNodes := make([]slurmapi.V0044Node, 0)
 			for _, pod := range podList.Items {
 				// Register Slurm node for pod
-				node := slurmtypes.V0044Node{
-					V0044Node: slurmapi.V0044Node{
-						Name:  ptr.To(nodesetutils.GetSlurmNodeName(&pod)),
-						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
-					},
+				node := slurmapi.V0044Node{
+					Name:  ptr.To(nodesetutils.GetSlurmNodeName(&pod)),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
 				}
 				slurmNodes = append(slurmNodes, node)
 			}
 			clientMap.Add(controllerKey,
-				newFakeClientList(interceptor.Funcs{}, &slurmtypes.V0044NodeList{
+				newFakeClientList(interceptor.Funcs{}, &slurmapi.V0044NodeObjectList{
 					Items: slurmNodes,
 				}),
 			)
@@ -258,10 +256,10 @@ var _ = Describe("Slurm NodeSet", func() {
 			By("Verifying Slurm nodes were drained first")
 			slurmClient := clientMap.Get(controllerKey)
 			Eventually(func(g Gomega) {
-				slurmNodes := &slurmtypes.V0044NodeList{}
+				slurmNodes := &slurmapi.V0044NodeObjectList{}
 				g.Expect(slurmClient.List(ctx, slurmNodes)).To(Succeed())
 				for _, node := range slurmNodes.Items {
-					g.Expect(node.GetStateAsSet().Has(slurmapi.V0044NodeStateDRAIN)).Should(BeTrue())
+					g.Expect(utils.GetStateAsSet(node.State).Has(slurmapi.V0044NodeStateDRAIN)).Should(BeTrue())
 				}
 			}, testutils.Timeout, testutils.Interval).Should(Succeed())
 
