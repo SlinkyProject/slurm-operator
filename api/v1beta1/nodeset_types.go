@@ -139,7 +139,7 @@ type NodeSetSpec struct {
 
 	// PruneSlurmNodeRecords controls when the operator deletes Slurm node records.
 	// +optional
-	// +kubebuilder:validation:Enum=Never;NodeNotFound;Auto
+	// +kubebuilder:validation:Enum=Never;NodeNotFound;Auto;Always
 	// +kubebuilder:default:=Never
 	PruneSlurmNodeRecords NodeSetPruneSlurmNodeRecordType `json:"pruneSlurmNodeRecords,omitempty"`
 
@@ -337,6 +337,15 @@ const (
 	// - Slurm node backing Kubernetes Node does not exist.
 	// - Slurm node has an invalid registration (node record conflict).
 	NodeSetPruneNodeRecordTypeAuto NodeSetPruneSlurmNodeRecordType = "Auto"
+
+	// NodeSetPruneNodeRecordTypeAlways indicates that Slurm node records will
+	// always be pruned when the nodes leave the cluster for any reason (e.g.
+	// pod delete, scale-in).
+	//
+	// Always does everything Auto does in addition to pruning Slurm node
+	// records when:
+	// - Pod is terminated.
+	NodeSetPruneNodeRecordTypeAlways NodeSetPruneSlurmNodeRecordType = "Always"
 )
 
 // NodeSetStatus defines the observed state of NodeSet

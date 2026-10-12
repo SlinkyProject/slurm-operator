@@ -609,6 +609,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecords(
 		return r.syncSlurmNodeRecordsAutoForNodeNotFound(ctx, nodeset)
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeAuto:
 		return r.syncSlurmNodeRecordsAuto(ctx, nodeset, pods)
+	case slinkyv1beta1.NodeSetPruneNodeRecordTypeAlways:
+		return r.syncSlurmNodeRecordsAlways(ctx, nodeset, pods)
 	}
 }
 
@@ -763,6 +765,93 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
 	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodeRecordsFn); err != nil {
 		return err
 	}
+	return nil
+}
+
+// syncSlurmNodeRecordsAlways handles Slurm node record pruning for Always.
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAlways(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	errs := []error{}
+
+	if err := r.syncSlurmNodeRecordsAuto(ctx, nodeset, pods); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := r.syncSlurmNodeRecordsAlwaysForPodTermination(ctx, nodeset, pods); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+func (r *NodeSetReconciler) syncSlurmNodeRecordsAlwaysForPodTermination(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pods []*corev1.Pod,
+) error {
+	logger := log.FromContext(ctx)
+
+	slurmNodes, err := r.slurmControl.GetNodesForNodeSet(ctx, nodeset)
+	if err != nil {
+		if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			return nil
+		}
+		return err
+	}
+
+	slurmNodesFromPods := set.New[string]()
+	for _, pod := range pods {
+		if !podutils.IsRunning(pod) || !podutils.IsTerminating(pod) {
+			continue
+		}
+		name := nodesetutils.GetSlurmNodeName(pod)
+		slurmNodesFromPods.Insert(name)
+	}
+
+	syncPruneSlurmNodeRecordsFn := func(i int) error {
+		slurmNode := slurmNodes[i]
+
+		if slurmNodesFromPods.Has(slurmNode.Name) {
+			return nil
+		}
+
+		pod := &corev1.Pod{}
+		podKey := types.NamespacedName{
+			Namespace: slurmNode.PodInfo.Namespace,
+			Name:      slurmNode.PodInfo.PodName,
+		}
+		err := r.Get(ctx, podKey, pod)
+		switch {
+		case apierrors.IsNotFound(err):
+			// Prune the Slurm node: its backing pod is gone
+			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod")
+			if err := r.slurmControl.DeleteNode(ctx, nodeset, slurmNode.Name); err != nil {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+					return nil
+				}
+				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s: %w",
+					slurmNode.Name, podKey.Namespace, podKey.Name, err)
+			}
+			r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeNormal, DefunctSlurmNodePrunedReason, "Delete",
+				"Deleted defunct Slurm node %s: backing Pod %s/%s is gone",
+				slurmNode.Name, podKey.Namespace, podKey.Name)
+		case err != nil:
+			return err
+		}
+
+		return nil
+	}
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(slurmNodes), syncPruneSlurmNodeRecordsFn); err != nil {
+		return err
+	}
+
 	return nil
 }
 

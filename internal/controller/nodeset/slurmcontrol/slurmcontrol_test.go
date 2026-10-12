@@ -3439,6 +3439,130 @@ func Test_nodeState(t *testing.T) {
 	}
 }
 
+func Test_realSlurmControl_GetNodesForNodeSet(t *testing.T) {
+	ctx := context.Background()
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: corev1.NamespaceDefault,
+			Name:      "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 1)
+	nodeset.UID = k8stypes.UID("foo-uid")
+	otherNodeSet := newNodeSet("bar", controller.Name, 1)
+	otherNodeSet.UID = k8stypes.UID("bar-uid")
+	defunctPodName := nodesetutils.GetOrdinalPodName(nodeset, 7)
+	podInfo := func(nodeset *slinkyv1beta1.NodeSet, podName, node string) *string {
+		return new((&podinfo.PodInfo{
+			Namespace:   corev1.NamespaceDefault,
+			PodName:     podName,
+			Node:        node,
+			NodeSetName: nodeset.Name,
+			NodeSetUID:  string(nodeset.UID),
+		}).ToString())
+	}
+
+	tests := []struct {
+		name            string
+		slurmClient     client.Client
+		want            []SlurmNode
+		wantErr         bool
+		wantErrNoClient bool
+	}{
+		{
+			name:            "no client",
+			wantErrNoClient: true,
+		},
+		{
+			name: "returns nodes with PodInfo from this nodeset",
+			slurmClient: fake.NewClientBuilder().
+				WithLists(&api.V0044NodeObjectList{
+					Items: []api.V0044Node{
+						{
+							Name: ptr.To("ghost-0"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateIDLE,
+							}),
+							Comment: podInfo(nodeset, defunctPodName, "worker-a"),
+						},
+						{
+							Name: ptr.To("ghost-1"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+							Comment: podInfo(nodeset, defunctPodName, "worker-b"),
+						},
+						{
+							Name: ptr.To("ghost-2"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+							Comment: podInfo(nodeset, defunctPodName, "worker-c"),
+						},
+						{
+							Name: ptr.To("not-ghost"),
+							State: ptr.To([]api.V0044NodeState{
+								api.V0044NodeStateDOWN,
+								api.V0044NodeStateNOTRESPONDING,
+							}),
+						},
+					},
+				}).
+				Build(),
+			want: []SlurmNode{
+				{
+					Name: "ghost-0",
+					PodInfo: podinfo.PodInfo{
+						Namespace:   corev1.NamespaceDefault,
+						PodName:     defunctPodName,
+						Node:        "worker-a",
+						NodeSetName: nodeset.Name,
+						NodeSetUID:  string(nodeset.UID),
+					},
+				},
+				{
+					Name: "ghost-1",
+					PodInfo: podinfo.PodInfo{
+						Namespace:   corev1.NamespaceDefault,
+						PodName:     defunctPodName,
+						Node:        "worker-b",
+						NodeSetName: nodeset.Name,
+						NodeSetUID:  string(nodeset.UID),
+					},
+				},
+				{
+					Name: "ghost-2",
+					PodInfo: podinfo.PodInfo{
+						Namespace:   corev1.NamespaceDefault,
+						PodName:     defunctPodName,
+						Node:        "worker-c",
+						NodeSetName: nodeset.Name,
+						NodeSetUID:  string(nodeset.UID),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clientMap := testutils.NewClientMap(controller.Name, controller.Namespace, tt.slurmClient)
+			r := NewSlurmControl(clientMap)
+			got, err := r.GetNodesForNodeSet(ctx, nodeset)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			} else if tt.wantErrNoClient {
+				require.ErrorIs(t, err, ErrNoSlurmClient)
+				return
+			}
+			require.NoError(t, err)
+			require.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
 func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 	ctx := context.Background()
 	controller := &slinkyv1beta1.Controller{
@@ -3465,7 +3589,7 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 	tests := []struct {
 		name            string
 		slurmClient     client.Client
-		want            []DefunctNode
+		want            []SlurmNode
 		wantErr         bool
 		wantErrNoClient bool
 	}{
@@ -3511,7 +3635,7 @@ func Test_realSlurmControl_GetDefunctNodesForNodeSet(t *testing.T) {
 					},
 				}).
 				Build(),
-			want: []DefunctNode{
+			want: []SlurmNode{
 				{
 					Name: "foo-ghost",
 					PodInfo: podinfo.PodInfo{

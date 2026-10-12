@@ -72,12 +72,14 @@ type SlurmControlInterface interface {
 	CheckReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (bool, error)
 	// GetPodsUnderReservation returns a sublist of pods whose Slurm nodes are under an active MAINT reservation
 	GetPodsUnderReservation(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) ([]*corev1.Pod, error)
+	// GetNodesForNodeSet returns a list of Slurm nodes associated with the NodeSet pods.
+	GetNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]SlurmNode, error)
 	// SyncReservationForNodeSet creates a reservation for a NodeSet for the Scheduled update strategy
 	SyncReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) error
 	// DeleteReservationForNodeSet deletes a reservation associated with a NodeSet for the Scheduled update strategy
 	DeleteReservationForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// GetDefunctNodesForNodeSet returns defunct-node candidates owned by this NodeSet.
-	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error)
+	GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]SlurmNode, error)
 	// DeleteNode deletes a Slurm node by name.
 	DeleteNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, nodeName string) error
 }
@@ -775,13 +777,56 @@ func (r *realSlurmControl) GetNodesForPods(ctx context.Context, nodeset *slinkyv
 	return slurmNodeNames, nil
 }
 
-type DefunctNode struct {
+type SlurmNode struct {
 	Name    string
 	PodInfo podinfo.PodInfo
 }
 
+// GetNodesForNodeSet implements SlurmControlInterface.
+func (r *realSlurmControl) GetNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]SlurmNode, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do GetNodesForNodeSet()")
+		return nil, ErrNoSlurmClient
+	}
+
+	nodeList := &slurmapi.V0044NodeObjectList{}
+	if err := slurmClient.List(ctx, nodeList); err != nil {
+		return nil, err
+	}
+
+	defunctNodes := make([]SlurmNode, 0)
+	for _, node := range nodeList.Items {
+		info := &podinfo.PodInfo{}
+		if err := podinfo.ParseIntoPodInfo(node.Comment, info); err != nil {
+			continue
+		}
+		if info.Namespace != nodeset.Namespace ||
+			info.PodName == "" ||
+			info.NodeSetName != nodeset.Name ||
+			info.NodeSetUID == "" ||
+			info.NodeSetUID != string(nodeset.UID) {
+			continue
+		}
+
+		nodeName := ptr.Deref(node.Name, "")
+		if nodeName == "" {
+			continue
+		}
+
+		defunctNodes = append(defunctNodes, SlurmNode{
+			Name:    nodeName,
+			PodInfo: *info,
+		})
+	}
+
+	return defunctNodes, nil
+}
+
 // GetDefunctNodesForNodeSet implements SlurmControlInterface.
-func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]DefunctNode, error) {
+func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) ([]SlurmNode, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
@@ -795,7 +840,7 @@ func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodese
 		return nil, err
 	}
 
-	defunctNodes := make([]DefunctNode, 0)
+	defunctNodes := make([]SlurmNode, 0)
 	for _, node := range nodeList.Items {
 		if !slurmutils.GetStateAsSet(node.State).HasAll(slurmapi.V0044NodeStateDOWN, slurmapi.V0044NodeStateNOTRESPONDING) {
 			continue
@@ -818,7 +863,7 @@ func (r *realSlurmControl) GetDefunctNodesForNodeSet(ctx context.Context, nodese
 			continue
 		}
 
-		defunctNodes = append(defunctNodes, DefunctNode{
+		defunctNodes = append(defunctNodes, SlurmNode{
 			Name:    nodeName,
 			PodInfo: *info,
 		})

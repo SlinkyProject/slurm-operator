@@ -194,6 +194,7 @@ spec:
                 - Never
                 - NodeNotFound
                 - Auto
+                - Always
                 type: string
               replicas:
                 default: 1
