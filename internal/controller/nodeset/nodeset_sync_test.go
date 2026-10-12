@@ -5061,7 +5061,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "prunes defunct ghost node but keeps node backed by running pod",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				pod := newNodeSetPodWithStatus(ns, controller, 0, corev1.PodRunning, []corev1.PodConditionType{corev1.PodReady})
 				pod.Spec.Hostname = "worker-b"
@@ -5090,7 +5090,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "skips when kube node still maps to slurm node by default (no selectors)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "worker-a"}}
@@ -5107,7 +5107,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "skips when kube node still maps to slurm node by default (selectors match)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
@@ -5134,7 +5134,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "prunes when kube node maps to slurm nodes and selectors don't match",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
@@ -5161,7 +5161,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "skips when kube node override still maps to slurm node",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
@@ -5185,7 +5185,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "prunes when kube node override no longer maps to slurm node",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				ghostPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				kubeNode := &corev1.Node{
@@ -5225,7 +5225,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "skips for statefulset scaling mode",
 			scalingMode:       "",
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmapi.V0044Node{
@@ -5241,7 +5241,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecords(t *testing.T) {
 		{
 			name:              "error when slurm delete fails (e.g. reservation conflict)",
 			scalingMode:       slinkyv1beta1.ScalingModeDaemonset,
-			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound,
+			pruneSlurmRecords: slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound, //nolint:staticcheck // SA1019
 			setup: func(ns *slinkyv1beta1.NodeSet) ([]runtime.Object, []slurmapi.V0044Node, []string, []string) {
 				defunctPodName := nodesetutils.GetOrdinalPodName(ns, 1)
 				nodes := []slurmapi.V0044Node{

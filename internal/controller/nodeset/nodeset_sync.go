@@ -644,7 +644,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecords(
 		fallthrough
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNever:
 		return nil
-	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound:
+	case slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound: //nolint:staticcheck // SA1019
 		return r.syncSlurmNodeRecordsNodeNotFound(ctx, nodeset)
 	case slinkyv1beta1.NodeSetPruneNodeRecordTypeAuto:
 		return r.syncSlurmNodeRecordsAuto(ctx, nodeset, pods)

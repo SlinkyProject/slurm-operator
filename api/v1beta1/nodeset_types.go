@@ -328,6 +328,8 @@ const (
 	// NodeSetPruneNodeRecordTypeNodeNotFound indicates that Slurm node records
 	// will only be pruned when the backing Kubernetes node does not exist.
 	// Only works for `ScalingMode=DaemonSet`.
+	//
+	// Deprecated: Use NodeSetPruneNodeRecordTypeAuto instead.
 	NodeSetPruneNodeRecordTypeNodeNotFound NodeSetPruneSlurmNodeRecordType = "NodeNotFound"
 
 	// NodeSetPruneNodeRecordTypeAuto indicates that Slurm node records will be pruned when a node enters an unrecoverable state, such as INVALID_REG.
