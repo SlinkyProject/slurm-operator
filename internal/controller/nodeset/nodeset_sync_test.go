@@ -1614,6 +1614,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		kubeNode                 *corev1.Node
 		pod                      *corev1.Pod
 		slurmNodeList            *slurmapi.V0044NodeObjectList
+		podPatchErr              error
 		slurmUpdateErr           error
 		propagatedNodeConditions []corev1.NodeConditionType
 		wantErr                  bool
@@ -1623,7 +1624,7 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 		wantEvent                bool
 	}{
 		{
-			name: "cordon failure does not report success event",
+			name: "drain failure preserves successful cordon event",
 			kubeNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
 				Spec:       corev1.NodeSpec{Unschedulable: true},
@@ -1639,6 +1640,40 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantErr:         true,
 			wantPodCordoned: true,
 			wantSlurmDrain:  false,
+			wantEvent:       true,
+		},
+		{
+			name: "pod patch failure does not report success event",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:  ptr.To(slurmNodeName),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+				}},
+			},
+			podPatchErr: http.ErrAbortHandler,
+			wantErr:     true,
+		},
+		{
+			name: "already cordoned pod still drains without another cordon event",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:  ptr.To(slurmNodeName),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+				}},
+			},
+			wantPodCordoned: true,
+			wantSlurmDrain:  true,
+			wantReasonSub:   "kube-node-1",
 		},
 		{
 			name: "kubernetes node cordoned cordons pod and drains slurm",
@@ -1970,7 +2005,16 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			}
 			slurmClient := newFakeClientList(interceptorFuncs, tt.slurmNodeList)
 			clientMap := newClientMap(controller.Name, slurmClient)
-			k8sClient := fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy(), tt.kubeNode.DeepCopy())
+			kubeInterceptorFuncs := interceptor.Funcs{}
+			if tt.podPatchErr != nil {
+				kubeInterceptorFuncs.Patch = func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+					return tt.podPatchErr
+				}
+			}
+			k8sClient := fake.NewClientBuilder().
+				WithObjects(nodeset.DeepCopy(), pod.DeepCopy(), tt.kubeNode.DeepCopy()).
+				WithInterceptorFuncs(kubeInterceptorFuncs).
+				Build()
 			r := newNodeSetControllerWithPropagatedNodeConditions(k8sClient, clientMap, tt.propagatedNodeConditions)
 			recorder := testutils.NewEventRecorder(1)
 			r.eventRecorder = recorder
@@ -1986,9 +2030,8 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				require.Equal(t, string(eventutils.ReasonNodeCordon), event.Reason)
 				require.Equal(t, "Cordon", event.Action)
 				require.Equal(t, pod, event.Related)
-			} else {
-				testutils.AssertNoRecordedEvents(t, recorder)
 			}
+			testutils.AssertNoRecordedEvents(t, recorder)
 
 			gotPod := &corev1.Pod{}
 			require.NoError(t, r.Get(context.Background(), client.ObjectKeyFromObject(pod), gotPod))
@@ -2007,6 +2050,97 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 				reason := ptr.Deref(gotNode.Reason, "")
 				require.True(t, strings.Contains(reason, tt.wantReasonSub), "Slurm node Reason = %q, want substring %q", reason, tt.wantReasonSub)
 			}
+		})
+	}
+}
+
+func TestNodeSetReconciler_syncCordon_EventAcrossReconciles(t *testing.T) {
+	tests := []struct {
+		name                string
+		failDrain           bool
+		uncordonBeforeRetry bool
+	}{
+		{name: "unchanged reconcile does not repeat event"},
+		{name: "drain retry does not repeat event", failDrain: true},
+		{name: "node uncordon before retry does not lose event", failDrain: true, uncordonBeforeRetry: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			controller := &slinkyv1beta1.Controller{
+				ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: corev1.NamespaceDefault},
+			}
+			nodeset := newNodeSet("nodeset-a", controller.Name, 1)
+			pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+			pod.Spec.NodeName = "kube-node-1"
+			node := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: pod.Spec.NodeName},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+			}
+			slurmNodeName := nodesetutils.GetSlurmNodeName(pod)
+			baseSlurmClient := newFakeClientList(sinterceptor.Funcs{}, &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:  ptr.To(slurmNodeName),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE}),
+				}},
+			})
+			drainErr := errors.New("transient drain failure")
+			var updateErr error
+			if tt.failDrain {
+				updateErr = drainErr
+			}
+			updateCalls := 0
+			slurmClient := sinterceptor.NewClient(baseSlurmClient, sinterceptor.Funcs{
+				Update: func(ctx context.Context, obj slurmobject.Object, req any, opts ...slurmclient.UpdateOption) error {
+					updateCalls++
+					if updateErr != nil {
+						return updateErr
+					}
+					return baseSlurmClient.Update(ctx, obj, req, opts...)
+				},
+			})
+			kubeClient := fake.NewFakeClient(nodeset.DeepCopy(), pod.DeepCopy(), node.DeepCopy())
+			r := newNodeSetController(kubeClient, newClientMap(controller.Name, slurmClient))
+			recorder := testutils.NewEventRecorder(4)
+			r.eventRecorder = recorder
+
+			err := r.syncCordon(ctx, nodeset, []*corev1.Pod{pod})
+			if tt.failDrain {
+				require.ErrorIs(t, err, drainErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, 1, updateCalls)
+			persistedPod := &corev1.Pod{}
+			require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), persistedPod))
+			require.True(t, podutils.IsPodCordon(persistedPod))
+			event := testutils.ReadOneRecordedEvent(t, recorder)
+			require.Equal(t, string(eventutils.ReasonNodeCordon), event.Reason)
+			require.Equal(t, string(eventutils.ActionCordon), event.Action)
+			require.Equal(t, corev1.EventTypeNormal, event.Type)
+			require.Equal(t, nodeset, event.Regarding)
+			require.Equal(t, persistedPod, event.Related)
+			testutils.AssertNoRecordedEvents(t, recorder)
+
+			podResourceVersion := persistedPod.ResourceVersion
+			updateErr = nil
+			updateCalls = 0
+			if tt.uncordonBeforeRetry {
+				node.Spec.Unschedulable = false
+				require.NoError(t, kubeClient.Update(ctx, node))
+			}
+			require.NoError(t, r.syncCordon(ctx, nodeset, []*corev1.Pod{persistedPod}))
+			testutils.AssertNoRecordedEvents(t, recorder)
+			if tt.failDrain {
+				require.Equal(t, 1, updateCalls, "retry must drain the already-cordoned pod's Slurm node")
+			} else {
+				require.Zero(t, updateCalls, "unchanged reconcile must not mutate Slurm")
+			}
+			require.NoError(t, kubeClient.Get(ctx, client.ObjectKeyFromObject(pod), persistedPod))
+			require.Equal(t, podResourceVersion, persistedPod.ResourceVersion, "retry must not patch the pod again")
+			slurmNode := &slurmapi.V0044Node{}
+			require.NoError(t, slurmClient.Get(ctx, slurmclient.ObjectKey(slurmNodeName), slurmNode))
+			require.True(t, slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateDRAIN))
 		})
 	}
 }
@@ -2601,7 +2735,9 @@ func TestNodeSetReconciler_makePodCordon(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			err := r.makePodCordon(tt.args.ctx, tt.args.pod)
+			wantChanged := !tt.wantErr && !podutils.IsPodCordon(tt.args.pod)
+			changed, err := r.makePodCordon(tt.args.ctx, tt.args.pod)
+			require.Equal(t, wantChanged, changed)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

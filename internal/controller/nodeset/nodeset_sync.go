@@ -528,7 +528,7 @@ func (r *NodeSetReconciler) syncCordon(
 		case !ourReason, slurmNodeIsUnresponsive:
 			return nil
 
-		// If Kubernetes node is cordoned but pod isn't, cordon the pod
+		// Cordon the pod if needed and reconcile its Slurm drain reason while the Kubernetes node is cordoned.
 		case nodeIsCordoned:
 			logger.Info("Kubernetes node cordoned externally, cordoning pod",
 				"pod", klog.KObj(pod), "node", node.Name)
@@ -567,11 +567,17 @@ func (r *NodeSetReconciler) syncCordon(
 				}
 			}
 
-			if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
+			changed, err := r.makePodCordon(ctx, pod)
+			if err != nil {
 				return err
 			}
-			eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonNodeCordon, eventutils.ActionCordon,
-				"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), name)
+			if changed {
+				eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonNodeCordon, eventutils.ActionCordon,
+					"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), name)
+			}
+			if err := r.drainSlurmNode(ctx, nodeset, pod, reason, false); err != nil {
+				return err
+			}
 
 		// If pod is cordoned, drain the Slurm node
 		case podIsCordoned:
@@ -1667,10 +1673,20 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	reason string,
 	overrideReason bool,
 ) error {
-	if err := r.makePodCordon(ctx, pod); err != nil {
+	if _, err := r.makePodCordon(ctx, pod); err != nil {
 		return err
 	}
 
+	return r.drainSlurmNode(ctx, nodeset, pod, reason, overrideReason)
+}
+
+func (r *NodeSetReconciler) drainSlurmNode(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	pod *corev1.Pod,
+	reason string,
+	overrideReason bool,
+) error {
 	if reason == "" {
 		reason = "unknown"
 	}
@@ -1685,15 +1701,15 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	return nil
 }
 
-// makePodCordon will cordon the pod.
+// makePodCordon cordons the pod and reports whether the cordon annotation changed successfully.
 func (r *NodeSetReconciler) makePodCordon(
 	ctx context.Context,
 	pod *corev1.Pod,
-) error {
+) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	if podutils.IsPodCordon(pod) {
-		return nil
+		return false, nil
 	}
 
 	logger.Info("Cordon Pod, pending deletion", "Pod", klog.KObj(pod))
@@ -1705,10 +1721,10 @@ func (r *NodeSetReconciler) makePodCordon(
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }
 
 // makePodUncordonAndUndrain will uncordon the pod and undrain the corresponding Slurm node.
