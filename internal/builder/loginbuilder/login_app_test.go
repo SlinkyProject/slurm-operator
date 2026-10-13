@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -277,6 +278,27 @@ func BenchmarkBuilder_BuildLogin(b *testing.B) {
 					b.Errorf("Failed to build login %v", err)
 					return
 				}
+			}
+		})
+	}
+}
+
+func TestLoginContainerOOMCapability(t *testing.T) {
+	for _, customized := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "custom security context"}[customized], func(t *testing.T) {
+			b := New(nil)
+			merge := corev1.Container{}
+			if customized {
+				merge.SecurityContext = &corev1.SecurityContext{
+					AllowPrivilegeEscalation: ptr.To(false),
+				}
+			}
+			got := b.loginContainer(merge, &slinkyv1beta1.Controller{})
+			require.NotNil(t, got.SecurityContext)
+			require.NotNil(t, got.SecurityContext.Capabilities)
+			require.Contains(t, got.SecurityContext.Capabilities.Add, corev1.Capability("SYS_RESOURCE"))
+			if customized {
+				require.Equal(t, ptr.To(false), got.SecurityContext.AllowPrivilegeEscalation)
 			}
 		})
 	}
