@@ -611,19 +611,20 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
 ) error {
 	logger := log.FromContext(ctx)
 
-	for _, pod := range pods {
+	syncSlurmNodeRecordsFn := func(i int) error {
+		pod := pods[i]
 		if !podutils.IsRunning(pod) || podutils.IsTerminating(pod) {
-			continue
+			return nil
 		}
 		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
 		if err != nil {
 			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-				continue
+				return nil
 			}
 			return err
 		}
 		if !isInvalidReg {
-			continue
+			return nil
 		}
 		invalidNode := nodesetutils.GetSlurmNodeName(pod)
 		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
@@ -632,7 +633,12 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
 		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil {
 			return err
 		}
+		return nil
 	}
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmNodeRecordsFn); err != nil {
+		return err
+	}
+
 	return nil
 }
 
