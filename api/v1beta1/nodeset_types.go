@@ -296,12 +296,14 @@ type ScheduledUpdateNodeSetStrategy struct {
 	// An RFC3339 timestamp at which to begin NodeSet updates.
 	// Ref: https://datatracker.ietf.org/doc/html/rfc3339#section-5.8
 	// Ref: https://slurm.schedmd.com/scontrol.html#OPT_StartTime_1
+	// +nullable
 	// +optional
 	StartTime metav1.Time `json:"startTime,omitempty"`
 
 	// The duration for which NodeSet updates should be conducted.
 	// Ref: https://pkg.go.dev/time#ParseDuration
 	// Ref: https://slurm.schedmd.com/scontrol.html#OPT_Duration
+	// +nullable
 	// +optional
 	// +kubebuilder:default:="30m"
 	Duration metav1.Duration `json:"duration,omitempty"`
