@@ -1702,6 +1702,35 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantSlurmDrain:  false,
 		},
 		{
+			name: "terminating pod keeps slurm node drained",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: false},
+			},
+			pod: func() *corev1.Pod {
+				p := newPod(false)
+				p.DeletionTimestamp = ptr.To(metav1.Now())
+				p.Finalizers = []string{"test/finalizer"}
+				return p
+			}(),
+			slurmNodeList: &slurmtypes.V0044NodeList{
+				Items: []slurmtypes.V0044Node{
+					{
+						V0044Node: slurmapi.V0044Node{
+							Name: new(slurmNodeName),
+							State: new([]slurmapi.V0044NodeState{
+								slurmapi.V0044NodeStateIDLE,
+								slurmapi.V0044NodeStateDRAIN,
+							}),
+							Reason: new("slurm-operator: Pod is terminating"),
+						},
+					},
+				},
+			},
+			wantPodCordoned: false,
+			wantSlurmDrain:  true,
+		},
+		{
 			name: "external slurm reason is left unchanged",
 			kubeNode: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
