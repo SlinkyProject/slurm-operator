@@ -282,7 +282,7 @@ func slurmdPreStop() *corev1.LifecycleHandler {
 			Command: []string{
 				"/usr/bin/sh",
 				"-c",
-				"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating' && scontrol delete nodename=$(hostname);",
+				"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating' && scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating' && scontrol delete nodename=$(hostname);",
 			},
 		},
 	}
