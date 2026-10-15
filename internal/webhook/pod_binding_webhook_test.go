@@ -99,6 +99,43 @@ func TestPodBindingWebhook_Default(t *testing.T) {
 			checkTopology: true,
 		},
 		{
+			name: "Worker pod with nil annotations does not panic",
+			client: fake.NewFakeClient(
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "worker-no-annotations",
+						Namespace: corev1.NamespaceDefault,
+						Labels: map[string]string{
+							labels.AppLabel: labels.WorkerApp,
+						},
+						// Annotations intentionally nil to verify no panic on nil map write.
+					},
+				},
+				nodeWithTopology.DeepCopy(),
+			),
+			args: args{
+				ctx: admission.NewContextWithRequest(
+					context.TODO(),
+					admission.Request{
+						AdmissionRequest: v1.AdmissionRequest{
+							UID:    "test-request-nil-annotations",
+							DryRun: ptr.To(false),
+						},
+					},
+				),
+				binding: &corev1.Binding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "worker-no-annotations",
+						Namespace: corev1.NamespaceDefault,
+					},
+					Target: corev1.ObjectReference{Name: nodeWithTopology.Name},
+				},
+			},
+			wantErr:       false,
+			wantTopology:  "topo-switch:s2,topo-block:b2",
+			checkTopology: true,
+		},
+		{
 			name:   "Worker pod gets empty topology when node has no annotation",
 			client: fake.NewFakeClient(workerPod.DeepCopy(), nodeWithoutTopology.DeepCopy()),
 			args: args{
