@@ -859,6 +859,8 @@ func (r *NodeSetReconciler) syncNodeSet(
 			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
 		}
 		if diff := len(activePods) - replicaCount; diff > 0 {
+			// doPodScale only deletes burstReplicas per pass, so pass no more than that.
+			diff = min(diff, burstReplicas)
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
 			podsToDelete, _ := nodesetutils.SplitActivePods(activePods, diff)
 			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
