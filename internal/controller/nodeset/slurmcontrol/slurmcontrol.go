@@ -468,8 +468,9 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 
 	// Drained is when a node has the DRAIN flag and is not doing any work (e.g. job step, prolog, epilog).
 	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3500
-	isBusy := slurmutils.GetStateAsSet(slurmNode.State).HasAny(slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateMIXED, slurmapi.V0044NodeStateCOMPLETING)
-	isDrain := slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateDRAIN) && !slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateUNDRAIN)
+	nodeStates := slurmutils.GetStateAsSet(slurmNode.State)
+	isBusy := nodeStates.HasAny(slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateMIXED, slurmapi.V0044NodeStateCOMPLETING)
+	isDrain := nodeStates.Has(slurmapi.V0044NodeStateDRAIN) && !nodeStates.Has(slurmapi.V0044NodeStateUNDRAIN)
 	isDrained := isDrain && !isBusy
 
 	return isDrained, nil
