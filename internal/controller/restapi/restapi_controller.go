@@ -102,6 +102,9 @@ func (r *RestapiReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *RestapiReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := refresolver.SetupIndexes(context.Background(), mgr.GetFieldIndexer()); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.RestApi{}).

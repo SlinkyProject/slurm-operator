@@ -12,7 +12,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
-	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
 type RefResolver struct {
@@ -50,86 +49,47 @@ func (r *RefResolver) GetAccounting(ctx context.Context, ref corev1.LocalObjectR
 }
 
 func (r *RefResolver) GetNodeSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.NodeSetList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.NodeSetList{}, nil
+	}
 	list := &slinkyv1beta1.NodeSetList{}
-	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace), client.MatchingFields{ControllerRefField: controller.Name}); err != nil {
 		return nil, err
 	}
-
-	out := &slinkyv1beta1.NodeSetList{}
-	for _, item := range list.Items {
-		refKey := types.NamespacedName{
-			Namespace: item.Namespace,
-			Name:      item.Spec.ControllerRef.Name,
-		}
-		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
-			out.Items = append(out.Items, item)
-		}
-	}
-
-	return out, nil
+	return list, nil
 }
 
 func (r *RefResolver) GetLoginSetsForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.LoginSetList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.LoginSetList{}, nil
+	}
 	list := &slinkyv1beta1.LoginSetList{}
-	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace), client.MatchingFields{ControllerRefField: controller.Name}); err != nil {
 		return nil, err
 	}
-
-	out := &slinkyv1beta1.LoginSetList{}
-	for _, item := range list.Items {
-		refKey := types.NamespacedName{
-			Namespace: item.Namespace,
-			Name:      item.Spec.ControllerRef.Name,
-		}
-		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
-			out.Items = append(out.Items, item)
-		}
-	}
-
-	return out, nil
+	return list, nil
 }
 
 func (r *RefResolver) GetRestapisForController(ctx context.Context, controller *slinkyv1beta1.Controller) (*slinkyv1beta1.RestApiList, error) {
+	if controller == nil {
+		return &slinkyv1beta1.RestApiList{}, nil
+	}
 	list := &slinkyv1beta1.RestApiList{}
-	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace)); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(controller.Namespace), client.MatchingFields{ControllerRefField: controller.Name}); err != nil {
 		return nil, err
 	}
-
-	out := &slinkyv1beta1.RestApiList{}
-	for _, item := range list.Items {
-		refKey := types.NamespacedName{
-			Namespace: item.Namespace,
-			Name:      item.Spec.ControllerRef.Name,
-		}
-		if IsKeyMatch(refKey, objectutils.NamespacedName(controller)) {
-			out.Items = append(out.Items, item)
-		}
-	}
-
-	return out, nil
+	return list, nil
 }
 
 func (r *RefResolver) GetControllersForAccounting(ctx context.Context, accounting *slinkyv1beta1.Accounting) (*slinkyv1beta1.ControllerList, error) {
+	if accounting == nil {
+		return &slinkyv1beta1.ControllerList{}, nil
+	}
 	list := &slinkyv1beta1.ControllerList{}
-	if err := r.reader.List(ctx, list, client.InNamespace(accounting.Namespace)); err != nil {
+	if err := r.reader.List(ctx, list, client.InNamespace(accounting.Namespace), client.MatchingFields{AccountingRefField: accounting.Name}); err != nil {
 		return nil, err
 	}
-
-	out := &slinkyv1beta1.ControllerList{}
-	for _, item := range list.Items {
-		if item.Spec.AccountingRef == nil {
-			continue
-		}
-		refKey := types.NamespacedName{
-			Namespace: item.Namespace,
-			Name:      item.Spec.AccountingRef.Name,
-		}
-		if IsKeyMatch(refKey, objectutils.NamespacedName(accounting)) {
-			out.Items = append(out.Items, item)
-		}
-	}
-
-	return out, nil
+	return list, nil
 }
 
 func (r *RefResolver) GetSecretKeyRef(ctx context.Context, selector corev1.SecretKeySelector, namespace string) ([]byte, error) {

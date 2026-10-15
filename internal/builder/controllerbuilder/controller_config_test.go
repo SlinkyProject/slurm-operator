@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
 func TestBuilder_BuildControllerConfig(t *testing.T) {
@@ -33,7 +34,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		{
 			name: "default",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "prolog",
@@ -80,7 +81,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		{
 			name: "with accounting, nodesets, config",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&slinkyv1beta1.Accounting{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
@@ -150,7 +151,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		{
 			name: "multiple prolog configmaps",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{Name: "prolog-1"},
 						Data: map[string]string{
@@ -187,7 +188,7 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 		{
 			name: "multiple epilog configmaps",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{Name: "epilog-1"},
 						Data: map[string]string{
@@ -309,7 +310,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 	}{
 		{
 			name: "default",
-			c:    fake.NewFakeClient(),
+			c:    refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "slurm",
@@ -324,7 +325,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 		},
 		{
 			name: "With config",
-			c:    fake.NewFakeClient(),
+			c:    refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			controller: &slinkyv1beta1.Controller{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "slurm",
@@ -344,7 +345,7 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 		},
 		{
 			name: "With accounting, nodesets, config",
-			c: fake.NewClientBuilder().
+			c: refresolver.WithIndexes(fake.NewClientBuilder()).
 				WithObjects(&slinkyv1beta1.Accounting{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "slurm",
