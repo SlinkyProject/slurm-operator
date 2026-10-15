@@ -16,6 +16,11 @@ func IsPodCordon(pod *corev1.Pod) bool {
 	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordon] == "true"
 }
 
+// IsPodCordonedByNode returns true if the pod's cordon was propagated by the operator from its Kubernetes node.
+func IsPodCordonedByNode(pod *corev1.Pod) bool {
+	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonSource] == slinkyv1beta1.PodCordonSourceNode
+}
+
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.
 func IsRunningAndReady(pod *corev1.Pod) bool {
 	return IsRunning(pod) && podutil.IsPodReady(pod)
