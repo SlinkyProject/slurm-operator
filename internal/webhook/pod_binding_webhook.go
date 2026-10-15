@@ -56,7 +56,8 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 
 	bindinglog.Info("mutate binding for pod on node", "pod", binding.Name, "node", binding.Target.Name)
 
-	pod := &corev1.Pod{}
+	pod := &metav1.PartialObjectMetadata{}
+	pod.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Pod"))
 	podKey := client.ObjectKeyFromObject(binding)
 	if err := r.Get(ctx, podKey, pod); err != nil {
 		return fmt.Errorf("could not fetch pod for binding: %w", err)
@@ -78,7 +79,7 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 	}
 
 	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
-	mutateFn := func(pod *corev1.Pod) error {
+	mutateFn := func(pod *metav1.PartialObjectMetadata) error {
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
 		return nil
 	}
