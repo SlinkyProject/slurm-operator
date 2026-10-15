@@ -157,10 +157,12 @@ func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := indexes.SetupWithManager(mgr); err != nil {
 		return err
 	}
+	if err := refresolver.SetupIndexes(context.Background(), mgr.GetFieldIndexer()); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.NodeSet{}).
-		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
 		Watches(&corev1.Pod{}, eventhandler.NewPodEventHandler(r.Client, r.expectations)).
 		Watches(&corev1.Node{}, eventhandler.NewNodeEventHandler(r.Client)).

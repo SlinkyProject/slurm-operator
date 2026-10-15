@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -41,12 +42,12 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 		{
 			name: "slurm key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					jwtKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -60,12 +61,12 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 		{
 			name: "JWT key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					jwtKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -113,11 +114,11 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 		{
 			name: "slurm key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -131,12 +132,12 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 		{
 			name: "JWT key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					jwtKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -177,7 +178,7 @@ func Test_SecretEventHandler_Generic(t *testing.T) {
 		{
 			name: "Empty",
 			fields: fields{
-				Reader: fake.NewFakeClient(),
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -223,11 +224,11 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 		{
 			name: "slurm key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -242,12 +243,12 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 		{
 			name: "JWT key",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					slurmKeySecret,
 					jwtKeySecret,
 					controller,
 					nodeset,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
