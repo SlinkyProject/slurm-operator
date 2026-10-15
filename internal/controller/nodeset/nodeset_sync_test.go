@@ -4212,6 +4212,8 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 	allocatedPod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 	allocatedPod.Spec.NodeName = node.Name
 	allocatedPod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = existingTopology
+	noAnnotationsPod := allocatedPod.DeepCopy()
+	noAnnotationsPod.Annotations = nil
 
 	tests := []struct {
 		name         string
@@ -4240,6 +4242,11 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 			syncTopology: ptr.To(false),
 			pod:          allocatedPod,
 			wantTopology: existingTopology,
+		},
+		{
+			name:         "nil annotations",
+			pod:          noAnnotationsPod,
+			wantTopology: nodeTopology,
 		},
 	}
 	for _, tt := range tests {
