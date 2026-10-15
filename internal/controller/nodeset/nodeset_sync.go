@@ -1153,6 +1153,8 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 		// uses the full list (usedOrdinals below) rather than len(activePods).
 		activePods := kubecontroller.FilterActivePods(klog.FromContext(ctx), podsNewScaling)
 		if diff := replicaCount - len(podsNewScaling); diff > 0 {
+			// doPodScale only creates burstReplicas per pass, so build no more than that.
+			diff = min(diff, burstReplicas)
 			podsToCreate := make([]*corev1.Pod, diff)
 			usedOrdinals := set.New[int]()
 			for _, pod := range pods {
