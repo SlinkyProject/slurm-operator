@@ -292,6 +292,9 @@ func PatchObject[T client.Object](c client.Client, ctx context.Context, obj T, m
 	if err != nil {
 		return fmt.Errorf("failed to create object patch for %s: %w", key, err)
 	}
+	if patch == nil {
+		return nil
+	}
 	data, err := patch.Data(obj)
 	if err != nil {
 		return err
@@ -309,6 +312,9 @@ func StatusPatchObject[T client.Object](c client.Client, ctx context.Context, ob
 	patch, err := createPatch(obj, mutateFn)
 	if err != nil {
 		return fmt.Errorf("failed to create object patch for %s: %w", key, err)
+	}
+	if patch == nil {
+		return nil
 	}
 	data, err := patch.Data(obj)
 	if err != nil {
@@ -332,6 +338,9 @@ func createPatch[T client.Object](obj T, mutateFn func(T) error) (client.Patch, 
 	}
 	if err := mutateFn(obj); err != nil {
 		return nil, err
+	}
+	if equality.Semantic.DeepEqual(baseline, obj) {
+		return nil, nil //nolint:nilnil
 	}
 	patch := client.MergeFrom(baseline)
 	return patch, nil
