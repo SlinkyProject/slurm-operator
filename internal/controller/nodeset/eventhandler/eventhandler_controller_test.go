@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -42,9 +43,9 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "0 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -58,12 +59,12 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "1 Refs, controller 1",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -77,12 +78,12 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "1 Refs, controller 2",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -96,13 +97,13 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "2 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					nodesetB,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -148,9 +149,9 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "0 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -164,12 +165,12 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "1 Refs, controller 1",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -183,12 +184,12 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "1 Refs, controller 2",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -202,13 +203,13 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "2 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					nodesetB,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -247,7 +248,7 @@ func Test_ControllerEventHandler_Generic(t *testing.T) {
 		{
 			name: "Empty",
 			fields: fields{
-				Reader: fake.NewFakeClient(),
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -291,9 +292,9 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "0 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -308,12 +309,12 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "1 Refs, controller 1",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -328,12 +329,12 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "1 Refs, controller 2",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -348,13 +349,13 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "2 Refs",
 			fields: fields{
-				Reader: fake.NewFakeClient(
+				Reader: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(
 					controller,
 					nodesetA,
 					nodesetB,
 					controller2,
 					nodeset2A,
-				),
+				).Build(),
 			},
 			args: args{
 				ctx: context.TODO(),

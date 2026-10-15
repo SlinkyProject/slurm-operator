@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/refresolver"
 )
 
 func Test_ControllerEventHandler_Create(t *testing.T) {
@@ -37,7 +38,7 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewFakeClient(),
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -49,7 +50,7 @@ func Test_ControllerEventHandler_Create(t *testing.T) {
 		{
 			name: "non-empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
@@ -103,7 +104,7 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewFakeClient(),
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -115,7 +116,7 @@ func Test_ControllerEventHandler_Update(t *testing.T) {
 		{
 			name: "non-empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
@@ -174,7 +175,7 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewFakeClient(),
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
@@ -186,7 +187,7 @@ func Test_ControllerEventHandler_Delete(t *testing.T) {
 		{
 			name: "non-empty",
 			fields: fields{
-				client: fake.NewClientBuilder().
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).
 					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "slurm",
@@ -240,7 +241,7 @@ func Test_ControllerEventHandler_Generic(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				client: fake.NewFakeClient(),
+				client: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects().Build(),
 			},
 			args: args{
 				ctx: context.TODO(),
