@@ -754,7 +754,7 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 			if deadline.IsZero() {
 				delete(pod.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 			} else {
-				pod.Annotations[slinkyv1beta1.AnnotationPodDeadline] = deadline.Format(time.RFC3339)
+				metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodDeadline, deadline.Format(time.RFC3339))
 			}
 			return nil
 		}
@@ -799,7 +799,7 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 
 		topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 		mutateFn := func(pod *corev1.Pod) error {
-			pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
+			metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
 			return nil
 		}
 		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {

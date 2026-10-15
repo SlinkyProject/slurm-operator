@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -78,7 +79,7 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 
 	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
 	mutateFn := func(pod *corev1.Pod) error {
-		pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec] = topologySpec
+		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
