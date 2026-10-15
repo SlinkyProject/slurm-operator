@@ -231,6 +231,7 @@ func main() {
 		Metrics: metricsServerOptions,
 		Cache: cache.Options{
 			DefaultNamespaces: defaultNamespaces,
+			DefaultTransform:  cache.TransformStripManagedFields(),
 		},
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
