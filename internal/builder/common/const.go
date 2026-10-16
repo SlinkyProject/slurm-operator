@@ -54,7 +54,8 @@ const (
 	SlurmdLogFile     = "slurmd.log"
 	SlurmdLogFilePath = SlurmLogFileDir + "/" + SlurmdLogFile
 
-	SlurmdSpoolDir = "/var/spool/slurmd"
+	SlurmdSpoolVolume = "slurmd-spool"
+	SlurmdSpoolDir    = "/var/spool/slurmd"
 )
 
 // Controller
