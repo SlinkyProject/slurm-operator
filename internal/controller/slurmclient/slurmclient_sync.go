@@ -92,7 +92,7 @@ func (r *SlurmClientReconciler) Sync(ctx context.Context, req reconcile.Request)
 		Server:    server,
 		AuthToken: authToken,
 		HTTPClient: &http.Client{
-			Timeout:   5 * time.Minute,
+			Timeout:   2 * time.Minute,
 			Transport: transport,
 		},
 	}

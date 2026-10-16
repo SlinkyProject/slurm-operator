@@ -29,7 +29,7 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
-	"github.com/SlinkyProject/slurm-operator/internal/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/batch"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
@@ -79,7 +79,7 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 		}
 		return r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod)
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmStatusFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmStatusFn); err != nil {
 		return err
 	}
 
@@ -329,7 +329,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncPodPDBLabelsFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncPodPDBLabelsFn); err != nil {
 		return err
 	}
 

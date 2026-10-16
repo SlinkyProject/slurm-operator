@@ -603,7 +603,7 @@ func TestNodeSetReconciler_syncNodeSet(t *testing.T) {
 }
 
 func TestNodeSetReconciler_syncTaint(t *testing.T) {
-
+	ctx := t.Context()
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "slurm",
@@ -684,7 +684,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				}(),
 			},
 			args: args{
-				ctx:     context.TODO(),
+				ctx:     ctx,
 				nodeset: nodesetNoTaint,
 				pod:     podNoTaint,
 				node:    &node,
@@ -715,7 +715,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				}(),
 			},
 			args: args{
-				ctx:     context.TODO(),
+				ctx:     ctx,
 				nodeset: nodesetTaint,
 				pod:     podTaint,
 				node:    &node,
@@ -731,7 +731,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:  context.TODO(),
+				ctx:  ctx,
 				node: &emptyNode,
 			},
 			wantErr:   false,
@@ -746,7 +746,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				),
 			},
 			args: args{
-				ctx:  context.TODO(),
+				ctx:  ctx,
 				node: &node,
 			},
 			wantErr:   false,
@@ -777,7 +777,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 				}(),
 			},
 			args: args{
-				ctx:  context.TODO(),
+				ctx:  ctx,
 				node: &node,
 			},
 			wantErr:   false,
@@ -787,7 +787,7 @@ func TestNodeSetReconciler_syncTaint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			if err := r.syncTaint(ctx); (err != nil) != tt.wantErr {
+			if err := r.syncTaint(tt.args.ctx); (err != nil) != tt.wantErr {
 				t.Errorf("NodeSetReconciler.syncTaint() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			node := &corev1.Node{}
