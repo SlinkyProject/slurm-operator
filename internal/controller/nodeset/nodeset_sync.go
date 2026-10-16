@@ -839,6 +839,8 @@ func (r *NodeSetReconciler) syncNodeSet(
 		// uses the full list (usedOrdinals below) rather than len(activePods).
 		activePods := kubecontroller.FilterActivePods(klog.FromContext(ctx), podsNewScaling)
 		if diff := replicaCount - len(podsNewScaling); diff > 0 {
+			// doPodScale only creates burstReplicas per pass, so build no more than that.
+			diff = min(diff, burstReplicas)
 			podsToCreate := make([]*corev1.Pod, diff)
 			usedOrdinals := set.New[int]()
 			for _, pod := range pods {
@@ -862,6 +864,8 @@ func (r *NodeSetReconciler) syncNodeSet(
 			return r.doPodScale(ctx, nodeset, nil, nil, podsToCreate)
 		}
 		if diff := len(activePods) - replicaCount; diff > 0 {
+			// doPodScale only deletes burstReplicas per pass, so pass no more than that.
+			diff = min(diff, burstReplicas)
 			logger.V(2).Info("Too many NodeSet pods", "need", replicaCount, "deleting", diff)
 			podsToDelete, _ := nodesetutils.SplitActivePods(activePods, diff)
 			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
