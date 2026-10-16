@@ -600,6 +600,14 @@ sssd:
 
 # -- (object) Defines defaults for the LoginSet map values.
 loginsetDefaults:
+  sssd:
+    # -- (secretKeyRef) Per-set `sssd.conf`, replacing the cluster-wide
+    # `sssd.secretRef` as a whole. Give it a `name`; `key` defaults to
+    # `sssd.conf` and is never inherited from the cluster-wide value. Use it
+    # when sets must resolve identities from different directories.
+    secretRef: {}
+      # name: my-sssd-secret
+      # key: sssd.conf
   # -- Enable use of this LoginSet.
   enabled: true
   # -- Number of replicas to deploy.
@@ -719,6 +727,14 @@ loginsets: {}
 
 # -- (object) Defines defaults for the NodeSet map values.
 nodesetDefaults:
+  sssd:
+    # -- (secretKeyRef) Per-set `sssd.conf`, replacing the cluster-wide
+    # `sssd.secretRef` as a whole. Give it a `name`; `key` defaults to
+    # `sssd.conf` and is never inherited from the cluster-wide value. Use it
+    # when sets must resolve identities from different directories.
+    secretRef: {}
+      # name: my-sssd-secret
+      # key: sssd.conf
   # -- Enable use of this NodeSet.
   enabled: true
   # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
