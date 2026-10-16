@@ -3019,6 +3019,8 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
 	pod2 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
 	pod2.Spec.NodeName = node2.Name
+	noAnnotationsPod := pod2.DeepCopy()
+	noAnnotationsPod.Annotations = nil
 
 	tests := []struct {
 		name      string
@@ -3056,6 +3058,28 @@ func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 			}(),
 			nodeset: nodeset,
 			pods:    []*corev1.Pod{pod2.DeepCopy()},
+		},
+		{
+			name:   "nil annotations",
+			client: fake.NewFakeClient(node.DeepCopy(), node2.DeepCopy(), noAnnotationsPod.DeepCopy()),
+			clientMap: func() *clientmap.ClientMap {
+				nodeList := &slurmtypes.V0044NodeList{
+					Items: []slurmtypes.V0044Node{
+						{
+							V0044Node: slurmapi.V0044Node{
+								Name: ptr.To(nodesetutils.GetSlurmNodeName(noAnnotationsPod)),
+								State: ptr.To([]slurmapi.V0044NodeState{
+									slurmapi.V0044NodeStateIDLE,
+								}),
+							},
+						},
+					},
+				}
+				sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+				return newClientMap(controller.Name, sclient)
+			}(),
+			nodeset: nodeset,
+			pods:    []*corev1.Pod{noAnnotationsPod.DeepCopy()},
 		},
 	}
 	for _, tt := range tests {
