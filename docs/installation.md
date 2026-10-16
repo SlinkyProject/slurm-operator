@@ -463,8 +463,8 @@ configFiles:
     AutoDetect=nvidia
 ```
 
-Slurm requires that [GresTypes] contains the "gpu" resource. Slinky sets this by
-default, otherwise set the value in `controller.extraConf` or
+Slurm requires that [GresTypes] contains the "gpu" resource. Slinky does not set
+it in the generated `slurm.conf`, so set the value in `controller.extraConf` or
 `controller.extraConfMap`.
 
 ```yaml
