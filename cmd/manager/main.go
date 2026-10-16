@@ -11,6 +11,7 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -172,6 +173,15 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:  scheme,
 		Metrics: metricsServerOptions,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{
+					&corev1.PersistentVolumeClaim{},
+					&policyv1.PodDisruptionBudget{},
+					&monitoringv1.ServiceMonitor{},
+				},
+			},
+		},
 		Cache: cache.Options{
 			DefaultNamespaces: defaultNamespaces,
 			DefaultTransform:  cache.TransformStripManagedFields(),
