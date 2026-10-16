@@ -5,6 +5,7 @@ package workerbuilder
 
 import (
 	_ "embed"
+	"slices"
 	"strings"
 	"testing"
 
@@ -106,6 +107,9 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 
 			case len(got.Spec.DNSConfig.Searches) == 0:
 				t.Errorf("len(DNSConfig.Searches) = %v , want = > 0", len(got.Spec.DNSConfig.Searches))
+
+			case !slices.Contains(got.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{Name: common.SlurmdSpoolVolume, MountPath: common.SlurmdSpoolDir}):
+				t.Errorf("Containers[0].VolumeMounts = %v , want slurmd spool mount", got.Spec.Containers[0].VolumeMounts)
 			}
 		})
 	}
