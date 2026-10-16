@@ -165,7 +165,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 	ports := []corev1.ContainerPort{
 		{
 			Name:          labels.WorkerApp,
-			ContainerPort: common.SlurmdPort,
+			ContainerPort: common.ControllerSlurmdPort(controller),
 			Protocol:      corev1.ProtocolTCP,
 		},
 	}
