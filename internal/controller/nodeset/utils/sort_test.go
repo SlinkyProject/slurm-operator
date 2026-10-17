@@ -238,6 +238,28 @@ func TestSortingActivePods(t *testing.T) {
 			},
 		},
 		{
+			// A rolling update with maxUnavailable=1 must not wait out a busy cordoned
+			// candidate's jobs while a pod whose node runs none could be replaced now.
+			name: "Sort idle pod ahead of a cordoned busy pod",
+			pods: []corev1.Pod{
+				newRunningPod("cordonedBusy", map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:   "True",
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(72 * time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("idle-0", nil),
+				newRunningPod("idle-1", nil),
+				newRunningPod("busy", map[string]string{
+					slinkyv1beta1.AnnotationPodDeadline: time.Now().Format(time.RFC3339),
+				}),
+			},
+			wantOrder: []string{
+				"idle-1",
+				"idle-0",
+				"cordonedBusy",
+				"busy",
+			},
+		},
+		{
 			name: "Sort deletion cost",
 			pods: []corev1.Pod{
 				newRunningPod("costNeg10", map[string]string{
@@ -291,10 +313,10 @@ func TestSortingActivePods(t *testing.T) {
 			wantOrder: []string{
 				"deletionCostNeg10",
 				"podCordoned",
-				"podCordonedAndDeadlineNow",
-				"podCordonedAndDeadlineLater",
 				"ordinal-1",
 				"ordinal-0",
+				"podCordonedAndDeadlineNow",
+				"podCordonedAndDeadlineLater",
 				"deadlineNow",
 				"deadlineLater",
 				"deletionCostPos10",

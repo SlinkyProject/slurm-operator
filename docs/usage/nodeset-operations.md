@@ -185,15 +185,17 @@ kubectl annotate node <node> nodeset.slinky.slurm.net/node-cordon-reason-
 
 ## Influencing Scale-in Order
 
-When a NodeSet scales in, pods are sorted to determine which ones are deleted
-first. The full sort order (first match wins):
+When a NodeSet scales in, or a rolling update picks the next old pods to
+replace, pods are sorted to determine which ones are deleted first. The full
+sort order (first match wins):
 
 1. Unassigned pods before assigned pods
 1. `Pending` phase before `Unknown` before `Running`
 1. Not-ready pods before ready pods
 1. Lower `pod-deletion-cost` before higher
-1. Earlier `pod-deadline` before later
+1. Pods with no `pod-deadline` (no running Slurm workload) before pods with one
 1. Cordoned pods before uncordoned pods
+1. Earlier `pod-deadline` before later
 1. Higher ordinal before lower ordinal
 1. More recently ready before longer-ready
 1. More recently created before older
@@ -228,9 +230,14 @@ permitted.
 ### Pod Deadline
 
 The `nodeset.slinky.slurm.net/pod-deadline` is an RFC 3339 timestamp. The
-operator updates this annotation based on the pod's running Slurm workload. Pods
-with **earlier** deadlines are preferred to be deleted before pods with
-**later** deadlines.
+operator updates this annotation based on the pod's running Slurm workload, and
+removes it when the pod's Slurm node runs no jobs. A pod without a deadline is
+preferred over every pod that has one, including a cordoned pod that is still
+draining, since it can be replaced immediately; with `maxUnavailable: 1` a
+rolling update would otherwise wait for the cordoned pod's jobs while idle pods
+stay on the old revision. Among pods with deadlines, a cordoned pod stays first
+so the choice does not change while it drains, and then pods with **earlier**
+deadlines are preferred to be deleted before pods with **later** deadlines.
 
 ## Workload Disruption Protection
 

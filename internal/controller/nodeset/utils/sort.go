@@ -62,6 +62,18 @@ func (o ActivePods) Less(i, j int) bool {
 		return podDeletionCost1 < podDeletionCost2
 	}
 
+	// Step: no workload deadline < workload deadline
+	// A pod whose Slurm node runs no jobs (syncSlurmDeadline removes the annotation)
+	// can be replaced at once, so it goes ahead of a cordoned candidate that is still
+	// draining. Otherwise a rolling update with maxUnavailable=1 waits for the
+	// candidate's longest job while idle nodes sit on the old revision. The cordon
+	// step below still keeps the choice stable among pods that are all busy.
+	podDeadline1, _ := structutils.GetTimeFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodDeadline)
+	podDeadline2, _ := structutils.GetTimeFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodDeadline)
+	if podDeadline1.IsZero() != podDeadline2.IsZero() {
+		return podDeadline1.IsZero()
+	}
+
 	// Step: cordon < not cordon
 	// A pod already cordoned as a scale-in candidate stays preferred for deletion even if a
 	// later step (e.g. deadline) would otherwise re-rank it, so candidate selection doesn't
@@ -73,8 +85,6 @@ func (o ActivePods) Less(i, j int) bool {
 	}
 
 	// Step: earlier deadline timestamp < later deadline timestamp
-	podDeadline1, _ := structutils.GetTimeFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodDeadline)
-	podDeadline2, _ := structutils.GetTimeFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 	if !podDeadline1.Equal(podDeadline2) {
 		return podDeadline1.Before(podDeadline2)
 	}
