@@ -19,6 +19,13 @@ const (
 	// AnnotationPodCordon indicates NodeSet Pods that should be DRAIN[ING|ED] in Slurm.
 	AnnotationPodCordon = NodeSetPrefix + "pod-cordon"
 
+	// AnnotationPodCordonSource records why the operator set AnnotationPodCordon on a NodeSet Pod, so that the operator
+	// only ever releases a cordon that it set itself: PodCordonSourceNode when the Kubernetes node the Pod runs on was
+	// cordoned, PodCordonSourceTermination when the Pod is pending termination. A pod-cordon set by anything else, a
+	// user included, carries no source and is left in place until whoever set it removes it.
+	// NOTE: this annotation is managed by the operator and should not be set by users.
+	AnnotationPodCordonSource = NodeSetPrefix + "pod-cordon-source"
+
 	// LabelPodDeletionCost can be used to set to an int32 that represent the cost of deleting a pod compared to other
 	// pods belonging to the same ReplicaSet. Pods with lower deletion cost are preferred to be deleted before pods
 	// with higher deletion cost.
@@ -30,6 +37,15 @@ const (
 	// workload by. Pods with an earlier deadline are preferred to be deleted before pods with a later deadline.
 	// NOTE: this is honored on a best-effort basis, and does not offer guarantees on pod deletion order.
 	AnnotationPodDeadline = NodeSetPrefix + "pod-deadline"
+)
+
+// Well Known values of AnnotationPodCordonSource
+const (
+	// PodCordonSourceNode marks a pod-cordon that the operator propagated from a cordoned Kubernetes node.
+	PodCordonSourceNode = "node"
+	// PodCordonSourceTermination marks a pod-cordon that the operator set to drain a Pod pending termination, e.g. for
+	// scale-in or a rolling update.
+	PodCordonSourceTermination = "termination"
 )
 
 // Well Known Annotations for Objects of type corev1.Node
