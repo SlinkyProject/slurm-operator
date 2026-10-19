@@ -477,7 +477,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 		name          string
 		node          *api.V0044Node
 		args          args
-		notRegistered bool  // node absent from slurmctld: Get returns a tolerated 404
+		notRegistered bool  // node absent from slurmctld: Get returns 404
 		updateErr     error // non-nil makes the Slurm Update fail with this error
 		wantErr       bool
 		wantSkip      bool
@@ -533,12 +533,11 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			wantActive:    []string{"foo", "mig=on", prefix + "nn-a"},
 		},
 		{
-			// Node not registered in slurmctld yet: Get returns a tolerated 404 and
-			// the call is a no-op.
-			name:          "node not registered is tolerated",
+			name:          "node not registered returns error",
 			node:          nodeWith([]string{"foo"}, []string{"foo"}),
 			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
 			notRegistered: true,
+			wantErr:       true,
 		},
 		{
 			// A non-tolerated error from the Slurm update is surfaced to the caller.
@@ -574,11 +573,6 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			require.NoError(t, err)
 			if tt.wantSkip {
 				require.Zero(t, updates, "UpdateNodeFeatures() issued %d update(s), want 0 (already in sync)", updates)
-			}
-			// The Slurm node feature set is only well-defined on the success path; for
-			// the tolerated-404 and error cases there is nothing to assert.
-			if tt.notRegistered {
-				return
 			}
 			checkNode := &api.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {

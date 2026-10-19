@@ -32,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
@@ -511,12 +513,18 @@ func (r *NodeSetReconciler) syncCordon(
 		nodeIsCordoned := node.Spec.Unschedulable
 		podIsCordoned := podutils.IsPodCordon(pod)
 		slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
-		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		if err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return err
 		}
 		ourReason, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
-		if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-			return err
+		if err != nil {
+			if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+				!errors.Is(err, slurmerrors.ErrNotFound) {
+				return err
+			}
+			ourReason = true
 		}
 
 		switch {
@@ -711,7 +719,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForNodeNotFound(
 			// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
 			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
-				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) || errors.Is(err, slurmerrors.ErrNotFound) {
 					return nil
 				}
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
@@ -757,7 +765,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
 			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
 		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
-			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return err
 		}
 		return nil
@@ -991,7 +1000,8 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil &&
-			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return fmt.Errorf("failed to update Slurm node topology: %w", err)
 		}
 
@@ -1043,7 +1053,8 @@ func (r *NodeSetReconciler) syncSlurmFeatures(
 		features := structutils.SortedDedup(strings.Split(annotation, ","))
 
 		if err := r.slurmControl.UpdateNodeFeatures(ctx, nodeset, pod, slinkyv1beta1.NodeFeaturePrefix, features); err != nil &&
-			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return fmt.Errorf("failed to update Slurm node features: %w", err)
 		}
 
@@ -1542,10 +1553,14 @@ func (r *NodeSetReconciler) processCondemned(
 	}
 
 	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod, false)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	switch {
+	case errors.Is(err, slurmcontrol.ErrNoSlurmClient):
+		fallthrough
+	case errors.Is(err, slurmerrors.ErrNotFound):
+		isDrained = true
+	case err != nil:
 		return err
 	}
-
 	if !isDrained {
 		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in")
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.
@@ -1558,7 +1573,12 @@ func (r *NodeSetReconciler) processCondemned(
 	}
 
 	isDrained, err = r.slurmControl.IsNodeDrained(ctx, nodeset, pod, true)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	switch {
+	case errors.Is(err, slurmcontrol.ErrNoSlurmClient):
+		fallthrough
+	case errors.Is(err, slurmerrors.ErrNotFound):
+		isDrained = true
+	case err != nil:
 		return err
 	}
 	if !isDrained {
@@ -1671,6 +1691,7 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 
 	if err := r.slurmControl.MakeNodeDrain(ctx, nodeset, pod, reason, overrideReason); err != nil &&
 		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) &&
 		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
@@ -1717,6 +1738,7 @@ func (r *NodeSetReconciler) makePodUncordonAndUndrain(
 
 	if err := r.slurmControl.MakeNodeUndrain(ctx, nodeset, pod, reason); err != nil &&
 		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) &&
 		!errors.Is(err, slurmcontrol.ErrNodeInvalidReg) {
 		return err
 	}
@@ -1756,9 +1778,15 @@ func (r *NodeSetReconciler) syncPodUncordon(ctx context.Context, nodeset *slinky
 	}
 
 	// Slurm node may have been externally set in down, drain, fail, etc...
-	if ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-		return err
-	} else if !ok {
+	ok, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
+	if err != nil {
+		if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
+			return err
+		}
+		ok = true
+	}
+	if !ok {
 		logger.V(1).Info("Skipping uncordon for pod which has an externally set reason")
 		return nil // Skip
 	}

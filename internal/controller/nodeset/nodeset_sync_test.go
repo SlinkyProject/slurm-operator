@@ -1542,7 +1542,9 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 			}
 			pod := tt.args.condemned[tt.args.i]
 			isDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, pod)
-			require.NoError(t, err)
+			if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) && !errors.Is(err, slurmerrors.ErrNotFound) {
+				require.NoError(t, err)
+			}
 			gotPod := &corev1.Pod{}
 			podKey := client.ObjectKeyFromObject(pod)
 			getErr := r.Get(tt.args.ctx, podKey, gotPod)
