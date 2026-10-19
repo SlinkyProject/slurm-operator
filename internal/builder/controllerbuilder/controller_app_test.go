@@ -259,6 +259,24 @@ func TestBuildController_HA(t *testing.T) {
 	}
 }
 
+func TestBuildController_Env(t *testing.T) {
+	c := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm", Namespace: "slurm"},
+		Spec: slinkyv1beta1.ControllerSpec{
+			Slurmctld: slinkyv1beta1.ContainerWrapper{
+				Container: corev1.Container{
+					Env: []corev1.EnvVar{{Name: "ABORT_ON_FATAL", Value: ""}, {Name: "SLURM_DEBUG_FLAGS", Value: "accrue"}},
+				},
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	sts, err := b.BuildController(c)
+	require.NoError(t, err)
+	require.Equal(t, labels.ControllerApp, sts.Spec.Template.Spec.Containers[0].Name)
+	require.ElementsMatch(t, c.Spec.Slurmctld.Env, sts.Spec.Template.Spec.Containers[0].Env)
+}
+
 func TestBuilder_BuildController_configHash(t *testing.T) {
 	primary := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "slurm-config", Namespace: "ns"},

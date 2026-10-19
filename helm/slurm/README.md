@@ -43,6 +43,7 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | accounting.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | accounting.slurmdbd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS |
+| accounting.slurmdbd.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_ENVIRONMENT-VARIABLES |
 | accounting.slurmdbd.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmdbd","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | accounting.slurmdbd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | accounting.storageConfig.database | string | `"slurm_acct_db"` | The name of the database where records are written into. Ref: https://slurm.schedmd.com/slurmdbd.conf.html#OPT_StorageLoc |
@@ -88,6 +89,7 @@ Kubernetes: `>= 1.29.0-0`
 | controller.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | controller.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | controller.slurmctld.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS |
+| controller.slurmctld.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_ENVIRONMENT-VARIABLES |
 | controller.slurmctld.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmctld","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.slurmctld.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | epilogScriptRefs | list | `[]` | References to existing ConfigMaps containing Slurm Epilog scripts to mount in `/etc/slurm`. Keys (filenames) become `Epilog=` values, so follow the `epilog-*` naming used by `epilogScripts`. WARNING: Keys must be unique across this list, `epilogScripts`, any enabled vendor scripts (e.g. DCGM), and every other ConfigMap mounted in `/etc/slurm`. |
