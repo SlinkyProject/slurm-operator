@@ -39,8 +39,6 @@ import (
 )
 
 type SlurmControlInterface interface {
-	// RefreshNodeCache forces the Node cache to be refreshed
-	RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// UpdateNodeWithPodInfo handles updating the Node with its pod info
 	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 	// UpdateNodeTopology handles updating the Node with its topologySpec.
@@ -93,25 +91,6 @@ var ErrNodeInvalidReg = errors.New("NodeInvalidReg")
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
 	clientMap *clientmap.ClientMap
-}
-
-// RefreshNodeCache implements SlurmControlInterface.
-func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-	logger := log.FromContext(ctx)
-
-	slurmClient := r.lookupClient(nodeset)
-	if slurmClient == nil {
-		logger.V(2).Info("no client for nodeset, cannot do RefreshNodeCache()")
-		return ErrNoSlurmClient
-	}
-
-	nodeList := &slurmapi.V0044NodeObjectList{}
-	opts := &slurmclient.ListOptions{RefreshCache: true}
-	if err := slurmClient.List(ctx, nodeList, opts); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // UpdateNodeWithPodInfo implements SlurmControlInterface.
