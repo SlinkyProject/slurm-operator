@@ -30,7 +30,6 @@ import (
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/history"
 	"k8s.io/utils/ptr"
-	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -1544,11 +1543,14 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 			pod := tt.args.condemned[tt.args.i]
 			isDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, pod)
 			require.NoError(t, err)
-			if isDrain != tt.wantDrain && !tt.wantDelete {
-				require.True(t, isDrain == tt.wantDrain, "slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
+			gotPod := &corev1.Pod{}
+			podKey := client.ObjectKeyFromObject(pod)
+			getErr := r.Get(tt.args.ctx, podKey, gotPod)
+			if tt.wantDelete {
+				require.True(t, apierrors.IsNotFound(getErr), "expected pod to be deleted, but it still exists")
+			} else {
+				require.Equal(t, tt.wantDrain, isDrain, "slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
 			}
-			key := client.ObjectKeyFromObject(pod)
-			getErr := r.Get(tt.args.ctx, key, pod)
 			podStillExists := getErr == nil
 			podGone := apierrors.IsNotFound(getErr)
 			if getErr != nil && !podGone {
@@ -4889,6 +4891,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 		clientMap *clientmap.ClientMap
 		nodeset   *slinkyv1beta1.NodeSet
 		pods      []*corev1.Pod
+		wantPods  []*corev1.Pod
 		wantErr   bool
 	}
 	tests := []testCase{
@@ -4919,6 +4922,10 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
+				wantPods: []*corev1.Pod{
+					pod0,
+					pod1,
+				},
 			}
 		}(),
 		func() testCase {
@@ -4928,13 +4935,13 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 			kclient := fake.NewFakeClient(nodeset, pod0, pod1)
 			sclient := newFakeClientList(sinterceptor.Funcs{}, &slurmapi.V0044NodeObjectList{
 				Items: []slurmapi.V0044Node{
-					{Name: ptr.To(nodesetutils.GetSlurmNodeName(pod0))}},
-				// {Name: ptr.To(nodesetutils.GetSlurmNodeName(pod1))}}, // unregistered
-			},
-			)
+					// {Name: new(nodesetutils.GetSlurmNodeName(pod0))}, // unregistered
+					// {Name: new(nodesetutils.GetSlurmNodeName(pod1))}, // unregistered
+				},
+			})
 			clientMap := newClientMap(controller.Name, sclient)
 			return testCase{
-				name:      "one unregistered pod",
+				name:      "all are unregistered",
 				kclient:   kclient,
 				clientMap: clientMap,
 				nodeset:   nodeset,
@@ -4942,6 +4949,7 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
+				wantPods: nil,
 			}
 		}(),
 		func() testCase {
@@ -4959,33 +4967,36 @@ func TestNodeSetReconciler_syncSlurmNodes(t *testing.T) {
 					pod0,
 					pod1,
 				},
+				wantPods: []*corev1.Pod{
+					pod0,
+					pod1,
+				},
 			}
 		}(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			r := NewReconciler(tt.kclient, tt.clientMap, nil)
-			gotErr := r.syncSlurmNodes(context.Background(), tt.nodeset, tt.pods)
+			gotErr := r.syncSlurmNodes(ctx, tt.nodeset, tt.pods)
 			if tt.wantErr {
 				require.Error(t, gotErr)
 			} else {
 				require.NoError(t, gotErr)
 			}
-			scontrol := slurmcontrol.NewSlurmControl(tt.clientMap)
-			slurmNodeNames, err := scontrol.GetNodesForPods(ctx, tt.nodeset, tt.pods)
-			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-				return
-			}
-			require.NoError(t, err)
 			podList := &corev1.PodList{}
 			require.NoError(t, tt.kclient.List(ctx, podList))
-			require.Equal(t, len(slurmNodeNames), len(podList.Items), "syncSlurmNodes() unregistered Slurm node but healthy pod was not deleted")
-			slurmNodeNameSet := set.New(slurmNodeNames...)
-			for _, pod := range podList.Items {
-				slurmNodeName := nodesetutils.GetSlurmNodeName(&pod)
-				require.True(t, slurmNodeNameSet.Has(slurmNodeName), "syncSlurmNodes() unexpected pod exists: %v", slurmNodeName)
+			gotNames := make([]string, len(podList.Items))
+			for i := range podList.Items {
+				gotNames[i] = podList.Items[i].Name
 			}
+			wantNames := make([]string, len(tt.wantPods))
+			for i, pod := range tt.wantPods {
+				wantNames[i] = pod.Name
+			}
+			slices.Sort(gotNames)
+			slices.Sort(wantNames)
+			require.Equal(t, wantNames, gotNames)
 		})
 	}
 }
