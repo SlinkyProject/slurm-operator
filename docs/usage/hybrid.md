@@ -76,8 +76,9 @@ considerations.
 Each Slurm pod would be configured as follows.
 
 ```yaml
-hostNetwork: true
-dNSPolicy: ClusterFirstWithHostNet
+podSpec:
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
 ```
 
 > [!NOTE]
@@ -85,9 +86,10 @@ dNSPolicy: ClusterFirstWithHostNet
 > configuration race with Kubernetes.
 
 > [!WARNING]
-> Only one pod with host network enabled can run on a Kubernetes node at a time.
-> It will inherit the node's hostname and will run within the host's namespace,
-> giving the pod access to the entire network and all ports.
+> A host-networked pod uses the Kubernetes node's network namespace. Multiple
+> host-networked pods can run on one node only when their host ports do not
+> conflict. In StatefulSet mode, a host-networked NodeSet pod also uses the
+> Kubernetes node name as its Slurm node name.
 
 ### Network Peering
 
@@ -125,12 +127,16 @@ secrets that were copied into Kubernetes; otherwise, Slurm components will be
 unable to authenticate with the rest of the Slurm cluster.
 
 ```yaml
-slurmKeyRef:
-  name: external-auth-slurm
-  key: slurm.key
-jwtKeyRef:
-  name: external-auth-jwt
-  key: jwt.key
+slurmKey:
+  create: false
+  secretRef:
+    name: external-auth-slurm
+    key: slurm.key
+jwtKey:
+  create: false
+  secretRef:
+    name: external-auth-jwt
+    key: jwt.key
 ```
 
 > [!WARNING]
@@ -140,7 +146,7 @@ jwtKeyRef:
 
 ### External Slurmdbd
 
-When slurmctld is external to Kubernetes, the Slurm helm chart needs to have the
+When slurmdbd is external to Kubernetes, the Slurm helm chart needs to have the
 accounting CR configured such that it knows how to communicate with it.
 
 ```yaml
@@ -148,7 +154,7 @@ accounting:
   external: true
   externalConfig:
     host: $SLURMDBD_HOST
-    port: $SLURMDBD_PORT # Default: 6819
+    port: 6819
 ```
 
 ### External Slurmctld
@@ -161,7 +167,7 @@ controller:
   external: true
   externalConfig:
     host: $SLURMCTLD_HOST
-    port: $SLURMCTLD_PORT # Default: 6817
+    port: 6817
 ```
 
 ### External Slurmd

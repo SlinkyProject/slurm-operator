@@ -228,15 +228,14 @@ Check if the Slurm cluster deployed successfully:
 ```console
 $ kubectl --namespace=slurm get pods
 NAME                                  READY   STATUS    RESTARTS   AGE
-slurm-accounting-0                    1/1     Running   0          2m
-slurm-controller-0                    3/3     Running   0          2m
-slurm-login-slinky-7ff66445b5-wdjkn   1/1     Running   0          2m
+slurm-controller-0                    2/2     Running   0          2m
 slurm-restapi-77b9f969f7-kh4r8        1/1     Running   0          2m
 slurm-worker-slinky-0                 2/2     Running   0          2m
 ```
 
 > [!NOTE]
-> The above output is with all Slurm components enabled and configured properly.
+> The quick-start values create a controller, REST API, and one NodeSet pod.
+> Accounting and LoginSets appear only when separately enabled and configured.
 
 ### Controller Persistence
 
@@ -394,12 +393,12 @@ communicate with an identity service via [sssd].
 
 Install a Slurm cluster via helm chart with the
 `--set 'loginsets.slinky.enabled=true'` and
-`--set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf"` arguments.
+`--set-file "sssd.conf=${HOME}/sssd.conf"` arguments.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'loginsets.slinky.enabled=true' \
-  --set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf" \
+  --set-file "sssd.conf=${HOME}/sssd.conf" \
   --namespace=slurm --create-namespace
 ```
 
@@ -426,12 +425,12 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 SSH through the login service:
 
 ```sh
-SLURM_LOGIN_IP="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-SLURM_LOGIN_PORT="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ports[0].port}')"
+SLURM_LOGIN_HOST="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}')"
+SLURM_LOGIN_PORT="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.spec.ports[0].port}')"
 ## Assuming your public SSH key was configured in `loginsets.slinky.rootSshAuthorizedKeys`.
-ssh -p ${SLURM_LOGIN_PORT:-22} root@${SLURM_LOGIN_IP}
+ssh -p ${SLURM_LOGIN_PORT:-22} root@${SLURM_LOGIN_HOST}
 ## Assuming SSSD was configured correctly.
-ssh -p ${SLURM_LOGIN_PORT:-22} ${USER}@${SLURM_LOGIN_IP}
+ssh -p ${SLURM_LOGIN_PORT:-22} ${USER}@${SLURM_LOGIN_HOST}
 ```
 
 Then, from a login pod, run Slurm commands to quickly test that Slurm is
@@ -463,9 +462,8 @@ configFiles:
     AutoDetect=nvidia
 ```
 
-Slurm requires that [GresTypes] contains the "gpu" resource. Slinky sets this by
-default, otherwise set the value in `controller.extraConf` or
-`controller.extraConfMap`.
+Slurm requires that [GresTypes] contains the "gpu" resource. Set the value in
+`controller.extraConf` or `controller.extraConfMap`.
 
 ```yaml
 controller:
@@ -583,8 +581,8 @@ spec:
 
 The [SwitchType] field in [slurm.conf] should be set so that slurmctld can
 identify the type of switch that is being used for application communications.
-In Slinky clusters, this can be set on Controllers using the `spec.extraConf`
-map:
+In the Slurm chart, set it with `controller.extraConfMap`; the chart renders the
+result into the Controller's `spec.extraConf` string:
 
 ```yaml
 controller:

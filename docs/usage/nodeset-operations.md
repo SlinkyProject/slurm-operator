@@ -192,8 +192,8 @@ first. The full sort order (first match wins):
 1. `Pending` phase before `Unknown` before `Running`
 1. Not-ready pods before ready pods
 1. Lower `pod-deletion-cost` before higher
-1. Earlier `pod-deadline` before later
 1. Cordoned pods before uncordoned pods
+1. Earlier `pod-deadline` before later
 1. Higher ordinal before lower ordinal
 1. More recently ready before longer-ready
 1. More recently created before older
@@ -212,7 +212,8 @@ same NodeSet. Pods with **lower** deletion cost are preferred to be deleted
 before pods with higher deletion cost.
 
 The implicit value for this annotation for pods that don't set it is 0; negative
-values are permitted. Invalid values will be rejected by the API server.
+values are permitted. The annotation is an ordinary string annotation, so the
+API server does not validate it; the operator treats an invalid value as `0`.
 
 ```sh
 # Protect this pod from early deletion
@@ -308,9 +309,10 @@ Points to keep in mind:
 - To neutralize the hook without replacing its behavior, use a command that does
   nothing, such as `["/usr/bin/true"]`.
 - This hook is a last-resort safety net, not the primary drain mechanism. On
-  scale-in the controller drains each Slurm node and waits for it to finish
-  before deleting the pod, and `spec.pruneSlurmNodeRecords` governs when the
-  operator deletes Slurm node records.
+  scale-in the controller drains each available Slurm node record and waits for
+  it to finish before deleting the pod. A missing Slurm client or node record is
+  treated as already drained. `spec.pruneSlurmNodeRecords` governs when the
+  operator deletes defunct Slurm node records.
 
 ## External Drain Preservation
 
@@ -325,7 +327,9 @@ prefix, it treats the reason as externally owned and takes no action:
   directly in Slurm.
 
 This means that drains set via `scontrol` or other Slurm management tools are
-preserved across operator reconciliation cycles.
+preserved during normal cordon reconciliation. If the pod is selected for
+scale-in or an update, the controller may replace the external reason because
+that path must drain and retire the pod.
 
 ## External Health Checker Integration Pattern
 
@@ -417,8 +421,10 @@ When enabled, the controller:
 
 ### DaemonSet Mode
 
-When using `scalingMode=Daemonset`, Nodeset pods are strictly mapped to
-Kubernetes nodes and share the hostname of the node they run on.
+When using `scalingMode=DaemonSet`, NodeSet pods are strictly mapped to
+Kubernetes nodes. By default, the pod hostname and Slurm node name are the first
+DNS label of the Kubernetes node name. Set the Kubernetes node annotation
+`nodeset.slinky.slurm.net/hostname-override` to use a different hostname.
 
 <!-- Links -->
 

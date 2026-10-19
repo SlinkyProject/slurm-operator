@@ -67,12 +67,16 @@ For additional information about Slurm, see the [slurm][slurm-docs] docs.
 The Slurm control-plane is responsible for scheduling Slurm workload onto its
 worker nodes and managing their states.
 
-Slurm High Availability (HA) can be enabled by setting `ha.enabled=true` and
-`persistence.existingClaim` to a PVC with ReadWriteMany (RWX) access mode.
+Slurm High Availability (HA) can be enabled by setting
+`controller.ha.enabled=true` and `controller.persistence.existingClaim` to a PVC
+with ReadWriteMany (RWX) access mode.
 
-Changes to the Slurm configuration files are automatically detected and the
-Slurm cluster is reconfigured seamlessly with zero downtime of the Slurm
-control-plane.
+Changes to the Slurm configuration files are automatically detected. By default,
+the controller pods are recreated so that the new configuration is loaded at
+startup. Set `controller.inplaceReconfigure=true` in the Slurm chart to have the
+reconfigure sidecar run `scontrol reconfigure` without recreating the controller
+pods. Use Slurm HA when a controller restart must not interrupt the control
+plane.
 
 > [!NOTE]
 > The kubelet's `configMapAndSecretChangeDetectionStrategy` and `syncFrequency`

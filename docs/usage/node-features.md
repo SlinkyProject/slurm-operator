@@ -37,9 +37,10 @@ plugin or a manual `scontrol update`. Removing the annotation clears the node's
 ## Kubernetes
 
 Annotate each Kubernetes node with `features.slinky.slurm.net/spec` and a
-comma-separated list of feature names. Each token is used verbatim and applied
-to the Slurm node under the `k8s/` prefix. Only Slurm nodes backed by a NodeSet
-pod scheduled on the node are updated.
+comma-separated list of feature names. The operator trims surrounding
+whitespace, removes empty and duplicate values, sorts the result, and applies
+each feature to the Slurm node under the `k8s/` prefix. Only Slurm nodes backed
+by a NodeSet pod scheduled on the node are updated.
 
 For example, the following Kubernetes Node snippet has the Slinky node features
 annotation applied.
