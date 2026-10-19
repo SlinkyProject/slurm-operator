@@ -154,6 +154,7 @@ type ControllerHighAvailability struct {
 
 	// Backups indicate the number of backup controllers to deploy.
 	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=2147483646
 	// +default:=1
 	// +optional
 	Backups *int32 `json:"backups,omitempty"`
