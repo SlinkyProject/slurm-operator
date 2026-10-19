@@ -1,0 +1,24 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: ApplicationSet
+      name: slurm-platform-applications
+    patch: |-
+      - op: replace
+        path: /spec/generators/0/matrix/generators/0/git/files/0/path
+        value: hack/sample-deployments/multi-tenant/clusters/demo/cluster.yaml
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: ApplicationSet
+      name: slurm-tenant-applications
+    patch: |-
+      - op: replace
+        path: /spec/generators/0/matrix/generators/0/git/files/0/path
+        value: hack/sample-deployments/multi-tenant/clusters/demo/cluster.yaml
