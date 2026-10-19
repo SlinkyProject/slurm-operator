@@ -54,8 +54,6 @@ type SlurmControlInterface interface {
 	IsNodeRegistered(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error)
 	// IsNodeInvalidReg checks if the node has the INVALID_REG state.
 	IsNodeInvalidReg(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
-	// IsNodeDrain checks if the slurm node has the DRAIN state.
-	IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrained checks if the slurm node is drained.
 	IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error)
 	// IsNodeDownForUnresponsive checks if the slurm node is unresponsive
@@ -399,27 +397,6 @@ func (r *realSlurmControl) IsNodeInvalidReg(ctx context.Context, nodeset *slinky
 	}
 	isInvalidReg := slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateINVALIDREG)
 	return isInvalidReg, nil
-}
-
-// IsNodeDrain implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
-	logger := log.FromContext(ctx)
-
-	slurmClient := r.lookupClient(nodeset)
-	if slurmClient == nil {
-		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrain()",
-			"pod", klog.KObj(pod))
-		return false, ErrNoSlurmClient
-	}
-
-	slurmNode := &slurmapi.V0044Node{}
-	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
-		return false, err
-	}
-
-	isDrain := slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateDRAIN)
-	return isDrain, nil
 }
 
 // IsNodeDrained implements SlurmControlInterface.
