@@ -88,6 +88,7 @@ func TestBuilder_BuildWorkerPodTemplate(t *testing.T) {
 			require.NotEmpty(t, got.Spec.Subdomain)
 			require.NotNil(t, got.Spec.DNSConfig)
 			require.NotEmpty(t, got.Spec.DNSConfig.Searches)
+			require.Contains(t, got.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{Name: common.SlurmdSpoolVolume, MountPath: common.SlurmdSpoolDir})
 		})
 	}
 }

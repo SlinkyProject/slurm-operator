@@ -390,6 +390,38 @@ func testSlurmNodeSet(namespace string) types.Feature {
 
 			return ctx
 		}).
+		Assess("slurmd spool survives a container restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "Failed to get new controller-runtime client")
+
+			podName := "slurm-worker-slinky-0"
+			marker := "/var/spool/slurmd/e2e-restart-marker"
+			restartCount := func() int32 {
+				pod := &corev1.Pod{}
+				require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: podName}, pod))
+				for _, cs := range pod.Status.ContainerStatuses {
+					if cs.Name == "slurmd" {
+						return cs.RestartCount
+					}
+				}
+				return 0
+			}
+
+			out, err := exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "touch", marker).CombinedOutput()
+			require.NoError(t, err, "failed to write spool marker: %s", out)
+			before := restartCount()
+
+			// Stopping PID 1 restarts the container but keeps the Pod and its emptyDir volumes.
+			_ = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "kill", "1").Run() //nolint:errcheck
+			require.Eventually(t, func() bool { return restartCount() > before }, 2*time.Minute, 5*time.Second, "slurmd container did not restart")
+
+			test.WaitForCommand(ctx, t, "kubectl", []string{"exec", "-n", namespace, podName, "-c", "slurmd", "--", "test", "-f", marker}, "", "", nil, 2*time.Minute, 5*time.Second)
+			test.WaitForCommand(ctx, t, "kubectl", []string{"exec", "-n", namespace, podName, "-c", "slurmd", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}, "idle", "", nil, 2*time.Minute, 5*time.Second)
+
+			_ = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "rm", "-f", marker).Run() //nolint:errcheck
+
+			return ctx
+		}).
 		Assess("NodeSet scale-up functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 
 			crClient, err := GetControllerRuntimeClient(config)

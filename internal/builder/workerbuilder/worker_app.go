@@ -107,6 +107,12 @@ func nodesetVolumes(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Co
 			},
 		},
 		common.LogFileVolume(),
+		{
+			Name: common.SlurmdSpoolVolume,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
 	// Add SSH host keys volume if SSH is enabled
@@ -183,6 +189,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 	volumeMounts := []corev1.VolumeMount{
 		{Name: common.SlurmEtcVolume, MountPath: common.SlurmEtcDir, ReadOnly: true},
 		{Name: common.SlurmLogFileVolume, MountPath: common.SlurmLogFileDir},
+		{Name: common.SlurmdSpoolVolume, MountPath: common.SlurmdSpoolDir},
 	}
 
 	// Add SSH host key mounts if enabled
