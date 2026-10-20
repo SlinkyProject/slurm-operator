@@ -265,8 +265,11 @@ func TestSortingActivePods(t *testing.T) {
 				newRunningPod("deadlineLater", map[string]string{
 					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
 				}),
-				newRunningPod("podCordoned", map[string]string{
+				newRunningPod("podCordoned-1", map[string]string{
 					slinkyv1beta1.AnnotationPodCordon: "True",
+				}),
+				newRunningPod("podCordonedUser-0", map[string]string{
+					slinkyv1beta1.AnnotationPodCordonRequested: "True",
 				}),
 				newRunningPod("podCordonedAndDeadlineNow", map[string]string{
 					slinkyv1beta1.AnnotationPodCordon:   "True",
@@ -275,6 +278,14 @@ func TestSortingActivePods(t *testing.T) {
 				newRunningPod("podCordonedAndDeadlineLater", map[string]string{
 					slinkyv1beta1.AnnotationPodCordon:   "True",
 					slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+				}),
+				newRunningPod("podCondemnedAndDeadlineNow", map[string]string{
+					slinkyv1beta1.AnnotationPodCondemned: "True",
+					slinkyv1beta1.AnnotationPodDeadline:  time.Now().Format(time.RFC3339),
+				}),
+				newRunningPod("podCondemnedAndDeadlineLater", map[string]string{
+					slinkyv1beta1.AnnotationPodCondemned: "True",
+					slinkyv1beta1.AnnotationPodDeadline:  time.Now().Add(time.Hour).Format(time.RFC3339),
 				}),
 				newRunningPod("deletionCostNeg10", map[string]string{
 					slinkyv1beta1.AnnotationPodDeletionCost: "-10",
@@ -290,9 +301,12 @@ func TestSortingActivePods(t *testing.T) {
 			},
 			wantOrder: []string{
 				"deletionCostNeg10",
-				"podCordoned",
+				"podCordoned-1",
+				"podCordonedUser-0",
 				"podCordonedAndDeadlineNow",
 				"podCordonedAndDeadlineLater",
+				"podCondemnedAndDeadlineNow",
+				"podCondemnedAndDeadlineLater",
 				"ordinal-1",
 				"ordinal-0",
 				"deadlineNow",

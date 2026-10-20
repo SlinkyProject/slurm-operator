@@ -11,9 +11,19 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
-// IsPodCordon returns true if and only if the delete annotation is nodeset to true.
+// IsPodCordon returns true if and only if the cordon annotation is set to true.
 func IsPodCordon(pod *corev1.Pod) bool {
 	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordon] == "true"
+}
+
+// IsPodCordonRequested returns true if and only if the cordon-requested annotation is set to true.
+func IsPodCordonRequested(pod *corev1.Pod) bool {
+	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCordonRequested] == "true"
+}
+
+// IsPodCondemned returns true if the pod is marked as a scale-in / rolling-update deletion candidate.
+func IsPodCondemned(pod *corev1.Pod) bool {
+	return pod.GetAnnotations()[slinkyv1beta1.AnnotationPodCondemned] == "true"
 }
 
 // isRunningAndReady returns true if pod is in the PodRunning Phase, if it has a condition of PodReady.

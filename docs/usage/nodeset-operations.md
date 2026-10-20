@@ -68,15 +68,16 @@ A node is **drained** when `SlurmNodeStateDrain` is `True`,
 
 ## Cordoning Pods
 
-To trigger a Slurm drain from the Kubernetes side, set the `pod-cordon`
-annotation on a NodeSet pod:
+To trigger a Slurm drain from the Kubernetes side, set the
+`pod-cordon-requested` annotation on a NodeSet pod:
 
 ```sh
-kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon=true
+kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-requested=true
 ```
 
-The operator will detect this annotation and drain the corresponding Slurm node.
-To verify the drain took effect:
+The operator will detect this annotation, set
+`nodeset.slinky.slurm.net/pod-cordon=true` on the pod, and drain the
+corresponding Slurm node. To verify the drain took effect:
 
 ```sh
 kubectl get pod <pod> -o jsonpath='{.status.conditions[?(@.type=="SlurmNodeStateDrain")].status}'
@@ -85,17 +86,18 @@ kubectl get pod <pod> -o jsonpath='{.status.conditions[?(@.type=="SlurmNodeState
 To reverse the drain, remove the annotation:
 
 ```sh
-kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-
+kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-requested-
 ```
 
-The operator will undrain the Slurm node, provided the Kubernetes node is not
-cordoned and the drain reason was set by the operator.
+The operator will remove `pod-cordon` and undrain the Slurm node, provided the
+Kubernetes node is not cordoned and the drain reason was set by the operator.
 
 ## Custom Drain Reasons
 
 When a Kubernetes node is cordoned, the operator cordons all NodeSet pods on the
-Kubernetes node by ensuring the Slurm node is drained. By default, the drain
-reason propagated to Slurm is a generic message.
+Kubernetes node by setting the `pod-cordon` annotation and ensuring the Slurm
+node is drained. By default, the drain reason propagated to Slurm is a generic
+message.
 
 It should be noted that the operator always prefixes the Slurm node drain reason
 with `slurm-operator:`. This is done to indicate if the reason was set by the
@@ -192,7 +194,8 @@ first. The full sort order (first match wins):
 1. `Pending` phase before `Unknown` before `Running`
 1. Not-ready pods before ready pods
 1. Lower `pod-deletion-cost` before higher
-1. Cordoned pods before uncordoned pods
+1. Cordoned pods (`pod-cordon`) before uncordoned pods
+1. Condemned pods (`pod-condemned`) before non-condemned pods
 1. Earlier `pod-deadline` before later
 1. Higher ordinal before lower ordinal
 1. More recently ready before longer-ready
@@ -356,13 +359,11 @@ sequenceDiagram
     HC->>KAPI: Annotate node with node-cordon-reason
     HC->>KAPI: Cordon node (set Unschedulable)
     KAPI-->>NS: Watch event triggers reconcile
-    NS->>KAPI: Set pod-cordon=true on affected pods
     NS->>SAPI: Drain Slurm nodes (with custom reason)
 
     note over HC: Repair hardware
     HC->>KAPI: Uncordon node
     KAPI-->>NS: Watch event triggers reconcile
-    NS->>KAPI: Remove pod-cordon from pods
     NS->>SAPI: Undrain Slurm nodes
 ```
 

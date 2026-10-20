@@ -63,13 +63,19 @@ func (o ActivePods) Less(i, j int) bool {
 	}
 
 	// Step: cordon < not cordon
-	// A pod already cordoned as a scale-in candidate stays preferred for deletion even if a
-	// later step (e.g. deadline) would otherwise re-rank it, so candidate selection doesn't
-	// flip-flop between reconciles while the original candidate is still draining.
 	podCordon1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordon)
+	podCordonRequested1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordonRequested)
 	podCordon2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	if podCordon1 != podCordon2 {
-		return podCordon1
+	podCordonRequested2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordonRequested)
+	if (podCordon1 || podCordonRequested1) != (podCordon2 || podCordonRequested2) {
+		return podCordon1 || podCordonRequested1
+	}
+
+	// Step: condemned < not condemned
+	podCondemned1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCondemned)
+	podCondemned2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCondemned)
+	if podCondemned1 != podCondemned2 {
+		return podCondemned1
 	}
 
 	// Step: earlier deadline timestamp < later deadline timestamp

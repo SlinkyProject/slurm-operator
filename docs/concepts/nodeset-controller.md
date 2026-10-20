@@ -108,19 +108,22 @@ drain reason string.
 ### Drain and Cordon Design
 
 The operator implements a Kubernetes-to-Slurm cordon model. Cordoning a
-Kubernetes node or annotating a pod triggers a Slurm drain; uncordoning reverses
-it. The controller also adds the pod-cordon annotation itself when it selects a
-pod for scale-in or replacement.
+Kubernetes node or annotating a pod with `pod-cordon-requested` sets
+`pod-cordon` on the pod and triggers a Slurm drain; uncordoning reverses it. The
+controller also adds the `pod-condemned` annotation itself when it selects a pod
+for scale-in or replacement.
 
 ```mermaid
 flowchart TD
     Start["For each NodeSet pod"] --> CheckExternal{"External reason OR unresponsive?"}
     CheckExternal -->|Yes| Skip["Skip — preserve external state"]
     CheckExternal -->|No| CheckNodeCordon{"K8s node cordoned?"}
-    CheckNodeCordon -->|Yes| PropagateCordon["Cordon pod + drain Slurm node"]
-    CheckNodeCordon -->|No| CheckPodCordon{"pod-cordon=true?"}
-    CheckPodCordon -->|Yes| DrainSlurm["Drain Slurm node"]
-    CheckPodCordon -->|No| UndrainSlurm["Undrain Slurm node"]
+    CheckNodeCordon -->|Yes| CordonAndDrain["Set pod-cordon=true & drain Slurm"]
+    CheckNodeCordon -->|No| CheckPodCordon{"pod-cordon-requested=true OR pod-cordon=true?"}
+    CheckPodCordon -->|Yes| CordonAndDrain
+    CheckPodCordon -->|No| CheckPodCondemned{"pod-condemned=true?"}
+    CheckPodCondemned -->|Yes| DrainSlurm["Drain Slurm node"]
+    CheckPodCondemned -->|No| UncordonAndUndrain["Uncordon pod & undrain Slurm"]
 ```
 
 The operator prefixes all drain reasons it sets with `slurm-operator:`. Drain
