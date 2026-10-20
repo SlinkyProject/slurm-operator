@@ -1218,8 +1218,8 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 				},
 				wantErr:        false,
 				wantDrain:      true,
-				wantDelete:     false,
-				wantPodDeleted: false,
+				wantDelete:     true,
+				wantPodDeleted: true,
 			}
 		}(),
 		func() testCaseFields {
@@ -3211,8 +3211,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 					pods:    []*corev1.Pod{pod1, pod2},
 					hash:    hash,
 				},
-				wantErr:      false,
-				wantCordoned: []*corev1.Pod{pod2},
+				wantErr:     false,
+				wantDeleted: []*corev1.Pod{pod2},
 			}
 		}(),
 		func() testCaseFields {
@@ -3395,9 +3395,8 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 					pods:    []*corev1.Pod{pod1, pod2, pod3},
 					hash:    hash,
 				},
-				wantErr:      false,
-				wantCordoned: []*corev1.Pod{pod3},
-				wantDeleted:  []*corev1.Pod{pod2},
+				wantErr:     false,
+				wantDeleted: []*corev1.Pod{pod2, pod3},
 			}
 		}(),
 	}
