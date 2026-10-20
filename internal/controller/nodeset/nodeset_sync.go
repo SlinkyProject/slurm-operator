@@ -509,6 +509,10 @@ func (r *NodeSetReconciler) syncCordon(
 	syncCordonFn := func(i int) error {
 		pod := pods[i]
 
+		if podutils.IsTerminating(pod) {
+			return nil
+		}
+
 		node := &corev1.Node{}
 		nodeKey := types.NamespacedName{Name: pod.Spec.NodeName}
 		if err := r.Get(ctx, nodeKey, node); err != nil {
