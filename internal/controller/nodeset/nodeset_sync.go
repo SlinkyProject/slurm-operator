@@ -379,20 +379,6 @@ func (r *NodeSetReconciler) sync(
 			},
 		},
 		{
-			Name: "RefreshNodeCache",
-			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-				if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil {
-					if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-						return err
-					}
-				}
-				return nil
-			},
-			// We need to ensure the Slurm client cache is refreshed before proceeding
-			// because stale cache could cause incorrect action to be taken.
-			StopOnError: true,
-		},
-		{
 			Name: "SlurmDeadline",
 			SyncFn: func(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
 				return r.syncSlurmDeadline(ctx, nodeset, pods)
@@ -634,7 +620,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
 		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
 			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
-		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil {
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 		return nil
@@ -739,6 +726,9 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 			// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
 			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+					return nil
+				}
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
 					defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
 			}
@@ -781,6 +771,19 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 			// Cannot determine if Slurm node should be registered at this time.
 			return nil
 		}
+
+		isRegistered, err := r.slurmControl.IsNodeRegistered(ctx, nodeset, pod, true)
+		if err != nil {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				isRegistered = false
+			} else {
+				return err
+			}
+		}
+		if isRegistered {
+			return nil
+		}
+
 		logger.Info("Deleting NodeSet pod, Slurm node is not registered but pod is healthy",
 			"pod", klog.KObj(pod))
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeNotRegisteredReason, "Delete",
@@ -1428,7 +1431,7 @@ func (r *NodeSetReconciler) processCondemned(
 		return nil
 	}
 
-	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod)
+	isDrained, err := r.slurmControl.IsNodeDrained(ctx, nodeset, pod, false)
 	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 		return err
 	}
@@ -1442,6 +1445,14 @@ func (r *NodeSetReconciler) processCondemned(
 		r.expectations.DeletionObserved(logger, nodesetKey, kubecontroller.PodKey(pod))
 		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 		return r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true)
+	}
+
+	isDrained, err = r.slurmControl.IsNodeDrained(ctx, nodeset, pod, true)
+	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		return err
+	}
+	if !isDrained {
+		return errors.New("slurm node is not drained, cannot delete pod")
 	}
 
 	logger.V(2).Info("NodeSet Pod is terminating for scale-in")

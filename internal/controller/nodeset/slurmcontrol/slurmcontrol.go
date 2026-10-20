@@ -39,8 +39,6 @@ import (
 )
 
 type SlurmControlInterface interface {
-	// RefreshNodeCache forces the Node cache to be refreshed
-	RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error
 	// UpdateNodeWithPodInfo handles updating the Node with its pod info
 	UpdateNodeWithPodInfo(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error
 	// UpdateNodeTopology handles updating the Node with its topologySpec.
@@ -52,12 +50,14 @@ type SlurmControlInterface interface {
 	MakeNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string, overrideReason bool) error
 	// MakeNodeUndrain handles removing the DRAIN state from the slurm node.
 	MakeNodeUndrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, reason string) error
+	// IsNodeRegistered checks if the slurmd node is registered.
+	IsNodeRegistered(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error)
 	// IsNodeInvalidReg checks if the node has the INVALID_REG state.
 	IsNodeInvalidReg(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrain checks if the slurm node has the DRAIN state.
 	IsNodeDrain(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeDrained checks if the slurm node is drained.
-	IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
+	IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error)
 	// IsNodeDownForUnresponsive checks if the slurm node is unresponsive
 	IsNodeDownForUnresponsive(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error)
 	// IsNodeReasonOurs reports if the node reason was set by the operator.
@@ -91,25 +91,6 @@ var ErrNodeInvalidReg = errors.New("NodeInvalidReg")
 // realSlurmControl is the default implementation of SlurmControlInterface.
 type realSlurmControl struct {
 	clientMap *clientmap.ClientMap
-}
-
-// RefreshNodeCache implements SlurmControlInterface.
-func (r *realSlurmControl) RefreshNodeCache(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) error {
-	logger := log.FromContext(ctx)
-
-	slurmClient := r.lookupClient(nodeset)
-	if slurmClient == nil {
-		logger.V(2).Info("no client for nodeset, cannot do RefreshNodeCache()")
-		return ErrNoSlurmClient
-	}
-
-	nodeList := &slurmapi.V0044NodeObjectList{}
-	opts := &slurmclient.ListOptions{RefreshCache: true}
-	if err := slurmClient.List(ctx, nodeList, opts); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // UpdateNodeWithPodInfo implements SlurmControlInterface.
@@ -403,6 +384,34 @@ func (r *realSlurmControl) MakeNodeUndrain(ctx context.Context, nodeset *slinkyv
 	return nil
 }
 
+// IsNodeRegistered implements SlurmControlInterface.
+func (r *realSlurmControl) IsNodeRegistered(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	slurmClient := r.lookupClient(nodeset)
+	if slurmClient == nil {
+		logger.V(2).Info("no client for nodeset, cannot do IsNodeRegistered()",
+			"pod", klog.KObj(pod))
+		return false, ErrNoSlurmClient
+	}
+
+	slurmNode := &slurmapi.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+	opts := &slurmclient.GetOptions{
+		SkipCache: liveData,
+	}
+	err := slurmClient.Get(ctx, key, slurmNode, opts)
+	switch {
+	case errors.Is(err, slurmerrors.ErrNotFound):
+		return false, nil
+	case err == nil:
+		return true, nil
+	default:
+		return false, err
+	}
+}
+
+// IsNodeInvalidReg implements SlurmControlInterface.
 func (r *realSlurmControl) IsNodeInvalidReg(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := log.FromContext(ctx)
 
@@ -430,7 +439,7 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrain()",
 			"pod", klog.KObj(pod))
-		return true, ErrNoSlurmClient
+		return false, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmapi.V0044Node{}
@@ -447,19 +456,22 @@ func (r *realSlurmControl) IsNodeDrain(ctx context.Context, nodeset *slinkyv1bet
 }
 
 // IsNodeDrained implements SlurmControlInterface.
-func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
+func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, liveData bool) (bool, error) {
 	logger := log.FromContext(ctx)
 
 	slurmClient := r.lookupClient(nodeset)
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, ErrNoSlurmClient
+		return false, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmapi.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	opts := &slurmclient.GetOptions{
+		SkipCache: liveData,
+	}
+	if err := slurmClient.Get(ctx, key, slurmNode, opts); err != nil {
 		if errors.Is(err, slurmerrors.ErrNotFound) {
 			return true, nil
 		}
@@ -468,8 +480,9 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 
 	// Drained is when a node has the DRAIN flag and is not doing any work (e.g. job step, prolog, epilog).
 	// https://github.com/SchedMD/slurm/blob/slurm-25.05/src/common/slurm_protocol_defs.c#L3500
-	isBusy := slurmutils.GetStateAsSet(slurmNode.State).HasAny(slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateMIXED, slurmapi.V0044NodeStateCOMPLETING)
-	isDrain := slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateDRAIN) && !slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateUNDRAIN)
+	nodeStates := slurmutils.GetStateAsSet(slurmNode.State)
+	isBusy := nodeStates.HasAny(slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateMIXED, slurmapi.V0044NodeStateCOMPLETING)
+	isDrain := nodeStates.Has(slurmapi.V0044NodeStateDRAIN) && !nodeStates.Has(slurmapi.V0044NodeStateUNDRAIN)
 	isDrained := isDrain && !isBusy
 
 	return isDrained, nil
@@ -483,7 +496,7 @@ func (r *realSlurmControl) IsNodeDownForUnresponsive(ctx context.Context, nodese
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeDrained()",
 			"pod", klog.KObj(pod))
-		return true, ErrNoSlurmClient
+		return false, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmapi.V0044Node{}
@@ -512,7 +525,7 @@ func (r *realSlurmControl) IsNodeReasonOurs(ctx context.Context, nodeset *slinky
 	if slurmClient == nil {
 		logger.V(2).Info("no client for nodeset, cannot do IsNodeReasonOurs()",
 			"pod", klog.KObj(pod))
-		return true, ErrNoSlurmClient
+		return false, ErrNoSlurmClient
 	}
 
 	slurmNode := &slurmapi.V0044Node{}
@@ -827,7 +840,10 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	slurmNode := &slurmapi.V0044Node{
 		Name: new(nodeName),
 	}
-	if err := slurmClient.Delete(ctx, slurmNode); err != nil && !errors.Is(err, slurmerrors.ErrNotFound) {
+	opts := &slurmclient.DeleteOptions{
+		SkipReadAfterDelete: true,
+	}
+	if err := slurmClient.Delete(ctx, slurmNode, opts); err != nil && !errors.Is(err, slurmerrors.ErrNotFound) {
 		return err
 	}
 
