@@ -630,7 +630,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAuto(
 		logger.Info("Slurm node has INVALID_REG state, deleting Slurm node record", "node", invalidNode)
 		r.eventRecorder.Eventf(nodeset, nil, corev1.EventTypeWarning, SlurmNodeInvalidRegReason, "Delete",
 			"Deleting Slurm node record %s: node has INVALID_REG state.", invalidNode)
-		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil {
+		if err := r.slurmControl.DeleteNode(ctx, nodeset, invalidNode); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 			return err
 		}
 		return nil
@@ -735,6 +736,9 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsNodeNotFound(
 			// Prune the Slurm node: its backing pod is gone and the K8s node no longer maps here.
 			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod/Node")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, defunctNode.Name); err != nil {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+					return nil
+				}
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s on node %s: %w",
 					defunctNode.Name, podKey.Namespace, podKey.Name, kubeNodeKey.Name, err)
 			}
