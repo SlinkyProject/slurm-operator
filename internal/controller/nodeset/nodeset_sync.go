@@ -1274,7 +1274,7 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			logger.V(2).Info("Scaling daemon NodeSet pods",
 				"creating", len(podsToCreate), "deleting", len(podsToDelete))
 			// Don't uncordon existing pods during scale; syncRollingUpdate may be
-			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			// draining them, and syncUpdate will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, podsToDelete, podsToCreate)
 		}
 	} else {
@@ -1309,7 +1309,7 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			}
 			logger.V(2).Info("Too few NodeSet pods", "need", replicaCount, "creating", diff)
 			// Don't uncordon existing pods during scale-up; syncRollingUpdate may be
-			// draining them, and doPodProcessing will uncordon survivors once counts stabilize.
+			// draining them, and syncUpdate will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, nil, podsToCreate)
 		}
 		if diff := len(activePods) - replicaCount; diff > 0 {
@@ -1320,13 +1320,13 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 			// Don't uncordon existing pods during scale-down. SplitActivePods prefers
 			// cordoned pods for deletion, but if more pods are already cordoned/draining
 			// than diff can delete this reconcile, the overflow lands in the keep set;
-			// doPodProcessing will uncordon survivors once counts stabilize.
+			// syncUpdate will uncordon survivors once counts stabilize.
 			return r.doPodScale(ctx, nodeset, podsToDelete, nil)
 		}
 	}
 
 	logger.V(2).Info("Processing NodeSet pods", "number of pods to process", len(podsNewScaling), "number of pods to delete", len(podsOldScaling))
-	return r.doPodProcessing(ctx, nodeset, podsNewScaling, podsOldScaling, hash)
+	return r.doPodProcessing(ctx, nodeset, podsNewScaling, podsOldScaling)
 }
 
 // doPodScale manages NodeSet pod creation and deletion
@@ -1594,7 +1594,6 @@ func (r *NodeSetReconciler) doPodProcessing(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 	pods, podsToDelete []*corev1.Pod,
-	hash string,
 ) error {
 	var errs []error
 	logger := log.FromContext(ctx)
@@ -1602,17 +1601,6 @@ func (r *NodeSetReconciler) doPodProcessing(
 
 	if err := r.expectations.SetExpectations(logger, key, 0, 0); err != nil {
 		return err
-	}
-
-	// NOTE: we must respect the uncordon and undrain nodes in accordance with updateStrategy
-	// to not fight it given the statefulness of how we cordon and terminate nodeset pods.
-	_, podsToKeep := r.splitUpdatePods(ctx, nodeset, pods, hash)
-	uncordonFn := func(i int) error {
-		pod := podsToKeep[i]
-		return r.syncPodUncordon(ctx, nodeset, pod)
-	}
-	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(podsToKeep), uncordonFn); err != nil {
-		errs = append(errs, err)
 	}
 
 	deletePodFn := func(i int) error {
@@ -1826,8 +1814,20 @@ func (r *NodeSetReconciler) syncUpdate(
 		return r.syncScheduledUpdate(ctx, nodeset, pods, hash)
 	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
 		// r.syncNodeSet() will handled it on the next reconcile
-		return nil
+		return r.syncPodsUncordon(ctx, nodeset, pods)
 	}
+}
+
+func (r *NodeSetReconciler) syncPodsUncordon(
+	ctx context.Context,
+	nodeset *slinkyv1beta1.NodeSet,
+	podsToKeep []*corev1.Pod,
+) error {
+	uncordonFn := func(i int) error {
+		return r.syncPodUncordon(ctx, nodeset, podsToKeep[i])
+	}
+	_, err := batch.ConcurrentStartBatchDefault(ctx, len(podsToKeep), uncordonFn)
+	return err
 }
 
 // syncRollingUpdate will synchronize rolling updates for NodeSet pods.
@@ -1850,7 +1850,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 		}
 	}
 
-	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
+	podsToDelete, podsToKeep := r.splitUpdatePods(ctx, nodeset, pods, hash)
 	if len(podsToDelete) > 0 {
 		logger.V(1).Info("Scale-in pods for Rolling Update",
 			"delete", len(podsToDelete))
@@ -1859,7 +1859,7 @@ func (r *NodeSetReconciler) syncRollingUpdate(
 		}
 	}
 
-	return nil
+	return r.syncPodsUncordon(ctx, nodeset, podsToKeep)
 }
 
 // splitUpdatePods returns two pod lists based on UpdateStrategy type.
@@ -1925,10 +1925,10 @@ func (r *NodeSetReconciler) splitUpdatePods(
 
 		podsToDelete = append(podsToDelete, eligiblePods...)
 
-		return podsToDelete, nil
+		return podsToDelete, nodesetutils.ExcludePods(pods, podsToDelete)
 
 	case slinkyv1beta1.OnDeleteNodeSetStrategyType:
-		return nil, nil
+		return nil, pods
 	}
 }
 
@@ -2022,7 +2022,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 	}
 
 	// If reservation is ongoing, handle updates
-	podsToDelete, _ := r.splitUpdatePods(ctx, nodeset, pods, hash)
+	podsToDelete, podsToKeep := r.splitUpdatePods(ctx, nodeset, pods, hash)
 
 	// Handle pod scale-down
 	if len(podsToDelete) > 0 {
@@ -2033,7 +2033,7 @@ func (r *NodeSetReconciler) syncScheduledUpdate(
 		}
 	}
 
-	return nil
+	return r.syncPodsUncordon(ctx, nodeset, nodesetutils.ExcludePods(podsToKeep, unhealthyPods))
 }
 
 // syncReservation will synchronize the reservation created for NodeSets using the

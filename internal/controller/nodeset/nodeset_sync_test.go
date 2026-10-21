@@ -2165,7 +2165,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 		nodeset      *slinkyv1beta1.NodeSet
 		pods         []*corev1.Pod
 		podsToDelete []*corev1.Pod
-		hash         string
 	}
 	type testCaseFields struct {
 		name    string
@@ -2189,7 +2188,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 				nodeset:      nodeset.DeepCopy(),
 				pods:         []*corev1.Pod{},
 				podsToDelete: []*corev1.Pod{},
-				hash:         hash,
 			},
 			wantErr: false,
 		},
@@ -2213,7 +2211,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 					nodeset:      nodeset.DeepCopy(),
 					pods:         []*corev1.Pod{pod0.DeepCopy()},
 					podsToDelete: []*corev1.Pod{},
-					hash:         hash,
 				},
 				wantErr: false,
 			}
@@ -2241,7 +2238,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 					nodeset:      nodeset.DeepCopy(),
 					pods:         []*corev1.Pod{},
 					podsToDelete: []*corev1.Pod{pod0.DeepCopy()},
-					hash:         hash,
 				},
 				wantErr: false,
 			}
@@ -2265,7 +2261,6 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 					nodeset:      nodeset.DeepCopy(),
 					pods:         []*corev1.Pod{},
 					podsToDelete: []*corev1.Pod{pod0.DeepCopy()},
-					hash:         hash,
 				},
 				wantErr: true,
 			}
@@ -2274,7 +2269,7 @@ func TestNodeSetReconciler_doPodProcessing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := newNodeSetController(tt.fields.Client, tt.fields.ClientMap)
-			err := r.doPodProcessing(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.podsToDelete, tt.args.hash)
+			err := r.doPodProcessing(tt.args.ctx, tt.args.nodeset, tt.args.pods, tt.args.podsToDelete)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -3696,7 +3691,7 @@ func TestNodeSetReconciler_splitUpdatePods(t *testing.T) {
 				hash: hash,
 			},
 			wantPodsToDelete: []string{},
-			wantPodsToKeep:   []string{},
+			wantPodsToKeep:   []string{"pod-0", "pod-1"},
 		},
 		{
 			name: "RollingUpdate",
