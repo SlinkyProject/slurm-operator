@@ -119,10 +119,10 @@ flowchart TD
     CheckExternal -->|Yes| Skip["Skip — preserve external state"]
     CheckExternal -->|No| CheckNodeCordon{"K8s node cordoned?"}
     CheckNodeCordon -->|Yes| CordonAndDrain["Set pod-cordon=true & drain Slurm"]
-    CheckNodeCordon -->|No| CheckPodCordon{"pod-cordon-requested=true OR pod-cordon=true?"}
+    CheckNodeCordon -->|No| CheckPodCordon{"pod-cordon-requested=true?"}
     CheckPodCordon -->|Yes| CordonAndDrain
     CheckPodCordon -->|No| CheckPodCondemned{"pod-condemned=true?"}
-    CheckPodCondemned -->|Yes| DrainSlurm["Drain Slurm node"]
+    CheckPodCondemned -->|Yes| DrainSlurm["Uncordon pod & drain Slurm node"]
     CheckPodCondemned -->|No| UncordonAndUndrain["Uncordon pod & undrain Slurm"]
 ```
 
