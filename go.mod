@@ -1,6 +1,6 @@
 module github.com/SlinkyProject/slurm-operator
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/SlinkyProject/slurm-client v1.1.0-rc1.0.20261019145711-ec6da62a54c3
