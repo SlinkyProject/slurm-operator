@@ -3516,6 +3516,160 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 				wantCordoned: []*corev1.Pod{pod1},
 			}
 		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+			nodeset.Spec.UpdateStrategy.RollingUpdate = slinkyv1beta1.RollingUpdateNodeSetStrategy{
+				MaxUnavailable: ptr.To(intstr.FromInt32(1)),
+			}
+			// pod0 has an earlier deadline beyond hysteresis; pod1 was recently condemned (unsettled).
+			// pod0 is condemned and drained while pod1 in podsToKeep stays condemned/drained until settled.
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+			makePodHealthy(pod0)
+			pod0.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+			}
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+			makePodHealthy(pod1)
+			pod1.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodCondemned: time.Now().UTC().Format(time.RFC3339),
+				slinkyv1beta1.AnnotationPodDeadline:  time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+			}
+			k8sclient := fake.NewFakeClient(nodeset, pod0, pod1)
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+					},
+					{
+						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod is pending termination for scale-in")),
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			return testCaseFields{
+				name: "earlier deadline busy pod overtakes unsettled condemned candidate and holds displaced candidate until settled",
+				fields: fields{
+					Client:    k8sclient,
+					ClientMap: newClientMap(controller.Name, slurmClient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: nodeset,
+					pods:    []*corev1.Pod{pod0, pod1},
+					hash:    hash,
+				},
+				wantErr:      false,
+				wantCordoned: []*corev1.Pod{pod0, pod1},
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+			nodeset.Spec.UpdateStrategy.RollingUpdate = slinkyv1beta1.RollingUpdateNodeSetStrategy{
+				MaxUnavailable: ptr.To(intstr.FromInt32(1)),
+			}
+			// Both pod0 and pod1 are already condemned/draining; pod0 has the earlier deadline,
+			// so pod1 in podsToKeep is now uncondemned and undrained.
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+			makePodHealthy(pod0)
+			pod0.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodCondemned: "true",
+				slinkyv1beta1.AnnotationPodDeadline:  time.Now().Add(time.Hour).Format(time.RFC3339),
+			}
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+			makePodHealthy(pod1)
+			pod1.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodCondemned: "true",
+				slinkyv1beta1.AnnotationPodDeadline:  time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+			}
+			k8sclient := fake.NewFakeClient(nodeset, pod0, pod1)
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
+						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod is pending termination for scale-in")),
+					},
+					{
+						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod is pending termination for scale-in")),
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			return testCaseFields{
+				name: "earlier deadline condemned pod keeps drain and uncondemns displaced condemned pod",
+				fields: fields{
+					Client:    k8sclient,
+					ClientMap: newClientMap(controller.Name, slurmClient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: nodeset,
+					pods:    []*corev1.Pod{pod0, pod1},
+					hash:    hash,
+				},
+				wantErr:         false,
+				wantCordoned:    []*corev1.Pod{pod0},
+				wantNotCordoned: []*corev1.Pod{pod1},
+			}
+		}(),
+		func() testCaseFields {
+			nodeset := newNodeSet("foo", controller.Name, 2)
+			nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+			nodeset.Spec.UpdateStrategy.RollingUpdate = slinkyv1beta1.RollingUpdateNodeSetStrategy{
+				MaxUnavailable: ptr.To(intstr.FromInt32(1)),
+			}
+			// pod0 has a slightly earlier deadline within hysteresis of condemned pod1,
+			// so pod1 stays condemned and pod0 is not condemned.
+			pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+			makePodHealthy(pod0)
+			pod0.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodDeadline: time.Now().Add(time.Hour).Format(time.RFC3339),
+			}
+			pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+			makePodHealthy(pod1)
+			pod1.Annotations = map[string]string{
+				slinkyv1beta1.AnnotationPodCondemned: "true",
+				slinkyv1beta1.AnnotationPodDeadline:  time.Now().Add(time.Hour + time.Minute).Format(time.RFC3339),
+			}
+			k8sclient := fake.NewFakeClient(nodeset, pod0, pod1)
+			slurmNodeList := &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{
+					{
+						Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+						State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+					},
+					{
+						Name:   ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+						State:  ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED, slurmapi.V0044NodeStateDRAIN}),
+						Reason: ptr.To(slurmcontrol.FormatNodeReason("Pod is pending termination for scale-in")),
+					},
+				},
+			}
+			slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+			return testCaseFields{
+				name: "condemned candidate within deadline hysteresis is not overtaken by busy pod",
+				fields: fields{
+					Client:    k8sclient,
+					ClientMap: newClientMap(controller.Name, slurmClient),
+				},
+				args: args{
+					ctx:     context.TODO(),
+					nodeset: nodeset,
+					pods:    []*corev1.Pod{pod0, pod1},
+					hash:    hash,
+				},
+				wantErr:         false,
+				wantCordoned:    []*corev1.Pod{pod1},
+				wantNotCordoned: []*corev1.Pod{pod0},
+			}
+		}(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -3527,6 +3681,10 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 				require.NoError(t, err)
 			}
 
+			slurmClient := tt.fields.ClientMap.Get(types.NamespacedName{
+				Namespace: tt.args.nodeset.Namespace,
+				Name:      tt.args.nodeset.Spec.ControllerRef.Name,
+			})
 			for _, pod := range tt.wantCordoned {
 				gotPod := &corev1.Pod{}
 				if err := r.Get(tt.args.ctx, client.ObjectKeyFromObject(pod), gotPod); err != nil {
@@ -3534,6 +3692,11 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 				}
 				if got, want := podutils.IsPodCordon(gotPod) || podutils.IsPodCondemned(gotPod), true; got != want {
 					t.Errorf("IsPodCordon||IsPodCondemned(%s) = %v, want %v", pod.Name, got, want)
+				}
+				isDrain, err := isNodeDrain(tt.args.ctx, slurmClient, pod)
+				require.NoError(t, err)
+				if !isDrain {
+					t.Errorf("isNodeDrain(%s) = false, want true", pod.Name)
 				}
 			}
 			for _, pod := range tt.wantNotCordoned {
@@ -3543,6 +3706,11 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 				}
 				if got, want := podutils.IsPodCordon(gotPod) || podutils.IsPodCondemned(gotPod), false; got != want {
 					t.Errorf("IsPodCordon||IsPodCondemned(%s) = %v, want %v", pod.Name, got, want)
+				}
+				isDrain, err := isNodeDrain(tt.args.ctx, slurmClient, pod)
+				require.NoError(t, err)
+				if isDrain {
+					t.Errorf("isNodeDrain(%s) = true, want false", pod.Name)
 				}
 			}
 			for _, pod := range tt.wantDeleted {
@@ -3556,6 +3724,123 @@ func TestNodeSetReconciler_syncRollingUpdate(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("candidate switching lifecycle across reconciles", func(t *testing.T) {
+		ctx := t.Context()
+		base := time.Now().Truncate(time.Second)
+		nodeset := newNodeSet("foo", controller.Name, 2)
+		nodeset.Spec.UpdateStrategy.Type = slinkyv1beta1.RollingUpdateNodeSetStrategyType
+		nodeset.Spec.UpdateStrategy.RollingUpdate = slinkyv1beta1.RollingUpdateNodeSetStrategy{
+			MaxUnavailable: ptr.To(intstr.FromInt32(1)),
+		}
+		pod0 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+		makePodHealthy(pod0)
+		pod0.Annotations = map[string]string{
+			slinkyv1beta1.AnnotationPodDeadline: base.Add(24 * time.Hour).Format(time.RFC3339),
+		}
+		pod1 := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 1, "")
+		makePodHealthy(pod1)
+		pod1.Annotations = map[string]string{
+			slinkyv1beta1.AnnotationPodDeadline: base.Add(2 * time.Hour).Format(time.RFC3339),
+		}
+		k8sclient := fake.NewFakeClient(nodeset, pod0, pod1)
+		slurmNodeList := &slurmapi.V0044NodeObjectList{
+			Items: []slurmapi.V0044Node{
+				{
+					Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod0)),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+				},
+				{
+					Name:  ptr.To(nodesetutils.GetSlurmNodeName(pod1)),
+					State: ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateALLOCATED}),
+				},
+			},
+		}
+		slurmClient := newFakeClientList(sinterceptor.Funcs{}, slurmNodeList)
+		r := newNodeSetController(k8sclient, newClientMap(controller.Name, slurmClient))
+
+		reconcileOnce := func() {
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod0), pod0))
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod1), pod1))
+			pods := []*corev1.Pod{pod0, pod1}
+			require.NoError(t, r.syncCordon(ctx, nodeset, pods))
+			require.NoError(t, r.syncRollingUpdate(ctx, nodeset, pods, hash))
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod0), pod0))
+			require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod1), pod1))
+		}
+		assertCandidate := func(condemned, kept *corev1.Pod) {
+			t.Helper()
+			require.True(t, podutils.IsPodCondemned(condemned))
+			require.False(t, podutils.IsPodCondemned(kept))
+			condemnedDrain, err := isNodeDrain(ctx, slurmClient, condemned)
+			require.NoError(t, err)
+			require.True(t, condemnedDrain)
+			keptDrain, err := isNodeDrain(ctx, slurmClient, kept)
+			require.NoError(t, err)
+			require.False(t, keptDrain)
+		}
+
+		// Reconcile 1: pod1 has earlier deadline (+2h vs +24h), so pod1 is condemned and drained.
+		reconcileOnce()
+		assertCandidate(pod1, pod0)
+
+		// Reconcile 2: pod0 deadline moves slightly earlier (+1h58m vs +2h), within 5m hysteresis -> no swap.
+		pod0.Annotations[slinkyv1beta1.AnnotationPodDeadline] = base.Add(2*time.Hour - 2*time.Minute).Format(time.RFC3339)
+		require.NoError(t, r.Update(ctx, pod0))
+		reconcileOnce()
+		assertCandidate(pod1, pod0)
+
+		// Reconcile 3: pod0 deadline shortens to +30m (beyond hysteresis), so pod0 is condemned and drained,
+		// while pod1 (still within its settle window) stays condemned/drained.
+		pod0.Annotations[slinkyv1beta1.AnnotationPodDeadline] = base.Add(30 * time.Minute).Format(time.RFC3339)
+		require.NoError(t, r.Update(ctx, pod0))
+		reconcileOnce()
+		require.True(t, podutils.IsPodCondemned(pod0))
+		require.False(t, podutils.IsPodCondemnedSettled(pod0, time.Now()))
+		require.True(t, podutils.IsPodCondemned(pod1))
+		for _, pod := range []*corev1.Pod{pod0, pod1} {
+			isDrain, err := isNodeDrain(ctx, slurmClient, pod)
+			require.NoError(t, err)
+			require.True(t, isDrain)
+		}
+
+		// Reconcile 4: immediate next reconcile (before CondemnSettleWindow elapses, job cache still stale)
+		// still holds both candidates condemned and drained.
+		reconcileOnce()
+		require.True(t, podutils.IsPodCondemned(pod0))
+		require.True(t, podutils.IsPodCondemned(pod1))
+
+		// Reconcile 5: settle window has elapsed on both candidates, and a long job was allocated to pod0
+		// just before it drained (+48h vs +2h) -> pod1 wins again and settled pod0 in podsToKeep is uncondemned and undrained.
+		pod1.Annotations[slinkyv1beta1.AnnotationPodCondemned] = base.Add(-2 * podutils.CondemnSettleWindow).Format(time.RFC3339)
+		require.NoError(t, r.Update(ctx, pod1))
+		pod0.Annotations[slinkyv1beta1.AnnotationPodCondemned] = base.Add(-2 * podutils.CondemnSettleWindow).Format(time.RFC3339)
+		pod0.Annotations[slinkyv1beta1.AnnotationPodDeadline] = base.Add(48 * time.Hour).Format(time.RFC3339)
+		require.NoError(t, r.Update(ctx, pod0))
+		reconcileOnce()
+		assertCandidate(pod1, pod0)
+
+		// Reconcile 6: pod0's job finishes early (+30m vs +2h) -> pod0 is condemned/drained and settled pod1 in podsToKeep is uncondemned/undrained.
+		pod0.Annotations[slinkyv1beta1.AnnotationPodDeadline] = base.Add(30 * time.Minute).Format(time.RFC3339)
+		require.NoError(t, r.Update(ctx, pod0))
+		reconcileOnce()
+		assertCandidate(pod0, pod1)
+
+		// Reconcile 7: pod0 finishes its workload (IDLE+DRAIN) -> pod0 is deleted, pod1 stays uncondemned/undrained.
+		slurmNode0 := &slurmapi.V0044Node{}
+		require.NoError(t, slurmClient.Get(ctx, slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod0)), slurmNode0))
+		slurmNode0.State = ptr.To([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN})
+		require.NoError(t, slurmClient.Update(ctx, slurmNode0, slurmapi.V0044UpdateNodeMsg{}))
+		pods := []*corev1.Pod{pod0, pod1}
+		require.NoError(t, r.syncCordon(ctx, nodeset, pods))
+		require.NoError(t, r.syncRollingUpdate(ctx, nodeset, pods, hash))
+		require.True(t, apierrors.IsNotFound(r.Get(ctx, client.ObjectKeyFromObject(pod0), pod0)))
+		require.NoError(t, r.Get(ctx, client.ObjectKeyFromObject(pod1), pod1))
+		require.False(t, podutils.IsPodCondemned(pod1))
+		pod1Drain, err := isNodeDrain(ctx, slurmClient, pod1)
+		require.NoError(t, err)
+		require.False(t, pod1Drain)
+	})
 }
 
 func TestNodeSetReconciler_syncScheduledUpdate(t *testing.T) {

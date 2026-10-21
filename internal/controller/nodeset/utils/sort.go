@@ -21,6 +21,10 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
+// DeadlineHysteresis is the minimum deadline improvement required for one pod
+// to overtake another by deadline before condemned tie-breaking.
+const DeadlineHysteresis = 5 * time.Minute
+
 // ActivePods type allows custom sorting of pods so a controller can pick the best ones to delete.
 type ActivePods []*corev1.Pod
 
@@ -63,26 +67,30 @@ func (o ActivePods) Less(i, j int) bool {
 	}
 
 	// Step: cordon < not cordon
-	podCordon1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	podCordonRequested1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCordonRequested)
-	podCordon2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordon)
-	podCordonRequested2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCordonRequested)
-	if (podCordon1 || podCordonRequested1) != (podCordon2 || podCordonRequested2) {
-		return podCordon1 || podCordonRequested1
-	}
-
-	// Step: condemned < not condemned
-	podCondemned1, _ := structutils.GetBoolFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodCondemned)
-	podCondemned2, _ := structutils.GetBoolFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodCondemned)
-	if podCondemned1 != podCondemned2 {
-		return podCondemned1
+	podCordon1 := podutils.IsPodCordon(pod1) || podutils.IsPodCordonRequested(pod1)
+	podCordon2 := podutils.IsPodCordon(pod2) || podutils.IsPodCordonRequested(pod2)
+	if podCordon1 != podCordon2 {
+		return podCordon1
 	}
 
 	// Step: earlier deadline timestamp < later deadline timestamp
+	podCondemned1 := podutils.IsPodCondemned(pod1)
+	podCondemned2 := podutils.IsPodCondemned(pod2)
 	podDeadline1, _ := structutils.GetTimeFromAnnotations(pod1.Annotations, slinkyv1beta1.AnnotationPodDeadline)
 	podDeadline2, _ := structutils.GetTimeFromAnnotations(pod2.Annotations, slinkyv1beta1.AnnotationPodDeadline)
+	if !podDeadline1.IsZero() && podCondemned1 {
+		podDeadline1 = podDeadline1.Add(-DeadlineHysteresis)
+	}
+	if !podDeadline2.IsZero() && podCondemned2 {
+		podDeadline2 = podDeadline2.Add(-DeadlineHysteresis)
+	}
 	if !podDeadline1.Equal(podDeadline2) {
 		return podDeadline1.Before(podDeadline2)
+	}
+
+	// Step: condemned < not condemned
+	if podCondemned1 != podCondemned2 {
+		return podCondemned1
 	}
 
 	// Step: higher ordinal < lower ordinal

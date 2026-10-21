@@ -585,7 +585,7 @@ func (r *NodeSetReconciler) syncPodCordon(
 		if err := r.makePodUncordon(ctx, pod); err != nil {
 			return err
 		}
-		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
+		reason := fmt.Sprintf("Pod (%s) was condemned", klog.KObj(pod))
 		if err := r.makePodCondemnedAndDrain(ctx, nodeset, pod, reason, false); err != nil {
 			return err
 		}
@@ -1692,8 +1692,9 @@ func (r *NodeSetReconciler) makePodCondemned(
 	}
 
 	logger.Info("Condemn Pod, pending deletion", "Pod", klog.KObj(pod))
+	condemnedAt := time.Now().UTC().Format(time.RFC3339)
 	mutateFn := func(pod *corev1.Pod) error {
-		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCondemned, "true")
+		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCondemned, condemnedAt)
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
@@ -1850,9 +1851,10 @@ func (r *NodeSetReconciler) syncPodUncondemn(
 	nodeset *slinkyv1beta1.NodeSet,
 	podsToKeep []*corev1.Pod,
 ) error {
+	now := time.Now()
 	uncondemnFn := func(i int) error {
 		pod := podsToKeep[i]
-		if !podutils.IsPodCondemned(pod) {
+		if !podutils.IsPodCondemned(pod) || !podutils.IsPodCondemnedSettled(pod, now) {
 			return nil
 		}
 		if err := r.makePodUncondemned(ctx, pod); err != nil {
