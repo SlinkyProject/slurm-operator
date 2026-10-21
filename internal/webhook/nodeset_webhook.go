@@ -115,5 +115,9 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		errs = append(errs, fmt.Errorf("invalid extraConf: %w", err))
 	}
 
+	if nodeset.Spec.PruneSlurmNodeRecords == slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound { //nolint:staticcheck // SA1019
+		warns = append(warns, "PruneSlurmNodeRecords: 'NodeNotFound' is deprecated, use 'Auto' instead.")
+	}
+
 	return warns, errs
 }
