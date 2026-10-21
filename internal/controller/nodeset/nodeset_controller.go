@@ -154,16 +154,17 @@ func (r *NodeSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.eventRecorder = mgr.GetEventRecorder(ControllerName)
 	r.podControl = podcontrol.NewPodControl(r.Client, r.eventRecorder)
-	podEventHandler := eventhandler.NewPodEventHandler(r.Client, r.expectations)
 	if err := indexes.SetupWithManager(mgr); err != nil {
+		return err
+	}
+	if err := refresolver.SetupIndexes(context.Background(), mgr.GetFieldIndexer()); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.NodeSet{}).
-		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
-		Watches(&corev1.Pod{}, podEventHandler).
+		Watches(&corev1.Pod{}, eventhandler.NewPodEventHandler(r.Client, r.expectations)).
 		Watches(&corev1.Node{}, eventhandler.NewNodeEventHandler(r.Client)).
 		Watches(&slinkyv1beta1.Controller{}, eventhandler.NewControllerEventHandler(r.Client)).
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).

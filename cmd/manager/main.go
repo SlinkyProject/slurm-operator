@@ -17,18 +17,23 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
+	builderlabels "github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/clientmap"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/accounting"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/controller"
@@ -111,6 +116,18 @@ func parseFlags(flags *Flags) {
 		"The address the Go profiling endpoint binds to. This should never be exposed publicly. If empty and profiling is enabled, defaults to localhost:6060.",
 	)
 	flag.Parse()
+}
+
+func operatorPodSelector() (k8slabels.Selector, error) {
+	req, err := k8slabels.NewRequirement(builderlabels.AppLabel, selection.In, []string{
+		builderlabels.WorkerApp,
+		builderlabels.ControllerApp,
+		builderlabels.LoginApp,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return k8slabels.NewSelector().Add(*req), nil
 }
 
 func profileAddr(addr string) string {
@@ -199,6 +216,12 @@ func main() {
 		setupLog.Info("watching namespaces", "namespaces", flags.namespaces)
 	}
 
+	podSelector, err := operatorPodSelector()
+	if err != nil {
+		setupLog.Error(err, "unable to build operator pod selector")
+		os.Exit(1)
+	}
+
 	var propagatedNodeConditions []corev1.NodeConditionType
 	if flags.propagatedNodeConditions != "" {
 		propagatedNodeConditions = make([]corev1.NodeConditionType, 0)
@@ -229,8 +252,21 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:  scheme,
 		Metrics: metricsServerOptions,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{
+					&corev1.PersistentVolumeClaim{},
+					&policyv1.PodDisruptionBudget{},
+					&monitoringv1.ServiceMonitor{},
+				},
+			},
+		},
 		Cache: cache.Options{
 			DefaultNamespaces: defaultNamespaces,
+			DefaultTransform:  cache.TransformStripManagedFields(),
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.Pod{}: {Label: podSelector},
+			},
 		},
 		HealthProbeBindAddress:        flags.probeAddr,
 		LeaderElection:                flags.enableLeaderElection,
