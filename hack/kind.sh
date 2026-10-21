@@ -119,7 +119,9 @@ function kind::start() {
 	sys::check
 	local cluster_name="${1:-"kind"}"
 	local kind_config="${2:-"$DIR/kind.yaml"}"
-	if ! kind get clusters 2>/dev/null | grep -Fxq "$cluster_name"; then
+	local clusters
+	clusters="$(kind get clusters)" || return $?
+	if ! grep -Fxq -- "$cluster_name" <<<"$clusters"; then
 		if [ "$(command -v systemd-run)" ]; then
 			CMD="systemd-run --scope --user"
 		else
