@@ -48,8 +48,8 @@ func TestRefResolver_GetController(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -64,8 +64,8 @@ func TestRefResolver_GetController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm",
@@ -123,8 +123,8 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -139,8 +139,8 @@ func TestRefResolver_GetAccounting(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.Accounting{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm",
@@ -197,8 +197,8 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -215,8 +215,8 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.NodeSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
@@ -255,8 +255,8 @@ func TestRefResolver_GetNodeSetsForController(t *testing.T) {
 		{
 			name: "list error",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithInterceptorFuncs(interceptor.Funcs{
 						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
 							return errors.New("list failed")
@@ -310,8 +310,8 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -328,8 +328,8 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.LoginSet{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
@@ -368,8 +368,8 @@ func TestRefResolver_GetLoginSetsForController(t *testing.T) {
 		{
 			name: "list error",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithInterceptorFuncs(interceptor.Funcs{
 						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
 							return errors.New("list failed")
@@ -423,8 +423,8 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -441,8 +441,8 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.RestApi{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
@@ -481,8 +481,8 @@ func TestRefResolver_GetRestapisForController(t *testing.T) {
 		{
 			name: "list error",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithInterceptorFuncs(interceptor.Funcs{
 						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
 							return errors.New("list failed")
@@ -536,8 +536,8 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -554,8 +554,8 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&slinkyv1beta1.Controller{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "slurm-foo",
@@ -594,8 +594,8 @@ func TestRefResolver_GetControllersForAccounting(t *testing.T) {
 		{
 			name: "list error",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithInterceptorFuncs(interceptor.Funcs{
 						List: func(_ context.Context, _ client.WithWatch, _ client.ObjectList, _ ...client.ListOption) error {
 							return errors.New("list failed")
@@ -650,8 +650,8 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 		{
 			name: "empty",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					Build(),
 			},
 			args: args{
@@ -669,8 +669,8 @@ func TestRefResolver_GetSecretKeyRef(t *testing.T) {
 		{
 			name: "found",
 			fields: fields{
-				reader: fake.NewClientBuilder().
-					WithScheme(scheme).
+				reader: WithIndexes(fake.NewClientBuilder().
+					WithScheme(scheme)).
 					WithObjects(&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "secret",
