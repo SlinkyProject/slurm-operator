@@ -477,7 +477,7 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 		name          string
 		node          *api.V0044Node
 		args          args
-		notRegistered bool  // node absent from slurmctld: Get returns a tolerated 404
+		notRegistered bool  // node absent from slurmctld: Get returns 404
 		updateErr     error // non-nil makes the Slurm Update fail with this error
 		wantErr       bool
 		wantSkip      bool
@@ -533,12 +533,11 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			wantActive:    []string{"foo", "mig=on", prefix + "nn-a"},
 		},
 		{
-			// Node not registered in slurmctld yet: Get returns a tolerated 404 and
-			// the call is a no-op.
-			name:          "node not registered is tolerated",
+			name:          "node not registered returns error",
 			node:          nodeWith([]string{"foo"}, []string{"foo"}),
 			args:          args{ctx: ctx, nodeset: nodeset, pod: pod, features: []string{"a100"}},
 			notRegistered: true,
+			wantErr:       true,
 		},
 		{
 			// A non-tolerated error from the Slurm update is surfaced to the caller.
@@ -575,11 +574,6 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			if tt.wantSkip {
 				require.Zero(t, updates, "UpdateNodeFeatures() issued %d update(s), want 0 (already in sync)", updates)
 			}
-			// The Slurm node feature set is only well-defined on the success path; for
-			// the tolerated-404 and error cases there is nothing to assert.
-			if tt.notRegistered {
-				return
-			}
 			checkNode := &api.V0044Node{}
 			if getErr := sclient.Get(ctx, tt.node.GetKey(), checkNode); getErr != nil {
 				if !errors.Is(getErr, slurmerrors.ErrNotFound) {
@@ -596,92 +590,6 @@ func Test_realSlurmControl_UpdateNodeFeatures(t *testing.T) {
 			slices.Sort(wantActive)
 			require.Equal(t, wantAvail, gotAvail, "UpdateNodeFeatures() available features mismatch")
 			require.Equal(t, wantActive, gotActive, "UpdateNodeFeatures() active features mismatch")
-		})
-	}
-}
-
-func Test_realSlurmControl_IsNodeDrain(t *testing.T) {
-	ctx := context.Background()
-	controller := &slinkyv1beta1.Controller{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: corev1.NamespaceDefault,
-			Name:      "slurm",
-		},
-	}
-	nodeset := newNodeSet("foo", controller.Name, 1)
-	pod := nodesetutils.NewNodeSetStatefulSetPod(kubefake.NewFakeClient(), nodeset, controller, 0, "")
-	type fields struct {
-		clientMap *clientmap.ClientMap
-	}
-	type args struct {
-		ctx     context.Context
-		nodeset *slinkyv1beta1.NodeSet
-		pod     *corev1.Pod
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "Not DRAIN",
-			fields: func() fields {
-				node := &api.V0044Node{
-					Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-					State: ptr.To([]api.V0044NodeState{
-						api.V0044NodeStateIDLE,
-					}),
-				}
-				sclient := fake.NewClientBuilder().WithObjects(node).Build()
-				return fields{
-					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
-				}
-			}(),
-			args: args{
-				ctx:     ctx,
-				nodeset: nodeset,
-				pod:     pod,
-			},
-			want:    false,
-			wantErr: false,
-		},
-		{
-			name: "Is DRAIN",
-			fields: func() fields {
-				node := &api.V0044Node{
-					Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
-					State: ptr.To([]api.V0044NodeState{
-						api.V0044NodeStateDRAIN,
-					}),
-				}
-				sclient := fake.NewClientBuilder().WithObjects(node).Build()
-				return fields{
-					clientMap: testutils.NewClientMap(controller.Name, controller.Namespace, sclient),
-				}
-			}(),
-			args: args{
-				ctx:     ctx,
-				nodeset: nodeset,
-				pod:     pod,
-			},
-			want:    true,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &realSlurmControl{
-				clientMap: tt.fields.clientMap,
-			}
-			got, err := r.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
-			if tt.wantErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
 		})
 	}
 }

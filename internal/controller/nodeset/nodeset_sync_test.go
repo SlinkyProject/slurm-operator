@@ -1128,6 +1128,19 @@ func TestNodeSetReconciler_syncNodeSetPods(t *testing.T) {
 	}
 }
 
+func isNodeDrain(ctx context.Context, slurmClient slurmclient.Client, pod *corev1.Pod) (bool, error) {
+	if slurmClient == nil {
+		return false, slurmcontrol.ErrNoSlurmClient
+	}
+	slurmNode := &slurmapi.V0044Node{}
+	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
+	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+		return false, err
+	}
+	isDrain := slurmutils.GetStateAsSet(slurmNode.State).Has(slurmapi.V0044NodeStateDRAIN)
+	return isDrain, nil
+}
+
 func TestNodeSetReconciler_processCondemned(t *testing.T) {
 	controller := &slinkyv1beta1.Controller{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1540,16 +1553,22 @@ func TestNodeSetReconciler_processCondemned(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+			slurmClient := tt.fields.ClientMap.Get(types.NamespacedName{
+				Namespace: tt.args.nodeset.Namespace,
+				Name:      tt.args.nodeset.Spec.ControllerRef.Name,
+			})
 			pod := tt.args.condemned[tt.args.i]
-			isDrain, err := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, pod)
-			require.NoError(t, err)
+			isDrain, err := isNodeDrain(t.Context(), slurmClient, pod)
+			if !errors.Is(err, slurmcontrol.ErrNoSlurmClient) && !errors.Is(err, slurmerrors.ErrNotFound) {
+				require.NoError(t, err)
+			}
 			gotPod := &corev1.Pod{}
 			podKey := client.ObjectKeyFromObject(pod)
 			getErr := r.Get(tt.args.ctx, podKey, gotPod)
 			if tt.wantDelete {
 				require.True(t, apierrors.IsNotFound(getErr), "expected pod to be deleted, but it still exists")
 			} else {
-				require.Equal(t, tt.wantDrain, isDrain, "slurmControl.IsNodeDrain() = %v, wantDrain %v", isDrain, tt.wantDrain)
+				require.Equal(t, tt.wantDrain, isDrain, "got = %v, wantDrain %v", isDrain, tt.wantDrain)
 			}
 			podStillExists := getErr == nil
 			podGone := apierrors.IsNotFound(getErr)
@@ -4209,7 +4228,11 @@ func Test_syncPodUncordon(t *testing.T) {
 			require.NoError(t, tt.fields.Client.Get(tt.args.ctx, client.ObjectKeyFromObject(tt.args.pod), gotPod))
 			require.Equal(t, tt.wantPodCordoned, podutils.IsPodCordon(gotPod), "pod cordon state after syncPodUncordon()")
 
-			gotDrain, drainErr := r.slurmControl.IsNodeDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod)
+			slurmClient := tt.fields.ClientMap.Get(types.NamespacedName{
+				Namespace: tt.args.nodeset.Namespace,
+				Name:      tt.args.nodeset.Spec.ControllerRef.Name,
+			})
+			gotDrain, drainErr := isNodeDrain(t.Context(), slurmClient, tt.args.pod)
 			require.NoError(t, drainErr)
 			require.Equal(t, tt.wantSlurmNodeDrained, gotDrain, "slurm node DRAIN state after syncPodUncordon()")
 		})

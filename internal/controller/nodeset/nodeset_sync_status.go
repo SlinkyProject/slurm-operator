@@ -27,6 +27,8 @@ import (
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
@@ -76,7 +78,9 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 		if !podutils.IsHealthy(pod) {
 			return nil
 		}
-		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return err
 		}
 		return nil
