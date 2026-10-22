@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestIsRunningAndReady(t *testing.T) {
@@ -347,6 +349,139 @@ func TestIsHealthy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, IsHealthy(tt.args.pod))
+		})
+	}
+}
+
+func TestIsPodCordonedByNode(t *testing.T) {
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "no annotations",
+			args: args{
+				pod: &corev1.Pod{},
+			},
+			want: false,
+		},
+		{
+			name: "cordon without source",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon: "true",
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "cordon propagated from the node",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon:       "true",
+							slinkyv1beta1.AnnotationPodCordonSource: slinkyv1beta1.PodCordonSourceNode,
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "unknown source",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon:       "true",
+							slinkyv1beta1.AnnotationPodCordonSource: "user",
+						},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsPodCordonedByNode(tt.args.pod))
+		})
+	}
+}
+
+func TestIsPodCordonedByOperator(t *testing.T) {
+	withSource := func(source string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					slinkyv1beta1.AnnotationPodCordon:       "true",
+					slinkyv1beta1.AnnotationPodCordonSource: source,
+				},
+			},
+		}
+	}
+	type args struct {
+		pod *corev1.Pod
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "no annotations",
+			args: args{
+				pod: &corev1.Pod{},
+			},
+			want: false,
+		},
+		{
+			name: "cordon without source",
+			args: args{
+				pod: &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							slinkyv1beta1.AnnotationPodCordon: "true",
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "cordon propagated from the node",
+			args: args{
+				pod: withSource(slinkyv1beta1.PodCordonSourceNode),
+			},
+			want: true,
+		},
+		{
+			name: "cordon for termination",
+			args: args{
+				pod: withSource(slinkyv1beta1.PodCordonSourceTermination),
+			},
+			want: true,
+		},
+		{
+			name: "unknown source",
+			args: args{
+				pod: withSource("user"),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsPodCordonedByOperator(tt.args.pod))
 		})
 	}
 }
