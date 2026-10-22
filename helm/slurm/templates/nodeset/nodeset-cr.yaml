@@ -41,11 +41,20 @@ spec:
     {{- end }}{{- /* if (include "slurm.worker.partitionConfig" .) */}}
   {{- end }}{{- /* with $nodeset.partition */}}
   {{- with $nodeset.ssh }}
-  {{- if .enabled }}
-  {{- $_ := set $nodeset.ssh "sssdConfRef" (dict "name" (include "slurm.sssdConf.name" $) "key" (include "slurm.sssdConf.key" $)) }}
   ssh:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}{{- /* if .enabled */}}
+    enabled: {{ .enabled }}
+    {{- /* === DEPRECATED SECTION START : Use Volume Mounts instead === */}}
+    {{- if .enabled }}
+    {{- /* Deprecated: still honored when set. */}}
+    {{- with .extraSshdConfig }}
+    extraSshdConfig: |
+      {{- . | nindent 6 }}
+    {{- end }}{{- /* with .extraSshdConfig */}}
+    {{- with include "slurm.sssdConf.ref" $ }}
+      {{- . | nindent 4 }}
+    {{- end }}{{- /* with sssdConfRef */}}
+    {{- end }}{{- /* if .enabled */}}
+    {{- /* === DEPRECATED SECTION END === */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
   replicas: {{ $nodeset.replicas }}
   slurmd:

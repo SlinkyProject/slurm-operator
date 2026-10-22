@@ -341,6 +341,71 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should omit deprecated ssh fields when ssh is enabled without them
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.ssh.enabled
+          value: true
+      - notExists:
+          path: spec.ssh.extraSshdConfig
+      - notExists:
+          path: spec.ssh.sssdConfRef
+  - it: should pass extraSshdConfig when ssh is enabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+            extraSshdConfig: |
+              UsePAM yes
+              PasswordAuthentication yes
+    asserts:
+      - equal:
+          path: spec.ssh.extraSshdConfig
+          value: |
+            UsePAM yes
+            PasswordAuthentication yes
+  - it: should reference sssd.conf when ssh is enabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+      sssd:
+        conf: |
+          [sssd]
+          config_file_version = 2
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef
+          value:
+            name: test-release-slurm-sssd-conf
+            key: sssd.conf
+  - it: should not reference sssd when ssh is disabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: false
+      sssd:
+        secretRef:
+          name: my-sssd-secret
+          key: sssd.conf
+    asserts:
+      - equal:
+          path: spec.ssh.enabled
+          value: false
+      - notExists:
+          path: spec.ssh.sssdConfRef
   - it: should prefer digest over tag when both are set on logfile
     set:
       nodesets:

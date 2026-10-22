@@ -21,6 +21,13 @@ the migration steps.
   `PinToNode` were omitted in favor of using the `ScaleStrategy` object, which
   contains all of those fields. Old fields will take priority over
   `ScaleStrategy`.
+- LoginSet and NodeSet `extraSshdConfig` are deprecated. Please migrate to
+  volume mounting `sshd_config` to `/etc/ssh/sshd_config` or config shards under
+  `/etc/ssh/sshd_config.d/` directory. Existing `extraSshdConfig` values are
+  still passed through.
+- LoginSet and NodeSet `sssd` configuration was deprecated. Please migrate to
+  volume mounting `sssd.conf` to `/etc/sssd/sssd.conf` as needed. Existing
+  `sssd.conf` and `sssd.secretRef` values are still honored.
 
 ## From 1.1.x to 1.2.x
 

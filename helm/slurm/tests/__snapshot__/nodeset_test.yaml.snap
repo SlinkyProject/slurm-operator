@@ -30,6 +30,8 @@ manifest should match snapshot:
         lifecycle: {}
         resources: {}
         volumeMounts: []
+      ssh:
+        enabled: false
       syncTopology: true
       template:
         metadata:
