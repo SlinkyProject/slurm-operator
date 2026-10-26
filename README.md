@@ -307,8 +307,8 @@ Project documentation is located in the docs directory of this repository.
 
 Feature requests, code contributions, and bug reports are welcome!
 
-Join the [Slinky channel][slinky-slack] in the Kubernetes Slack workspace for
-project-wide discussions.
+Chat with us in the [Slinky channel][slinky-slack] on
+[Kubernetes Slack][kubernetes-slack].
 
 Github/Gitlab submitted issues and PRs/MRs are handled on a best effort basis.
 
@@ -340,6 +340,7 @@ specific language governing permissions and limitations under the License.
 [installation]: ./docs/installation.md
 [k8s-lifecycle]: https://kubernetes.io/releases/#release-history
 [kubernetes]: https://kubernetes.io/
+[kubernetes-slack]: https://slack.k8s.io/
 [schedmd]: https://schedmd.com/
 [semver]: https://semver.org/
 [slinky]: https://slinky.ai/
