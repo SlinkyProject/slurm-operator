@@ -75,10 +75,13 @@ EOR
    `slurmd` image can be built with these changes included:
 
 ```bash
+cd schedmd/slurm
 export VERSION=26.05
 export FLAVOR="rockylinux9"
-export BAKE_IMPORTS="--file ./docker-bake.hcl --file ./$VERSION/$FLAVOR/slurm.hcl"
-docker bake $BAKE_IMPORTS slurmd
+docker buildx bake \
+  --file docker-bake.hcl \
+  --file "$VERSION/$FLAVOR/slurm.hcl" \
+  slurmd
 ```
 
 After the image build has completed, a tag should be applied to distinguish the
@@ -102,7 +105,7 @@ The Slurm Helm chart's `values.yaml` file must be modified for deploying
 JupyterLab. Specifically, the values of
 `nodesets.slinky.slurmd.image.repository`, `nodesets.slinky.slurmd.image.tag`
 must be changed to reference the registry by which your images are provided and
-`nodesets.slinky.slurmd.ports` must be modified to expose the port on which
+`nodesets.slinky.slurmd.ports` can be configured to declare the port on which
 JupyterLab will be served.
 
 A minimal `values.yaml` for running JupyterLab within a Slurm-operator
@@ -113,6 +116,8 @@ nodesets:
   slinky:
     enabled: true
     replicas: 1
+    partition:
+      enabled: true
     slurmd:
       image:
         repository: ghcr.io/slinkyproject/slurmd
@@ -130,7 +135,7 @@ on a Slinky cluster:
 ```bash
 #!/bin/bash
 #SBATCH --job-name=jupyterlab-singleuser
-#SBATCH --account=vivian
+#SBATCH --partition=slinky
 #SBATCH --nodes=1
 #SBATCH --time=01:00:00
 #
