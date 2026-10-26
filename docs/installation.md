@@ -148,12 +148,12 @@ rotate the certificate, run `helm upgrade` to refresh the `caBundle`.
 > template time if you set both.
 
 > [!IMPORTANT]
-> `helm template` and `helm install --dry-run=client` cannot contact the
-> Kubernetes API, so `lookup` returns empty and the chart fails with "Secret …
-> was not found" even when the Secret exists. Use
-> `helm install --dry-run=server` to exercise the lookup. For GitOps workflows
-> that rely on `helm template` for diffs (helm-diff, ArgoCD, Flux), use the
-> webhook annotation pass-through described below instead.
+> Offline rendering with `helm template` or `helm install --dry-run=client`
+> cannot read the existing Secret through `lookup`, so this external-certificate
+> configuration fails with "Secret … was not found" even when the Secret exists.
+> Use `helm template --dry-run=server` or `helm install --dry-run=server` with
+> access to the cluster containing the Secret. The cainjector annotations below
+> do not bypass the lookup.
 
 > [!NOTE]
 > When migrating from `certManager.enabled=true`, give the BYO Secret a name
