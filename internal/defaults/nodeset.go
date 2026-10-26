@@ -18,6 +18,8 @@ const (
 	DefaultNodeSetScalingMode                  slinkyv1beta1.ScalingModeType                 = slinkyv1beta1.ScalingModeStatefulset
 	DefaultNodeSetUpdateStrategyType           slinkyv1beta1.NodeSetUpdateStrategyType       = slinkyv1beta1.RollingUpdateNodeSetStrategyType
 	DefaultNodeSetPruneSlurmNodeRecordType     slinkyv1beta1.NodeSetPruneSlurmNodeRecordType = slinkyv1beta1.NodeSetPruneNodeRecordTypeNever
+	DefaultNodeSetOrdinalPadding               uint                                          = 0
+	DefaultNodeSetPinToNode                    bool                                          = false
 )
 
 // Default values for NodeSet Spec fields when unspecified.
@@ -33,10 +35,6 @@ func SetNodeSetDefaults(nodeset *slinkyv1beta1.NodeSet) {
 
 	if s.Replicas == nil {
 		s.Replicas = ptr.To(DefaultNodeSetReplicas)
-	}
-
-	if s.ScalingMode == "" {
-		s.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
 	}
 
 	if s.SyncTopology == nil {
@@ -67,5 +65,29 @@ func SetNodeSetDefaults(nodeset *slinkyv1beta1.NodeSet) {
 
 	if s.PruneSlurmNodeRecords == "" {
 		s.PruneSlurmNodeRecords = DefaultNodeSetPruneSlurmNodeRecordType
+	}
+
+	if s.ScaleStrategy.Mode == "" {
+		if s.ScalingMode != nil { //nolint:staticcheck // SA1019
+			s.ScaleStrategy.Mode = *s.ScalingMode //nolint:staticcheck // SA1019
+		} else {
+			s.ScaleStrategy.Mode = DefaultNodeSetScalingMode
+		}
+	}
+
+	if s.ScaleStrategy.StatefulSet.OrdinalPadding == nil {
+		if s.OrdinalPadding != nil { //nolint:staticcheck // SA1019
+			s.ScaleStrategy.StatefulSet.OrdinalPadding = s.OrdinalPadding //nolint:staticcheck // SA1019
+		} else {
+			s.ScaleStrategy.StatefulSet.OrdinalPadding = new(DefaultNodeSetOrdinalPadding)
+		}
+	}
+
+	if s.ScaleStrategy.StatefulSet.PinToNode == nil {
+		if s.PinToNode != nil { //nolint:staticcheck // SA1019
+			s.ScaleStrategy.StatefulSet.PinToNode = s.PinToNode //nolint:staticcheck // SA1019
+		} else {
+			s.ScaleStrategy.StatefulSet.PinToNode = new(DefaultNodeSetPinToNode)
+		}
 	}
 }

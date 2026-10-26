@@ -521,7 +521,7 @@ func TestNodeSetReconciler_calculateReplicaStatus(t *testing.T) {
 			name: "DaemonSet getDesiredNodeCountForDaemonSet list error",
 			args: func() args {
 				nodeset := newNodeSet("foo", controller.Name, 2)
-				nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+				nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 				return args{
 					nodeset:         nodeset,
 					pods:            []*corev1.Pod{},
@@ -1139,7 +1139,7 @@ func Test_calculateOrdinalToNode(t *testing.T) {
 
 	makeNodeSet := func(name string, replicas int32, pinToNode bool, ordinalToNode map[string]string) *slinkyv1beta1.NodeSet {
 		ns := newNodeSet(name, "slurm", replicas)
-		ns.Spec.PinToNode = pinToNode
+		ns.Spec.ScaleStrategy.StatefulSet.PinToNode = new(pinToNode)
 		ns.Status.OrdinalToNode = ordinalToNode
 		return ns
 	}
@@ -1321,7 +1321,7 @@ func Test_calculateOrdinalToNode(t *testing.T) {
 					nodeset := makeNodeSet("foo", 2, true, map[string]string{
 						"0": "node-0",
 					})
-					nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+					nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 					return nodeset
 				}(),
 				pods: []*corev1.Pod{

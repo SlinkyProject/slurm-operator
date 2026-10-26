@@ -40,7 +40,7 @@ func TestLoginsetReconciler_sync(t *testing.T) {
 	jwtKey := testutils.NewJwtKeyRef("jwtkey")
 	sssdconfRef := testutils.NewSssdConfRef("sssd")
 	controller := testutils.NewController("slurm", slurmKey, jwtKey, nil)
-	loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+	loginset := testutils.NewLoginset("slurm", controller, &sssdconfRef)
 
 	type fields struct {
 		Client client.Client
@@ -92,7 +92,7 @@ func TestLoginSetReconciler_syncPodLabels(t *testing.T) {
 	jwtKey := testutils.NewJwtKeyRef("jwtkey")
 	sssdconfRef := testutils.NewSssdConfRef("sssd")
 	controller := testutils.NewController("slurm", slurmKey, jwtKey, nil)
-	loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+	loginset := testutils.NewLoginset("slurm", controller, &sssdconfRef)
 
 	// Build() returns a new map per call, so each pod gets its own label set.
 	selectorLabels := func() map[string]string {
@@ -166,7 +166,7 @@ func BenchmarkLoginsetReconciler_sync(b *testing.B) {
 			for b.Loop() {
 				b.StopTimer()
 				controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
-				loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+				loginset := testutils.NewLoginset("slurm", controller, &sssdconfRef)
 				kubeClient := fake.NewClientBuilder().WithObjects(
 					loginset.DeepCopy(),
 					controller.DeepCopy(),
@@ -195,7 +195,7 @@ func TestLoginsetReconciler_sync_sshHostKeys(t *testing.T) {
 	jwtKeyRef := testutils.NewJwtKeyRef("jwtkey")
 	sssdconfRef := testutils.NewSssdConfRef("sssd")
 	controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
-	loginset := testutils.NewLoginset("slurm", controller, sssdconfRef)
+	loginset := testutils.NewLoginset("slurm", controller, &sssdconfRef)
 	key := loginset.SshHostKeys()
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{

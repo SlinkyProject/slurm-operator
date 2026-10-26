@@ -92,8 +92,10 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			ControllerRef: corev1.LocalObjectReference{
 				Name: controllerName,
 			},
-			Replicas:    ptr.To(replicas),
-			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
+			Replicas: new(replicas),
+			ScaleStrategy: slinkyv1beta1.NodeSetScaleStrategy{
+				Mode: slinkyv1beta1.ScalingModeStatefulset,
+			},
 			Template: slinkyv1beta1.PodTemplate{
 				Metadata: slinkyv1beta1.Metadata{
 					Labels: map[string]string{
@@ -4541,9 +4543,9 @@ func TestNodeSetReconciler_syncSlurmFeatures(t *testing.T) {
 
 func TestGetNodesToDaemonPods(t *testing.T) {
 	nodeset := newNodeSet("foo", "ctrl", 1)
-	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodeset2 := newNodeSet("foo2", "ctrl", 1)
-	nodeset2.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeset2.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
@@ -4673,21 +4675,21 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 
 	// NodeSet with no extra constraints (template has default pod spec from newNodeSet).
 	nodeSetBasic := newNodeSet("foo", controller.Name, 1)
-	nodeSetBasic.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetBasic.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 
 	// NodeSet with NodeSelector that does not match node (node has type=production, selector wants type=test).
 	nodeSetNodeSelectorMismatch := newNodeSet("foo", controller.Name, 1)
-	nodeSetNodeSelectorMismatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetNodeSelectorMismatch.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodeSetNodeSelectorMismatch.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"type": "test"}
 
 	// NodeSet with NodeSelector that matches node (type=production).
 	nodeSetNodeSelectorMatch := newNodeSet("foo", controller.Name, 1)
-	nodeSetNodeSelectorMatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetNodeSelectorMatch.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodeSetNodeSelectorMatch.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"type": "production"}
 
 	// NodeSet with NodeAffinity required type=production -> matches node with type=production.
 	nodeSetAffinityMatch := newNodeSet("foo", controller.Name, 1)
-	nodeSetAffinityMatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetAffinityMatch.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodeSetAffinityMatch.Spec.Template.PodSpecWrapper.Affinity = &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -4704,7 +4706,7 @@ func TestNodeShouldRunDaemonPod(t *testing.T) {
 
 	// NodeSet with NodeAffinity required type=production -> does NOT match node with type=staging.
 	nodeSetAffinityMismatch := newNodeSet("foo", controller.Name, 1)
-	nodeSetAffinityMismatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodeSetAffinityMismatch.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodeSetAffinityMismatch.Spec.Template.PodSpecWrapper.Affinity = &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -4797,10 +4799,10 @@ func TestNodeSetReconciler_podsShouldBeOnNode(t *testing.T) {
 	_ = slinkyv1beta1.AddToScheme(scheme)
 
 	nodesetBasic := newNodeSet("foo", controller.Name, 1)
-	nodesetBasic.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodesetBasic.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 
 	nodesetNodeSelectorMismatch := newNodeSet("bar", controller.Name, 1)
-	nodesetNodeSelectorMismatch.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+	nodesetNodeSelectorMismatch.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 	nodesetNodeSelectorMismatch.Spec.Template.PodSpecWrapper.NodeSelector = map[string]string{"type": "test"}
 
 	nodeReady := newNodeForNodeSetTest("node-ready", map[string]string{"type": "production"}, false)
@@ -5078,6 +5080,7 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAutoForNodeNotFound(t *testing.T)
 		selector           map[string]string
 		setup              func(ns *slinkyv1beta1.NodeSet) (kubeObjs []runtime.Object, slurmNodes []slurmapi.V0044Node, stillExist, pruned []string)
 		interceptor        sinterceptor.Funcs
+		scalingMode        slinkyv1beta1.ScalingModeType
 		wantErr            bool
 	}{
 		{
@@ -5258,9 +5261,9 @@ func TestNodeSetReconciler_syncSlurmNodeRecordsAutoForNodeNotFound(t *testing.T)
 			ctx := t.Context()
 			nodeset := newNodeSet("foo", controller.Name, 1)
 			nodeset.UID = types.UID("foo-uid")
-			nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+			nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 			if tt.useStatefulSetMode {
-				nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+				nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 			}
 			nodeset.Spec.PruneSlurmNodeRecords = slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound //nolint:staticcheck // SA1019
 			if len(tt.selector) > 0 {

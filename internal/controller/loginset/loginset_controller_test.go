@@ -33,7 +33,7 @@ var _ = Describe("LoginSet Controller", func() {
 			controller = testutils.NewController(name, slurmKeyRef, jwtKeyRef, nil)
 			sssdconfRef := testutils.NewSssdConfRef(name)
 			sssdConfSecret = testutils.NewSssdConfSecret(sssdconfRef)
-			loginset = testutils.NewLoginset(name, controller, sssdconfRef)
+			loginset = testutils.NewLoginset(name, controller, &sssdconfRef)
 			Expect(k8sClient.Create(ctx, slurmKeySecret.DeepCopy())).To(Succeed())
 			Expect(k8sClient.Create(ctx, jwtKeySecret.DeepCopy())).To(Succeed())
 			Expect(k8sClient.Create(ctx, controller.DeepCopy())).To(Succeed())

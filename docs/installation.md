@@ -389,17 +389,40 @@ communicate with an identity service via [sssd].
 
 > [!WARNING]
 > In this example, you will need to supply an `sssd.conf` (at
-> `${HOME}/sssd.conf`) that is configured for your environment.
+> `${HOME}/sssd.conf`) that is configured for your environment. Mount it at
+> `/etc/sssd/sssd.conf` with mode `0600`. [sssd] will not start if the file is
+> readable by anyone other than root.
 
-Install a Slurm cluster via helm chart with the
-`--set 'loginsets.slinky.enabled=true'` and
-`--set-file "sssd.conf=${HOME}/sssd.conf"` arguments.
+Create a Secret from that file, then install a Slurm cluster via helm chart. The
+LoginSet mounts the Secret into the login container:
 
 ```sh
+kubectl create namespace slurm
+kubectl create secret generic sssd-conf \
+  --namespace=slurm \
+  --from-file=sssd.conf="${HOME}/sssd.conf"
+
+cat > login-values.yaml <<EOF
+loginsets:
+  slinky:
+    enabled: true
+    login:
+      volumeMounts:
+        - name: sssd-conf
+          mountPath: /etc/sssd/sssd.conf
+          subPath: sssd.conf
+          readOnly: true
+    podSpec:
+      volumes:
+        - name: sssd-conf
+          secret:
+            secretName: sssd-conf
+            defaultMode: 0600
+EOF
+
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
-  --set 'loginsets.slinky.enabled=true' \
-  --set-file "sssd.conf=${HOME}/sssd.conf" \
-  --namespace=slurm --create-namespace
+  --values login-values.yaml \
+  --namespace=slurm
 ```
 
 #### With root Authorized Keys

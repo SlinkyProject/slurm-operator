@@ -100,8 +100,10 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		}
 	}
 
-	if nodeset.Spec.Ssh.Enabled && nodeset.Spec.Ssh.SssdConfRef.Name == "" {
-		errs = append(errs, errors.New("ssh.sssdConfRef.name must not be empty when ssh is enabled"))
+	if nodeset.Spec.Ssh.Enabled {
+		if nodeset.Spec.Ssh.SssdConfRef != nil && nodeset.Spec.Ssh.SssdConfRef.Name == "" { //nolint:staticcheck // SA1019
+			errs = append(errs, errors.New("ssh.sssdConfRef.name must not be empty when ssh is enabled"))
+		}
 	}
 
 	hostname := nodeset.Spec.Template.PodSpecWrapper.Hostname
@@ -115,8 +117,22 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 		errs = append(errs, fmt.Errorf("invalid extraConf: %w", err))
 	}
 
+	// ----- Deprecation Warnings -----
+
 	if nodeset.Spec.PruneSlurmNodeRecords == slinkyv1beta1.NodeSetPruneNodeRecordTypeNodeNotFound { //nolint:staticcheck // SA1019
 		warns = append(warns, "PruneSlurmNodeRecords: 'NodeNotFound' is deprecated, use 'Auto' instead.")
+	}
+
+	if nodeset.Spec.ScalingMode != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "ScalingMode is deprecated, use `.spec.scaleStrategy.mode` instead.")
+	}
+
+	if nodeset.Spec.OrdinalPadding != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "OrdinalPadding is deprecated, use `.spec.scaleStrategy.statefulset.ordinalPadding` instead.")
+	}
+
+	if nodeset.Spec.PinToNode != nil { //nolint:staticcheck // SA1019
+		warns = append(warns, "PinToNode is deprecated, use `.spec.scaleStrategy.statefulset.pinToNode` instead.")
 	}
 
 	return warns, errs

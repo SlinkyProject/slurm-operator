@@ -38,19 +38,26 @@ func (o *LoginSet) ServiceFQDNShort() string {
 }
 
 func (o *LoginSet) SssdSecretKey() types.NamespacedName {
+	name := ""
+	if o.Spec.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		name = o.Spec.SssdConfRef.Name //nolint:staticcheck // SA1019
+	}
 	return types.NamespacedName{
-		Name:      o.Spec.SssdConfRef.Name,
+		Name:      name,
 		Namespace: o.Namespace,
 	}
 }
 
 func (o *LoginSet) SssdSecretRef() corev1.SecretKeySelector {
+	if o.Spec.SssdConfRef == nil { //nolint:staticcheck // SA1019
+		return corev1.SecretKeySelector{}
+	}
 	key := o.SssdSecretKey()
 	return corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: key.Name,
 		},
-		Key: o.Spec.SssdConfRef.Key,
+		Key: o.Spec.SssdConfRef.Key, //nolint:staticcheck // SA1019
 	}
 }
 

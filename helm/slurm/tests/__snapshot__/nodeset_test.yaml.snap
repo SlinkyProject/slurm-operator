@@ -17,14 +17,11 @@ manifest should match snapshot:
         image: docker.io/library/alpine:latest
         imagePullPolicy: IfNotPresent
         resources: {}
-      ordinalPadding: 0
       oversubscribeNode: false
       partition:
         enabled: false
-      pinToNode: false
       pruneSlurmNodeRecords: Never
       replicas: 1
-      scalingMode: StatefulSet
       slurmd:
         args: []
         env: []
@@ -33,6 +30,8 @@ manifest should match snapshot:
         lifecycle: {}
         resources: {}
         volumeMounts: []
+      ssh:
+        enabled: false
       syncTopology: true
       template:
         metadata:

@@ -107,9 +107,8 @@ Kubernetes: `>= 1.29.0-0`
 | jwtKey.annotations | object | `{}` | Annotations to add to the secret upon creation. |
 | jwtKey.create | bool | `true` | The secret will be created when true. |
 | jwtKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
-| loginsetDefaults | object | `{"enabled":true,"extraSshdConfig":null,"initconf":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"login":{"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/login","tag":"26.05-ubuntu26.04"},"resources":{},"securityContext":{"privileged":false},"volumeMounts":[]},"metadata":{},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"rootSshAuthorizedKeys":null,"service":{"metadata":{},"spec":{"type":"LoadBalancer"}},"strategy":{}}` | Defines defaults for the LoginSet map values. |
+| loginsetDefaults | object | `{"enabled":true,"initconf":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"login":{"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/login","tag":"26.05-ubuntu26.04"},"resources":{},"securityContext":{"privileged":false},"volumeMounts":[]},"metadata":{},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"rootSshAuthorizedKeys":null,"service":{"metadata":{},"spec":{"type":"LoadBalancer"}},"strategy":{}}` | Defines defaults for the LoginSet map values. |
 | loginsetDefaults.enabled | bool | `true` | Enable use of this LoginSet. |
-| loginsetDefaults.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html |
 | loginsetDefaults.initconf.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | loginsetDefaults.initconf.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | loginsetDefaults.login.env | list | `[]` | Environment passed to the image. |
@@ -134,19 +133,17 @@ Kubernetes: `>= 1.29.0-0`
 | loginsets | map[string]object | `{}` | Slurm LoginSet (sackd, sshd, sssd) configurations. |
 | nameOverride | string | `nil` | Overrides the name of the release. |
 | namespaceOverride | string | `nil` | Overrides the namespace of the release. |
-| nodesetDefaults | object | `{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"ordinalPadding":0,"oversubscribeNode":false,"partition":{"config":null,"configMap":{},"enabled":false},"pinToNode":false,"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"pruneSlurmNodeRecords":"Never","replicas":1,"scalingMode":"StatefulSet","slurmd":{"args":[],"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"},"lifecycle":{},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false,"extraSshdConfig":null},"syncTopology":true,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"scheduledUpdate":{},"type":"RollingUpdate"},"workloadDisruptionProtection":true}` | Defines defaults for the NodeSet map values. |
+| nodesetDefaults | object | `{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"oversubscribeNode":false,"partition":{"config":null,"configMap":{},"enabled":false},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"pruneSlurmNodeRecords":"Never","replicas":1,"scaleStrategy":{},"slurmd":{"args":[],"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"},"lifecycle":{},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false},"syncTopology":true,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"scheduledUpdate":{},"type":"RollingUpdate"},"workloadDisruptionProtection":true}` | Defines defaults for the NodeSet map values. |
 | nodesetDefaults.enabled | bool | `true` | Enable use of this NodeSet. |
 | nodesetDefaults.extraConf | string | `nil` | Raw extra configuration added to the `--conf` argument. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesetDefaults.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra configuration added to the `--conf` option. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesetDefaults.logfile.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | nodesetDefaults.logfile.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesetDefaults.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
-| nodesetDefaults.ordinalPadding | int | `0` | How many places to pad with zeroes when constructing the pod ordinal. |
 | nodesetDefaults.oversubscribeNode | bool | `false` | Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity). WARNING: This option is **NOT** recommended for production usage. |
 | nodesetDefaults.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.configMap | map[string]string \| map[string][]string | `{}` | The Slurm partition configuration options added to the partition line. If `config` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.enabled | bool | `false` | Enable NodeSet partition creation. |
-| nodesetDefaults.pinToNode | bool | `false` | Pin pods to their initially assigned Kubernetes nodes. |
 | nodesetDefaults.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | nodesetDefaults.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | nodesetDefaults.podSpec.initContainers | list | `[]` | Additional initContainers for the pod. Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ |
@@ -156,7 +153,7 @@ Kubernetes: `>= 1.29.0-0`
 | nodesetDefaults.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | nodesetDefaults.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never; NodeNotFound; Auto. |
 | nodesetDefaults.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`. |
-| nodesetDefaults.scalingMode | string | `"StatefulSet"` | Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node). |
+| nodesetDefaults.scaleStrategy | slinkyv1beta1.ScaleStrategy | `{}` | Scale strategy configuration. |
 | nodesetDefaults.slurmd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS |
 | nodesetDefaults.slurmd.env | list | `[]` | Environment passed to the image. |
 | nodesetDefaults.slurmd.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -164,7 +161,6 @@ Kubernetes: `>= 1.29.0-0`
 | nodesetDefaults.slurmd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesetDefaults.slurmd.volumeMounts | list | `[]` | List of volume mounts to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | nodesetDefaults.ssh.enabled | bool | `false` | Enable SSH access to worker pods with pam_slurm_adopt. Ref: https://slurm.schedmd.com/pam_slurm_adopt.html |
-| nodesetDefaults.ssh.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html |
 | nodesetDefaults.syncTopology | bool | `true` | Control whether Slurm-operator syncs K8s node topology annotations to Slurm |
 | nodesetDefaults.updateStrategy.rollingUpdate.maxUnavailable | string | `"25%"` | Maximum number of pods that can be unavailable during update. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | nodesetDefaults.updateStrategy.type | string | `"RollingUpdate"` | The strategy type. Can be one of: RollingUpdate; OnDelete, ScheduledUpdate. |
@@ -207,8 +203,6 @@ Kubernetes: `>= 1.29.0-0`
 | slurmKey.annotations | object | `{}` | Annotations to add to the secret upon creation. |
 | slurmKey.create | bool | `true` | The secret will be created when true. |
 | slurmKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
-| sssd.conf | string | `"[sssd]\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nid_provider = proxy\nproxy_lib_name = files\nauth_provider = proxy\nproxy_pam_target = sssd-shadowutils\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
-| sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes precedence over `conf` if not empty. |
 | vendor.google.a3mega | list | `[]` | A3 Mega configurations. List of objects corresponding to nodesets. |
 | vendor.google.a3ultra | list | `[]` | A3 Ultra configurations. List of objects corresponding to nodesets. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |

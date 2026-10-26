@@ -80,8 +80,10 @@ func newNodeSet(name, controllerName string, replicas int32) *slinkyv1beta1.Node
 			ControllerRef: corev1.LocalObjectReference{
 				Name: controllerName,
 			},
-			Replicas:    &replicas,
-			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
+			Replicas: &replicas,
+			ScaleStrategy: slinkyv1beta1.NodeSetScaleStrategy{
+				Mode: slinkyv1beta1.ScalingModeStatefulset,
+			},
 		},
 	}
 }

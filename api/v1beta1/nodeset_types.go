@@ -27,18 +27,12 @@ type NodeSetSpec struct {
 	// replicas is the desired number of replicas of the given Template.
 	// These are replicas in the sense that they are instantiations of the
 	// same Template, but individual replicas also have a consistent identity.
-	// If unspecified, defaults to 1.
-	// When ScalingMode is daemonset, this field is ignored.
+	// If unspecified, defaults to 1. Can be set to 0.
+	// Used when `scaleStrategy.mode=StatefulSet` (or `ScalingMode=StatefulSet`).
+	// +nullable
 	// +optional
 	// +default:=1
 	Replicas *int32 `json:"replicas,omitempty"`
-
-	// ScalingMode controls how the NodeSet scales pods.
-	// "StatefulSet" uses a fixed replica count; "DaemonSet" schedules one pod per matching node.
-	// +optional
-	// +kubebuilder:validation:Enum=DaemonSet;StatefulSet
-	// +kubebuilder:default:=StatefulSet
-	ScalingMode ScalingModeType `json:"scalingMode,omitempty"`
 
 	// The slurmd container configuration.
 	// See corev1.Container spec.
@@ -81,6 +75,9 @@ type NodeSetSpec struct {
 	// +kubebuilder:validation:Schemaless
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 
+	// scaleStrategy indicates how pods are scaled.
+	ScaleStrategy NodeSetScaleStrategy `json:"scaleStrategy,omitempty"`
+
 	// updateStrategy indicates the NodeSetUpdateStrategy that will be
 	// employed to update Pods in the NodeSet when a revision is made to
 	// Template.
@@ -113,23 +110,6 @@ type NodeSetSpec struct {
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
-	// OrdinalPadding indicates how many digit places to pad with zeroes when constructing the pod ordinal.
-	// This is used only when `scalingMode=StatefulSet`.
-	// +optional
-	// +default:=0
-	OrdinalPadding uint `json:"ordinalPadding,omitempty"`
-
-	// PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
-	// When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
-	// Kubernetes node pinnings are reset when:
-	// * The Node does not exist.
-	// * The new NodeSet pod no longer matches the Node it was pinned to.
-	// When disabled, all stored node pinnings are removed.
-	// Used only when `scalingMode=StatefulSet`.
-	// +optional
-	// +default:=false
-	PinToNode bool `json:"pinToNode"`
-
 	// WorkloadDisruptionProtection controls whether or not pods in this nodeset which are actively running Slurm jobs are protected by
 	// a Pod Disruption Budget.
 	// See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more information.
@@ -148,6 +128,59 @@ type NodeSetSpec struct {
 	// +optional
 	// +default:=false
 	OversubscribeNode bool `json:"oversubscribeNode,omitempty"`
+
+	// ----- Deprecated Options -----
+
+	// ScalingMode controls how the NodeSet scales pods.
+	// "StatefulSet" uses a fixed replica count; "DaemonSet" schedules one pod per matching node.
+	// +nullable
+	// +optional
+	// +kubebuilder:validation:Enum=DaemonSet;StatefulSet
+	//
+	// Deprecated: Use `ScaleStrategy.Mode` instead.
+	ScalingMode *ScalingModeType `json:"scalingMode,omitempty"`
+
+	// OrdinalPadding indicates how many digit places to pad with zeroes when constructing the pod ordinal.
+	// This is used only when `scalingMode=StatefulSet`.
+	// +nullable
+	// +optional
+	//
+	// Deprecated: Use `ScaleStrategy.StatefulSet.OrdinalPadding` instead.
+	OrdinalPadding *uint `json:"ordinalPadding,omitempty"`
+
+	// PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
+	// When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
+	// Kubernetes node pinnings are reset when:
+	// * The Node does not exist.
+	// * The Pod affinity no longer matches the Node it was pinned to.
+	// When disabled, all stored node pinnings are removed.
+	// Used only when `scalingMode=StatefulSet`.
+	// +nullable
+	// +optional
+	//
+	// Deprecated: Use `ScaleStrategy.StatefulSet.PinToNode` instead.
+	PinToNode *bool `json:"pinToNode,omitempty"`
+}
+
+type NodeSetScaleStrategy struct {
+	// Mode controls how the NodeSet scales pods.
+	// "StatefulSet" uses a fixed replica count; "DaemonSet" schedules one pod per matching node.
+	// +nullable
+	// +optional
+	// +kubebuilder:validation:Enum=DaemonSet;StatefulSet
+	Mode ScalingModeType `json:"mode,omitempty"`
+
+	// StatefulSet is used to communicate parameters when Mode is
+	// ScalingModeStatefulset.
+	// +nullable
+	// +optional
+	StatefulSet NodeSetScalingModeStatefulSet `json:"statefulset,omitempty"`
+
+	// DaemonSet is used to communicate parameters when Mode is
+	// ScalingModeDaemonset.
+	// +nullable
+	// +optional
+	DaemonSet NodeSetScalingModeDaemonSet `json:"daemonset,omitempty"`
 }
 
 // ScalingModeType is a string enumeration of how a NodeSet scales its pods.
@@ -161,6 +194,25 @@ const (
 	// ScalingModeDaemonset indicates one pod per matching node similar to a DaemonSet.
 	ScalingModeDaemonset ScalingModeType = "DaemonSet"
 )
+
+type NodeSetScalingModeStatefulSet struct {
+	// OrdinalPadding indicates how many digit places to pad with zeroes when constructing the pod ordinal.
+	// +nullable
+	// +optional
+	OrdinalPadding *uint `json:"ordinalPadding,omitempty"`
+
+	// PinToNode controls whether pods are pinned to the Kubernetes node they were first scheduled on.
+	// When enabled, pods will always run on the Kube node they were first scheduled on, regardless of its availability.
+	// Kubernetes node pinnings are reset when:
+	// * The Node does not exist.
+	// * The Pod affinity no longer matches the Node it was pinned to.
+	// When disabled, all stored node pinnings are removed.
+	// +nullable
+	// +optional
+	PinToNode *bool `json:"pinToNode"`
+}
+
+type NodeSetScalingModeDaemonSet struct{}
 
 // NodeSetPartition defines the Slurm partition configuration for the NodeSet.
 type NodeSetPartition struct {
@@ -184,11 +236,15 @@ type NodeSetSsh struct {
 	// ExtraSshdConfig is added to the end of `sshd_config`.
 	// Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
 	// +optional
-	ExtraSshdConfig string `json:"extraSshdConfig,omitzero"`
+	//
+	// Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
+	ExtraSshdConfig *string `json:"extraSshdConfig,omitempty"`
 
 	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
-	// +required
-	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
+	// +optional
+	//
+	// Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
+	SssdConfRef *corev1.SecretKeySelector `json:"sssdConfRef,omitempty"`
 }
 
 // NodeSetUpdateStrategy indicates the strategy that the NodeSet
@@ -296,12 +352,14 @@ type ScheduledUpdateNodeSetStrategy struct {
 	// An RFC3339 timestamp at which to begin NodeSet updates.
 	// Ref: https://datatracker.ietf.org/doc/html/rfc3339#section-5.8
 	// Ref: https://slurm.schedmd.com/scontrol.html#OPT_StartTime_1
+	// +nullable
 	// +optional
 	StartTime metav1.Time `json:"startTime,omitempty"`
 
 	// The duration for which NodeSet updates should be conducted.
 	// Ref: https://pkg.go.dev/time#ParseDuration
 	// Ref: https://slurm.schedmd.com/scontrol.html#OPT_Duration
+	// +nullable
 	// +optional
 	// +kubebuilder:default:="30m"
 	Duration metav1.Duration `json:"duration,omitempty"`

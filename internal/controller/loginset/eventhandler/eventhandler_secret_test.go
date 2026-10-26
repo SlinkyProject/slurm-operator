@@ -27,7 +27,7 @@ func Test_SecretEventHandler_Create(t *testing.T) {
 	controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
 	sssdconfRef := testutils.NewSssdConfRef(name)
 	sssdConfSecret := testutils.NewSssdConfSecret(sssdconfRef)
-	loginset := testutils.NewLoginset(name, controller, sssdconfRef)
+	loginset := testutils.NewLoginset(name, controller, &sssdconfRef)
 	type fields struct {
 		Reader client.Reader
 	}
@@ -121,7 +121,7 @@ func Test_SecretEventHandler_Delete(t *testing.T) {
 	controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
 	sssdconfRef := testutils.NewSssdConfRef(name)
 	sssdConfSecret := testutils.NewSssdConfSecret(sssdconfRef)
-	loginset := testutils.NewLoginset(name, controller, sssdconfRef)
+	loginset := testutils.NewLoginset(name, controller, &sssdconfRef)
 	type fields struct {
 		Reader client.Reader
 	}
@@ -251,7 +251,7 @@ func Test_SecretEventHandler_Update(t *testing.T) {
 	controller := testutils.NewController("slurm", slurmKeyRef, jwtKeyRef, nil)
 	sssdconfRef := testutils.NewSssdConfRef(name)
 	sssdConfSecret := testutils.NewSssdConfSecret(sssdconfRef)
-	loginset := testutils.NewLoginset(name, controller, sssdconfRef)
+	loginset := testutils.NewLoginset(name, controller, &sssdconfRef)
 	type fields struct {
 		Reader client.Reader
 	}

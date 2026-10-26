@@ -115,30 +115,9 @@ func nodesetVolumes(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Co
 		},
 	}
 
-	// Add SSH host keys volume if SSH is enabled
 	if nodeset.Spec.Ssh.Enabled {
-		out = structutils.MergeList(out, []corev1.Volume{
-			{
-				Name: loginbuilder.SshConfigVolume,
-				VolumeSource: corev1.VolumeSource{
-					Projected: &corev1.ProjectedVolumeSource{
-						DefaultMode: ptr.To[int32](0o600),
-						Sources: []corev1.VolumeProjection{
-							{
-								ConfigMap: &corev1.ConfigMapProjection{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: nodeset.SshConfigKey().Name,
-									},
-									Items: []corev1.KeyToPath{
-										{Key: loginbuilder.SshdConfigFile, Path: loginbuilder.SshdConfigFile, Mode: ptr.To[int32](0o600)},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			{
+		if nodeset.Spec.Ssh.SssdConfRef != nil { //nolint:staticcheck // SA1019
+			volume := corev1.Volume{
 				Name: loginbuilder.SssdConfVolume,
 				VolumeSource: corev1.VolumeSource{
 					Projected: &corev1.ProjectedVolumeSource{
@@ -157,8 +136,33 @@ func nodesetVolumes(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Co
 						},
 					},
 				},
-			},
-		})
+			}
+			out = append(out, volume)
+
+		}
+		if nodeset.Spec.Ssh.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+			volume := corev1.Volume{
+				Name: loginbuilder.SshConfigVolume,
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						DefaultMode: ptr.To[int32](0o600),
+						Sources: []corev1.VolumeProjection{
+							{
+								ConfigMap: &corev1.ConfigMapProjection{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: nodeset.SshConfigKey().Name, //nolint:staticcheck // SA1019
+									},
+									Items: []corev1.KeyToPath{
+										{Key: loginbuilder.SshdConfigFile, Path: loginbuilder.SshdConfigFile, Mode: ptr.To[int32](0o600)},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			out = append(out, volume)
+		}
 	}
 
 	return out
@@ -192,12 +196,17 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 		{Name: common.SlurmdSpoolVolume, MountPath: common.SlurmdSpoolDir},
 	}
 
-	// Add SSH host key mounts if enabled
 	if nodeset.Spec.Ssh.Enabled {
-		volumeMounts = structutils.MergeList(volumeMounts, []corev1.VolumeMount{
-			{Name: loginbuilder.SshConfigVolume, MountPath: loginbuilder.SshdConfigFilePath, SubPath: loginbuilder.SshdConfigFile, ReadOnly: true},
-			{Name: loginbuilder.SssdConfVolume, MountPath: loginbuilder.SssdConfFilePath, SubPath: loginbuilder.SssdConfFile, ReadOnly: true},
-		})
+		if nodeset.Spec.Ssh.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name: loginbuilder.SshConfigVolume, MountPath: loginbuilder.SshdConfigFilePath, SubPath: loginbuilder.SshdConfigFile, ReadOnly: true,
+			})
+		}
+		if nodeset.Spec.Ssh.SssdConfRef != nil { //nolint:staticcheck // SA1019
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name: loginbuilder.SssdConfVolume, MountPath: loginbuilder.SssdConfFilePath, SubPath: loginbuilder.SssdConfFile, ReadOnly: true,
+			})
+		}
 	}
 
 	cpus, memory := b.getResourceLimits(&nodeset.Spec)
@@ -367,25 +376,29 @@ func baselineFeatures(nodeset *slinkyv1beta1.NodeSet) []string {
 
 func (b *WorkerBuilder) getWorkerHashes(ctx context.Context, nodeset *slinkyv1beta1.NodeSet) (map[string]string, error) {
 	sshConfig := &corev1.ConfigMap{}
-	sshConfigKey := nodeset.SshConfigKey()
-	if err := b.client.Get(ctx, sshConfigKey, sshConfig); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sshConfig), err)
+	if nodeset.Spec.Ssh.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+		sshConfigKey := nodeset.SshConfigKey() //nolint:staticcheck // SA1019
+		if err := b.client.Get(ctx, sshConfigKey, sshConfig); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sshConfig), err)
+			}
 		}
 	}
 
-	sssdSecret := &corev1.Secret{}
-	sssdSecretKey := nodeset.SssdSecretKey()
-	if err := b.client.Get(ctx, sssdSecretKey, sssdSecret); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sssdSecret), err)
+	var sssdConf []byte
+	if nodeset.Spec.Ssh.SssdConfRef != nil { //nolint:staticcheck // SA1019
+		sssdSecret := &corev1.Secret{}
+		if err := b.client.Get(ctx, nodeset.SssdSecretKey(), sssdSecret); err != nil { //nolint:staticcheck // SA1019
+			if !apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get object (%s): %w", klog.KObj(sssdSecret), err)
+			}
 		}
+		sssdConf = sssdSecret.Data[nodeset.SssdSecretRef().Key] //nolint:staticcheck // SA1019
 	}
-	sssdConfRefKey := nodeset.SssdSecretRef().Key
 
 	hashMap := map[string]string{
 		common.AnnotationSshdConfHash: crypto.CheckSum([]byte(sshConfig.Data[loginbuilder.SshdConfigFile])),
-		common.AnnotationSssdConfHash: crypto.CheckSum(sssdSecret.Data[sssdConfRefKey]),
+		common.AnnotationSssdConfHash: crypto.CheckSum(sssdConf),
 	}
 
 	return hashMap, nil

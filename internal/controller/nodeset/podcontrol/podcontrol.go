@@ -154,14 +154,14 @@ func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := klog.FromContext(ctx)
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := nodesetutils.GetOrdinal(pod)
 		paddedOrdinal = nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	}
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
 		var claimName string
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameOrdinal(nodeset, &templates[i], paddedOrdinal)
 		} else {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameNodeName(nodeset, &templates[i], pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
@@ -190,14 +190,14 @@ func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodese
 func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := klog.FromContext(ctx)
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := nodesetutils.GetOrdinal(pod)
 		paddedOrdinal = nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	}
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
 		var claimName string
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameOrdinal(nodeset, &templates[i], paddedOrdinal)
 		} else {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameNodeName(nodeset, &templates[i], pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])

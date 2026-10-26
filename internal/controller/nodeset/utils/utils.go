@@ -23,6 +23,7 @@ import (
 	k8scontroller "k8s.io/kubernetes/pkg/controller"
 	daemonutils "k8s.io/kubernetes/pkg/controller/daemon/util"
 	"k8s.io/kubernetes/pkg/features"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,6 +31,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	builder "github.com/SlinkyProject/slurm-operator/internal/builder/workerbuilder"
+	"github.com/SlinkyProject/slurm-operator/internal/defaults"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 )
 
@@ -59,7 +61,8 @@ func NewNodeSetStatefulSetPod(
 	}
 
 	// Ensure recreated pods are pinned to their node, but only if they still match their Node.
-	if nodeset.Spec.PinToNode {
+	isPinToNode := ptr.Deref(nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode, defaults.DefaultNodeSetPinToNode)
+	if isPinToNode {
 		pinPodToNode(client, nodeset.Status.OrdinalToNode, pod, ordinal)
 	}
 
@@ -174,7 +177,7 @@ func GetDaemonSetPodHostname(nodeName, hostnameOverride string) string {
 func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	UpdateIdentity(nodeset, pod)
 	// Set these immutable fields only on initial Pod creation, not updates.
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := GetOrdinal(pod)
 		paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
 		pod.Name = GetOrdinalPodName(nodeset, ordinal)
@@ -185,7 +188,7 @@ func initIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 		}
 	}
 	pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = GetSlurmNodeName(pod)
-	pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(nodeset.Spec.ScalingMode)
+	pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode] = string(nodeset.Spec.ScaleStrategy.Mode)
 }
 
 // UpdateIdentity updates pod's labels.
@@ -194,7 +197,7 @@ func UpdateIdentity(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) {
 	if pod.Labels == nil {
 		pod.Labels = make(map[string]string)
 	}
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := GetOrdinal(pod)
 		paddedOrdinal := GetPaddedOrdinal(nodeset, ordinal)
 		pod.Labels[slinkyv1beta1.LabelNodeSetPodIndex] = paddedOrdinal
@@ -292,7 +295,7 @@ func IsPodFromNodeSet(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	}
 
 	// StatefulSet orphan pods are identified by their parent name.
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		parent, ordinal := GetParentNameAndOrdinal(pod)
 		return ordinal >= 0 && parent == nodeset.Name
 	}
@@ -329,7 +332,8 @@ func GetParentNameAndOrdinal(pod *corev1.Pod) (string, int) {
 
 // GetPaddedOrdinal gets the name of nodeset's child Pod with an ordinal index of ordinal
 func GetPaddedOrdinal(nodeset *slinkyv1beta1.NodeSet, ordinal int) string {
-	format := fmt.Sprintf("%%0%vd", nodeset.Spec.OrdinalPadding)
+	padding := ptr.Deref(nodeset.Spec.ScaleStrategy.StatefulSet.OrdinalPadding, defaults.DefaultNodeSetOrdinalPadding)
+	format := fmt.Sprintf("%%0%vd", padding)
 	return fmt.Sprintf(format, ordinal)
 }
 
@@ -356,7 +360,7 @@ func GetSlurmNodeName(pod *corev1.Pod) string {
 
 // IsIdentityMatch returns true if pod has a valid identity and network identity for a member of nodeset.
 func IsIdentityMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		parent, ordinal := GetParentNameAndOrdinal(pod)
 		return ordinal >= 0 &&
 			nodeset.Name == parent &&
@@ -371,7 +375,7 @@ func IsIdentityMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 // IsStorageMatch returns true if pod's Volumes cover the nodeset of PersistentVolumeClaims
 func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := GetOrdinal(pod)
 		paddedOrdinal = GetPaddedOrdinal(nodeset, ordinal)
 		if ordinal < 0 {
@@ -384,7 +388,7 @@ func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 	}
 	for _, claim := range nodeset.Spec.VolumeClaimTemplates {
 		volume, found := volumes[claim.Name]
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			if !found ||
 				volume.PersistentVolumeClaim == nil ||
 				volume.PersistentVolumeClaim.ClaimName !=
@@ -408,7 +412,7 @@ func IsStorageMatch(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) bool {
 // by GetPersistentVolumeClaimName.
 func GetPersistentVolumeClaims(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) map[string]corev1.PersistentVolumeClaim {
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := GetOrdinal(pod)
 		paddedOrdinal = GetPaddedOrdinal(nodeset, ordinal)
 	}
@@ -417,7 +421,7 @@ func GetPersistentVolumeClaims(nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) 
 	claims := make(map[string]corev1.PersistentVolumeClaim, len(templates))
 	for i := range templates {
 		claim := templates[i].DeepCopy()
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			claim.Name = GetPersistentVolumeClaimNameOrdinal(nodeset, claim, paddedOrdinal)
 		} else {
 			claim.Name = GetPersistentVolumeClaimNameNodeName(nodeset, claim, pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])

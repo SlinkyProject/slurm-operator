@@ -209,10 +209,10 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 			}
 		}
 	}
-	if nodeset != nil && nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset != nil && nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		status.Unavailable = mathutils.Clamp(status.Replicas-status.Available, 0, status.Replicas)
 		status.Desired = ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas)
-	} else if nodeset != nil && nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+	} else if nodeset != nil && nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 		desiredNodes, err := r.getDesiredNodeCountForDaemonSet(ctx, nodeset)
 		if err != nil {
 			return status, fmt.Errorf("failed to get desired node count for daemon set: %w", err)
@@ -343,7 +343,8 @@ func (r *NodeSetReconciler) applyReservationCondition(ctx context.Context, nodes
 // Add a node pin if pod is scheduled and running.
 // Clear the node pin if the node was deleted, or the pod template no longer matches the node.
 func (r *NodeSetReconciler) calculateOrdinalToNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (map[string]string, error) {
-	if !nodeset.Spec.PinToNode || nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+	isPinToNode := ptr.Deref(nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode, defaults.DefaultNodeSetPinToNode)
+	if !isPinToNode || nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 		return nil, nil //nolint:nilnil
 	}
 

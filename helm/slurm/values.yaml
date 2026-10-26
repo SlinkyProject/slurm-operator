@@ -584,32 +584,6 @@ accounting:
     # port: 6819
     # nodePort: 30819
 
-# Cluster SSSD configuration.
-sssd:
-  # -- (secretKeyRef) The `sssd.conf` by ref.
-  # NOTE: Takes precedence over `conf` if not empty.
-  secretRef: {}
-    # name: slurm-sssd-conf
-    # key: sssd.conf
-  # -- The `sssd.conf` by raw file.
-  # Ref: https://man.archlinux.org/man/sssd.conf.5
-  conf: |
-    [sssd]
-    services = nss,pam
-    domains = DEFAULT
-
-    [nss]
-    filter_groups = root,slurm
-    filter_users = root,slurm
-
-    [pam]
-
-    [domain/DEFAULT]
-    id_provider = proxy
-    proxy_lib_name = files
-    auth_provider = proxy
-    proxy_pam_target = sssd-shadowutils
-
 # -- (object) Defines defaults for the LoginSet map values.
 loginsetDefaults:
   # -- Enable use of this LoginSet.
@@ -669,9 +643,6 @@ loginsetDefaults:
       #   memory: 100Mi
   # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
   rootSshAuthorizedKeys: null
-  # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
-  # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-  extraSshdConfig: null
   # -- Labels and annotations.
   # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   metadata: {}
@@ -733,12 +704,8 @@ loginsets: {}
 nodesetDefaults:
   # -- Enable use of this NodeSet.
   enabled: true
-  # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
-  scalingMode: StatefulSet
   # -- Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`.
   replicas: 1
-  # -- Pin pods to their initially assigned Kubernetes nodes.
-  pinToNode: false
   # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
   # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
   workloadDisruptionProtection: true
@@ -746,8 +713,6 @@ nodesetDefaults:
   pruneSlurmNodeRecords: Never
   # -- Control whether Slurm-operator syncs K8s node topology annotations to Slurm
   syncTopology: true
-  # -- How many places to pad with zeroes when constructing the pod ordinal.
-  ordinalPadding: 0
   # -- Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity).
   # WARNING: This option is **NOT** recommended for production usage.
   oversubscribeNode: false
@@ -834,9 +799,14 @@ nodesetDefaults:
     # -- Enable SSH access to worker pods with pam_slurm_adopt.
     # Ref: https://slurm.schedmd.com/pam_slurm_adopt.html
     enabled: false
-    # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
-    # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-    extraSshdConfig: null
+  # -- (slinkyv1beta1.ScaleStrategy) Scale strategy configuration.
+  scaleStrategy: {}
+    # mode: StatefulSet
+    # statefulset:
+    #   replicas: 1
+    #   pinToNode: false
+    #   ordinalPadding: 0
+    # daemonset: {}
   # Update strategy configuration.
   # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
   updateStrategy:

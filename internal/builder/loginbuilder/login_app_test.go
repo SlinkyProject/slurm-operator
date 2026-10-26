@@ -162,6 +162,13 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			require.NotNil(t, got.Spec.Template.Spec.DNSConfig)
 			require.NotEmpty(t, got.Spec.Template.Spec.DNSConfig.Searches)
 
+			if tt.name == "default" {
+				for _, mount := range got.Spec.Template.Spec.Containers[0].VolumeMounts {
+					require.NotEqual(t, SshdConfigFilePath, mount.MountPath)
+					require.NotEqual(t, SssdConfVolume, mount.Name)
+				}
+			}
+
 			if tt.name == "envars" {
 				envs := got.Spec.Template.Spec.Containers[0].Env
 				envMap := make(map[string]struct{})
@@ -293,7 +300,7 @@ func TestLoginContainerOOMCapability(t *testing.T) {
 					AllowPrivilegeEscalation: ptr.To(false),
 				}
 			}
-			got := b.loginContainer(merge, &slinkyv1beta1.Controller{})
+			got := b.loginContainer(merge, &slinkyv1beta1.Controller{}, &slinkyv1beta1.LoginSet{})
 			require.NotNil(t, got.SecurityContext)
 			require.NotNil(t, got.SecurityContext.Capabilities)
 			require.Contains(t, got.SecurityContext.Capabilities.Add, corev1.Capability("SYS_RESOURCE"))

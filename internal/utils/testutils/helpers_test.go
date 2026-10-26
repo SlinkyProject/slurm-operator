@@ -263,7 +263,7 @@ func TestNewLoginset(t *testing.T) {
 	type args struct {
 		name        string
 		controller  *slinkyv1beta1.Controller
-		sssdConfRef corev1.SecretKeySelector
+		sssdConfRef *corev1.SecretKeySelector
 	}
 	tests := []struct {
 		name string
@@ -274,7 +274,7 @@ func TestNewLoginset(t *testing.T) {
 			args: args{
 				name:        "foo",
 				controller:  NewController("foo", NewSlurmKeyRef("foo"), NewJwtKeyRef("foo"), nil),
-				sssdConfRef: NewSssdConfRef("foo"),
+				sssdConfRef: new(NewSssdConfRef("foo")),
 			},
 		},
 	}

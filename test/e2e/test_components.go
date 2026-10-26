@@ -681,7 +681,7 @@ func testSlurmDaemonSet(namespace string) types.Feature {
 			require.NoError(t, err, "failed to get controller-runtime client")
 
 			nodeset, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, -1)
-			require.Equal(t, slinkyv1beta1.ScalingModeDaemonset, nodeset.Spec.ScalingMode)
+			require.Equal(t, slinkyv1beta1.ScalingModeDaemonset, nodeset.Spec.ScaleStrategy.Mode)
 			require.Greater(t, nodeset.Status.Desired, int32(1), "DaemonSet scaling e2e test requires at least two eligible Kubernetes nodes")
 			if nodeset.Spec.Replicas != nil {
 				require.NotEqual(t, *nodeset.Spec.Replicas, nodeset.Status.Desired, "DaemonSet desired count must be node-driven, not spec.replicas")
@@ -1045,7 +1045,7 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 				targetHostname = targetNodeName
 			}
 
-			originalScalingMode := nodeset.Spec.ScalingMode
+			originalScalingMode := nodeset.Spec.ScaleStrategy.Mode
 			originalReplicas := int32(1)
 			if nodeset.Spec.Replicas != nil {
 				originalReplicas = *nodeset.Spec.Replicas
@@ -1108,7 +1108,7 @@ func pinNodeSetToDaemonNode(ctx context.Context, t *testing.T, crClient crclient
 	t.Helper()
 
 	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
-		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeDaemonset
+		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 		selector := maps.Clone(nodeset.Spec.Template.PodSpecWrapper.NodeSelector)
 		if selector == nil {
 			selector = map[string]string{}
@@ -1122,7 +1122,7 @@ func restoreNodeSetStatefulSet(ctx context.Context, t *testing.T, crClient crcli
 	t.Helper()
 
 	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
-		nodeset.Spec.ScalingMode = scalingMode
+		nodeset.Spec.ScaleStrategy.Mode = scalingMode
 		nodeset.Spec.Replicas = &replicas
 		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = maps.Clone(nodeSelector)
 	})

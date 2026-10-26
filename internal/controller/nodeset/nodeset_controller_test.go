@@ -247,7 +247,7 @@ var _ = Describe("Slurm NodeSet", func() {
 			By("Scaling in replicas")
 			Eventually(func(g Gomega) {
 				g.Expect(k8sClient.Get(ctx, nodesetKey, nodeset)).To(Succeed())
-				nodeset.Spec.Replicas = ptr.To[int32](0)
+				nodeset.Spec.Replicas = new(int32(0))
 				g.Expect(k8sClient.Update(ctx, nodeset)).To(Succeed())
 				replicas := int(ptr.Deref(nodeset.Spec.Replicas, 0))
 				g.Expect(replicas).Should(Equal(0))

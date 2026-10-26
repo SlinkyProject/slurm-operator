@@ -651,7 +651,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForNodeNotFound(
 ) error {
 	mainLogger := log.FromContext(ctx)
 
-	switch nodeset.Spec.ScalingMode {
+	switch nodeset.Spec.ScaleStrategy.Mode {
 	default:
 		fallthrough
 	case slinkyv1beta1.ScalingModeStatefulset:
@@ -1237,14 +1237,14 @@ func (r *NodeSetReconciler) syncNodeSetPods(
 	var podsOldScaling, podsNewScaling []*corev1.Pod
 	for _, pod := range pods {
 		podMode := slinkyv1beta1.ScalingModeType(pod.Labels[slinkyv1beta1.LabelNodeSetScalingMode])
-		if podMode != nodeset.Spec.ScalingMode {
+		if podMode != nodeset.Spec.ScaleStrategy.Mode {
 			podsOldScaling = append(podsOldScaling, pod)
 		} else {
 			podsNewScaling = append(podsNewScaling, pod)
 		}
 	}
 
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 		logger.V(2).Info("Processing NodeSet pods in DaemonSet mode")
 		nodeList := &corev1.NodeList{}
 		if err := r.List(ctx, nodeList); err != nil {
@@ -1881,7 +1881,7 @@ func (r *NodeSetReconciler) splitUpdatePods(
 		_, healthyOldPods := nodesetutils.SplitUnhealthyPods(oldPods)
 
 		total := int(ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas))
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 			total = len(pods)
 		}
 
@@ -1890,7 +1890,7 @@ func (r *NodeSetReconciler) splitUpdatePods(
 		// In daemonset mode the node set is not bounded by Replicas, so
 		// remnants on removed nodes must not consume the budget.
 		var numUnavailable int
-		if nodeset.Spec.ScalingMode != slinkyv1beta1.ScalingModeDaemonset {
+		if nodeset.Spec.ScaleStrategy.Mode != slinkyv1beta1.ScalingModeDaemonset {
 			numUnavailable = mathutils.Clamp(total-len(newPods)-len(oldPods), 0, total)
 		}
 		now := metav1.Now()
@@ -1982,8 +1982,7 @@ func (r *NodeSetReconciler) syncSshConfig(
 	ctx context.Context,
 	nodeset *slinkyv1beta1.NodeSet,
 ) error {
-	// Only create SSH config keys if SSH is enabled
-	if !nodeset.Spec.Ssh.Enabled {
+	if !nodeset.Spec.Ssh.Enabled || nodeset.Spec.Ssh.ExtraSshdConfig == nil { //nolint:staticcheck // SA1019
 		return nil
 	}
 

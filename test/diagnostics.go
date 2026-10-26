@@ -133,7 +133,7 @@ func runKubectl(args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), diagnosticTimeout)
 	defer cancel()
 
-	return exec.CommandContext(ctx, "kubectl", args...).CombinedOutput()
+	return exec.CommandContext(ctx, "kubectl", args...).CombinedOutput() //nolint:gosec // G702
 }
 
 func diagnosticOutput(err error, output []byte) []byte {
@@ -141,7 +141,7 @@ func diagnosticOutput(err error, output []byte) []byte {
 		return output
 	}
 
-	return []byte(fmt.Sprintf("error: %v\n%s", err, output))
+	return fmt.Appendf(nil, "error: %v\n%s", err, output)
 }
 
 func writeDiagnosticFile(t *testing.T, path string, data []byte) {

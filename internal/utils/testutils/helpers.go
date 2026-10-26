@@ -209,7 +209,7 @@ func NewNodeset(name string, controller *slinkyv1beta1.Controller, replicas int3
 	}
 }
 
-func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef corev1.SecretKeySelector) *slinkyv1beta1.LoginSet {
+func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef *corev1.SecretKeySelector) *slinkyv1beta1.LoginSet {
 	var controllerRef corev1.LocalObjectReference
 	if controller != nil {
 		controllerRef = corev1.LocalObjectReference{
@@ -237,8 +237,7 @@ func NewLoginset(name string, controller *slinkyv1beta1.Controller, sssdConfRef 
 					Image: "login",
 				},
 			},
-
-			SssdConfRef: sssdConfRef,
+			SssdConfRef: sssdConfRef, //nolint:staticcheck // SA1019
 		},
 	}
 }
