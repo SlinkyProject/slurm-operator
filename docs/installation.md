@@ -66,8 +66,8 @@ comma-separated list:
 
 ```sh
 helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
-  --set 'operator.namespaces=slurm-system,production' \
-  --set 'webhook.namespaces=slurm-system,production' \
+  --set 'operator.namespaces=slurm-system\,production' \
+  --set 'webhook.namespaces=slurm-system\,production' \
   --namespace=slinky --create-namespace
 ```
 
