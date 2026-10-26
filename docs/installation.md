@@ -509,6 +509,8 @@ running on the Kubernetes cluster.
 ```yaml
 nodesets:
   gpu-gb200:
+    partition:
+      enabled: true
     slurmd:
       resources:
         limits:
@@ -517,12 +519,12 @@ nodesets:
       Gres: ["gpu:GB200:4"]
 ```
 
-Within the NodeSet pod, all GPUs on the underlying host are visible in the
-output of the `nvidia-smi` command:
+Within the NodeSet pod, the allocated GPUs are visible in the output of the
+`nvidia-smi` command:
 
 ```bash
-$ kubectl exec -n slurm slurm-controller-0 -- srun bash -c "echo GPU Devices Available on $(hostname):; printf '\n';nvidia-smi"
-GPU Devices Available on validation-k8s-headnode:
+$ kubectl exec -n slurm slurm-controller-0 -- srun --partition=gpu-gb200 --gres=gpu:GB200:4 bash -c 'echo GPU Devices Available on $(hostname):; nvidia-smi'
+GPU Devices Available on gpu-gb200-0:
 
 Mon Apr 20 17:03:28 2026
 +-----------------------------------------------------------------------------------------+
