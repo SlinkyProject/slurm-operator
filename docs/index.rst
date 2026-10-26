@@ -398,9 +398,9 @@ Support and Development
 
 Feature requests, code contributions, and bug reports are welcome!
 
-Join the `Slinky
-channel <https://app.slack.com/client/T09NY5SBT/C0CC9B9C1CH>`__ in the
-Kubernetes Slack workspace for project-wide discussions.
+Chat with us in the `Slinky
+channel <https://app.slack.com/client/T09NY5SBT/C0CC9B9C1CH>`__ on
+`Kubernetes Slack <https://slack.k8s.io/>`__.
 
 Github/Gitlab submitted issues and PRs/MRs are handled on a best effort
 basis.
