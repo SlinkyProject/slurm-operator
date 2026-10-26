@@ -25,8 +25,9 @@ Kubernetes cluster and Slurm jobs should be able to run.
 
 ### Dependencies
 
-Autoscaling requires additional services that are not included in Slinky. Follow
-documentation to install [Prometheus], [Metrics Server], and [KEDA].
+This Prometheus-based autoscaling example requires [Prometheus] and [KEDA].
+[Metrics Server] is optional for this example; it supplies CPU and memory
+resource metrics rather than the external Slurm metrics used below.
 
 Prometheus will install tools to report metrics and view them with Grafana. The
 Metrics Server is needed to report CPU and memory usage for tools like
@@ -52,12 +53,17 @@ helm install keda kedacore/keda \
   --namespace keda --create-namespace
 ```
 
-Install the Slurm helm chart with the following:
+Install the Slurm helm chart with the quick-start `slinky` NodeSet and `all`
+partition. The ServiceMonitor's `release` label matches the Prometheus release
+installed above:
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
+  --set-json 'nodesets={"slinky":{}}' \
+  --set 'partitions.all.enabled=true' \
   --set 'controller.metrics.enabled=true' \
   --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.labels.release=prometheus' \
   --namespace slurm --create-namespace
 ```
 
@@ -95,31 +101,31 @@ and related services to control the number of `slurmd` replicas running as part
 of the NodeSet.
 
 To manually scale a NodeSet, use the `kubectl scale` command. In this example,
-the NodeSet (nss) `slurm-worker-radar` is scaled to 1.
+the NodeSet (nss) `slurm-worker-slinky` is scaled to 1.
 
 ```console
-$ kubectl scale -n slurm nss/slurm-worker-radar --replicas=1
-nodeset.slinky.slurm.net/slurm-worker-radar scaled
+$ kubectl scale -n slurm nss/slurm-worker-slinky --replicas=1
+nodeset.slinky.slurm.net/slurm-worker-slinky scaled
 
-$ kubectl get pods -o wide -n slurm -l app.kubernetes.io/instance=slurm-worker-radar
+$ kubectl get pods -o wide -n slurm -l app.kubernetes.io/instance=slurm-worker-slinky
 NAME                   READY   STATUS    RESTARTS   AGE     IP            NODE          NOMINATED NODE   READINESS GATES
-slurm-worker-radar-0   1/1     Running   0          2m48s   10.244.4.17   kind-worker   <none>           <none>
+slurm-worker-slinky-0   2/2     Running   0          2m48s   10.244.4.17   kind-worker   <none>           <none>
 ```
 
-This corresponds to the Slurm partition `radar`.
+This corresponds to the Slurm partition `all`.
 
 ```console
 $ kubectl exec -n slurm statefulset/slurm-controller -- sinfo
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-radar        up   infinite      1   idle kind-worker
+all*         up   infinite      1   idle slinky-0
 ```
 
 NodeSets may be scaled to zero. In this case, there are no replicas of `slurmd`
 running and all jobs scheduled to that partition will remain in a pending state.
 
 ```console
-$ kubectl scale nss/slurm-worker-radar -n slurm --replicas=0
-nodeset.slinky.slurm.net/slurm-worker-radar scaled
+$ kubectl scale nss/slurm-worker-slinky -n slurm --replicas=0
+nodeset.slinky.slurm.net/slurm-worker-slinky scaled
 ```
 
 For NodeSets to scale on demand, an autoscaler needs to be deployed. KEDA allows
@@ -131,22 +137,22 @@ like Prometheus and more.
 KEDA uses the Custom Resource [ScaledObject] to monitor and scale a resource. It
 will automatically create the HPA needed to scale based on external triggers
 like Prometheus. With Slurm metrics, NodeSets may be scaled based on data
-collected from the Slurm restapi.
+exposed by slurmctld's metrics endpoints.
 
 This example [ScaledObject] will watch the number of jobs pending for the
-partition `radar` and scale the NodeSet `slurm-worker-radar` until a threshold
+partition `all` and scale the NodeSet `slurm-worker-slinky` until a threshold
 value is satisfied or `maxReplicaCount` is reached.
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: scale-radar
+  name: scale-slinky
 spec:
   scaleTargetRef:
     apiVersion: slinky.slurm.net/v1beta1
     kind: NodeSet
-    name: slurm-worker-radar
+    name: slurm-worker-slinky
   idleReplicaCount: 0
   minReplicaCount: 1
   maxReplicaCount: 3
@@ -155,20 +161,20 @@ spec:
       metricType: Value
       metadata:
         serverAddress: http://prometheus-kube-prometheus-prometheus.prometheus:9090
-        query: slurm_partition_jobs_pending{partition="radar"}
+        query: slurm_partition_jobs_pending{partition="all"}
         threshold: '5'
 ```
 
 > [!NOTE]
 > The Prometheus trigger is using `metricType: Value` instead of the default
-> `AverageValue`. `AverageValue` calculates the replica count by averaging the
-> threshold across the current replica count.
+> `AverageValue`. `Value` compares the total pending-job count to the threshold.
+> `AverageValue` divides the metric by the current replica count before
+> comparing it to the threshold.
 
 Check [ScaledObject] documentation for a full list of allowable options.
 
-In this scenario, the ScaledObject `scale-radar` will query the Slurm metric
-`slurm_partition_jobs_pending` from Prometheus with the label
-`partition="radar"`.
+In this scenario, the ScaledObject `scale-slinky` will query the Slurm metric
+`slurm_partition_jobs_pending` from Prometheus with the label `partition="all"`.
 
 When there is activity on the trigger (at least one pending job), KEDA will
 scale the NodeSet to `minReplicaCount` and then let HPA handle scaling up to
@@ -185,16 +191,16 @@ To verify a KEDA ScaledObject, apply it to the cluster in the appropriate
 namespace on a NodeSet that has no replicas.
 
 ```console
-$ kubectl scale nss/slurm-worker-radar -n slurm --replicas=0
-nodeset.slinky.slurm.net/slurm-worker-radar scaled
+$ kubectl scale nss/slurm-worker-slinky -n slurm --replicas=0
+nodeset.slinky.slurm.net/slurm-worker-slinky scaled
 ```
 
 Wait for Slurm to report that the partition has no nodes.
 
 ```console
-$ slurm@slurm-controller-0:/tmp$ sinfo -p radar
+$ slurm@slurm-controller-0:/tmp$ sinfo -p all
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-radar        up   infinite      0    n/a
+all*         up   infinite      0    n/a
 ```
 
 Apply the ScaledObject using `kubectl` to the correct namespace and verify the
@@ -202,22 +208,22 @@ KEDA and HPA resources are created.
 
 ```console
 $ kubectl apply -f scaledobject.yaml -n slurm
-scaledobject.keda.sh/scale-radar created
+scaledobject.keda.sh/scale-slinky created
 
 $ kubectl get -n slurm scaledobjects
 NAME           SCALETARGETKIND                     SCALETARGETNAME        MIN   MAX   TRIGGERS     AUTHENTICATION   READY   ACTIVE   FALLBACK   PAUSED    AGE
-scale-radar    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-radar    1     3     prometheus                    True    False    Unknown    Unknown   28s
+scale-slinky    slinky.slurm.net/v1beta1.NodeSet    slurm-worker-slinky    1     3     prometheus                    True    False    Unknown    Unknown   28s
 
 $ kubectl get -n slurm hpa
 NAME                    REFERENCE                      TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
-keda-hpa-scale-radar    NodeSet/slurm-worker-radar    <unknown>/5   1         3         0          32s
+keda-hpa-scale-slinky    NodeSet/slurm-worker-slinky    <unknown>/5   1         3         0          32s
 ```
 
 Once the [ScaledObject] and HPA are created, initiate some jobs to test that the
 `NodeSet` scale subresource is scaled in response.
 
 ```sh
-sbatch --wrap "sleep 30" --partition radar --exclusive
+sbatch --wrap "sleep 30" --partition all --exclusive
 ```
 
 The NodeSet will scale to `minReplicaCount` in response to activity on the
@@ -227,9 +233,10 @@ handle the additional demand. Until the `threshold` is exceeded, the NodeSet
 will remain at `minReplicaCount`.
 
 > [!NOTE]
-> This example only works well for single node jobs, unless `threshold` is set
-> to 1. In this case, HPA will continue to scale up NodeSet as long as there is
-> a pending job, until it reaches the `maxReplicaCount`.
+> This example counts pending jobs, not the nodes each job requires. A single
+> multi-node job can remain pending without triggering further scale-out.
+> Setting `threshold` to 1 does not solve this: one pending job equals that
+> target, so HPA does not increase the replica count.
 
 After the default `cooldownPeriod` of 5 minutes without activity on the trigger,
 KEDA will scale the NodeSet down to 0.

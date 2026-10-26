@@ -374,13 +374,15 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace prometheus --create-namespace
 ```
 
-Then enable Slurm metrics and the Prometheus service monitor, for metrics
-discovery.
+Then enable Slurm metrics and the Prometheus service monitor. The `release`
+label matches the default ServiceMonitor selector of the `prometheus` release
+installed above.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'controller.metrics.enabled=true' \
   --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.labels.release=prometheus' \
   --namespace=slurm --create-namespace
 ```
 
