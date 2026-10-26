@@ -70,14 +70,13 @@ certificate when installed with `certManager.enabled=false`.
 
 #### 2.1. Install Cert-Manager
 
+Use a cert-manager release that supports the cluster's Kubernetes version; see
+the [supported releases](https://cert-manager.io/docs/releases/).
+
 ```bash
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-helm install cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.14.4 \
-  --set installCRDs=true
+helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true
 ```
 
 ______________________________________________________________________
@@ -312,8 +311,6 @@ allocate all chips:
 
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
-
 #SBATCH --job-name=jax-tpu-test
 #SBATCH --partition=tpu
 #SBATCH --nodes=1
@@ -322,6 +319,8 @@ set -euo pipefail
 #SBATCH --output=jax_tpu_%j.out
 #SBATCH --error=jax_tpu_%j.err
 #SBATCH --time=00:15:00
+
+set -euo pipefail
 
 echo "=== Job started at $(date) ==="
 echo "Running on node: $(hostname)"
