@@ -258,8 +258,10 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 ```
 
 > [!NOTE]
-> Typically PVs will not be deleted after the PVC is deleted. Therefore, PVs may
-> need to be manually deleted when no longer needed.
+> Deleting a PVC follows the PV's [reclaim policy][reclaim-policy]. With
+> `Delete` (the default for dynamically provisioned volumes), the PV and backing
+> storage are deleted. With `Retain`, the storage remains and requires manual
+> reclamation.
 
 If Slurm controller (slurmctld) persistence is not desired (typically for
 testing), it can be disabled by installing Slurm with the
@@ -684,6 +686,7 @@ crw-rw-rw- 1 root root 509, 1 Apr 20 17:08 /dev/nvidia-caps-imex-channels/channe
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
 [nvidia-gpu-operator]: https://github.com/NVIDIA/gpu-operator
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+[reclaim-policy]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
 [slurm.conf]: https://slurm.schedmd.com/slurm.conf.html
 [sssd]: https://sssd.io/
