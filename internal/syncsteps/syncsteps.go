@@ -7,16 +7,14 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-)
 
-const syncAction = "Sync"
-const failedReason = "SyncFailed"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
+)
 
 type Step[T client.Object] struct {
 	Name        string
@@ -37,9 +35,7 @@ func Sync[T client.Object](
 		logger.V(2).Info("Starting sync step")
 		if err := s.SyncFn(ctx, obj); err != nil {
 			msg := fmt.Sprintf("Failed %q step: %v", s.Name, err)
-			if recorder != nil {
-				recorder.Eventf(obj, nil, corev1.EventTypeWarning, failedReason, syncAction, msg)
-			}
+			eventutils.Warning(recorder, obj, nil, eventutils.ReasonSyncFailed, eventutils.ActionSync, msg)
 			errs = append(errs, fmt.Errorf("failed %q step: %w", s.Name, err))
 			if s.StopOnError {
 				logger.Error(err, "Failed sync step. Stopping sync for object...")

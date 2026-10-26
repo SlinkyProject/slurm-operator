@@ -19,6 +19,7 @@ import (
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/syncsteps"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
@@ -50,7 +51,7 @@ func (r *LoginSetReconciler) Sync(ctx context.Context, req reconcile.Request) er
 	}
 	if err := r.Get(ctx, controllerKey, controller); err != nil {
 		msg := fmt.Sprintf("Failed to get Controller (%s): %v", controllerKey, err)
-		r.eventRecorder.Eventf(loginset, nil, corev1.EventTypeWarning, ControllerRefFailedReason, "Sync", msg)
+		eventutils.Warning(r.eventRecorder, loginset, nil, eventutils.ReasonControllerRefFailed, eventutils.ActionResolveReference, msg)
 		return fmt.Errorf("failed to get controller (%s): %w", controllerKey, err)
 	}
 
