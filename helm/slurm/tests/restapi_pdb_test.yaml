@@ -63,9 +63,8 @@ tests:
       - equal:
           path: spec.minAvailable
           value: 2
-      - equal:
+      - notExists:
           path: spec.maxUnavailable
-          value: null
 
   - it: should render numeric zero maxUnavailable when set
     set:
@@ -79,9 +78,79 @@ tests:
       - equal:
           path: spec.maxUnavailable
           value: 0
+      - notExists:
+          path: spec.minAvailable
+
+  - it: should not render maxUnavailable with default values
+    set:
+      restapi:
+        replicas: 2
+        pdb:
+          enabled: true
+    asserts:
       - equal:
           path: spec.minAvailable
-          value: null
+          value: 1
+      - notExists:
+          path: spec.maxUnavailable
+
+  - it: should render only maxUnavailable when both are set
+    set:
+      restapi:
+        replicas: 2
+        pdb:
+          enabled: true
+          minAvailable: 1
+          maxUnavailable: 1
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+      - notExists:
+          path: spec.minAvailable
+
+  - it: should render percentage maxUnavailable
+    set:
+      restapi:
+        replicas: 4
+        pdb:
+          enabled: true
+          maxUnavailable: 25%
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 25%
+      - notExists:
+          path: spec.minAvailable
+
+  - it: should render percentage minAvailable
+    set:
+      restapi:
+        replicas: 4
+        pdb:
+          enabled: true
+          minAvailable: 50%
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: 50%
+      - notExists:
+          path: spec.maxUnavailable
+
+  - it: should fall back to minAvailable 1 when neither is set
+    set:
+      restapi:
+        replicas: 2
+        pdb:
+          enabled: true
+          minAvailable: null
+          maxUnavailable: null
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: 1
+      - notExists:
+          path: spec.maxUnavailable
 
   - it: should override namespace when namespaceOverride is set
     set:

@@ -396,6 +396,7 @@ restapi:
     minAvailable: 1
     # -- (int \| string) Maximum number of pods that can be unavailable after eviction.
     # Can be an absolute number (ex: 1) or a percentage (ex: 25%).
+    # Rendered only when set, and takes precedence over `minAvailable`.
     maxUnavailable: null
   # slurmrestd container configurations.
   slurmrestd:
