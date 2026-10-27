@@ -1697,7 +1697,8 @@ func (r *NodeSetReconciler) makePodCondemned(
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCondemned, condemnedAt)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -1717,7 +1718,8 @@ func (r *NodeSetReconciler) makePodUncondemned(ctx context.Context, pod *corev1.
 		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCondemned)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -1782,7 +1784,8 @@ func (r *NodeSetReconciler) makePodCordon(
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCordon, "true")
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return false, err
 	}
 
@@ -1823,7 +1826,8 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordon)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
