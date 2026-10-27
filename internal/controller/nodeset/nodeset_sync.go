@@ -561,22 +561,19 @@ func (r *NodeSetReconciler) syncPodCordon(
 			}
 		}
 
-		changed, err := r.makePodCordon(ctx, pod)
-		if err != nil {
-			return err
-		}
+		changed, err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false)
 		if changed {
 			eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonNodeCordon, eventutils.ActionCordon,
 				"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), node.Name)
 		}
-		if err := r.drainSlurmNode(ctx, nodeset, pod, reason, false); err != nil {
+		if err != nil {
 			return err
 		}
 
 	// If pod cordon was requested, drain the Slurm node
 	case podIsCordonRequested:
 		reason := fmt.Sprintf("Pod (%s) was cordoned", klog.KObj(pod))
-		if err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
+		if _, err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false); err != nil {
 			return err
 		}
 
@@ -1731,12 +1728,18 @@ func (r *NodeSetReconciler) makePodCordonAndDrain(
 	pod *corev1.Pod,
 	reason string,
 	overrideReason bool,
-) error {
-	if _, err := r.makePodCordon(ctx, pod); err != nil {
-		return err
+) (bool, error) {
+	changed, err := r.makePodCordon(ctx, pod)
+	if err != nil {
+		return false, err
 	}
 
-	return r.drainSlurmNode(ctx, nodeset, pod, reason, overrideReason)
+	err = r.drainSlurmNode(ctx, nodeset, pod, reason, overrideReason)
+	if err != nil {
+		return changed, err
+	}
+
+	return changed, nil
 }
 
 func (r *NodeSetReconciler) drainSlurmNode(

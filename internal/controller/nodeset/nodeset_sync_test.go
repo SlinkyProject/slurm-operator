@@ -2669,7 +2669,7 @@ func TestNodeSetReconciler_makePodCordonAndDrain(t *testing.T) {
 				Namespace: nodeset.Namespace,
 				Name:      nodeset.Spec.ControllerRef.Name,
 			}
-			err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
+			_, err := r.makePodCordonAndDrain(tt.args.ctx, tt.args.nodeset, tt.args.pod, tt.args.reason, tt.args.overrideReason)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
