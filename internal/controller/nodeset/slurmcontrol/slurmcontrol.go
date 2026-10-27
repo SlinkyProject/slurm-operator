@@ -263,7 +263,7 @@ func (r *realSlurmControl) MakeNodeDrain(ctx context.Context, nodeset *slinkyv1b
 
 	slurmNode := &slurmapi.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
-	if err := slurmClient.Get(ctx, key, slurmNode); err != nil {
+	if err := slurmClient.Get(ctx, key, slurmNode, &slurmclient.GetOptions{SkipCache: true}); err != nil {
 		return err
 	}
 

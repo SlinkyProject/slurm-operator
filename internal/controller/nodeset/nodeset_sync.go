@@ -1551,9 +1551,10 @@ func (r *NodeSetReconciler) processCondemned(
 	case err != nil:
 		return err
 	}
+	drainRequested := !isDrained
+	reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 	if !isDrained {
 		logger.V(2).Info("NodeSet Pod is draining, pending termination for scale-in")
-		reason := fmt.Sprintf("Pod (%s) is pending termination for scale-in", klog.KObj(pod))
 		err := r.makePodCondemnedAndDrain(ctx, nodeset, pod, reason, true)
 		if err != nil {
 			return err
@@ -1570,6 +1571,11 @@ func (r *NodeSetReconciler) processCondemned(
 		return err
 	}
 	if !isDrained {
+		if !drainRequested {
+			if err := r.makePodCondemnedAndDrain(ctx, nodeset, pod, reason, true); err != nil {
+				return err
+			}
+		}
 		nodesetKey := objectutils.KeyFunc(nodeset)
 		durationStore.Push(nodesetKey, 30*time.Second)
 		// Decrement expectations and requeue reconcile because the Slurm node is not drained yet.

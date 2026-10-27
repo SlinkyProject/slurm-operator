@@ -249,6 +249,11 @@ A pod is considered **busy** when any of the following Slurm states are `True`:
 When a busy pod's Slurm workload completes and the node returns to an idle
 state, the operator removes the `pod-protect` label, allowing normal eviction.
 
+During operator-driven scale-in, cached Slurm state is only a hint. Before
+deleting a worker, the operator verifies its live drain state. A cache miss does
+not prove that the worker is unregistered: if the live worker is not drained,
+the operator initiates draining and waits for its workload to finish.
+
 To check if a specific pod is currently protected:
 
 ```sh
