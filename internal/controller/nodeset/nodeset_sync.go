@@ -519,11 +519,15 @@ func (r *NodeSetReconciler) syncPodCordon(
 	podIsCordonRequested := podutils.IsPodCordonRequested(pod)
 	podIsCondemned := podutils.IsPodCondemned(pod)
 	slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	if err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) {
 		return err
 	}
 	ourReason, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	if err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) {
 		return err
 	}
 
@@ -748,7 +752,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
 		}
 		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
 		if err != nil {
-			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) ||
+				errors.Is(err, slurmerrors.ErrNotFound) {
 				return nil
 			}
 			return err
@@ -838,7 +843,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAlwaysForPodTermination(
 			// Prune the Slurm node: its backing pod is gone
 			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, slurmNode.Name); err != nil {
-				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) || errors.Is(err, slurmerrors.ErrNotFound) {
 					return nil
 				}
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s: %w",
@@ -891,6 +896,8 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		if err != nil {
 			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 				isRegistered = false
+			} else if errors.Is(err, slurmerrors.ErrNotFound) {
+				isRegistered = true
 			} else {
 				return err
 			}
