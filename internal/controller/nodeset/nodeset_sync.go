@@ -231,10 +231,9 @@ func (r *NodeSetReconciler) updateNodeSetFinalizers(ctx context.Context, nodeset
 		return nil
 	}
 
-	if err := objectutils.PatchObject(r.Client, ctx, nodeset, mutateFn); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
+	if err := objectutils.PatchObject(r.Client, ctx, nodeset, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
+		return err
 	}
 
 	return nil
@@ -949,10 +948,8 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 			}
 			return nil
 		}
-		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+			!apierrors.IsNotFound(err) {
 			return err
 		}
 
@@ -997,10 +994,9 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 			metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
 			return nil
 		}
-		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
-			if !apierrors.IsNotFound(err) {
-				return err
-			}
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+			!apierrors.IsNotFound(err) {
+			return err
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil &&
