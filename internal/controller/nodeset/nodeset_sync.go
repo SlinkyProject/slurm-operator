@@ -231,10 +231,9 @@ func (r *NodeSetReconciler) updateNodeSetFinalizers(ctx context.Context, nodeset
 		return nil
 	}
 
-	if err := objectutils.PatchObject(r.Client, ctx, nodeset, mutateFn); err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
+	if err := objectutils.PatchObject(r.Client, ctx, nodeset, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
+		return err
 	}
 
 	return nil
@@ -519,11 +518,15 @@ func (r *NodeSetReconciler) syncPodCordon(
 	podIsCordonRequested := podutils.IsPodCordonRequested(pod)
 	podIsCondemned := podutils.IsPodCondemned(pod)
 	slurmNodeIsUnresponsive, err := r.slurmControl.IsNodeDownForUnresponsive(ctx, nodeset, pod)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	if err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) {
 		return err
 	}
 	ourReason, err := r.slurmControl.IsNodeReasonOurs(ctx, nodeset, pod)
-	if err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+	if err != nil &&
+		!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+		!errors.Is(err, slurmerrors.ErrNotFound) {
 		return err
 	}
 
@@ -748,7 +751,8 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAutoForInvalidReg(
 		}
 		isInvalidReg, err := r.slurmControl.IsNodeInvalidReg(ctx, nodeset, pod)
 		if err != nil {
-			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) ||
+				errors.Is(err, slurmerrors.ErrNotFound) {
 				return nil
 			}
 			return err
@@ -838,7 +842,7 @@ func (r *NodeSetReconciler) syncSlurmNodeRecordsAlwaysForPodTermination(
 			// Prune the Slurm node: its backing pod is gone
 			logger.V(1).Info("Deleting defunct Slurm node without a corresponding Kubernetes Pod")
 			if err := r.slurmControl.DeleteNode(ctx, nodeset, slurmNode.Name); err != nil {
-				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+				if errors.Is(err, slurmcontrol.ErrNoSlurmClient) || errors.Is(err, slurmerrors.ErrNotFound) {
 					return nil
 				}
 				return fmt.Errorf("failed to delete defunct Slurm node %s for pod %s/%s: %w",
@@ -891,6 +895,8 @@ func (r *NodeSetReconciler) syncSlurmNodes(
 		if err != nil {
 			if errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
 				isRegistered = false
+			} else if errors.Is(err, slurmerrors.ErrNotFound) {
+				isRegistered = true
 			} else {
 				return err
 			}
@@ -942,10 +948,8 @@ func (r *NodeSetReconciler) syncSlurmDeadline(
 			}
 			return nil
 		}
-		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+			!apierrors.IsNotFound(err) {
 			return err
 		}
 
@@ -990,10 +994,9 @@ func (r *NodeSetReconciler) syncSlurmTopology(
 			metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
 			return nil
 		}
-		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
-			if !apierrors.IsNotFound(err) {
-				return err
-			}
+		if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+			!apierrors.IsNotFound(err) {
+			return err
 		}
 
 		if err := r.slurmControl.UpdateNodeTopology(ctx, nodeset, pod, topologySpec); err != nil &&
@@ -1694,7 +1697,8 @@ func (r *NodeSetReconciler) makePodCondemned(
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCondemned, condemnedAt)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -1714,7 +1718,8 @@ func (r *NodeSetReconciler) makePodUncondemned(ctx context.Context, pod *corev1.
 		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCondemned)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
@@ -1779,7 +1784,8 @@ func (r *NodeSetReconciler) makePodCordon(
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationPodCordon, "true")
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return false, err
 	}
 
@@ -1820,7 +1826,8 @@ func (r *NodeSetReconciler) makePodUncordon(ctx context.Context, pod *corev1.Pod
 		delete(pod.Annotations, slinkyv1beta1.AnnotationPodCordon)
 		return nil
 	}
-	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {
+	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil &&
+		!apierrors.IsNotFound(err) {
 		return err
 	}
 
