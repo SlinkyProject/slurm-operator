@@ -390,12 +390,12 @@ func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClai
 		if hasOwnerRef(claim, nodeset) {
 			return false
 		}
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown != hasOwnerRef(claim, pod) {
 			return false
 		}
 	case policy.WhenDeleted == delete && policy.WhenScaled == delete:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		// If a pod is scaled down, there should be no nodeset ref and a pod ref;
 		// if the pod is not scaled down it's the other way around.
 		if podScaledDown == hasOwnerRef(claim, nodeset) {
@@ -498,12 +498,12 @@ func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.Persisten
 	case policy.WhenScaled == retain && policy.WhenDeleted == delete:
 		refs = addControllerRef(refs, nodeset, slinkyv1beta1.NodeSetGVK)
 	case policy.WhenScaled == delete && policy.WhenDeleted == retain:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown {
 			refs = addControllerRef(refs, pod, podGVK)
 		}
 	case policy.WhenScaled == delete && policy.WhenDeleted == delete:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown {
 			refs = addControllerRef(refs, pod, podGVK)
 		}
