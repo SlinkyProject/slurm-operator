@@ -5259,7 +5259,8 @@ func TestDaemonSetHostnameMismatchReplacement(t *testing.T) {
 			wantRemaining := len(pods)
 			if test.busy {
 				require.NoError(t, err)
-				require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+				require.True(t, podutils.IsPodCondemned(current))
+				require.False(t, podutils.IsPodCordonRequested(current))
 			} else {
 				require.True(t, apierrors.IsNotFound(err))
 				wantRemaining--
@@ -5533,7 +5534,8 @@ func TestPreferredNamingPlacementUpdates(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(current))
 					if strategy == slinkyv1beta1.RollingUpdateNodeSetStrategyType {
-						require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+						require.True(t, podutils.IsPodCondemned(current))
+						require.False(t, podutils.IsPodCordonRequested(current))
 					}
 					return
 				}
@@ -5623,7 +5625,8 @@ func TestStatefulSetHostnameOverrideReplacement(t *testing.T) {
 			err = kclient.Get(ctx, client.ObjectKeyFromObject(pod), current)
 			if test.busy {
 				require.NoError(t, err)
-				require.Equal(t, "true", current.Annotations[slinkyv1beta1.AnnotationPodCordon])
+				require.True(t, podutils.IsPodCondemned(current))
+				require.False(t, podutils.IsPodCordonRequested(current))
 				require.Equal(t, oldName, nodesetutils.GetSlurmNodeName(current))
 				return
 			}
