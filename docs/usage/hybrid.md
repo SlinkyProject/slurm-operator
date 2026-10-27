@@ -151,6 +151,7 @@ accounting CR configured such that it knows how to communicate with it.
 
 ```yaml
 accounting:
+  enabled: true
   external: true
   externalConfig:
     host: $SLURMDBD_HOST

@@ -64,7 +64,7 @@ can submit jobs via the Slurm RestAPI. Below is a simple job that executes
 `srun hostname` on a single node in the `all` partition:
 
 ```bash
-❯ curl -sS -o /tmp/curl.log -k -vvvv \
+curl -sS -o /tmp/curl.log -k -vvvv \
   -H "X-SLURM-USER-TOKEN: $SLURM_JWT" \
   -H "Content-Type: application/json" \
   -X POST "http://172.18.0.8:6820/slurm/v0.0.45/job/submit" \

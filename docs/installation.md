@@ -66,8 +66,8 @@ comma-separated list:
 
 ```sh
 helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
-  --set 'operator.namespaces=slurm-system,production' \
-  --set 'webhook.namespaces=slurm-system,production' \
+  --set 'operator.namespaces=slurm-system\,production' \
+  --set 'webhook.namespaces=slurm-system\,production' \
   --namespace=slinky --create-namespace
 ```
 
@@ -148,12 +148,12 @@ rotate the certificate, run `helm upgrade` to refresh the `caBundle`.
 > template time if you set both.
 
 > [!IMPORTANT]
-> `helm template` and `helm install --dry-run=client` cannot contact the
-> Kubernetes API, so `lookup` returns empty and the chart fails with "Secret …
-> was not found" even when the Secret exists. Use
-> `helm install --dry-run=server` to exercise the lookup. For GitOps workflows
-> that rely on `helm template` for diffs (helm-diff, ArgoCD, Flux), use the
-> webhook annotation pass-through described below instead.
+> Offline rendering with `helm template` or `helm install --dry-run=client`
+> cannot read the existing Secret through `lookup`, so this external-certificate
+> configuration fails with "Secret … was not found" even when the Secret exists.
+> Use `helm template --dry-run=server` or `helm install --dry-run=server` with
+> access to the cluster containing the Secret. The cainjector annotations below
+> do not bypass the lookup.
 
 > [!NOTE]
 > When migrating from `certManager.enabled=true`, give the BYO Secret a name
@@ -258,8 +258,10 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 ```
 
 > [!NOTE]
-> Typically PVs will not be deleted after the PVC is deleted. Therefore, PVs may
-> need to be manually deleted when no longer needed.
+> Deleting a PVC follows the PV's [reclaim policy][reclaim-policy]. With
+> `Delete` (the default for dynamically provisioned volumes), the PV and backing
+> storage are deleted. With `Retain`, the storage remains and requires manual
+> reclamation.
 
 If Slurm controller (slurmctld) persistence is not desired (typically for
 testing), it can be disabled by installing Slurm with the
@@ -372,13 +374,15 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace prometheus --create-namespace
 ```
 
-Then enable Slurm metrics and the Prometheus service monitor, for metrics
-discovery.
+Then enable Slurm metrics and the Prometheus service monitor. The `release`
+label matches the default ServiceMonitor selector of the `prometheus` release
+installed above.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'controller.metrics.enabled=true' \
   --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.labels.release=prometheus' \
   --namespace=slurm --create-namespace
 ```
 
@@ -505,6 +509,8 @@ running on the Kubernetes cluster.
 ```yaml
 nodesets:
   gpu-gb200:
+    partition:
+      enabled: true
     slurmd:
       resources:
         limits:
@@ -513,12 +519,12 @@ nodesets:
       Gres: ["gpu:GB200:4"]
 ```
 
-Within the NodeSet pod, all GPUs on the underlying host are visible in the
-output of the `nvidia-smi` command:
+Within the NodeSet pod, the allocated GPUs are visible in the output of the
+`nvidia-smi` command:
 
 ```bash
-$ kubectl exec -n slurm slurm-controller-0 -- srun bash -c "echo GPU Devices Available on $(hostname):; printf '\n';nvidia-smi"
-GPU Devices Available on validation-k8s-headnode:
+$ kubectl exec -n slurm slurm-controller-0 -- srun --partition=gpu-gb200 --gres=gpu:GB200:4 bash -c 'echo GPU Devices Available on $(hostname):; nvidia-smi'
+GPU Devices Available on gpu-gb200-0:
 
 Mon Apr 20 17:03:28 2026
 +-----------------------------------------------------------------------------------------+
@@ -684,6 +690,7 @@ crw-rw-rw- 1 root root 509, 1 Apr 20 17:08 /dev/nvidia-caps-imex-channels/channe
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
 [nvidia-gpu-operator]: https://github.com/NVIDIA/gpu-operator
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+[reclaim-policy]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
 [slurm.conf]: https://slurm.schedmd.com/slurm.conf.html
 [sssd]: https://sssd.io/
