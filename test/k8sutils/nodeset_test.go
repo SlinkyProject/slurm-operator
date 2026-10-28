@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) SchedMD LLC.
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package k8sutils
 
 import (
 	"context"
@@ -59,7 +59,7 @@ func TestMutateNodeSetRetriesConflict(t *testing.T) {
 					},
 				}).Build()
 
-			mutateNodeSet(ctx, t, client, key, func(nodeset *slinkyv1beta1.NodeSet) {
+			MutateNodeSet(ctx, t, client, key, func(nodeset *slinkyv1beta1.NodeSet) {
 				nodeset.Spec.Replicas = ptr.To(tc.replicas)
 			})
 
