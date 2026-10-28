@@ -2996,6 +2996,52 @@ func Test_syncPodUncordon(t *testing.T) {
 	}
 }
 
+func TestNodeSetReconciler_syncCordon_terminatingPod(t *testing.T) {
+	controller := &slinkyv1beta1.Controller{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "slurm",
+		},
+	}
+	nodeset := newNodeSet("foo", controller.Name, 2)
+	pod := nodesetutils.NewNodeSetStatefulSetPod(fake.NewFakeClient(), nodeset, controller, 0, "")
+	pod.Spec.NodeName = "test-node"
+	pod.DeletionTimestamp = ptr.To(metav1.Now())
+	pod.Finalizers = []string{"test/finalizer"}
+
+	k8sClient := fake.NewFakeClient(
+		nodeset.DeepCopy(),
+		pod.DeepCopy(),
+		&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "test-node"}},
+	)
+	nodeList := &slurmtypes.V0044NodeList{
+		Items: []slurmtypes.V0044Node{
+			{
+				V0044Node: slurmapi.V0044Node{
+					Name: ptr.To(nodesetutils.GetSlurmNodeName(pod)),
+					State: ptr.To([]slurmapi.V0044NodeState{
+						slurmapi.V0044NodeStateIDLE,
+						slurmapi.V0044NodeStateDRAIN,
+					}),
+					Reason: ptr.To("slurm-operator: Pod is terminating"),
+				},
+			},
+		},
+	}
+	sclient := newFakeClientList(sinterceptor.Funcs{}, nodeList)
+	r := newNodeSetController(k8sClient, newClientMap(controller.Name, sclient))
+
+	if err := r.syncCordon(context.TODO(), nodeset, []*corev1.Pod{pod}); err != nil {
+		t.Fatalf("syncCordon() error = %v", err)
+	}
+	gotDrain, err := r.slurmControl.IsNodeDrain(context.TODO(), nodeset, pod)
+	if err != nil {
+		t.Fatalf("IsNodeDrain() failed: %v", err)
+	}
+	if !gotDrain {
+		t.Errorf("terminating pod's slurm node was undrained")
+	}
+}
+
 func TestNodeSetReconciler_syncSlurmTopology(t *testing.T) {
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{

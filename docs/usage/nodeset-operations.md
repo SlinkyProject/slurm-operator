@@ -182,12 +182,15 @@ kubectl get pod <pod> -o jsonpath='{.metadata.labels.nodeset\.slinky\.slurm\.net
 ## Customizing the slurmd preStop Hook
 
 When a NodeSet pod terminates, the slurmd container runs a `preStop` hook that
-marks its Slurm node down and deletes its record, so the Slurm controller stops
-assigning work to a node that is going away:
+marks its Slurm node down, drains it, and deletes its record, so the Slurm
+controller stops assigning work to a node that is going away:
 
 ```sh
-scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating' && scontrol delete nodename=$(hostname);
+scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating' && scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating' && scontrol delete nodename=$(hostname);
 ```
+
+The drain keeps `ReturnToService=2` from reviving the node while the pod is
+still terminating.
 
 Set `spec.slurmd.lifecycle.preStop` on the NodeSet to run something else
 instead. Your handler replaces the default outright — it does not run in
