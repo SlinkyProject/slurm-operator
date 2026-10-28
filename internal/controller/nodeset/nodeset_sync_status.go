@@ -76,9 +76,6 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 ) error {
 	syncSlurmStatusFn := func(i int) error {
 		pod := pods[i]
-		if !podutils.IsHealthy(pod) {
-			return nil
-		}
 		return r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod)
 	}
 	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmStatusFn); err != nil {
