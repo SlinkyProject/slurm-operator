@@ -211,6 +211,13 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 
 	cpus, memory := b.getResourceLimits(&nodeset.Spec)
 
+	slurmNodeNameEnv := corev1.EnvVar{
+		Name: "SLURM_NODE_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{FieldPath: fmt.Sprintf("metadata.labels['%s']", slinkyv1beta1.LabelNodeSetPodHostname)},
+		},
+	}
+
 	opts := common.ContainerOpts{
 		Base: corev1.Container{
 			Name: labels.WorkerApp,
@@ -232,6 +239,7 @@ func (b *WorkerBuilder) slurmdContainer(nodeset *slinkyv1beta1.NodeSet, controll
 					Name:  "POD_MEMORY",
 					Value: strconv.FormatInt(memory, 10),
 				},
+				slurmNodeNameEnv,
 			},
 			Ports: ports,
 			StartupProbe: &corev1.Probe{
@@ -297,14 +305,14 @@ func slurmdPreStop() *corev1.LifecycleHandler {
 			Command: []string{
 				"/usr/bin/sh",
 				"-c",
-				"scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';",
+				`scontrol update nodename="$SLURM_NODE_NAME" state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename="$SLURM_NODE_NAME" state=drain reason='slurm-operator: Pod is terminating';`,
 			},
 		},
 	}
 }
 
 func slurmdArgs(nodeset *slinkyv1beta1.NodeSet, controller *slinkyv1beta1.Controller) []string {
-	args := []string{"-Z"}
+	args := []string{"-Z", "-N", "$(SLURM_NODE_NAME)"}
 	args = append(args, common.ConfiglessArgs(controller)...)
 	args = append(args, slurmdConfArgs(nodeset)...)
 	return args

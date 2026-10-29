@@ -56,6 +56,7 @@ spec:
     {{- end }}{{- /* if .enabled */}}
     {{- /* === DEPRECATED SECTION END === */}}
   {{- end }}{{- /* with $nodeset.ssh */}}
+  preferKubernetesNodeName: {{ if eq $nodeset.preferKubernetesNodeName nil }}true{{ else }}{{ $nodeset.preferKubernetesNodeName }}{{ end }}
   replicas: {{ $nodeset.replicas }}
   slurmd:
     {{- $_ := set $slurmd "imagePullPolicy" (get $slurmd "imagePullPolicy" | default $.Values.imagePullPolicy) -}}
