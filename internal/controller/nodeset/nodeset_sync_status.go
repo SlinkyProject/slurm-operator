@@ -75,9 +75,6 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 ) error {
 	syncSlurmStatusFn := func(i int) error {
 		pod := pods[i]
-		if !podutils.IsHealthy(pod) {
-			return nil
-		}
 		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil &&
 			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
 			!errors.Is(err, slurmerrors.ErrNotFound) {
