@@ -13,8 +13,13 @@ metadata:
     {{- include "slurm.labels" . | nindent 4 }}
     {{- include "slurm.restapi.selectorLabels" . | nindent 4 }}
 spec:
+  {{- if ne .Values.restapi.pdb.maxUnavailable nil }}
   maxUnavailable: {{ .Values.restapi.pdb.maxUnavailable }}
+  {{- else if ne .Values.restapi.pdb.minAvailable nil }}
   minAvailable: {{ .Values.restapi.pdb.minAvailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
   selector:
     matchLabels:
       {{- include "slurm.restapi.selectorLabels" . | nindent 6 }}
