@@ -176,6 +176,83 @@ func testSlurmController(namespace string) types.Feature {
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
 			return ctx
+		}).
+		Assess("controller scale-down functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "Failed to get new controller-runtime client")
+
+			controllerKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-controller",
+			}
+			controller := &appsv1.StatefulSet{}
+			err = crClient.Get(ctx, controllerKey, controller)
+			require.NoError(t, err, "failed to Get() controller statefulset using controller-runtime client")
+
+			var replicas int32 = 0
+			controller.Spec.Replicas = &replicas
+
+			err = crClient.Update(ctx, controller)
+			require.NoError(t, err, "failed to Update() controller statefulset using controller-runtime client")
+
+			checkStatefulSetReplicas(crClient, ctx, t, controllerKey)
+
+			return ctx
+		}).
+		Assess("controller scale-up functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "Failed to get new controller-runtime client")
+
+			controllerKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-controller",
+			}
+			controller := &appsv1.StatefulSet{}
+			err = crClient.Get(ctx, controllerKey, controller)
+			require.NoError(t, err, "failed to Get() controller statefulset using controller-runtime client")
+
+			var replicas int32 = 1
+			controller.Spec.Replicas = &replicas
+
+			err = crClient.Update(ctx, controller)
+			require.NoError(t, err, "failed to Update() controller statefulset using controller-runtime client")
+
+			checkStatefulSetReplicas(crClient, ctx, t, controllerKey)
+
+			return ctx
+		}).
+		Assess("slurmctld is responsive after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
+			var wants string
+
+			var cleanup_command string
+			var cleanup_args []string
+
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+
+			return ctx
+		}).
+		Assess("slurm controller can resolve nodeset by hostname after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", "slinky-0")
+
+			return ctx
+		}).
+		Assess("job launch & execution succeeds (srun) after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
+			wants := "slinky-0"
+
+			cleanup_command := "kubectl"
+			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
+
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+
+			return ctx
 		}).Feature()
 }
 
@@ -353,6 +430,47 @@ func checkNodeSetReplicas(crClient crclient.Client, ctx context.Context, t *test
 				nodeset.Name,
 				*nodeset.Spec.Replicas,
 				test.StatusJSON(nodeset.Status),
+			)
+		}
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func checkStatefulSetReplicas(
+	crClient crclient.Client,
+	ctx context.Context,
+	t *testing.T,
+	statefulSetKey crclient.ObjectKey,
+) {
+	t.Helper()
+
+	statefulSet := &appsv1.StatefulSet{}
+	started := time.Now()
+
+	for retry := range nodeSetReadyAttempts {
+		if err := crClient.Get(ctx, statefulSetKey, statefulSet); err != nil {
+			t.Fatalf("failed to Get() StatefulSet %s: %v", statefulSetKey, err)
+		}
+
+		desired := int32(1)
+		if statefulSet.Spec.Replicas != nil {
+			desired = *statefulSet.Spec.Replicas
+		}
+
+		if statefulSet.Status.ObservedGeneration >= statefulSet.Generation &&
+			statefulSet.Status.AvailableReplicas == desired {
+			return
+		}
+
+		if retry == nodeSetReadyAttempts-1 {
+			t.Fatalf(
+				"timed out after %s waiting for StatefulSet %s/%s replicas to become available: spec.replicas=%d; observed status=%s",
+				time.Since(started).Round(time.Millisecond),
+				statefulSet.Namespace,
+				statefulSet.Name,
+				desired,
+				test.StatusJSON(statefulSet.Status),
 			)
 		}
 
