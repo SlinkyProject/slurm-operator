@@ -18,6 +18,7 @@ type SlurmInstallationConfig struct {
 	Namespace  string
 	Pyxis      bool
 	Topology   bool
+	HA         bool
 }
 
 var (

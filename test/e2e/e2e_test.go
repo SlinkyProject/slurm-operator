@@ -144,6 +144,15 @@ func TestSlurmChart(t *testing.T) {
 				Namespace:  "slurm-e2e-pyxis-accounting",
 			},
 		},
+		{
+			name:    "Install Slurm and exercise HA mode",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				HA:        true,
+				Namespace: "slurm-e2e-ha",
+			},
+		},
 	}
 
 	for _, tt := range tests {

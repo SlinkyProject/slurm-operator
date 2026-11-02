@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"maps"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -252,6 +253,187 @@ func testSlurmController(namespace string) types.Feature {
 
 			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
 
+			return ctx
+		}).Feature()
+}
+
+func testSlurmHA(namespace string) types.Feature {
+	const primary = "slurm-controller-0"
+	const backup = "slurm-controller-1"
+	var primaryStopped bool
+	var jobID string
+	jobName := fmt.Sprintf("ha-failover-%d", time.Now().UnixNano())
+
+	// Restrict each client to the daemon in the selected pod. A responding
+	// standby, or a client falling back to another host, does not prove takeover.
+	run := func(ctx context.Context, config *envconf.Config, pod string, command ...string) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		args := []string{"--kubeconfig", config.KubeconfigFile(), "--context", config.KubeContext(),
+			"exec", "-n", namespace, pod, "-c", "slurmctld", "--", "sh", "-ec", `
+conf=$(mktemp)
+trap 'rm -f "$conf"' EXIT
+sed '/^SlurmctldHost=/d; /^SlurmctldAddr=/d' /etc/slurm/slurm.conf > "$conf"
+printf '\nSlurmctldHost=%s(127.0.0.1)\n' "$(hostname -s)" >> "$conf"
+export SLURM_CONF="$conf"
+timeout 15s "$@"
+`, "ha-check"}
+		return exec.CommandContext(ctx, "kubectl", append(args, command...)...).CombinedOutput() //nolint:gosec // Test-only code
+	}
+	waitActive := func(ctx context.Context, t *testing.T, config *envconf.Config, pod string) {
+		t.Helper()
+		var output []byte
+		var commandErr error
+		err := wait.For(func(ctx context.Context) (bool, error) {
+			output, commandErr = run(ctx, config, pod, "scontrol", "show", "config")
+			return commandErr == nil, nil
+		}, wait.WithContext(ctx), wait.WithTimeout(4*time.Minute), wait.WithInterval(3*time.Second), wait.WithImmediate())
+		if err != nil {
+			t.Fatalf("controller %s/%s did not become active: %v; last command error: %v; output: %s", namespace, pod, err, commandErr, output)
+		}
+	}
+
+	return features.New("Assess Slurm controller HA failover").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err)
+			controllerKey := crclient.ObjectKey{Namespace: namespace, Name: "slurm"}
+			controller := &slinkyv1beta1.Controller{}
+			require.NoError(t, crClient.Get(ctx, controllerKey, controller))
+			require.True(t, controller.Spec.HighAvailability.Enabled, "HA must be enabled")
+			originalProbe := controller.Spec.Slurmctld.LivenessProbe.DeepCopy()
+
+			t.Cleanup(func() {
+				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+				defer cancel()
+				if primaryStopped {
+					output, err := run(cleanupCtx, config, primary, "sh", "-ec", `kill -CONT $(pgrep -x slurmctld)`)
+					if err != nil {
+						t.Errorf("failed to resume HA primary: %v; output: %s", err, output)
+					}
+				}
+				if jobID != "" {
+					for _, name := range []string{jobName, jobName + "-primary"} {
+						output, err := run(cleanupCtx, config, primary, "scancel", "--name="+name)
+						if err != nil {
+							t.Errorf("failed to clean up HA job %s: %v; output: %s", name, err, output)
+						}
+					}
+				}
+				current := &slinkyv1beta1.Controller{}
+				if err := crClient.Get(cleanupCtx, controllerKey, current); err != nil {
+					t.Errorf("failed to get HA Controller for probe restoration: %v", err)
+					return
+				}
+				base := current.DeepCopy()
+				current.Spec.Slurmctld.LivenessProbe = originalProbe
+				if err := crClient.Patch(cleanupCtx, current, crclient.MergeFrom(base)); err != nil {
+					t.Errorf("failed to restore HA liveness probe: %v", err)
+				}
+			})
+
+			// Default liveness restarts a hung daemon before Slurm's 120s
+			// takeover timeout. Keep it stopped long enough to exercise HA.
+			pod := &corev1.Pod{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: primary}, pod))
+			base := controller.DeepCopy()
+			for _, container := range pod.Spec.Containers {
+				if container.Name == "slurmctld" {
+					controller.Spec.Slurmctld.LivenessProbe = container.LivenessProbe.DeepCopy()
+				}
+			}
+			require.NotNil(t, controller.Spec.Slurmctld.LivenessProbe)
+			controller.Spec.Slurmctld.LivenessProbe.FailureThreshold = 60
+			require.NoError(t, crClient.Patch(ctx, controller, crclient.MergeFrom(base)))
+			err = wait.For(func(ctx context.Context) (bool, error) {
+				for _, name := range []string{primary, backup} {
+					current := &corev1.Pod{}
+					if err := crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: name}, current); err != nil || !podReady(current) || current.DeletionTimestamp != nil {
+						return false, nil //nolint:nilerr
+					}
+					for _, container := range current.Spec.Containers {
+						if container.Name == "slurmctld" && (container.LivenessProbe == nil || container.LivenessProbe.FailureThreshold != 60) {
+							return false, nil
+						}
+					}
+				}
+				return true, nil
+			}, wait.WithContext(ctx), wait.WithTimeout(3*time.Minute), wait.WithInterval(2*time.Second), wait.WithImmediate())
+			require.NoError(t, err, "HA controller pods did not adopt the temporary liveness probe")
+			waitActive(ctx, t, config, primary)
+			return ctx
+		}).
+		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			command := "kubectl"
+			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
+			var wants string
+
+			var cleanup_command string
+			var cleanup_args []string
+
+			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+
+			return ctx
+		}).
+		Assess("both controller replicas are ready", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err, "Failed to get new controller-runtime client")
+
+			controllerKey := crclient.ObjectKey{
+				Namespace: namespace,
+				Name:      "slurm-controller",
+			}
+
+			checkStatefulSetReplicas(crClient, ctx, t, controllerKey)
+
+			return ctx
+		}).
+		Assess("backup eventually takes over when the primary stops responding", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			primaryStopped = true
+			output, err := run(ctx, config, primary, "sh", "-ec", `kill -STOP $(pgrep -x slurmctld)`)
+			require.NoError(t, err, "failed to suspend the primary: %s", output)
+			started := time.Now()
+			waitActive(ctx, t, config, backup)
+			t.Logf("backup took over after %s", time.Since(started).Round(time.Millisecond))
+			return ctx
+		}).
+		Assess("backup accepts job submissions after failover", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			output, err := run(ctx, config, backup, "sbatch", "--parsable", "--hold", "--job-name="+jobName, "--wrap=true")
+			require.NoError(t, err, "backup rejected job submission: %s", output)
+			jobID = strings.TrimSpace(string(output))
+			_, err = strconv.ParseUint(jobID, 10, 64)
+			require.NoError(t, err, "sbatch returned an invalid job ID: %q", jobID)
+			output, err = run(ctx, config, backup, "scontrol", "show", "job", jobID, "--oneliner")
+			require.NoError(t, err, "backup cannot read submitted job %s: %s", jobID, output)
+			require.Contains(t, string(output), "JobName="+jobName)
+			return ctx
+		}).
+		Assess("primary restarts and retains jobs submitted during failover", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			// Finish the backup's checkpoint before the primary loads it.
+			output, err := run(ctx, config, backup, "scontrol", "shutdown", "controller")
+			require.NoError(t, err, "failed to shut down the backup: %s", output)
+			err = wait.For(func(ctx context.Context) (bool, error) {
+				output, err = run(ctx, config, backup, "sh", "-ec", "! pgrep -x slurmctld")
+				return err == nil, nil
+			}, wait.WithContext(ctx), wait.WithTimeout(2*time.Minute), wait.WithInterval(3*time.Second), wait.WithImmediate())
+			require.NoError(t, err, "backup did not finish shutting down: %s", output)
+
+			// Discard the suspended primary's stale memory; Supervisor restarts it.
+			output, err = run(ctx, config, primary, "sh", "-ec", `kill -KILL $(pgrep -x slurmctld)`)
+			require.NoError(t, err, "failed to restart the primary: %s", output)
+			primaryStopped = false
+			waitActive(ctx, t, config, primary)
+			output, err = run(ctx, config, primary, "scontrol", "show", "job", jobID, "--oneliner")
+			require.NoError(t, err, "primary lost job %s accepted by the backup: %s", jobID, output)
+			require.Contains(t, strings.Fields(string(output)), "JobName="+jobName, "primary must retain the backup's submitted job")
+
+			output, err = run(ctx, config, primary, "sbatch", "--parsable", "--hold", "--job-name="+jobName+"-primary", "--wrap=true")
+			require.NoError(t, err, "primary rejected job submission after handover: %s", output)
+			output, err = exec.CommandContext(ctx, "kubectl", "--kubeconfig", config.KubeconfigFile(), "--context", config.KubeContext(), //nolint:gosec // Test-only code
+				"delete", "pod", "-n", namespace, backup, "--wait=false").CombinedOutput()
+			require.NoError(t, err, "failed to restart the backup pod: %s", output)
 			return ctx
 		}).Feature()
 }

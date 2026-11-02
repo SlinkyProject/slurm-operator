@@ -19,21 +19,29 @@ import (
 
 func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstallationConfig, beforeSteps []types.Feature) []types.Feature {
 	steps := beforeSteps
+	if config.HA {
+		steps = append([]types.Feature{createSlurmHAState(config.Namespace)}, steps...)
+	}
 
 	if install {
 		steps = append(steps, installSlurm(config))
 	}
 	if runTests {
+		if config.HA {
+			steps = append(steps, testSlurmHA(config.Namespace))
+		}
 		if config.DaemonSet {
 			steps = append(steps, testSlurmRestAPI(config.Namespace, config.Accounting))
 			steps = append(steps, testSlurmDaemonSet(config.Namespace))
 		} else {
-			steps = append(steps, testSlurmController(config.Namespace))
+			if !config.HA {
+				steps = append(steps, testSlurmController(config.Namespace))
+			}
 			steps = append(steps, testSlurmRestAPI(config.Namespace, config.Accounting))
 			steps = append(steps, testSlurmNodeSet(config.Namespace))
 		}
 
-		if !config.Accounting && !config.DaemonSet && !config.Login && !config.Metrics && !config.Pyxis {
+		if !config.Accounting && !config.DaemonSet && !config.Login && !config.Metrics && !config.Pyxis && !config.HA {
 			steps = append(steps, testSlurmJWTKeyRotation(config.Namespace))
 			steps = append(steps, testSlurmNodeSetDaemonCordon(config.Namespace))
 		}
