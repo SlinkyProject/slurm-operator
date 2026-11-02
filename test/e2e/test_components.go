@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -246,7 +247,7 @@ func testSlurmHA(namespace string) types.Feature {
 	const primary = "slurm-controller-0"
 	const backup = "slurm-controller-1"
 	var primaryStopped bool
-	var jobID string
+	var jobID, originalJobID string
 	jobName := fmt.Sprintf("ha-failover-%d", time.Now().UnixNano())
 
 	// Restrict each client to the daemon in the selected pod. A responding
@@ -298,7 +299,7 @@ timeout 15s "$@"
 					}
 				}
 				if jobID != "" {
-					for _, name := range []string{jobName, jobName + "-primary"} {
+					for _, name := range []string{jobName, jobName + "-primary", jobName + "-before"} {
 						output, err := run(cleanupCtx, config, primary, "scancel", "--name="+name)
 						if err != nil {
 							t.Errorf("failed to clean up HA job %s: %v; output: %s", name, err, output)
@@ -346,6 +347,17 @@ timeout 15s "$@"
 			}, wait.WithContext(ctx), wait.WithTimeout(3*time.Minute), wait.WithInterval(2*time.Second), wait.WithImmediate())
 			require.NoError(t, err, "HA controller pods did not adopt the temporary liveness probe")
 			waitActive(ctx, t, config, primary)
+			output, err := exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, "slurm-worker-slinky-0", "-c", "slurmd", "--", //nolint:gosec // Test-only code
+				"sbatch", "--parsable", "--hold", "--job-name="+jobName+"-before", "--wrap=true").CombinedOutput()
+			require.NoError(t, err, "worker could not submit a job before failover: %s", output)
+			originalJobID = strings.TrimSpace(string(output))
+			_, err = strconv.ParseUint(originalJobID, 10, 64)
+			require.NoError(t, err, "invalid job ID before failover: %q", originalJobID)
+			// Slurm checkpoints asynchronously; suspend only after this job is saved.
+			require.Eventually(t, func() bool {
+				_, err := run(ctx, config, primary, "sh", "-ec", `grep -aFq -- "$1" /var/spool/slurmctld/*/job_state`, "checkpoint", jobName+"-before")
+				return err == nil
+			}, 30*time.Second, time.Second, "primary did not checkpoint the job before failover")
 			return ctx
 		}).
 		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -384,15 +396,62 @@ timeout 15s "$@"
 			t.Logf("backup took over after %s", time.Since(started).Round(time.Millisecond))
 			return ctx
 		}).
-		Assess("backup accepts job submissions after failover", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			output, err := run(ctx, config, backup, "sbatch", "--parsable", "--hold", "--job-name="+jobName, "--wrap=true")
-			require.NoError(t, err, "backup rejected job submission: %s", output)
+		Assess("normal clients can submit and execute jobs after failover", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			crClient, err := GetControllerRuntimeClient(config)
+			require.NoError(t, err)
+			require.NoError(t, discoveryv1.AddToScheme(crClient.Scheme()))
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				slices := &discoveryv1.EndpointSliceList{}
+				if !assert.NoError(collect, crClient.List(ctx, slices, crclient.InNamespace(namespace),
+					crclient.MatchingLabels{discoveryv1.LabelServiceName: "slurm-controller"})) {
+					return
+				}
+				ready := 0
+				for _, slice := range slices.Items {
+					for _, endpoint := range slice.Endpoints {
+						if !ptr.Deref(endpoint.Conditions.Ready, false) {
+							continue
+						}
+						ready++
+						if assert.NotNil(collect, endpoint.TargetRef) {
+							assert.Equal(collect, backup, endpoint.TargetRef.Name, "Service must route to the active backup")
+						}
+					}
+				}
+				assert.Positive(collect, ready, "controller Service has no ready endpoints")
+			}, time.Minute, 2*time.Second, "controller Service did not follow HA takeover")
+
+			workerArgs := []string{"exec", "-n", namespace, "slurm-worker-slinky-0", "-c", "slurmd", "--"}
+			output, err := exec.CommandContext(ctx, "kubectl", append(workerArgs, "scontrol", "show", "job", originalJobID, "--oneliner")...).CombinedOutput() //nolint:gosec // Test-only code
+			require.NoError(t, err, "job %s submitted before failover was lost: %s", originalJobID, output)
+			require.Contains(t, strings.Fields(string(output)), "JobName="+jobName+"-before")
+			output, err = exec.CommandContext(ctx, "kubectl", append(workerArgs, "sbatch", "--parsable", "--hold", "--job-name="+jobName, "--wrap=true")...).CombinedOutput() //nolint:gosec // Test-only code
+			require.NoError(t, err, "worker could not submit a job after failover: %s", output)
 			jobID = strings.TrimSpace(string(output))
 			_, err = strconv.ParseUint(jobID, 10, 64)
 			require.NoError(t, err, "sbatch returned an invalid job ID: %q", jobID)
-			output, err = run(ctx, config, backup, "scontrol", "show", "job", jobID, "--oneliner")
-			require.NoError(t, err, "backup cannot read submitted job %s: %s", jobID, output)
-			require.Contains(t, string(output), "JobName="+jobName)
+			test.WaitForCommand(ctx, t, "kubectl", append(workerArgs, "srun", "--immediate=10", "--time=0:01", "hostname"),
+				"slinky-0", "", nil, time.Minute, 2*time.Second)
+
+			controller := &slinkyv1beta1.Controller{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: "slurm"}, controller))
+			keyRef := controller.AuthJwtRef()
+			secret := &corev1.Secret{}
+			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: keyRef.Name}, secret))
+			restClient := newSlurmRESTClient(t, config, namespace, secret.Data[keyRef.Key])
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				pings := &slurmapi.V0044ControllerPingObjectList{}
+				if !assert.NoError(collect, restClient.List(ctx, pings, &slurmclient.ListOptions{SkipCache: true})) {
+					return
+				}
+				responding := false
+				for _, ping := range pings.Items {
+					if ptr.Deref(ping.Hostname, "") == backup && ping.Responding {
+						responding = true
+					}
+				}
+				assert.True(collect, responding, "REST API could not reach the active backup: %+v", pings.Items)
+			}, time.Minute, 2*time.Second, "REST API did not follow HA takeover")
 			return ctx
 		}).
 		Assess("primary restarts and retains jobs submitted during failover", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -1252,25 +1311,7 @@ func testSlurmJWTKeyRotation(namespace string) types.Feature {
 				return current.UID != oldControllerPod.UID && podReady(current)
 			}, 2*time.Minute, 2*time.Second, "timed out waiting for slurmctld to adopt the rotated JWT key")
 
-			authToken, err := slurmjwt.NewToken(jwtSecret.Data[jwtKeyRef.Key]).NewSignedToken()
-			require.NoError(t, err, "failed to generate an auth token from the rotated JWT key")
-
-			restConfig := rest.CopyConfig(config.Client().RESTConfig())
-			restConfig.Timeout = 10 * time.Second
-			httpClient, err := rest.HTTPClientFor(restConfig)
-			require.NoError(t, err, "failed to create Kubernetes API HTTP client")
-
-			server := fmt.Sprintf(
-				"%s/api/v1/namespaces/%s/services/http:slurm-restapi:slurmrestd/proxy",
-				strings.TrimRight(restConfig.Host, "/"),
-				namespace,
-			)
-			operatorClient, err := slurmclient.NewClient(&slurmclient.Config{
-				Server:        server,
-				TokenProvider: clienttoken.StaticProvider(authToken),
-				HTTPClient:    httpClient,
-			})
-			require.NoError(t, err, "failed to create Slurm client")
+			operatorClient := newSlurmRESTClient(t, config, namespace, jwtSecret.Data[jwtKeyRef.Key])
 
 			require.Eventually(t, func() bool {
 				pings := &slurmapi.V0044ControllerPingObjectList{}
@@ -1686,4 +1727,24 @@ func checkLoginSetHealth(crClient crclient.Client, ctx context.Context, t *testi
 			test.StatusJSON(deployment.Status),
 		)
 	}
+}
+
+func newSlurmRESTClient(t *testing.T, config *envconf.Config, namespace string, jwtKey []byte) slurmclient.Client {
+	t.Helper()
+	authToken, err := slurmjwt.NewToken(jwtKey).NewSignedToken()
+	require.NoError(t, err, "failed to generate Slurm auth token")
+	restConfig := rest.CopyConfig(config.Client().RESTConfig())
+	// HA ping also waits for the unresponsive peer's Slurm RPC timeout.
+	restConfig.Timeout = 30 * time.Second
+	httpClient, err := rest.HTTPClientFor(restConfig)
+	require.NoError(t, err, "failed to create Kubernetes API HTTP client")
+	server := fmt.Sprintf("%s/api/v1/namespaces/%s/services/http:slurm-restapi:slurmrestd/proxy",
+		strings.TrimRight(restConfig.Host, "/"), namespace)
+	client, err := slurmclient.NewClient(&slurmclient.Config{
+		Server:        server,
+		TokenProvider: clienttoken.StaticProvider(authToken),
+		HTTPClient:    httpClient,
+	})
+	require.NoError(t, err, "failed to create Slurm REST client")
+	return client
 }
