@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -114,13 +115,32 @@ var _ = Describe("Controller Webhook", func() {
 			_ = k8sClient.Delete(ctx, pvc)
 		})
 
-		It("Should admit if changes pass validation", func(ctx SpecContext) {
+		It("Should allow NotFound ConfgMap when optional=true", func(ctx SpecContext) {
 			oldController := testutils.NewController("cluster", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			newController := testutils.NewController("cluster", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			newController.Spec.ExtraConf = "SchedulerParameters=allow_zero_lic"
+			oldController.Spec.ConfigFileRefs = append(oldController.Spec.ConfigFileRefs, slinkyv1beta1.ConfigMapProjection{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "foo",
+				},
+				Optional: new(true),
+			})
+			newController := oldController.DeepCopy()
 
 			_, err := controllerWebhook.ValidateUpdate(ctx, oldController, newController)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("Should deny NotFound ConfgMap when optional=false", func(ctx SpecContext) {
+			oldController := testutils.NewController("cluster", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			oldController.Spec.ConfigFileRefs = append(oldController.Spec.ConfigFileRefs, slinkyv1beta1.ConfigMapProjection{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "foo",
+				},
+				Optional: new(false),
+			})
+			newController := oldController.DeepCopy()
+
+			_, err := controllerWebhook.ValidateUpdate(ctx, oldController, newController)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 

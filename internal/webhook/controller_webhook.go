@@ -142,6 +142,12 @@ func (r *ControllerWebhook) validateController(ctx context.Context, controller *
 			Namespace: controller.Namespace,
 		}
 		if err := r.Get(ctx, configMapKey, configMap); err != nil {
+			if apierrors.IsNotFound(err) {
+				if !ptr.Deref(ref.Optional, false) {
+					errs = append(errs, fmt.Errorf("configmap %s is not optional and not found", ref.Name))
+				}
+				continue
+			}
 			errs = append(errs, err)
 			continue
 		}

@@ -297,7 +297,10 @@ func TestBuilder_BuildController_configHash(t *testing.T) {
 			},
 		}
 		for _, name := range refs {
-			c.Spec.ConfigFileRefs = append(c.Spec.ConfigFileRefs, corev1.LocalObjectReference{Name: name})
+			ref := slinkyv1beta1.ConfigMapProjection{
+				LocalObjectReference: corev1.LocalObjectReference{Name: name},
+			}
+			c.Spec.ConfigFileRefs = append(c.Spec.ConfigFileRefs, ref)
 		}
 		return c
 	}
