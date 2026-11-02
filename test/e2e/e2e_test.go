@@ -98,6 +98,15 @@ func TestSlurmChart(t *testing.T) {
 			},
 		},
 		{
+			name:    "Install Slurm without controller persistence",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Ephemeral: true,
+				Namespace: "slurm-e2e-ephemeral",
+			},
+		},
+		{
 			name:    "Install Slurm with DaemonSet scaling",
 			install: true,
 			test:    true,

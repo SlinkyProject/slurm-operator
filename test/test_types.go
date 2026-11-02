@@ -13,6 +13,7 @@ type SlurmImageConfig struct {
 type SlurmInstallationConfig struct {
 	Accounting bool
 	DaemonSet  bool
+	Ephemeral  bool
 	Login      bool
 	Metrics    bool
 	Namespace  string
