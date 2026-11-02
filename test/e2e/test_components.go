@@ -178,50 +178,35 @@ func testSlurmController(namespace string) types.Feature {
 
 			return ctx
 		}).
-		Assess("controller scale-down functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
+		Assess("controller retains jobs when its pod is recreated", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
 			crClient, err := GetControllerRuntimeClient(config)
-			require.NoError(t, err, "Failed to get new controller-runtime client")
+			require.NoError(t, err)
+			podKey := crclient.ObjectKey{Namespace: namespace, Name: "slurm-controller-0"}
+			before := &corev1.Pod{}
+			require.NoError(t, crClient.Get(ctx, podKey, before))
 
-			controllerKey := crclient.ObjectKey{
-				Namespace: namespace,
-				Name:      "slurm-controller",
-			}
-			controller := &appsv1.StatefulSet{}
-			err = crClient.Get(ctx, controllerKey, controller)
-			require.NoError(t, err, "failed to Get() controller statefulset using controller-runtime client")
+			output, err := exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podKey.Name, "-c", "slurmctld", "--", //nolint:gosec // Test-only code
+				"sbatch", "--parsable", "--hold", "--job-name=e2e-persistence", "--wrap=true").CombinedOutput()
+			require.NoError(t, err, "failed to submit held job: %s", output)
+			jobID := strings.TrimSpace(string(output))
+			_, err = strconv.ParseUint(jobID, 10, 64)
+			require.NoError(t, err, "invalid job ID: %q", jobID)
 
-			var replicas int32 = 0
-			controller.Spec.Replicas = &replicas
+			require.NoError(t, crClient.Delete(ctx, before))
+			require.Eventually(t, func() bool {
+				after := &corev1.Pod{}
+				return crClient.Get(ctx, podKey, after) == nil && after.UID != before.UID &&
+					after.DeletionTimestamp == nil && podReady(after)
+			}, 3*time.Minute, 2*time.Second, "controller pod was not recreated")
 
-			err = crClient.Update(ctx, controller)
-			require.NoError(t, err, "failed to Update() controller statefulset using controller-runtime client")
-
-			checkStatefulSetReplicas(crClient, ctx, t, controllerKey)
-
-			return ctx
-		}).
-		Assess("controller scale-up functions", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			crClient, err := GetControllerRuntimeClient(config)
-			require.NoError(t, err, "Failed to get new controller-runtime client")
-
-			controllerKey := crclient.ObjectKey{
-				Namespace: namespace,
-				Name:      "slurm-controller",
-			}
-			controller := &appsv1.StatefulSet{}
-			err = crClient.Get(ctx, controllerKey, controller)
-			require.NoError(t, err, "failed to Get() controller statefulset using controller-runtime client")
-
-			var replicas int32 = 1
-			controller.Spec.Replicas = &replicas
-
-			err = crClient.Update(ctx, controller)
-			require.NoError(t, err, "failed to Update() controller statefulset using controller-runtime client")
-
-			checkStatefulSetReplicas(crClient, ctx, t, controllerKey)
-
+			output, err = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podKey.Name, "-c", "slurmctld", "--", //nolint:gosec // Test-only code
+				"scontrol", "show", "job", jobID, "--oneliner").CombinedOutput()
+			require.NoError(t, err, "controller lost job %s after pod recreation: %s", jobID, output)
+			require.Contains(t, strings.Fields(string(output)), "JobName=e2e-persistence")
+			require.Contains(t, strings.Fields(string(output)), "JobState=PENDING")
+			output, err = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podKey.Name, "-c", "slurmctld", "--", //nolint:gosec // Test-only code
+				"scancel", jobID).CombinedOutput()
+			require.NoError(t, err, "failed to cancel held job %s: %s", jobID, output)
 			return ctx
 		}).
 		Assess("slurmctld is responsive after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
