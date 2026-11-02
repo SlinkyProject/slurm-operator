@@ -228,6 +228,10 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		helm.WithTimeout("10m"),
 	)
 
+	if slurmConfig.Ephemeral {
+		opts = append(opts, helm.WithArgs("--set controller.persistence.enabled=false"))
+	}
+
 	if slurmConfig.Topology {
 		topologyValuesFile := filepath.Join(test.Basepath, "test/e2e/resources/topology-values.yaml")
 		opts = append(opts, helm.WithArgs("--values "+topologyValuesFile))
