@@ -51,6 +51,10 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 			steps = append(steps, testSlurmNodeSetTopologySync(config.Namespace))
 		}
 
+		if config.Metrics {
+			steps = append(steps, testSlurmMetrics(config.Namespace))
+		}
+
 		if config.Accounting {
 			steps = append(steps, testSlurmAccounting(config.Namespace))
 		}
