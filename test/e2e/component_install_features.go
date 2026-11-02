@@ -6,6 +6,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -295,4 +296,18 @@ func uninstallSlurm(namespace string) types.Feature {
 			ctx = test.DoUninstallHelmChart(ctx, t, config, "slurm", namespace)
 			return test.DoDeleteNamespace(ctx, t, config, namespace)
 		}).Feature()
+}
+
+// upgradeSlurm preserves the fixture's images and other installation values.
+func upgradeSlurm(t *testing.T, config *envconf.Config, namespace, values string) {
+	t.Helper()
+	valuesFile := filepath.Join(t.TempDir(), "values.yaml")
+	require.NoError(t, os.WriteFile(valuesFile, []byte(values), 0o600))
+	err := helm.New(config.KubeconfigFile()).RunUpgrade(
+		helm.WithName("slurm"),
+		helm.WithNamespace(namespace),
+		helm.WithChart(filepath.Join(test.Basepath, "helm/slurm")),
+		helm.WithArgs("--reuse-values", "--values "+valuesFile),
+	)
+	require.NoError(t, err, "failed to upgrade Slurm in %s", namespace)
 }

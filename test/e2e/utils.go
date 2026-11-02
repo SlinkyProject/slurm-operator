@@ -42,6 +42,7 @@ func getFeaturesFromConfig(install bool, runTests bool, config test.SlurmInstall
 		}
 
 		if !config.Accounting && !config.DaemonSet && !config.Login && !config.Metrics && !config.Pyxis && !config.HA {
+			steps = append(steps, testSlurmControllerReconfigure(config.Namespace))
 			steps = append(steps, testSlurmJWTKeyRotation(config.Namespace))
 			steps = append(steps, testSlurmNodeSetDaemonCordon(config.Namespace))
 		}
