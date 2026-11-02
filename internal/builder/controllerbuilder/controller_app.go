@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"path"
-	"slices"
+	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -124,22 +124,40 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 		}
 	}
 
-	size := len(controller.Spec.ConfigFileRefs) + len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) + len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
-	extraConfigMapNames := make([]string, 0, size)
+	size := len(controller.Spec.ConfigFileRefs) +
+		len(controller.Spec.PrologScriptRefs) + len(controller.Spec.EpilogScriptRefs) +
+		len(controller.Spec.PrologSlurmctldScriptRefs) + len(controller.Spec.EpilogSlurmctldScriptRefs)
+	extraConfigMapProjections := make([]corev1.ConfigMapProjection, 0, size)
 	for _, ref := range controller.Spec.ConfigFileRefs {
-		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+		projection := corev1.ConfigMapProjection{
+			LocalObjectReference: ref.LocalObjectReference,
+			Optional:             ref.Optional,
+		}
+		extraConfigMapProjections = append(extraConfigMapProjections, projection)
 	}
 	for _, ref := range controller.Spec.PrologScriptRefs {
-		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+		projection := corev1.ConfigMapProjection{
+			LocalObjectReference: ref,
+		}
+		extraConfigMapProjections = append(extraConfigMapProjections, projection)
 	}
 	for _, ref := range controller.Spec.EpilogScriptRefs {
-		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+		projection := corev1.ConfigMapProjection{
+			LocalObjectReference: ref,
+		}
+		extraConfigMapProjections = append(extraConfigMapProjections, projection)
 	}
 	for _, ref := range controller.Spec.PrologSlurmctldScriptRefs {
-		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+		projection := corev1.ConfigMapProjection{
+			LocalObjectReference: ref,
+		}
+		extraConfigMapProjections = append(extraConfigMapProjections, projection)
 	}
 	for _, ref := range controller.Spec.EpilogSlurmctldScriptRefs {
-		extraConfigMapNames = append(extraConfigMapNames, ref.Name)
+		projection := corev1.ConfigMapProjection{
+			LocalObjectReference: ref,
+		}
+		extraConfigMapProjections = append(extraConfigMapProjections, projection)
 	}
 
 	objectMeta := metadata.NewBuilder(key).
@@ -182,7 +200,7 @@ func (b *ControllerBuilder) controllerPodTemplate(controller *slinkyv1beta1.Cont
 				RunAsGroup:   ptr.To(common.SlurmUserGid),
 				FSGroup:      ptr.To(common.SlurmUserGid),
 			},
-			Volumes: controllerVolumes(controller, extraConfigMapNames),
+			Volumes: controllerVolumes(controller, extraConfigMapProjections),
 		},
 		Merge: template.PodSpec,
 	}
@@ -216,7 +234,7 @@ func controllerHAAntiAffinity(controller *slinkyv1beta1.Controller) *corev1.Affi
 	return out
 }
 
-func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []corev1.Volume {
+func controllerVolumes(controller *slinkyv1beta1.Controller, extraConfigMapProjections []corev1.ConfigMapProjection) []corev1.Volume {
 	out := []corev1.Volume{
 		{
 			Name: common.SlurmEtcVolume,
@@ -264,14 +282,12 @@ func controllerVolumes(controller *slinkyv1beta1.Controller, extra []string) []c
 			},
 		},
 	}
-	slices.Sort(extra)
-	for _, name := range extra {
+	sort.Slice(extraConfigMapProjections, func(i, j int) bool {
+		return extraConfigMapProjections[i].Name < extraConfigMapProjections[j].Name
+	})
+	for _, projection := range extraConfigMapProjections {
 		volumeProjection := corev1.VolumeProjection{
-			ConfigMap: &corev1.ConfigMapProjection{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: name,
-				},
-			},
+			ConfigMap: &projection,
 		}
 		out[0].Projected.Sources = append(out[0].Projected.Sources, volumeProjection)
 	}

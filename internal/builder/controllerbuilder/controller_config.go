@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/common"
@@ -56,7 +57,11 @@ func (b *ControllerBuilder) BuildControllerConfig(controller *slinkyv1beta1.Cont
 			Name:      ref.Name,
 		}
 		if err := b.client.Get(ctx, key, cm); err != nil {
-			return nil, err
+			if apierrors.IsNotFound(err) && !ptr.Deref(ref.Optional, false) {
+				return nil, fmt.Errorf("ConfigMap %s is not optional and not found", ref.Name)
+			} else if !apierrors.IsNotFound(err) {
+				return nil, err
+			}
 		}
 		configFilesList.Items = append(configFilesList.Items, *cm)
 	}

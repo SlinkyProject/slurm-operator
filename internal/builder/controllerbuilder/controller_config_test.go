@@ -143,8 +143,8 @@ func TestBuilder_BuildControllerConfig(t *testing.T) {
 						AccountingRef: &corev1.LocalObjectReference{
 							Name: "slurm",
 						},
-						ConfigFileRefs: []corev1.LocalObjectReference{
-							{Name: "slurm-config"},
+						ConfigFileRefs: []slinkyv1beta1.ConfigMapProjection{
+							{LocalObjectReference: corev1.LocalObjectReference{Name: "slurm-config"}},
 						},
 					},
 				},
@@ -477,8 +477,8 @@ func TestBuilder_BuildControllerConfigExternal(t *testing.T) {
 					AccountingRef: &corev1.LocalObjectReference{
 						Name: "slurm",
 					},
-					ConfigFileRefs: []corev1.LocalObjectReference{
-						{Name: "slurm-config"},
+					ConfigFileRefs: []slinkyv1beta1.ConfigMapProjection{
+						{LocalObjectReference: corev1.LocalObjectReference{Name: "slurm-config"}},
 					},
 				},
 			},
