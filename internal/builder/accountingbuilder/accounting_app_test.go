@@ -91,6 +91,63 @@ func TestBuilder_BuildAccounting_Env(t *testing.T) {
 	require.ElementsMatch(t, accounting.Spec.Slurmdbd.Env, got.Spec.Template.Spec.Containers[0].Env)
 }
 
+func TestBuilder_BuildAccounting_TemplateMetadata(t *testing.T) {
+	accounting := &slinkyv1beta1.Accounting{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "slurm",
+			Annotations: map[string]string{"example.com/inherited": "true", "example.com/test": "false"},
+			Labels:      map[string]string{"example.com/inherited": "true", "example.com/test": "false"},
+		},
+		Spec: slinkyv1beta1.AccountingSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			Template: slinkyv1beta1.PodTemplate{
+				Metadata: slinkyv1beta1.Metadata{
+					Annotations: map[string]string{
+						"example.com/test":         "true",
+						"example.com/template":     "true",
+						annotationDefaultContainer: "custom",
+						annotationSlurmdbdConfHash: "custom",
+					},
+					Labels: map[string]string{
+						"example.com/test":     "true",
+						"example.com/template": "true",
+						labels.AppLabel:        "custom",
+					},
+				},
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	got, err := b.BuildAccounting(accounting)
+	if err != nil {
+		t.Fatalf("BuildAccounting(%q) error = %v", accounting.Name, err)
+	}
+
+	for key, want := range map[string]string{
+		"example.com/inherited": "true",
+		"example.com/test":      "true",
+		"example.com/template":  "true",
+		labels.AppLabel:         "slurmdbd",
+	} {
+		if value := got.Spec.Template.Labels[key]; value != want {
+			t.Errorf("BuildAccounting(%q) pod label %q = %q, want %q", accounting.Name, key, value, want)
+		}
+	}
+	for key, want := range map[string]string{
+		"example.com/inherited":    "true",
+		"example.com/test":         "true",
+		"example.com/template":     "true",
+		annotationDefaultContainer: "slurmdbd",
+	} {
+		if value := got.Spec.Template.Annotations[key]; value != want {
+			t.Errorf("BuildAccounting(%q) pod annotation %q = %q, want %q", accounting.Name, key, value, want)
+		}
+	}
+	if hash := got.Spec.Template.Annotations[annotationSlurmdbdConfHash]; hash == "custom" {
+		t.Errorf("BuildAccounting(%q) pod config hash = %q, want an operator-generated hash", accounting.Name, hash)
+	}
+}
+
 func BenchmarkBuilder_BuildAccounting(b *testing.B) {
 	type fields struct {
 		client client.Client
