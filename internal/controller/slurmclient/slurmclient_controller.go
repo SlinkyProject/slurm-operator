@@ -97,6 +97,9 @@ func (r *SlurmClientReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *SlurmClientReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := refresolver.SetupIndexes(context.Background(), mgr.GetFieldIndexer()); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.Controller{}).

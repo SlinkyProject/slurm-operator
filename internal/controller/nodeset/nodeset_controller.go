@@ -41,34 +41,6 @@ const (
 	BackoffGCInterval = 1 * time.Minute
 )
 
-// Reasons for NodeSet events
-const (
-	// SelectingAllReason is added to an event when a NodeSet selects all Pods.
-	SelectingAllReason = "SelectingAll"
-	// FailedPlacementReason is added to an event when a NodeSet cannot schedule a Pod to a specified node.
-	FailedPlacementReason = "FailedPlacement"
-	// FailedNodeSetPodReason is added to an event when the status of a Pod of a NodeSet is 'Failed'.
-	FailedNodeSetPodReason = "FailedNodeSetPod"
-	// ScalingUpReason is added to an event when pods are being created to reach the desired replica count.
-	ScalingUpReason = "ScalingUp"
-	// ScalingDownReason is added to an event when pods are being deleted to reach the desired replica count.
-	ScalingDownReason = "ScalingDown"
-	// SyncFailedReason is added to an event when a sync sub-step fails.
-	SyncFailedReason = "SyncFailed"
-	// SyncFinalizerFailedReason is added to an event when a sync finalizer sub-step fails.
-	SyncFinalizerFailedReason = "SyncFinalizerFailed"
-	// NodeCordonReason is added to an event when a pod is cordoned due to its Kubernetes node being cordoned.
-	NodeCordonReason = "NodeCordon"
-	// SlurmNodeNotRegisteredReason is added to an event when a pod is deleted because its Slurm node is not registered.
-	SlurmNodeNotRegisteredReason = "SlurmNodeNotRegistered"
-	// DefunctSlurmNodePrunedReason is added to an event when a defunct Slurm node is pruned.
-	DefunctSlurmNodePrunedReason = "DefunctSlurmNodePruned"
-	// RollingUpdateReason is added to an event when pods are being replaced during a rolling update.
-	RollingUpdateReason = "RollingUpdate"
-	// ControllerRefFailedReason is added to an event when the referenced Controller CR cannot be fetched.
-	ControllerRefFailedReason = "ControllerRefFailed"
-)
-
 func init() {
 	flag.IntVar(&maxConcurrentReconciles, "nodeset-workers", maxConcurrentReconciles, "Max concurrent workers for NodeSet controller.")
 }
@@ -155,16 +127,17 @@ func (r *NodeSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 func (r *NodeSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.eventRecorder = mgr.GetEventRecorder(ControllerName)
 	r.podControl = podcontrol.NewPodControl(r.Client, r.eventRecorder)
-	podEventHandler := eventhandler.NewPodEventHandler(r.Client, r.expectations)
 	if err := indexes.SetupWithManager(mgr); err != nil {
+		return err
+	}
+	if err := refresolver.SetupIndexes(context.Background(), mgr.GetFieldIndexer()); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(&slinkyv1beta1.NodeSet{}).
-		Owns(&corev1.Pod{}).
 		Owns(&corev1.Service{}).
-		Watches(&corev1.Pod{}, podEventHandler).
+		Watches(&corev1.Pod{}, eventhandler.NewPodEventHandler(r.Client, r.expectations)).
 		Watches(&corev1.Node{}, eventhandler.NewNodeEventHandler(r.Client)).
 		Watches(&slinkyv1beta1.Controller{}, eventhandler.NewControllerEventHandler(r.Client)).
 		Watches(&corev1.Secret{}, eventhandler.NewSecretEventHandler(r.Client)).

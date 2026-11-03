@@ -71,9 +71,6 @@ spec:
                   ConfigFileRefs is a list of ConfigMap references containing files to be mounted in `/etc/slurm`.
                   Ref: https://slurm.schedmd.com/slurm.conf.html
                 items:
-                  description: |-
-                    LocalObjectReference contains enough information to let you locate the
-                    referenced object inside the same namespace.
                   properties:
                     name:
                       default: ""
@@ -84,6 +81,10 @@ spec:
                         almost certainly wrong.
                         More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
                       type: string
+                    optional:
+                      description: optional specify whether the ConfigMap must be
+                        defined.
+                      type: boolean
                   type: object
                   x-kubernetes-map-type: atomic
                 nullable: true
@@ -168,6 +169,7 @@ spec:
                     description: Backups indicate the number of backup controllers
                       to deploy.
                     format: int32
+                    maximum: 2147483646
                     minimum: 1
                     type: integer
                   enabled:

@@ -106,15 +106,21 @@ The Slurm control-plane is responsible for scheduling Slurm workload
 onto its worker nodes and managing their states.
 
 Slurm High Availability (HA) can be enabled by setting
-``ha.enabled=true`` and ``persistence.existingClaim`` to a PVC with
-ReadWriteMany (RWX) access mode.
+``controller.ha.enabled=true`` and
+``controller.persistence.existingClaim`` to a PVC with ReadWriteMany
+(RWX) access mode.
 
-Changes to the Slurm configuration files are automatically detected and
-the Slurm cluster is reconfigured seamlessly with zero downtime of the
-Slurm control-plane.
+Changes to the Slurm configuration files are automatically detected. By
+default, the controller pods are recreated so that the new configuration
+is loaded at startup. Set ``controller.inplaceReconfigure=true`` in the
+Slurm chart to have the reconfigure sidecar run ``scontrol reconfigure``
+without recreating the controller pods. Use Slurm HA when a controller
+restart must not interrupt the control plane.
 
-   [!NOTE] The kubelet’s ``configMapAndSecretChangeDetectionStrategy``
-   and ``syncFrequency`` settings directly affect when pods have their
+.. note::
+
+   The kubelet’s ``configMapAndSecretChangeDetectionStrategy`` and
+   ``syncFrequency`` settings directly affect when pods have their
    mounted ConfigMaps and Secrets updated. By default, the kubelet is in
    ``Watch`` mode with a polling frequency of 60 seconds.
 
@@ -164,7 +170,7 @@ DaemonSet
 
 The operator supports NodeSet scale to zero, scaling the resource down
 to zero replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also
-support scale to zero can be best paired with NodeSets.
+supports scale to zero can be best paired with NodeSets.
 
 NodeSets can be resolved by hostname. This enables hostname-based
 resolution between login pods and worker pods, enabling direct
@@ -179,13 +185,13 @@ which manage user identity via SSSD.
 
 The operator supports LoginSet scale to zero, scaling the resource down
 to zero replicas. Hence, any Horizontal Pod Autoscaler (HPA) that also
-support scale to zero can be best paired with LoginSets.
+supports scale to zero can be best paired with LoginSets.
 
 Hybrid Support
 ~~~~~~~~~~~~~~
 
 Sometimes a Slurm cluster has some, but not all, of its components in
-Kubernetes. The operator and its CRDs are designed support these use
+Kubernetes. The operator and its CRDs are designed to support these use
 cases.
 
 Slurm

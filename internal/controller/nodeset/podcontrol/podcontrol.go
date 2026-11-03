@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"strings"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,14 +23,14 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podcontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/podutils"
 )
 
 const (
-	eventCreate = "Create"
-	eventDelete = "Delete"
-	eventUpdate = "Update"
+	eventCreate = eventutils.ActionCreate
+	eventUpdate = eventutils.ActionUpdate
 )
 
 var (
@@ -154,14 +152,14 @@ func (r *realPodControl) UpdateNodeSetPod(ctx context.Context, nodeset *slinkyv1
 func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) (bool, error) {
 	logger := klog.FromContext(ctx)
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := nodesetutils.GetOrdinal(pod)
 		paddedOrdinal = nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	}
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
 		var claimName string
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameOrdinal(nodeset, &templates[i], paddedOrdinal)
 		} else {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameNodeName(nodeset, &templates[i], pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
@@ -190,14 +188,14 @@ func (r *realPodControl) PodPVCsMatchRetentionPolicy(ctx context.Context, nodese
 func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod) error {
 	logger := klog.FromContext(ctx)
 	var paddedOrdinal string
-	if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		ordinal := nodesetutils.GetOrdinal(pod)
 		paddedOrdinal = nodesetutils.GetPaddedOrdinal(nodeset, ordinal)
 	}
 	templates := nodeset.Spec.VolumeClaimTemplates
 	for i := range templates {
 		var claimName string
-		if nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+		if nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameOrdinal(nodeset, &templates[i], paddedOrdinal)
 		} else {
 			claimName = nodesetutils.GetPersistentVolumeClaimNameNodeName(nodeset, &templates[i], pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname])
@@ -217,7 +215,7 @@ func (r *realPodControl) UpdatePodPVCsForRetentionPolicy(ctx context.Context, no
 			if hasUnexpectedController(claim, nodeset, pod) {
 				// Add an event so the user knows they're in a strange configuration. The claim will be cleaned up below.
 				msg := fmt.Sprintf("PersistentVolumeClaim %s has a conflicting OwnerReference that acts as a managing controller, the retention policy is ignored for this claim", claimName)
-				r.recorder.Eventf(nodeset, claim, corev1.EventTypeWarning, "ConflictingController", "Info", msg)
+				eventutils.Warning(r.recorder, nodeset, claim, eventutils.ReasonConflictingController, eventutils.ActionUpdate, msg)
 			}
 			if !isClaimOwnerUpToDate(logger, claim, nodeset, pod) {
 				claim = claim.DeepCopy() // Make a copy so we don't mutate the shared cache.
@@ -263,20 +261,24 @@ func (r *realPodControl) IsPodPVCsStale(ctx context.Context, nodeset *slinkyv1be
 }
 
 // recordPodEvent records an event for verb applied to a Pod in a NodeSet. If err is nil the generated event will
-// have a reason of corev1.EventTypeNormal. If err is not nil the generated event will have a reason of corev1.EventTypeWarning.
-func (r *realPodControl) recordPodEvent(verb string, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, err error) {
-	caser := cases.Title(language.English)
-	verbStr := caser.String(verb)
+// have a type of corev1.EventTypeNormal. If err is not nil the generated event will have a type of corev1.EventTypeWarning.
+func (r *realPodControl) recordPodEvent(verb eventutils.Action, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, err error) {
 	if err == nil {
-		reason := fmt.Sprintf("Successful%s", caser.String(verb))
+		reason := eventutils.ReasonSuccessfulCreate
+		if verb == eventutils.ActionUpdate {
+			reason = eventutils.ReasonSuccessfulUpdate
+		}
 		message := fmt.Sprintf("%s Pod %s successful",
-			strings.ToLower(verb), pod.Name)
-		r.recorder.Eventf(nodeset, pod, corev1.EventTypeNormal, reason, verbStr, message)
+			strings.ToLower(string(verb)), pod.Name)
+		eventutils.Normal(r.recorder, nodeset, pod, reason, verb, message)
 	} else {
-		reason := fmt.Sprintf("Failed%s", caser.String(verb))
+		reason := eventutils.ReasonFailedCreate
+		if verb == eventutils.ActionUpdate {
+			reason = eventutils.ReasonFailedUpdate
+		}
 		message := fmt.Sprintf("%s Pod %s failed error: %s",
-			strings.ToLower(verb), pod.Name, err)
-		r.recorder.Eventf(nodeset, pod, corev1.EventTypeWarning, reason, verbStr, message)
+			strings.ToLower(string(verb)), pod.Name, err)
+		eventutils.Warning(r.recorder, nodeset, pod, reason, verb, message)
 	}
 }
 
@@ -316,21 +318,17 @@ func (r *realPodControl) createPersistentVolumeClaims(ctx context.Context, nodes
 }
 
 // recordClaimEvent records an event for verb applied to the PersistentVolumeClaim of a Pod in a NodeSet. If err is
-// nil the generated event will have a reason of corev1.EventTypeNormal. If err is not nil the generated event will have a
-// reason of corev1.EventTypeWarning.
-func (r *realPodControl) recordClaimEvent(verb string, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, claim *corev1.PersistentVolumeClaim, err error) {
-	caser := cases.Title(language.English)
-	verbStr := caser.String(verb)
+// nil the generated event will have a type of corev1.EventTypeNormal. If err is not nil the generated event will have a
+// type of corev1.EventTypeWarning.
+func (r *realPodControl) recordClaimEvent(verb eventutils.Action, nodeset *slinkyv1beta1.NodeSet, pod *corev1.Pod, claim *corev1.PersistentVolumeClaim, err error) {
 	if err == nil {
-		reason := fmt.Sprintf("Successful%s", caser.String(verb))
 		message := fmt.Sprintf("%s Claim: %s Pod %s",
-			strings.ToLower(verb), claim.Name, pod.Name)
-		r.recorder.Eventf(nodeset, claim, corev1.EventTypeNormal, reason, verbStr, message)
+			strings.ToLower(string(verb)), claim.Name, pod.Name)
+		eventutils.Normal(r.recorder, nodeset, claim, eventutils.ReasonSuccessfulCreate, verb, message)
 	} else {
-		reason := fmt.Sprintf("Failed%s", caser.String(verb))
 		message := fmt.Sprintf("%s Claim: %s for Pod %s failed: %s",
-			strings.ToLower(verb), claim.Name, pod.Name, err)
-		r.recorder.Eventf(nodeset, claim, corev1.EventTypeWarning, reason, verbStr, message)
+			strings.ToLower(string(verb)), claim.Name, pod.Name, err)
+		eventutils.Warning(r.recorder, nodeset, claim, eventutils.ReasonFailedCreate, verb, message)
 	}
 }
 
@@ -392,12 +390,12 @@ func isClaimOwnerUpToDate(logger klog.Logger, claim *corev1.PersistentVolumeClai
 		if hasOwnerRef(claim, nodeset) {
 			return false
 		}
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown != hasOwnerRef(claim, pod) {
 			return false
 		}
 	case policy.WhenDeleted == delete && policy.WhenScaled == delete:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		// If a pod is scaled down, there should be no nodeset ref and a pod ref;
 		// if the pod is not scaled down it's the other way around.
 		if podScaledDown == hasOwnerRef(claim, nodeset) {
@@ -500,12 +498,12 @@ func updateClaimOwnerRefForSetAndPod(logger klog.Logger, claim *corev1.Persisten
 	case policy.WhenScaled == retain && policy.WhenDeleted == delete:
 		refs = addControllerRef(refs, nodeset, slinkyv1beta1.NodeSetGVK)
 	case policy.WhenScaled == delete && policy.WhenDeleted == retain:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown {
 			refs = addControllerRef(refs, pod, podGVK)
 		}
 	case policy.WhenScaled == delete && policy.WhenDeleted == delete:
-		podScaledDown := podutils.IsPodCordon(pod)
+		podScaledDown := podutils.IsPodCordon(pod) || podutils.IsPodCondemned(pod)
 		if podScaledDown {
 			refs = addControllerRef(refs, pod, podGVK)
 		}

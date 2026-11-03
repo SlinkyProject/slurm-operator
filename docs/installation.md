@@ -66,8 +66,8 @@ comma-separated list:
 
 ```sh
 helm install slurm-operator oci://ghcr.io/slinkyproject/charts/slurm-operator \
-  --set 'operator.namespaces=slurm-system,production' \
-  --set 'webhook.namespaces=slurm-system,production' \
+  --set 'operator.namespaces=slurm-system\,production' \
+  --set 'webhook.namespaces=slurm-system\,production' \
   --namespace=slinky --create-namespace
 ```
 
@@ -148,12 +148,12 @@ rotate the certificate, run `helm upgrade` to refresh the `caBundle`.
 > template time if you set both.
 
 > [!IMPORTANT]
-> `helm template` and `helm install --dry-run=client` cannot contact the
-> Kubernetes API, so `lookup` returns empty and the chart fails with "Secret …
-> was not found" even when the Secret exists. Use
-> `helm install --dry-run=server` to exercise the lookup. For GitOps workflows
-> that rely on `helm template` for diffs (helm-diff, ArgoCD, Flux), use the
-> webhook annotation pass-through described below instead.
+> Offline rendering with `helm template` or `helm install --dry-run=client`
+> cannot read the existing Secret through `lookup`, so this external-certificate
+> configuration fails with "Secret … was not found" even when the Secret exists.
+> Use `helm template --dry-run=server` or `helm install --dry-run=server` with
+> access to the cluster containing the Secret. The cainjector annotations below
+> do not bypass the lookup.
 
 > [!NOTE]
 > When migrating from `certManager.enabled=true`, give the BYO Secret a name
@@ -228,15 +228,14 @@ Check if the Slurm cluster deployed successfully:
 ```console
 $ kubectl --namespace=slurm get pods
 NAME                                  READY   STATUS    RESTARTS   AGE
-slurm-accounting-0                    1/1     Running   0          2m
-slurm-controller-0                    3/3     Running   0          2m
-slurm-login-slinky-7ff66445b5-wdjkn   1/1     Running   0          2m
+slurm-controller-0                    2/2     Running   0          2m
 slurm-restapi-77b9f969f7-kh4r8        1/1     Running   0          2m
 slurm-worker-slinky-0                 2/2     Running   0          2m
 ```
 
 > [!NOTE]
-> The above output is with all Slurm components enabled and configured properly.
+> The quick-start values create a controller, REST API, and one NodeSet pod.
+> Accounting and LoginSets appear only when separately enabled and configured.
 
 ### Controller Persistence
 
@@ -259,8 +258,10 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 ```
 
 > [!NOTE]
-> Typically PVs will not be deleted after the PVC is deleted. Therefore, PVs may
-> need to be manually deleted when no longer needed.
+> Deleting a PVC follows the PV's [reclaim policy][reclaim-policy]. With
+> `Delete` (the default for dynamically provisioned volumes), the PV and backing
+> storage are deleted. With `Retain`, the storage remains and requires manual
+> reclamation.
 
 If Slurm controller (slurmctld) persistence is not desired (typically for
 testing), it can be disabled by installing Slurm with the
@@ -373,13 +374,15 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace prometheus --create-namespace
 ```
 
-Then enable Slurm metrics and the Prometheus service monitor, for metrics
-discovery.
+Then enable Slurm metrics and the Prometheus service monitor. The `release`
+label matches the default ServiceMonitor selector of the `prometheus` release
+installed above.
 
 ```sh
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
   --set 'controller.metrics.enabled=true' \
   --set 'controller.metrics.serviceMonitor.enabled=true' \
+  --set 'controller.metrics.serviceMonitor.labels.release=prometheus' \
   --namespace=slurm --create-namespace
 ```
 
@@ -390,17 +393,40 @@ communicate with an identity service via [sssd].
 
 > [!WARNING]
 > In this example, you will need to supply an `sssd.conf` (at
-> `${HOME}/sssd.conf`) that is configured for your environment.
+> `${HOME}/sssd.conf`) that is configured for your environment. Mount it at
+> `/etc/sssd/sssd.conf` with mode `0600`. [sssd] will not start if the file is
+> readable by anyone other than root.
 
-Install a Slurm cluster via helm chart with the
-`--set 'loginsets.slinky.enabled=true'` and
-`--set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf"` arguments.
+Create a Secret from that file, then install a Slurm cluster via helm chart. The
+LoginSet mounts the Secret into the login container:
 
 ```sh
+kubectl create namespace slurm
+kubectl create secret generic sssd-conf \
+  --namespace=slurm \
+  --from-file=sssd.conf="${HOME}/sssd.conf"
+
+cat > login-values.yaml <<EOF
+loginsets:
+  slinky:
+    enabled: true
+    login:
+      volumeMounts:
+        - name: sssd-conf
+          mountPath: /etc/sssd/sssd.conf
+          subPath: sssd.conf
+          readOnly: true
+    podSpec:
+      volumes:
+        - name: sssd-conf
+          secret:
+            secretName: sssd-conf
+            defaultMode: 0600
+EOF
+
 helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
-  --set 'loginsets.slinky.enabled=true' \
-  --set-file "loginsets.slinky.sssdConf=${HOME}/sssd.conf" \
-  --namespace=slurm --create-namespace
+  --values login-values.yaml \
+  --namespace=slurm
 ```
 
 #### With root Authorized Keys
@@ -426,12 +452,12 @@ helm install slurm oci://ghcr.io/slinkyproject/charts/slurm \
 SSH through the login service:
 
 ```sh
-SLURM_LOGIN_IP="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-SLURM_LOGIN_PORT="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ports[0].port}')"
+SLURM_LOGIN_HOST="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}')"
+SLURM_LOGIN_PORT="$(kubectl get services -n slurm slurm-login-slinky -o jsonpath='{.spec.ports[0].port}')"
 ## Assuming your public SSH key was configured in `loginsets.slinky.rootSshAuthorizedKeys`.
-ssh -p ${SLURM_LOGIN_PORT:-22} root@${SLURM_LOGIN_IP}
+ssh -p ${SLURM_LOGIN_PORT:-22} root@${SLURM_LOGIN_HOST}
 ## Assuming SSSD was configured correctly.
-ssh -p ${SLURM_LOGIN_PORT:-22} ${USER}@${SLURM_LOGIN_IP}
+ssh -p ${SLURM_LOGIN_PORT:-22} ${USER}@${SLURM_LOGIN_HOST}
 ```
 
 Then, from a login pod, run Slurm commands to quickly test that Slurm is
@@ -463,9 +489,8 @@ configFiles:
     AutoDetect=nvidia
 ```
 
-Slurm requires that [GresTypes] contains the "gpu" resource. Slinky sets this by
-default, otherwise set the value in `controller.extraConf` or
-`controller.extraConfMap`.
+Slurm requires that [GresTypes] contains the "gpu" resource. Set the value in
+`controller.extraConf` or `controller.extraConfMap`.
 
 ```yaml
 controller:
@@ -477,13 +502,15 @@ NodeSets should request GPUs in accordance with [device plugins][device-plugins]
 or [DRA]. In addition, `extraConf` or `extraConfMap` needs to define a [GRES] in
 accordance with the GPUs it should be allocated to.
 
-The following is an example is of a `gpu-gb200` NodeSet which has 4 GB200 GPUs.
+The following is an example of a `gpu-gb200` NodeSet which has 4 GB200 GPUs.
 This example assumes that the [NVIDIA gpu-operator][nvidia-gpu-operator] is
 running on the Kubernetes cluster.
 
 ```yaml
 nodesets:
   gpu-gb200:
+    partition:
+      enabled: true
     slurmd:
       resources:
         limits:
@@ -492,12 +519,12 @@ nodesets:
       Gres: ["gpu:GB200:4"]
 ```
 
-Within the NodeSet pod, all GPUs on the underlying host are visible in the
-output of the `nvidia-smi` command:
+Within the NodeSet pod, the allocated GPUs are visible in the output of the
+`nvidia-smi` command:
 
 ```bash
-$ kubectl exec -n slurm slurm-controller-0 -- srun bash -c "echo GPU Devices Available on $(hostname):; printf '\n';nvidia-smi"
-GPU Devices Available on validation-k8s-headnode:
+$ kubectl exec -n slurm slurm-controller-0 -- srun --partition=gpu-gb200 --gres=gpu:GB200:4 bash -c 'echo GPU Devices Available on $(hostname):; nvidia-smi'
+GPU Devices Available on gpu-gb200-0:
 
 Mon Apr 20 17:03:28 2026
 +-----------------------------------------------------------------------------------------+
@@ -547,7 +574,7 @@ automate the management and allocation of the IMEX daemons. This can be
 installed using the [NVIDIA GPU Operator][nvidia-gpu-operator].
 
 Historically, baremetal implementations of IMEX domain management with Slurm
-made use of complicated prolog and epilog scripts to standup IMEX channels on
+made use of complicated prolog and epilog scripts to stand up IMEX channels on
 nodes prior to job launch, and to clean them up after job completion. With
 Slurm-operator, these scripts should not be used, as they may interfere with the
 operations of the [GPU DRA driver][dra-driver-nvidia-gpu].
@@ -583,8 +610,8 @@ spec:
 
 The [SwitchType] field in [slurm.conf] should be set so that slurmctld can
 identify the type of switch that is being used for application communications.
-In Slinky clusters, this can be set on Controllers using the `spec.extraConf`
-map:
+In the Slurm chart, set it with `controller.extraConfMap`; the chart renders the
+result into the Controller's `spec.extraConf` string:
 
 ```yaml
 controller:
@@ -663,6 +690,7 @@ crw-rw-rw- 1 root root 509, 1 Apr 20 17:08 /dev/nvidia-caps-imex-channels/channe
 [mysql-operator]: https://dev.mysql.com/doc/mysql-operator/en/mysql-operator-installation-helm.html
 [nvidia-gpu-operator]: https://github.com/NVIDIA/gpu-operator
 [persistent-volume]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+[reclaim-policy]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
 [slurm-commands]: https://slurm.schedmd.com/quickstart.html#commands
 [slurm.conf]: https://slurm.schedmd.com/slurm.conf.html
 [sssd]: https://sssd.io/

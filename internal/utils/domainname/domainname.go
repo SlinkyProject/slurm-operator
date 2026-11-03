@@ -40,6 +40,9 @@ func clusterDomain() string {
 			}
 		}
 	}
+	if scanner.Err() != nil {
+		panic(fmt.Sprintf("failed to parse file: %s", resolvConfPath))
+	}
 
 	return defaultDomain
 }

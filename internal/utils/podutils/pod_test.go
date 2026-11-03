@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 )
 
 func TestIsRunningAndReady(t *testing.T) {
@@ -349,4 +351,30 @@ func TestIsHealthy(t *testing.T) {
 			require.Equal(t, tt.want, IsHealthy(tt.args.pod))
 		})
 	}
+}
+
+func TestIsPodCondemnedAndSettled(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	podWithValue := func(v string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					slinkyv1beta1.AnnotationPodCondemned: v,
+				},
+			},
+		}
+	}
+	require.False(t, IsPodCondemned(&corev1.Pod{}))
+	require.False(t, IsPodCondemnedSettled(&corev1.Pod{}, now))
+
+	require.True(t, IsPodCondemned(podWithValue("true")))
+	require.True(t, IsPodCondemnedSettled(podWithValue("true"), now))
+
+	unsettled := podWithValue(now.Add(-CondemnSettleWindow + time.Second).Format(time.RFC3339))
+	require.True(t, IsPodCondemned(unsettled))
+	require.False(t, IsPodCondemnedSettled(unsettled, now))
+
+	settled := podWithValue(now.Add(-CondemnSettleWindow).Format(time.RFC3339))
+	require.True(t, IsPodCondemned(settled))
+	require.True(t, IsPodCondemnedSettled(settled, now))
 }

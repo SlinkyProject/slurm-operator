@@ -75,10 +75,13 @@ EOR
    `slurmd` image can be built with these changes included:
 
 ```bash
+cd schedmd/slurm
 export VERSION=26.05
 export FLAVOR="rockylinux9"
-export BAKE_IMPORTS="--file ./docker-bake.hcl --file ./$VERSION/$FLAVOR/slurm.hcl"
-docker bake $BAKE_IMPORTS slurmd
+docker buildx bake \
+  --file docker-bake.hcl \
+  --file "$VERSION/$FLAVOR/slurm.hcl" \
+  slurmd
 ```
 
 After the image build has completed, a tag should be applied to distinguish the
@@ -99,10 +102,10 @@ docker tag 9434c2d4fae4 ghcr.io/slinkyproject/slurmd:jupyterlab
 ## Modifying the Slurm Helm chart's values for JupyterLab
 
 The Slurm Helm chart's `values.yaml` file must be modified for deploying
-JupyterHub. Specifically, the values of
+JupyterLab. Specifically, the values of
 `nodesets.slinky.slurmd.image.repository`, `nodesets.slinky.slurmd.image.tag`
 must be changed to reference the registry by which your images are provided and
-`nodesets.slinky.slurmd.ports` must be modified to expose the port on which
+`nodesets.slinky.slurmd.ports` can be configured to declare the port on which
 JupyterLab will be served.
 
 A minimal `values.yaml` for running JupyterLab within a Slurm-operator
@@ -113,6 +116,8 @@ nodesets:
   slinky:
     enabled: true
     replicas: 1
+    partition:
+      enabled: true
     slurmd:
       image:
         repository: ghcr.io/slinkyproject/slurmd
@@ -130,7 +135,7 @@ on a Slinky cluster:
 ```bash
 #!/bin/bash
 #SBATCH --job-name=jupyterlab-singleuser
-#SBATCH --account=vivian
+#SBATCH --partition=slinky
 #SBATCH --nodes=1
 #SBATCH --time=01:00:00
 #
@@ -141,7 +146,7 @@ jupyter lab --port=9999 --no-browser
 ## Accessing a JupyterLab Instance Running in a Slinky Cluster
 
 After submitting the above sbatch script, after the resultant job has been
-allocated resources, an instance of JupyterHub will be served on port 9999 of
+allocated resources, an instance of JupyterLab will be served on port 9999 of
 the Slurm worker pod on which it was scheduled.
 
 [`kubectl port-forward`] provides a means by which local ports can be forwarded

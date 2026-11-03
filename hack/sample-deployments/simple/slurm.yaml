@@ -1,0 +1,51 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: slurm-simple-cluster
+  namespace: argocd
+spec:
+  project: slurm-simple
+  source:
+    repoURL: https://github.com/SlinkyProject/slurm-operator
+    path: helm/slurm
+    targetRevision: v1.2.1
+    helm:
+      releaseName: slurm
+      values: |
+        clusterName: demo
+        loginsets:
+          login:
+            enabled: true
+        nodesets:
+          compute:
+            enabled: true
+            replicas: 1
+            partition:
+              enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: slurm
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+  ignoreDifferences:
+    - group: ''
+      kind: Secret
+      name: slurm-auth-slurm
+      namespace: slurm
+      jsonPointers:
+        - /data
+    - group: ''
+      kind: Secret
+      name: slurm-auth-jwt
+      namespace: slurm
+      jsonPointers:
+        - /data

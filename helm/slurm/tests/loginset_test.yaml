@@ -269,6 +269,60 @@ tests:
       - equal:
           path: spec.initconf.image
           value: registry.example.com/org/initconf@sha256:abcdef0123456789
+  - it: should omit deprecated ssh fields by default
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+    asserts:
+      - notExists:
+          path: spec.extraSshdConfig
+      - notExists:
+          path: spec.sssdConfRef
+  - it: should pass extraSshdConfig when set
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+          extraSshdConfig: |
+            UsePAM yes
+            PasswordAuthentication yes
+    asserts:
+      - equal:
+          path: spec.extraSshdConfig
+          value: |
+            UsePAM yes
+            PasswordAuthentication yes
+  - it: should reference sssd.conf when sssd.conf is set
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+      sssd:
+        conf: |
+          [sssd]
+          config_file_version = 2
+    asserts:
+      - equal:
+          path: spec.sssdConfRef
+          value:
+            name: test-release-slurm-sssd-conf
+            key: sssd.conf
+  - it: should reference sssd.secretRef when set
+    set:
+      loginsets:
+        slinky:
+          enabled: true
+      sssd:
+        secretRef:
+          name: my-sssd-secret
+          key: my-sssd.conf
+    asserts:
+      - equal:
+          path: spec.sssdConfRef
+          value:
+            name: my-sssd-secret
+            key: my-sssd.conf
   - it: should prefer digest over tag when both are set on initconf
     set:
       loginsets:

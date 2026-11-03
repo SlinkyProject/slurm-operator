@@ -105,7 +105,7 @@ type ControllerSpec struct {
 	// Ref: https://slurm.schedmd.com/slurm.conf.html
 	// +nullable
 	// +optional
-	ConfigFileRefs []corev1.LocalObjectReference `json:"configFileRefs,omitzero"`
+	ConfigFileRefs []ConfigMapProjection `json:"configFileRefs,omitzero"`
 
 	// PrologScriptRefs is a list of prolog scripts to be mounted in `/etc/slurm`.
 	// Ref: https://slurm.schedmd.com/prolog_epilog.html
@@ -154,6 +154,7 @@ type ControllerHighAvailability struct {
 
 	// Backups indicate the number of backup controllers to deploy.
 	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=2147483646
 	// +default:=1
 	// +optional
 	Backups *int32 `json:"backups,omitempty"`

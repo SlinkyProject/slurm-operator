@@ -1,0 +1,22 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: slurm-multi
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://github.com/EXAMPLE_ORG/EXAMPLE_GITOPS.git
+    - https://github.com/SlinkyProject/slurm-operator
+    - https://charts.jetstack.io
+    - https://jp-gouin.github.io/helm-openldap/
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cert-manager
+    - server: https://kubernetes.default.svc
+      namespace: slinky
+    - server: https://kubernetes.default.svc
+      namespace: tenant-*
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

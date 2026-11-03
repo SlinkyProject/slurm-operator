@@ -70,6 +70,8 @@ spec:
                 description: |-
                   ExtraSshdConfig is added to the end of `sshd_config`.
                   Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
+
+                  Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
                 type: string
               initconf:
                 description: |-
@@ -95,7 +97,7 @@ spec:
                 format: int32
                 type: integer
               rootSshAuthorizedKeys:
-                description: RootSshAuthorizedKeys is `root/.ssh/authorized_keys`.
+                description: RootSshAuthorizedKeys is written to `/root/.ssh/authorized_keys`.
                 type: string
               service:
                 description: Service defines a template for a Kubernetes Service object.
@@ -145,8 +147,10 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               sssdConfRef:
-                description: SssdConfRef is a reference to a secret containing the
-                  `sssd.conf`.
+                description: |-
+                  SssdConfRef is a reference to a secret containing the `sssd.conf`.
+
+                  Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
@@ -256,7 +260,6 @@ spec:
                 type: object
             required:
             - controllerRef
-            - sssdConfRef
             type: object
           status:
             description: LoginSetStatus defines the observed state of LoginSet

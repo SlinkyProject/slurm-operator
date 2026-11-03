@@ -5,12 +5,12 @@ package e2e
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
-	"sigs.k8s.io/e2e-framework/klient/conf"
 	"sigs.k8s.io/e2e-framework/pkg/env"
-	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 
 	"github.com/SlinkyProject/slurm-operator/test"
@@ -25,14 +25,36 @@ func parseE2EFlags(imageConfig *test.SlurmImageConfig) {
 // TestMain configures the environment within which all e2e-tests are run
 func TestMain(m *testing.M) {
 	parseE2EFlags(&test.SlurmImage)
+	os.Exit(runTests(m))
+}
 
-	path := conf.ResolveKubeConfigFile()
-	cfg := envconf.NewWithKubeConfig(path)
+func runTests(m *testing.M) int {
+	dir, err := os.MkdirTemp("", "slurm-operator-e2e-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "kubeconfig")
+	cfg, err := test.E2EConfig(path)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	// This also scopes direct go test invocations, including every subprocess.
+	if err := os.Setenv("KUBECONFIG", path); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := os.Setenv("HELM_KUBECONTEXT", cfg.KubeContext()); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	test.Testenv = env.NewWithConfig(cfg)
 	test.Basepath = test.GetBasePath()
 
 	// launch package tests
-	os.Exit(test.Testenv.Run(m))
+	return test.Testenv.Run(m)
 }
 
 func TestSlurmChart(t *testing.T) {

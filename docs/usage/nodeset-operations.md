@@ -68,15 +68,16 @@ A node is **drained** when `SlurmNodeStateDrain` is `True`,
 
 ## Cordoning Pods
 
-To trigger a Slurm drain from the Kubernetes side, set the `pod-cordon`
-annotation on a NodeSet pod:
+To trigger a Slurm drain from the Kubernetes side, set the
+`pod-cordon-requested` annotation on a NodeSet pod:
 
 ```sh
-kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon=true
+kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-requested=true
 ```
 
-The operator will detect this annotation and drain the corresponding Slurm node.
-To verify the drain took effect:
+The operator will detect this annotation, set
+`nodeset.slinky.slurm.net/pod-cordon=true` on the pod, and drain the
+corresponding Slurm node. To verify the drain took effect:
 
 ```sh
 kubectl get pod <pod> -o jsonpath='{.status.conditions[?(@.type=="SlurmNodeStateDrain")].status}'
@@ -85,19 +86,20 @@ kubectl get pod <pod> -o jsonpath='{.status.conditions[?(@.type=="SlurmNodeState
 To reverse the drain, remove the annotation:
 
 ```sh
-kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-
+kubectl annotate pod <pod> nodeset.slinky.slurm.net/pod-cordon-requested-
 ```
 
-The operator will undrain the Slurm node, provided the Kubernetes node is not
-cordoned and the drain reason was set by the operator.
+The operator will remove `pod-cordon` and undrain the Slurm node, provided the
+Kubernetes node is not cordoned and the drain reason was set by the operator.
 
 ## Custom Drain Reasons
 
 When a Kubernetes node is cordoned, the operator cordons all NodeSet pods on the
-Kubernetes node by ensure the Slurm node is drained. By default, the drain
-reason propagated to Slurm is a generic message.
+Kubernetes node by setting the `pod-cordon` annotation and ensuring the Slurm
+node is drained. By default, the drain reason propagated to Slurm is a generic
+message.
 
-It should be noted that the operator always prefixed the Slurm node drain reason
+It should be noted that the operator always prefixes the Slurm node drain reason
 with `slurm-operator:`. This is done to indicate if the reason was set by the
 operator, or some other source. If set by the operator, it can freely manage the
 drain state, otherwise it will not make changes to drain state until cleared by
@@ -192,13 +194,14 @@ first. The full sort order (first match wins):
 1. `Pending` phase before `Unknown` before `Running`
 1. Not-ready pods before ready pods
 1. Lower `pod-deletion-cost` before higher
+1. Cordoned pods (`pod-cordon`) before uncordoned pods
+1. Condemned pods (`pod-condemned`) before non-condemned pods
 1. Earlier `pod-deadline` before later
-1. Cordoned pods before uncordoned pods
 1. Higher ordinal before lower ordinal
 1. More recently ready before longer-ready
 1. More recently created before older
 
-The following are the annotations are honored on a best-effort basis and do not
+The following annotations are honored on a best-effort basis and do not
 guarantee deletion order.
 
 ### Pod Deletion Cost
@@ -212,7 +215,8 @@ same NodeSet. Pods with **lower** deletion cost are preferred to be deleted
 before pods with higher deletion cost.
 
 The implicit value for this annotation for pods that don't set it is 0; negative
-values are permitted. Invalid values will be rejected by the API server.
+values are permitted. The annotation is an ordinary string annotation, so the
+API server does not validate it; the operator treats an invalid value as `0`.
 
 ```sh
 # Protect this pod from early deletion
@@ -254,12 +258,16 @@ kubectl get pod <pod> -o jsonpath='{.metadata.labels.nodeset\.slinky\.slurm\.net
 ## Customizing the slurmd preStop Hook
 
 When a NodeSet pod terminates, the slurmd container runs a `preStop` hook that
-marks its Slurm node down, so the Slurm controller stops assigning work to a
-node that is going away:
+marks its Slurm node down and drains it, so the Slurm controller stops assigning
+work to a node that is going away:
 
 ```sh
 scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
+scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
 ```
+
+The drain keeps `ReturnToService=2` from reviving the node while the pod is
+still terminating.
 
 Set `spec.slurmd.lifecycle.preStop` on the NodeSet to run something else
 instead. Your handler replaces the default outright — it does not run in
@@ -308,9 +316,10 @@ Points to keep in mind:
 - To neutralize the hook without replacing its behavior, use a command that does
   nothing, such as `["/usr/bin/true"]`.
 - This hook is a last-resort safety net, not the primary drain mechanism. On
-  scale-in the controller drains each Slurm node and waits for it to finish
-  before deleting the pod, and `spec.pruneSlurmNodeRecords` governs when the
-  operator deletes Slurm node records.
+  scale-in the controller drains each available Slurm node record and waits for
+  it to finish before deleting the pod. A missing Slurm client or node record is
+  treated as already drained. `spec.pruneSlurmNodeRecords` governs when the
+  operator deletes defunct Slurm node records.
 
 ## External Drain Preservation
 
@@ -325,7 +334,9 @@ prefix, it treats the reason as externally owned and takes no action:
   directly in Slurm.
 
 This means that drains set via `scontrol` or other Slurm management tools are
-preserved across operator reconciliation cycles.
+preserved during normal cordon reconciliation. If the pod is selected for
+scale-in or an update, the controller may replace the external reason because
+that path must drain and retire the pod.
 
 ## External Health Checker Integration Pattern
 
@@ -348,13 +359,11 @@ sequenceDiagram
     HC->>KAPI: Annotate node with node-cordon-reason
     HC->>KAPI: Cordon node (set Unschedulable)
     KAPI-->>NS: Watch event triggers reconcile
-    NS->>KAPI: Set pod-cordon=true on affected pods
     NS->>SAPI: Drain Slurm nodes (with custom reason)
 
     note over HC: Repair hardware
     HC->>KAPI: Uncordon node
     KAPI-->>NS: Watch event triggers reconcile
-    NS->>KAPI: Remove pod-cordon from pods
     NS->>SAPI: Undrain Slurm nodes
 ```
 
@@ -376,7 +385,7 @@ NodeSet.
 
 #### Node Pinning
 
-When enabled, NodeSet pods are pinned to the Kubernetes node it was first
+When enabled, NodeSet pods are pinned to the Kubernetes node they were first
 scheduled on. Once a pod is assigned to a node, subsequent recreations of that
 pod (e.g. after eviction, deletion, or node maintenance) will always land on the
 same physical node. If the node is unavailable, the pod remains in `Pending`
@@ -417,8 +426,10 @@ When enabled, the controller:
 
 ### DaemonSet Mode
 
-When using `scalingMode=Daemonset`, Nodeset pods are strictly mapped to
-Kubernetes nodes and share the hostname of the node they run on.
+When using `scalingMode=DaemonSet`, NodeSet pods are strictly mapped to
+Kubernetes nodes. By default, the pod hostname and Slurm node name are the first
+DNS label of the Kubernetes node name. Set the Kubernetes node annotation
+`nodeset.slinky.slurm.net/hostname-override` to use a different hostname.
 
 <!-- Links -->
 

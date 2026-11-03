@@ -16,8 +16,21 @@ const (
 
 // Well Known Annotations
 const (
-	// AnnotationPodCordon indicates NodeSet Pods that should be DRAIN[ING|ED] in Slurm.
+	// AnnotationPodCordon indicates NodeSet Pods that should be cordoned, usually due to Kubernetes node cordon.
+	// Cordoned means the contained Slurm node will be set to DRAIN, and undrained when uncordoned.
+	// This annotation is managed by the operator.
 	AnnotationPodCordon = NodeSetPrefix + "pod-cordon"
+
+	// AnnotationPodCordonRequested indicates NodeSet Pods that an external source has marked to be cordoned.
+	// Cordoned means the contained Slurm node will be set to DRAIN, and undrained when uncordoned.
+	// This annotation is managed by the user.
+	AnnotationPodCordonRequested = NodeSetPrefix + "pod-cordon-requested"
+
+	// AnnotationPodCondemned indicates NodeSet Pods that are candidates for deletion and are also cordoned,
+	// usually due to scale-in or update.
+	// Cordoned means the contained Slurm node will be set to DRAIN, and undrained when uncordoned.
+	// This annotation is managed by the operator.
+	AnnotationPodCondemned = NodeSetPrefix + "pod-condemned"
 
 	// LabelPodDeletionCost can be used to set to an int32 that represent the cost of deleting a pod compared to other
 	// pods belonging to the same ReplicaSet. Pods with lower deletion cost are preferred to be deleted before pods

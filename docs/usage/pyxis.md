@@ -37,13 +37,17 @@ Configure one or more NodeSets and the login pods to use a pyxis OCI image.
 
 ```yaml
 loginsets:
-  - name: pyxis
-    image:
-      repository: ghcr.io/slinkyproject/login-pyxis
+  pyxis:
+    login:
+      image:
+        repository: ghcr.io/slinkyproject/login-pyxis
 nodesets:
-  - name: pyxis
-    image:
-      repository: ghcr.io/slinkyproject/slurmd-pyxis
+  pyxis:
+    slurmd:
+      image:
+        repository: ghcr.io/slinkyproject/slurmd-pyxis
+    partition:
+      enabled: true
 ```
 
 To make enroot activity in the login container permissible, it requires
@@ -51,11 +55,12 @@ To make enroot activity in the login container permissible, it requires
 
 ```yaml
 loginsets:
-  - name: pyxis
-    image:
-      repository: ghcr.io/slinkyproject/login-pyxis
-    securityContext:
-      privileged: true
+  pyxis:
+    login:
+      image:
+        repository: ghcr.io/slinkyproject/login-pyxis
+      securityContext:
+        privileged: true
 ```
 
 ## Test
@@ -78,7 +83,7 @@ PRETTY_NAME="Alpine Linux v3.21"
 ```
 
 > [!WARNING]
-> SPANK plugins will only work on specific Slurm node that have them and is
+> SPANK plugins will only work on specific Slurm nodes that have them and are
 > configured to use them. It is best to constrain where jobs run with
 > `--partition=<partition>`, `--batch=<features>`, and/or
 > `--constraint=<features>` to ensure a compatible computing environment.

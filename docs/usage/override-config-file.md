@@ -98,13 +98,15 @@ Spec:
       Mount Path:  /etc/enroot/enroot.conf
       Name:        enroot-config
       Sub Path:    enroot.conf
-  Volumes:
-    Config Map:
-      Items:
-        Key:   enroot
-        Path:  enroot.conf
-      Name:    enroot-config
-    Name:      enroot-config
+  Template:
+    Spec:
+      Volumes:
+        Config Map:
+          Items:
+            Key:   enroot
+            Path:  enroot.conf
+          Name:    enroot-config
+        Name:      enroot-config
 ```
 
 Within the `slurmd` container of the `slurm-worker-` pod, the file at the

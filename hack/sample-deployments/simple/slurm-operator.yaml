@@ -1,0 +1,29 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: slurm-simple-operator
+  namespace: argocd
+spec:
+  project: slurm-simple
+  source:
+    repoURL: https://github.com/SlinkyProject/slurm-operator
+    path: helm/slurm-operator
+    targetRevision: v1.2.1
+    helm:
+      releaseName: slurm-operator
+      values: |
+        crds:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: slinky
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10

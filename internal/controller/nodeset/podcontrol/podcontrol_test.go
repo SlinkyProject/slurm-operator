@@ -98,8 +98,6 @@ func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.Volum
 			UID:       types.UID("test"),
 		},
 		Spec: slinkyv1beta1.NodeSetSpec{
-			Replicas:    ptr.To(replicas),
-			ScalingMode: slinkyv1beta1.ScalingModeStatefulset,
 			Slurmd: slinkyv1beta1.ContainerWrapper{
 				Container: corev1.Container{
 					Image:        "nginx",
@@ -108,6 +106,10 @@ func newNodeSetWithVolumes(replicas int32, name string, petMounts []corev1.Volum
 			},
 			Template:             template,
 			VolumeClaimTemplates: claims,
+			Replicas:             ptr.To(replicas),
+			ScaleStrategy: slinkyv1beta1.NodeSetScaleStrategy{
+				Mode: slinkyv1beta1.ScalingModeStatefulset,
+			},
 			UpdateStrategy: slinkyv1beta1.NodeSetUpdateStrategy{
 				Type: slinkyv1beta1.RollingUpdateNodeSetStrategyType,
 			},
@@ -575,7 +577,7 @@ func Test_realPodControl_IsPodPVCsStale(t *testing.T) {
 	for _, tc := range testCases {
 		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.Name = "set"
-		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 		nodeset.Namespace = corev1.NamespaceDefault
 		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
 			WhenDeleted: slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType,
@@ -853,7 +855,7 @@ func Test_isClaimOwnerUpToDate(t *testing.T) {
 					}
 					nodeset := slinkyv1beta1.NodeSet{}
 					nodeset.Name = "nodeset"
-					nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+					nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 					nodeset.GetObjectMeta().SetUID("ss-456")
 					nodeset.Spec.PersistentVolumeClaimRetentionPolicy = slinkyv1beta1.NodeSetPersistentVolumeClaimRetentionPolicy{
 						WhenScaled:  tc.scaleDownPolicy,
@@ -1062,7 +1064,7 @@ func TestEdgeCases_isClaimOwnerUpToDate(t *testing.T) {
 		}
 		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.Name = "nodeset"
-		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 		nodeset.GetObjectMeta().SetUID("ss-456")
 		nodeset.Spec.PersistentVolumeClaimRetentionPolicy = tc.policy
 		claim.SetOwnerReferences(tc.ownerRefs)
@@ -1243,7 +1245,7 @@ func Test_hasUnexpectedController(t *testing.T) {
 		nodeset := &slinkyv1beta1.NodeSet{}
 		nodeset.SetName("set")
 		nodeset.SetUID("set-uid")
-		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 		pod := &corev1.Pod{}
 		pod.SetName("pod")
 		pod.SetUID("pod-uid")
@@ -1443,7 +1445,7 @@ func Test_hasNonControllerOwner(t *testing.T) {
 		nodeset := slinkyv1beta1.NodeSet{}
 		nodeset.SetUID(tc.setUID)
 		nodeset.SetName("set")
-		nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 		got := hasNonControllerOwner(&claim, &nodeset, &pod)
 		require.Equal(t, tc.nonController, got, "Failed %s", tc.name)
 	}
@@ -1526,7 +1528,7 @@ func Test_updateClaimOwnerRefForSetAndPod(t *testing.T) {
 			logger := klog.FromContext(ctx)
 			nodeset := slinkyv1beta1.NodeSet{}
 			nodeset.Name = "nss"
-			nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+			nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 			numReplicas := int32(5)
 			nodeset.Spec.Replicas = &numReplicas
 			nodeset.SetUID("nss-123")
@@ -1635,7 +1637,7 @@ func Test_getPersistentVolumeClaimRetentionPolicy(t *testing.T) {
 	}
 
 	nodeset := slinkyv1beta1.NodeSet{}
-	nodeset.Spec.ScalingMode = slinkyv1beta1.ScalingModeStatefulset
+	nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeStatefulset
 	nodeset.Spec.PersistentVolumeClaimRetentionPolicy = retainPolicy
 	got := getPersistentVolumeClaimRetentionPolicy(&nodeset)
 	require.Equal(t, slinkyv1beta1.RetainPersistentVolumeClaimRetentionPolicyType, got.WhenScaled)

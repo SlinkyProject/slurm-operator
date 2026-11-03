@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: slurm-simple
+  namespace: argocd
+spec:
+  sourceRepos:
+    - https://charts.jetstack.io
+    - https://github.com/SlinkyProject/slurm-operator
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cert-manager
+    - server: https://kubernetes.default.svc
+      namespace: slinky
+    - server: https://kubernetes.default.svc
+      namespace: slurm
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

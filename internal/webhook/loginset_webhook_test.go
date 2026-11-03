@@ -15,15 +15,23 @@ import (
 var _ = Describe("LoginSet Webhook", func() {
 	Context("When Creating a LoginSet with Validating Webhook", func() {
 		It("Should deny if controllerRef.name is empty", func(ctx SpecContext) {
-			loginset := testutils.NewLoginset("test-loginset", nil, testutils.NewSssdConfRef("test"))
+			loginset := testutils.NewLoginset("test-loginset", nil, nil)
 
 			_, err := loginSetWebhook.ValidateCreate(ctx, loginset)
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should deny if sssdConfRef.name is empty", func(ctx SpecContext) {
+		It("Should permit sssdConfRef=nil", func(ctx SpecContext) {
 			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			loginset := testutils.NewLoginset("test-loginset", controller, corev1.SecretKeySelector{})
+			loginset := testutils.NewLoginset("test-loginset", controller, nil)
+
+			_, err := loginSetWebhook.ValidateCreate(ctx, loginset)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Should deny if sssdConfRef.name is given and empty", func(ctx SpecContext) {
+			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			loginset := testutils.NewLoginset("test-loginset", controller, &corev1.SecretKeySelector{})
 
 			_, err := loginSetWebhook.ValidateCreate(ctx, loginset)
 			Expect(err).To(HaveOccurred())
@@ -31,7 +39,7 @@ var _ = Describe("LoginSet Webhook", func() {
 
 		It("Should admit if all required fields are provided", func(ctx SpecContext) {
 			controller := testutils.NewController("valid-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			loginset := testutils.NewLoginset("test-loginset", controller, testutils.NewSssdConfRef("test"))
+			loginset := testutils.NewLoginset("test-loginset", controller, nil)
 
 			_, err := loginSetWebhook.ValidateCreate(ctx, loginset)
 			Expect(err).NotTo(HaveOccurred())
@@ -39,7 +47,7 @@ var _ = Describe("LoginSet Webhook", func() {
 
 		It("Should warn if external IPs are set", func(ctx SpecContext) {
 			controller := testutils.NewController("valid-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			loginset := testutils.NewLoginset("test-loginset", controller, testutils.NewSssdConfRef("test"))
+			loginset := testutils.NewLoginset("test-loginset", controller, nil)
 			loginset.Spec.Service.ServiceSpecWrapper.ExternalIPs = []string{"169.254.169.254"}
 
 			warnings, err := loginSetWebhook.ValidateCreate(ctx, loginset)
@@ -51,10 +59,10 @@ var _ = Describe("LoginSet Webhook", func() {
 	Context("When Updating a LoginSet with Validating Webhook", func() {
 		It("Should reject changes to controllerRef", func(ctx SpecContext) {
 			oldController := testutils.NewController("old-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			oldLoginSet := testutils.NewLoginset("test-loginset", oldController, testutils.NewSssdConfRef("test"))
+			oldLoginSet := testutils.NewLoginset("test-loginset", oldController, nil)
 
 			newController := testutils.NewController("new-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			newLoginSet := testutils.NewLoginset("test-loginset", newController, testutils.NewSssdConfRef("test"))
+			newLoginSet := testutils.NewLoginset("test-loginset", newController, nil)
 
 			_, err := loginSetWebhook.ValidateUpdate(ctx, oldLoginSet, newLoginSet)
 			Expect(err).To(HaveOccurred())
@@ -62,8 +70,8 @@ var _ = Describe("LoginSet Webhook", func() {
 
 		It("Should admit if no immutable fields change", func(ctx SpecContext) {
 			controller := testutils.NewController("valid-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
-			oldLoginSet := testutils.NewLoginset("test-loginset", controller, testutils.NewSssdConfRef("test"))
-			newLoginSet := testutils.NewLoginset("test-loginset", controller, testutils.NewSssdConfRef("test"))
+			oldLoginSet := testutils.NewLoginset("test-loginset", controller, nil)
+			newLoginSet := testutils.NewLoginset("test-loginset", controller, nil)
 			newLoginSet.Spec.Replicas = ptr.To(int32(2))
 
 			_, err := loginSetWebhook.ValidateUpdate(ctx, oldLoginSet, newLoginSet)
@@ -73,7 +81,7 @@ var _ = Describe("LoginSet Webhook", func() {
 
 	Context("When Deleting a LoginSet with Validating Webhook", func() {
 		It("Should admit a Delete", func(ctx SpecContext) {
-			loginset := testutils.NewLoginset("test-loginset", nil, corev1.SecretKeySelector{})
+			loginset := testutils.NewLoginset("test-loginset", nil, nil)
 
 			_, err := loginSetWebhook.ValidateDelete(ctx, loginset)
 			Expect(err).NotTo(HaveOccurred())

@@ -62,7 +62,8 @@ be built by running the following command, where `<version>` must be replaced
 with the Slurm version, and `<distribution>` with the distribution desired:
 
 ```bash
-docker bake --file containers/schedmd/slurm/docker-bake.hcl --file containers/schedmd/slurm/<version>/<distribution>/slurm.hcl
+cd schedmd/slurm
+docker buildx bake --file docker-bake.hcl --file "<version>/<distribution>/slurm.hcl"
 ```
 
 After building the images, they must be made available on your cluster via a
@@ -76,7 +77,9 @@ values at `nodesets.slinky.slurmd.image`, where `slinky` is replaced by the name
 of your NodeSet, can be used to specify the repository and tag of the image used
 by Slurm Operator to deploy that NodeSet's slurmd pods. These values must be
 modified to reference the container registry within which the images built in
-the previous step are hosted and the tag that was applied to them.
+the previous step are hosted and the tag that was applied to them. Enable the
+`slinky` partition with `nodesets.slinky.partition.enabled=true`; the job below
+submits to that partition.
 
 > [!NOTE]
 > Take note of the `ImagePullPolicy` that is [set by default by Kubernetes].
@@ -84,7 +87,7 @@ the previous step are hosted and the tag that was applied to them.
 ## Running
 
 The functionality can be tested by running Pytorch within Slurm. Create the
-following sbatch script as the file `pytorch-sbatsh.sh`:
+following sbatch script as the file `pytorch-sbatch.sh`:
 
 ```bash
 #!/bin/bash

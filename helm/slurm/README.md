@@ -1,6 +1,6 @@
 # slurm
 
-![Version: 1.3.0-rc1](https://img.shields.io/badge/Version-1.3.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.05](https://img.shields.io/badge/AppVersion-26.05-informational?style=flat-square)
+![Version: 1.4.0-rc1](https://img.shields.io/badge/Version-1.4.0--rc1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 26.05](https://img.shields.io/badge/AppVersion-26.05-informational?style=flat-square)
 
 Slurm Cluster
 
@@ -43,6 +43,7 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | accounting.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | accounting.slurmdbd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS |
+| accounting.slurmdbd.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_ENVIRONMENT-VARIABLES |
 | accounting.slurmdbd.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmdbd","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | accounting.slurmdbd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | accounting.storageConfig.database | string | `"slurm_acct_db"` | The name of the database where records are written into. Ref: https://slurm.schedmd.com/slurmdbd.conf.html#OPT_StorageLoc |
@@ -52,13 +53,14 @@ Kubernetes: `>= 1.29.0-0`
 | accounting.storageConfig.username | string | `"slurm"` | The name of the user used to connect to the database with. Ref: https://slurm.schedmd.com/slurmdbd.conf.html#OPT_StorageUser |
 | asciiArt | bool | `true` | Toggle ASCII art in Helm installation notes. |
 | clusterName | string | `nil` | The cluster name, which uniquely identifies the Slurm cluster. If empty, one will be derived from the Controller CR object. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_ClusterName |
-| configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
+| configFileRefs | list(slinkyv1beta1.ConfigMapProjection | `[]` | ) Extra Slurm config files to be mounted to `/etc/slurm`. WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
+| configFiles | map[string]string | `{}` | Extra Slurm config files to be mounted to `/etc/slurm`. WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`. Ref: https://slurm.schedmd.com/man_index.html#configuration_files |
 | controller.external | bool | `false` | Configures this component as external (not in Kubernetes). |
-| controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmdbd host address or IP. |
+| controller.externalConfig.host | string | `"slurmctld.example.com"` | The slurmctld host address or IP. |
 | controller.externalConfig.port | string | `nil` | The slurmctld port. Default is 6817. |
 | controller.extraConf | string | `nil` | Raw extra Slurm configuration lines appended to `slurm.conf`. Ref: https://slurm.schedmd.com/slurm.conf.html |
 | controller.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra Slurm configuration lines appended to `slurm.conf`. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html |
-| controller.ha.backups | int | `1` | Indicates how may secondary (backup) controllers to deploy. |
+| controller.ha.backups | int | `1` | Indicates how many secondary (backup) controllers to deploy. |
 | controller.ha.enabled | bool | `false` | Indicates if HA mode should be used. When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required. |
 | controller.inplaceReconfigure | bool | `false` | Indicates how reconfigure is handled when Slurm configuration changes. When true, the reconfigure sidecar will do reconfigure inplace. When false, the pod will be recreated and reconfigure done only on startup. |
 | controller.logfile.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
@@ -88,6 +90,7 @@ Kubernetes: `>= 1.29.0-0`
 | controller.service.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | controller.service.spec | corev1.ServiceSpec | `{}` | Extend the service template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/services-networking/service/ |
 | controller.slurmctld.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS |
+| controller.slurmctld.env | list | `[]` | Environment passed to the image. Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_ENVIRONMENT-VARIABLES |
 | controller.slurmctld.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmctld","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | controller.slurmctld.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | epilogScriptRefs | list | `[]` | References to existing ConfigMaps containing Slurm Epilog scripts to mount in `/etc/slurm`. Keys (filenames) become `Epilog=` values, so follow the `epilog-*` naming used by `epilogScripts`. WARNING: Keys must be unique across this list, `epilogScripts`, any enabled vendor scripts (e.g. DCGM), and every other ConfigMap mounted in `/etc/slurm`. |
@@ -105,9 +108,8 @@ Kubernetes: `>= 1.29.0-0`
 | jwtKey.annotations | object | `{}` | Annotations to add to the secret upon creation. |
 | jwtKey.create | bool | `true` | The secret will be created when true. |
 | jwtKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
-| loginsetDefaults | object | `{"enabled":true,"extraSshdConfig":null,"initconf":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"login":{"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/login","tag":"26.05-ubuntu26.04"},"resources":{},"securityContext":{"privileged":false},"volumeMounts":[]},"metadata":{},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"rootSshAuthorizedKeys":null,"service":{"metadata":{},"spec":{"type":"LoadBalancer"}},"strategy":{}}` | Defines defaults for the LoginSet map values. |
+| loginsetDefaults | object | `{"enabled":true,"initconf":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"login":{"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/login","tag":"26.05-ubuntu26.04"},"resources":{},"securityContext":{"privileged":false},"volumeMounts":[]},"metadata":{},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"replicas":1,"rootSshAuthorizedKeys":null,"service":{"metadata":{},"spec":{"type":"LoadBalancer"}},"strategy":{}}` | Defines defaults for the LoginSet map values. |
 | loginsetDefaults.enabled | bool | `true` | Enable use of this LoginSet. |
-| loginsetDefaults.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html |
 | loginsetDefaults.initconf.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | loginsetDefaults.initconf.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | loginsetDefaults.login.env | list | `[]` | Environment passed to the image. |
@@ -132,19 +134,17 @@ Kubernetes: `>= 1.29.0-0`
 | loginsets | map[string]object | `{}` | Slurm LoginSet (sackd, sshd, sssd) configurations. |
 | nameOverride | string | `nil` | Overrides the name of the release. |
 | namespaceOverride | string | `nil` | Overrides the namespace of the release. |
-| nodesetDefaults | object | `{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"ordinalPadding":0,"oversubscribeNode":false,"partition":{"config":null,"configMap":{},"enabled":false},"pinToNode":false,"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"pruneSlurmNodeRecords":"Never","replicas":1,"scalingMode":"StatefulSet","slurmd":{"args":[],"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"},"lifecycle":{},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false,"extraSshdConfig":null},"syncTopology":true,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"scheduledUpdate":{},"type":"RollingUpdate"},"workloadDisruptionProtection":true}` | Defines defaults for the NodeSet map values. |
+| nodesetDefaults | object | `{"enabled":true,"extraConf":null,"extraConfMap":{},"logfile":{"image":{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"},"resources":{}},"metadata":{},"oversubscribeNode":false,"partition":{"config":null,"configMap":{},"enabled":false},"podSpec":{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]},"pruneSlurmNodeRecords":"Never","replicas":1,"scaleStrategy":{},"slurmd":{"args":[],"env":[],"image":{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"},"lifecycle":{},"resources":{},"volumeMounts":[]},"ssh":{"enabled":false},"syncTopology":true,"updateStrategy":{"rollingUpdate":{"maxUnavailable":"25%"},"scheduledUpdate":{},"type":"RollingUpdate"},"workloadDisruptionProtection":true}` | Defines defaults for the NodeSet map values. |
 | nodesetDefaults.enabled | bool | `true` | Enable use of this NodeSet. |
 | nodesetDefaults.extraConf | string | `nil` | Raw extra configuration added to the `--conf` argument. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesetDefaults.extraConfMap | map[string]string \| map[string][]string | `{}` | Extra configuration added to the `--conf` option. If `extraConf` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurmd.html#OPT_conf-%3Cnode-parameters%3E Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_NODE-CONFIGURATION |
 | nodesetDefaults.logfile.image | string \| object | `{"digest":null,"repository":"docker.io/library/alpine","tag":"latest"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
 | nodesetDefaults.logfile.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesetDefaults.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
-| nodesetDefaults.ordinalPadding | int | `0` | How many places to pad with zeroes when constructing the pod ordinal. |
 | nodesetDefaults.oversubscribeNode | bool | `false` | Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity). WARNING: This option is **NOT** recommended for production usage. |
-| nodesetDefaults.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
+| nodesetDefaults.partition.config | string | `nil` | Raw Slurm partition configuration options added to the partition line. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.configMap | map[string]string \| map[string][]string | `{}` | The Slurm partition configuration options added to the partition line. If `config` is not empty, it takes precedence. Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION |
 | nodesetDefaults.partition.enabled | bool | `false` | Enable NodeSet partition creation. |
-| nodesetDefaults.pinToNode | bool | `false` | Pin pods to their initially assigned Kubernetes nodes. |
 | nodesetDefaults.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[],"volumes":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | nodesetDefaults.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
 | nodesetDefaults.podSpec.initContainers | list | `[]` | Additional initContainers for the pod. Ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Ref: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ |
@@ -152,17 +152,16 @@ Kubernetes: `>= 1.29.0-0`
 | nodesetDefaults.podSpec.resources | object | `{}` | The pod resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesetDefaults.podSpec.tolerations | list | `[]` | Tolerations for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/ |
 | nodesetDefaults.podSpec.volumes | list | `[]` | List of volumes to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
-| nodesetDefaults.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never; NodeNotFound. |
-| nodesetDefaults.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is daemonset. |
-| nodesetDefaults.scalingMode | string | `"StatefulSet"` | Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node). |
+| nodesetDefaults.pruneSlurmNodeRecords | string | `"Never"` | Control when the operator deletes Slurm node records. One of: Never; NodeNotFound; Auto. |
+| nodesetDefaults.replicas | int | `1` | Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`. |
+| nodesetDefaults.scaleStrategy | slinkyv1beta1.ScaleStrategy | `{}` | Scale strategy configuration. |
 | nodesetDefaults.slurmd.args | list | `[]` | Arguments passed to the image. Ref: https://slurm.schedmd.com/slurmd.html#SECTION_OPTIONS |
 | nodesetDefaults.slurmd.env | list | `[]` | Environment passed to the image. |
 | nodesetDefaults.slurmd.image | string \| object | `{"digest":null,"repository":"ghcr.io/slinkyproject/slurmd","tag":"26.05-ubuntu26.04"}` | The image to use. Ref: https://kubernetes.io/docs/concepts/containers/images/#image-names |
-| nodesetDefaults.slurmd.lifecycle | corev1.Lifecycle | `{}` | The container lifecycle hooks. A `preStop` hook set here replaces the operator default, which marks the Slurm node down as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';` Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ |
+| nodesetDefaults.slurmd.lifecycle | corev1.Lifecycle | `{}` | The container lifecycle hooks. A `preStop` hook set here replaces the operator default, which marks the Slurm node down and drains it as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';` Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/ |
 | nodesetDefaults.slurmd.resources | object | `{}` | The container resource limits and requests. Ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container |
 | nodesetDefaults.slurmd.volumeMounts | list | `[]` | List of volume mounts to use. Ref: https://kubernetes.io/docs/concepts/storage/volumes/ |
 | nodesetDefaults.ssh.enabled | bool | `false` | Enable SSH access to worker pods with pam_slurm_adopt. Ref: https://slurm.schedmd.com/pam_slurm_adopt.html |
-| nodesetDefaults.ssh.extraSshdConfig | string | `nil` | Extra configuration lines appended to `/etc/ssh/sshd_config`. Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html |
 | nodesetDefaults.syncTopology | bool | `true` | Control whether Slurm-operator syncs K8s node topology annotations to Slurm |
 | nodesetDefaults.updateStrategy.rollingUpdate.maxUnavailable | string | `"25%"` | Maximum number of pods that can be unavailable during update. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | nodesetDefaults.updateStrategy.type | string | `"RollingUpdate"` | The strategy type. Can be one of: RollingUpdate; OnDelete, ScheduledUpdate. |
@@ -185,7 +184,7 @@ Kubernetes: `>= 1.29.0-0`
 | prologSlurmctldScripts | map[string]string | `{}` | The Slurm PrologSlurmctld scripts run on slurmctld at job allocation. The map key represents the filename; the map value represents the script contents. WARNING: The script must include a shebang (!) so it can be executed correctly by Slurm. Ref: https://slurm.schedmd.com/slurm.conf.html#OPT_PrologSlurmctld Ref: https://slurm.schedmd.com/prolog_epilog.html Ref: https://en.wikipedia.org/wiki/Shebang_(Unix) |
 | restapi.metadata | object | `{}` | Labels and annotations. Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | restapi.pdb.enabled | bool | `false` | Enable PodDisruptionBudget. |
-| restapi.pdb.maxUnavailable | int \| string | `nil` | Maximum number of pods that can be unavailable after eviction. Can be an absolute number (ex: 1) or a percentage (ex: 25%). |
+| restapi.pdb.maxUnavailable | int \| string | `nil` | Maximum number of pods that can be unavailable after eviction. Can be an absolute number (ex: 1) or a percentage (ex: 25%). Rendered only when set, and takes precedence over `minAvailable`. |
 | restapi.pdb.minAvailable | int | `1` | Minimum number of pods that must still be available after eviction. Can be an absolute number (ex: 5) or a percentage (ex: 25%). |
 | restapi.podSpec | corev1.PodSpec | `{"affinity":{},"initContainers":[],"nodeSelector":{"kubernetes.io/os":"linux"},"resources":{},"tolerations":[]}` | Extend the pod template, and/or override certain configurations. Ref: https://kubernetes.io/docs/concepts/workloads/pods/#pod-templates |
 | restapi.podSpec.affinity | object | `{}` | Affinity for pod assignment. Ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity |
@@ -205,8 +204,6 @@ Kubernetes: `>= 1.29.0-0`
 | slurmKey.annotations | object | `{}` | Annotations to add to the secret upon creation. |
 | slurmKey.create | bool | `true` | The secret will be created when true. |
 | slurmKey.secretRef | secretKeyRef | `{}` | Reference to the secret. |
-| sssd.conf | string | `"[sssd]\nservices = nss,pam\ndomains = DEFAULT\n\n[nss]\nfilter_groups = root,slurm\nfilter_users = root,slurm\n\n[pam]\n\n[domain/DEFAULT]\nid_provider = proxy\nproxy_lib_name = files\nauth_provider = proxy\nproxy_pam_target = sssd-shadowutils\n"` | The `sssd.conf` by raw file. Ref: https://man.archlinux.org/man/sssd.conf.5 |
-| sssd.secretRef | secretKeyRef | `{}` | The `sssd.conf` by ref. NOTE: Takes presence over `conf` if not empty. |
 | vendor.google.a3mega | list | `[]` | A3 Mega configurations. List of objects corresponding to nodesets. |
 | vendor.google.a3ultra | list | `[]` | A3 Ultra configurations. List of objects corresponding to nodesets. |
 | vendor.nvidia.dcgm.enabled | bool | `false` | Enable DCGM GPU-to-job mapping integration |

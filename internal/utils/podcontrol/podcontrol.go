@@ -20,6 +20,8 @@ import (
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	kubecontroller "k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 )
 
 type PodControlInterface interface {
@@ -62,7 +64,8 @@ func (r realPodControl) createPods(ctx context.Context, pod *corev1.Pod, object 
 	if err := r.Create(ctx, pod); err != nil {
 		// only send an event if the namespace isn't terminating
 		if !apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
-			r.recorder.Eventf(object, pod, corev1.EventTypeWarning, kubecontroller.FailedCreatePodReason, "Create", "Error creating: %v", err)
+			eventutils.Warning(r.recorder, object, pod, eventutils.ReasonFailedCreate, eventutils.ActionCreate,
+				"Error creating: %v", err)
 		}
 		return err
 	}
@@ -74,7 +77,8 @@ func (r realPodControl) createPods(ctx context.Context, pod *corev1.Pod, object 
 		return nil
 	}
 	logger.V(4).Info("Controller created pod", "controller", accessor.GetName(), "pod", klog.KObj(pod))
-	r.recorder.Eventf(object, pod, corev1.EventTypeNormal, kubecontroller.SuccessfulCreatePodReason, "Create", "Created pod: %v", pod.GetName())
+	eventutils.Normal(r.recorder, object, pod, eventutils.ReasonSuccessfulCreate, eventutils.ActionCreate,
+		"Created pod: %v", pod.GetName())
 
 	return nil
 }
@@ -106,10 +110,12 @@ func (r *realPodControl) DeletePod(ctx context.Context, namespace string, podNam
 			logger.V(4).Info("Pod has already been deleted.", "pod", klog.KRef(namespace, podName))
 			return err
 		}
-		r.recorder.Eventf(object, pod, corev1.EventTypeWarning, kubecontroller.FailedDeletePodReason, "Delete", "Error deleting: %v", err)
+		eventutils.Warning(r.recorder, object, pod, eventutils.ReasonFailedDelete, eventutils.ActionDelete,
+			"Error deleting: %v", err)
 		return fmt.Errorf("unable to delete pods: %w", err)
 	}
-	r.recorder.Eventf(object, pod, corev1.EventTypeNormal, kubecontroller.SuccessfulDeletePodReason, "Delete", "Deleted pod: %v", podName)
+	eventutils.Normal(r.recorder, object, pod, eventutils.ReasonSuccessfulDelete, eventutils.ActionDelete,
+		"Deleted pod: %v", podName)
 
 	return nil
 }

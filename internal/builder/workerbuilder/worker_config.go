@@ -16,14 +16,15 @@ import (
 
 func (b *WorkerBuilder) BuildWorkerSshConfig(nodeset *slinkyv1beta1.NodeSet) (*corev1.ConfigMap, error) {
 	opts := common.ConfigMapOpts{
-		Key: nodeset.SshConfigKey(),
+		Key: nodeset.SshConfigKey(), //nolint:staticcheck // SA1019
 		Metadata: slinkyv1beta1.Metadata{
 			Annotations: nodeset.Annotations,
 			Labels:      structutils.MergeMaps(nodeset.Labels, labels.NewBuilder().WithWorkerLabels(nodeset).Build()),
 		},
-		Data: map[string]string{
-			loginbuilder.SshdConfigFile: buildWorkerSshdConfig(nodeset.Spec.Ssh.ExtraSshdConfig),
-		},
+		Data: map[string]string{},
+	}
+	if nodeset.Spec.Ssh.ExtraSshdConfig != nil { //nolint:staticcheck // SA1019
+		opts.Data[loginbuilder.SshdConfigFile] = buildWorkerSshdConfig(*nodeset.Spec.Ssh.ExtraSshdConfig) //nolint:staticcheck // SA1019
 	}
 
 	return b.CommonBuilder.BuildConfigMap(opts, nodeset)

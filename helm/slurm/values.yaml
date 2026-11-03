@@ -79,6 +79,7 @@ jwksKeys:
 clusterName: null
 
 # -- (map[string]string) Extra Slurm config files to be mounted to `/etc/slurm`.
+# WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`.
 # Ref: https://slurm.schedmd.com/man_index.html#configuration_files
 configFiles: {}
   # Ref: https://slurm.schedmd.com/cgroup.conf.html
@@ -109,6 +110,13 @@ configFiles: {}
   # Ref: https://slurm.schedmd.com/topology.yaml.html
   # topology.yaml: |
   #   ---
+
+# -- (list(slinkyv1beta1.ConfigMapProjection)) Extra Slurm config files to be mounted to `/etc/slurm`.
+# WARNING: Final volume projection is appended with: `configFiles`; `configFileRefs`.
+# Ref: https://slurm.schedmd.com/man_index.html#configuration_files
+configFileRefs: []
+  # - name: my-configmap
+  #   optional: false
 
 # -- (map[string]string) The Slurm PrologSlurmctld scripts run on slurmctld at job allocation.
 # The map key represents the filename; the map value represents the script contents.
@@ -186,10 +194,10 @@ epilogScriptRefs: []
 controller:
   # -- Configures this component as external (not in Kubernetes).
   external: false
-  # Details required to communicate with an external slurmdbd.
+  # Details required to communicate with an external slurmctld.
   # When `external=true`, `externalConfig` is used and all other fields are ignored.
   externalConfig:
-    # -- The slurmdbd host address or IP.
+    # -- The slurmctld host address or IP.
     host: slurmctld.example.com
     # -- The slurmctld port. Default is 6817.
     port: null
@@ -201,6 +209,13 @@ controller:
       repository: ghcr.io/slinkyproject/slurmctld
       tag: 26.05-ubuntu26.04
       digest: null
+    # -- Environment passed to the image.
+    # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_ENVIRONMENT-VARIABLES
+    env: []
+      # - name: ABORT_ON_FATAL
+      #   value: ""
+      # - name: SLURM_DEBUG_FLAGS
+      #   value: "accrue"
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmctld.html#SECTION_OPTIONS
     args: []
@@ -249,7 +264,7 @@ controller:
     # -- Indicates if HA mode should be used.
     # When enabled, `persistence.enabled=true` and a PVC with `accessModes[]` containing `ReadWriteMany` is required.
     enabled: false
-    # -- Indicates how may secondary (backup) controllers to deploy.
+    # -- Indicates how many secondary (backup) controllers to deploy.
     backups: 1
   # Enable persistence using Persistent Volume Claims.
   # Ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
@@ -389,6 +404,7 @@ restapi:
     minAvailable: 1
     # -- (int \| string) Maximum number of pods that can be unavailable after eviction.
     # Can be an absolute number (ex: 1) or a percentage (ex: 25%).
+    # Rendered only when set, and takes precedence over `minAvailable`.
     maxUnavailable: null
   # slurmrestd container configurations.
   slurmrestd:
@@ -481,6 +497,11 @@ accounting:
       repository: ghcr.io/slinkyproject/slurmdbd
       tag: 26.05-ubuntu26.04
       digest: null
+    # -- Environment passed to the image.
+    # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_ENVIRONMENT-VARIABLES
+    env: []
+      # - name: ABORT_ON_FATAL
+      #   value: ""
     # -- Arguments passed to the image.
     # Ref: https://slurm.schedmd.com/slurmdbd.html#SECTION_OPTIONS
     args: []
@@ -572,32 +593,6 @@ accounting:
     # port: 6819
     # nodePort: 30819
 
-# Cluster SSSD configuration.
-sssd:
-  # -- (secretKeyRef) The `sssd.conf` by ref.
-  # NOTE: Takes presence over `conf` if not empty.
-  secretRef: {}
-    # name: slurm-sssd-conf
-    # key: sssd.conf
-  # -- The `sssd.conf` by raw file.
-  # Ref: https://man.archlinux.org/man/sssd.conf.5
-  conf: |
-    [sssd]
-    services = nss,pam
-    domains = DEFAULT
-
-    [nss]
-    filter_groups = root,slurm
-    filter_users = root,slurm
-
-    [pam]
-
-    [domain/DEFAULT]
-    id_provider = proxy
-    proxy_lib_name = files
-    auth_provider = proxy
-    proxy_pam_target = sssd-shadowutils
-
 # -- (object) Defines defaults for the LoginSet map values.
 loginsetDefaults:
   # -- Enable use of this LoginSet.
@@ -657,9 +652,6 @@ loginsetDefaults:
       #   memory: 100Mi
   # -- SSH public keys to write into `/root/.ssh/authorized_keys`.
   rootSshAuthorizedKeys: null
-  # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
-  # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-  extraSshdConfig: null
   # -- Labels and annotations.
   # Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   metadata: {}
@@ -721,21 +713,15 @@ loginsets: {}
 nodesetDefaults:
   # -- Enable use of this NodeSet.
   enabled: true
-  # -- Scaling mode: "StatefulSet" (fixed replica count) or "DaemonSet" (one pod per matching node).
-  scalingMode: StatefulSet
-  # -- Number of replicas to deploy. Ignored when scalingMode is daemonset.
+  # -- Number of replicas to deploy. Ignored when scalingMode is `DaemonSet`.
   replicas: 1
-  # -- Pin pods to their initially assigned Kubernetes nodes.
-  pinToNode: false
   # -- Use a Pod Disruption Budget to protect pods in this NodeSet when Slurm jobs are running on them
   # Ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
   workloadDisruptionProtection: true
-  # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound.
+  # -- Control when the operator deletes Slurm node records. One of: Never; NodeNotFound; Auto.
   pruneSlurmNodeRecords: Never
   # -- Control whether Slurm-operator syncs K8s node topology annotations to Slurm
   syncTopology: true
-  # -- How many places to pad with zeroes when constructing the pod ordinal.
-  ordinalPadding: 0
   # -- Indicates these NodeSet Pods can reside on the same Kubernetes Node (no anti-affinity).
   # WARNING: This option is **NOT** recommended for production usage.
   oversubscribeNode: false
@@ -767,17 +753,17 @@ nodesetDefaults:
       # - name: nfs-home
       #   mountPath: /home
     # -- (corev1.Lifecycle) The container lifecycle hooks.
-    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';`
+    # A `preStop` hook set here replaces the operator default, which marks the Slurm node down and drains it as the pod terminates: `scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';`
     # Ref: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/
     lifecycle: {}
       # The block below is the operator default. Uncomment and edit it to run
-      # something else instead, such as draining the node rather than downing it.
+      # something else instead.
       # preStop:
       #   exec:
       #     command:
       #       - /usr/bin/sh
       #       - -c
-      #       - scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating';
+      #       - scontrol update nodename=$(hostname) state=down reason='slurm-operator: Pod is terminating'; scontrol update nodename=$(hostname) state=drain reason='slurm-operator: Pod is terminating';
   # LogFile sidecar configurations.
   logfile:
     # -- (string \| object) The image to use.
@@ -808,7 +794,7 @@ nodesetDefaults:
   partition:
     # -- Enable NodeSet partition creation.
     enabled: false
-    # -- (string) Raw Slurm partition configuration options added to the partition line added to the partition line.
+    # -- (string) Raw Slurm partition configuration options added to the partition line.
     # Ref: https://slurm.schedmd.com/slurm.conf.html#SECTION_PARTITION-CONFIGURATION
     config: null
     # -- (map[string]string \| map[string][]string) The Slurm partition configuration options added to the partition line.
@@ -822,9 +808,14 @@ nodesetDefaults:
     # -- Enable SSH access to worker pods with pam_slurm_adopt.
     # Ref: https://slurm.schedmd.com/pam_slurm_adopt.html
     enabled: false
-    # -- Extra configuration lines appended to `/etc/ssh/sshd_config`.
-    # Ref: https://manpages.ubuntu.com/manpages/resolute/man5/sshd_config.5.html
-    extraSshdConfig: null
+  # -- (slinkyv1beta1.ScaleStrategy) Scale strategy configuration.
+  scaleStrategy: {}
+    # mode: StatefulSet
+    # statefulset:
+    #   replicas: 1
+    #   pinToNode: false
+    #   ordinalPadding: 0
+    # daemonset: {}
   # Update strategy configuration.
   # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
   updateStrategy:

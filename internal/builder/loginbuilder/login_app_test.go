@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -161,6 +162,13 @@ func TestBuilder_BuildLogin(t *testing.T) {
 			require.NotNil(t, got.Spec.Template.Spec.DNSConfig)
 			require.NotEmpty(t, got.Spec.Template.Spec.DNSConfig.Searches)
 
+			if tt.name == "default" {
+				for _, mount := range got.Spec.Template.Spec.Containers[0].VolumeMounts {
+					require.NotEqual(t, SshdConfigFilePath, mount.MountPath)
+					require.NotEqual(t, SssdConfVolume, mount.Name)
+				}
+			}
+
 			if tt.name == "envars" {
 				envs := got.Spec.Template.Spec.Containers[0].Env
 				envMap := make(map[string]struct{})
@@ -277,6 +285,27 @@ func BenchmarkBuilder_BuildLogin(b *testing.B) {
 					b.Errorf("Failed to build login %v", err)
 					return
 				}
+			}
+		})
+	}
+}
+
+func TestLoginContainerOOMCapability(t *testing.T) {
+	for _, customized := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "custom security context"}[customized], func(t *testing.T) {
+			b := New(nil)
+			merge := corev1.Container{}
+			if customized {
+				merge.SecurityContext = &corev1.SecurityContext{
+					AllowPrivilegeEscalation: ptr.To(false),
+				}
+			}
+			got := b.loginContainer(merge, &slinkyv1beta1.Controller{}, &slinkyv1beta1.LoginSet{})
+			require.NotNil(t, got.SecurityContext)
+			require.NotNil(t, got.SecurityContext.Capabilities)
+			require.Contains(t, got.SecurityContext.Capabilities.Add, corev1.Capability("SYS_RESOURCE"))
+			if customized {
+				require.Equal(t, ptr.To(false), got.SecurityContext.AllowPrivilegeEscalation)
 			}
 		})
 	}

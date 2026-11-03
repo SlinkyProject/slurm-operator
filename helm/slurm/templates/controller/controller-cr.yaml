@@ -56,6 +56,9 @@ spec:
     {{- if .Values.configFiles }}
     - name: {{ include "slurm.controller.configName" . }}
     {{- end }}{{- /* if .Values.configFiles */}}
+    {{- with .Values.configFileRefs }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}{{- /* with .Values.configFileRefs */}}
     {{- $hasGresConf := hasKey (.Values.configFiles | default dict) "gres.conf" -}}
     {{- if and (include "slurm.vendor.google.a3mega.enabled" .) (not $hasGresConf) }}
     - name: {{ include "slurm.vendor.google.a3mega.configName" . }}

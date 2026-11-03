@@ -64,18 +64,19 @@ ______________________________________________________________________
 
 ### 2. Install Operator Prerequisites
 
-Slinky requires `cert-manager` to manage admission webhook certificates.
+The default slurm-operator chart configuration uses `cert-manager` to manage
+admission webhook certificates. The chart can instead generate a self-signed
+certificate when installed with `certManager.enabled=false`.
 
 #### 2.1. Install Cert-Manager
 
+Use a cert-manager release that supports the cluster's Kubernetes version; see
+the [supported releases](https://cert-manager.io/docs/releases/).
+
 ```bash
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-helm install cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --version v1.14.4 \
-  --set installCRDs=true
+helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true
 ```
 
 ______________________________________________________________________
@@ -144,9 +145,6 @@ nodesets:
     replicas: 1  # Deploy 1 worker pod on our single 8-chip node
 
     slurmd:
-      image:
-        repository: ghcr.io/slinkyproject/slurmd
-        tag: 25.11-ubuntu24.04
       resources:
         limits:
           google.com/tpu: 8  # Request all 8 chips on the node
@@ -156,11 +154,6 @@ nodesets:
       volumeMounts:
         - name: host-dev
           mountPath: /dev
-
-    logfile:
-      image:
-        repository: docker.io/library/alpine
-        tag: latest
 
     extraConfMap:
       Gres: ["tpu:8"]
@@ -214,7 +207,6 @@ Expected output:
 
 ```
 HOSTNAMES GRES
-slinky-0 (null)
 tpu-0 tpu:8
 ```
 
@@ -235,8 +227,9 @@ ______________________________________________________________________
 
 Since the default Slinky `slurmd` image is a minimal Ubuntu image without Python
 packages, we will write a submission script that installs `python3-pip` and
-`python3-venv` inside the container at runtime (made possible because Slurm jobs
-run as `root` inside Slurm-operator by default).
+`python3-venv` inside the container at runtime. In this flow, `sbatch` is
+invoked as `root` in the worker container, so the resulting job also runs as
+`root`.
 
 #### 6.1. Create the JAX Test Script (`jax_test.py`)
 
@@ -318,8 +311,6 @@ allocate all chips:
 
 ```bash
 #!/usr/bin/env bash
-set -euo pipefail
-
 #SBATCH --job-name=jax-tpu-test
 #SBATCH --partition=tpu
 #SBATCH --nodes=1
@@ -328,6 +319,8 @@ set -euo pipefail
 #SBATCH --output=jax_tpu_%j.out
 #SBATCH --error=jax_tpu_%j.err
 #SBATCH --time=00:15:00
+
+set -euo pipefail
 
 echo "=== Job started at $(date) ==="
 echo "Running on node: $(hostname)"

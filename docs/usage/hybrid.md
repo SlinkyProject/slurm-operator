@@ -24,7 +24,7 @@
 
 A hybrid cluster is one that combines more than one type of infrastructure
 orchestration -- bare-metal, Virtual Machines (VMs), containers (e.g.
-Kubernetes, Docker), and cloud infrastrcture (e.g. AWS, GCP, Azure, OpenStack).
+Kubernetes, Docker), and cloud infrastructure (e.g. AWS, GCP, Azure, OpenStack).
 
 Through the slurm-operator and its CRDs, a hybrid Slurm cluster can be expressed
 such that some Slurm cluster components live in Kubernetes and other components
@@ -59,8 +59,8 @@ pod traffic, which is a flat network with DNS. External-Internal communication
 typically involves external traffic being proxied via NAT to a pod.
 
 Slurm expects a fully connected network with bidirectional communication between
-all Slurm daemons and clients This means NAT type networks will generally impede
-communication.
+all Slurm daemons and clients. This means NAT-type networks will generally
+impede communication.
 
 Therefore, the network configuration needs to be configured to allow Slurm
 components to directly communicate over the network. There are two setups to
@@ -76,8 +76,9 @@ considerations.
 Each Slurm pod would be configured as follows.
 
 ```yaml
-hostNetwork: true
-dNSPolicy: ClusterFirstWithHostNet
+podSpec:
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
 ```
 
 > [!NOTE]
@@ -85,9 +86,10 @@ dNSPolicy: ClusterFirstWithHostNet
 > configuration race with Kubernetes.
 
 > [!WARNING]
-> Only one pod with host network enabled can run on a Kubernetes node at a time.
-> It will inherit the node's hostname and will run within the host's namespace,
-> giving the pod access to the entire network and all ports.
+> A host-networked pod uses the Kubernetes node's network namespace. Multiple
+> host-networked pods can run on one node only when their host ports do not
+> conflict. In StatefulSet mode, a host-networked NodeSet pod also uses the
+> Kubernetes node name as its Slurm node name.
 
 ### Network Peering
 
@@ -121,16 +123,20 @@ kubectl create secret generic external-auth-jwt \
 ```
 
 When configuring the Slurm helm chart, set the Slurm key and JWT key to the
-secrets that were copied into Kubernetes otherwise Slurm components will be
+secrets that were copied into Kubernetes; otherwise, Slurm components will be
 unable to authenticate with the rest of the Slurm cluster.
 
 ```yaml
-slurmKeyRef:
-  name: external-auth-slurm
-  key: slurm.key
-jwtKeyRef:
-  name: external-auth-jwt
-  key: jwt.key
+slurmKey:
+  create: false
+  secretRef:
+    name: external-auth-slurm
+    key: slurm.key
+jwtKey:
+  create: false
+  secretRef:
+    name: external-auth-jwt
+    key: jwt.key
 ```
 
 > [!WARNING]
@@ -140,15 +146,16 @@ jwtKeyRef:
 
 ### External Slurmdbd
 
-When slurmctld is external to Kubernetes, the Slurm helm chart needs to have the
+When slurmdbd is external to Kubernetes, the Slurm helm chart needs to have the
 accounting CR configured such that it knows how to communicate with it.
 
 ```yaml
 accounting:
+  enabled: true
   external: true
   externalConfig:
     host: $SLURMDBD_HOST
-    port: $SLURMDBD_PORT # Default: 6819
+    port: 6819
 ```
 
 ### External Slurmctld
@@ -161,7 +168,7 @@ controller:
   external: true
   externalConfig:
     host: $SLURMCTLD_HOST
-    port: $SLURMCTLD_PORT # Default: 6817
+    port: 6817
 ```
 
 ### External Slurmd
@@ -191,7 +198,7 @@ slurm-operator can use it to correctly take action on Slurm resources within
 kubernetes.
 
 You may still have a slurmrestd that is accessible outside of Kubernetes to
-handles requests outside of Kubernetes.
+handle requests outside of Kubernetes.
 
 <!-- Links -->
 

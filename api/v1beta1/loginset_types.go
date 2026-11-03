@@ -50,18 +50,22 @@ type LoginSetSpec struct {
 	// +optional
 	Template PodTemplate `json:"template,omitempty"`
 
-	// RootSshAuthorizedKeys is `root/.ssh/authorized_keys`.
+	// RootSshAuthorizedKeys is written to `/root/.ssh/authorized_keys`.
 	// +optional
 	RootSshAuthorizedKeys string `json:"rootSshAuthorizedKeys,omitzero"`
 
 	// ExtraSshdConfig is added to the end of `sshd_config`.
 	// Ref: https://man7.org/linux/man-pages/man5/sshd_config.5.html
 	// +optional
-	ExtraSshdConfig string `json:"extraSshdConfig,omitzero"`
+	//
+	// Deprecated: Volume mount ConfigMap under `/etc/ssh/sshd_config.d/` instead.
+	ExtraSshdConfig *string `json:"extraSshdConfig,omitempty"`
 
 	// SssdConfRef is a reference to a secret containing the `sssd.conf`.
-	// +required
-	SssdConfRef corev1.SecretKeySelector `json:"sssdConfRef,omitzero"`
+	// +optional
+	//
+	// Deprecated: Volume mount Secret to `/etc/sssd/sssd.conf` instead.
+	SssdConfRef *corev1.SecretKeySelector `json:"sssdConfRef,omitempty"`
 
 	// Strategy is the deployment strategy to use to replace existing pods with new ones.
 	// Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy

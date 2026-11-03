@@ -28,13 +28,15 @@ metadata:
 spec:
   controllerRef:
     name: {{ include "slurm.fullname" $ }}
+  {{- /* === DEPRECATED SECTION START : Use Volume Mounts instead === */}}
   {{- with $loginset.extraSshdConfig }}
   extraSshdConfig: |
     {{- . | nindent 4 }}
   {{- end }}{{- /* with $loginset.extraSshdConfig */}}
-  sssdConfRef:
-    name: {{ include "slurm.sssdConf.name" $ }}
-    key: {{ include "slurm.sssdConf.key" $ }}
+  {{- with include "slurm.sssdConf.ref" $ }}
+    {{- . | nindent 2 }}
+  {{- end }}{{- /* with sssdConfRef */}}
+  {{- /* === DEPRECATED SECTION END === */}}
   {{- with $loginset.rootSshAuthorizedKeys }}
   rootSshAuthorizedKeys: |
     {{- . | nindent 4 }}

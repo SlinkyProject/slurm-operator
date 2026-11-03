@@ -30,9 +30,6 @@ manifest should match snapshot:
         metadata: {}
         spec:
           type: LoadBalancer
-      sssdConfRef:
-        key: sssd.conf
-        name: test-release-slurm-sssd-conf
       template:
         metadata:
           labels:

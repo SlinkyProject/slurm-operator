@@ -1,0 +1,23 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: slurm-simple-crds
+  namespace: argocd
+spec:
+  project: slurm-simple
+  source:
+    repoURL: https://github.com/SlinkyProject/slurm-operator
+    path: helm/slurm-operator-crds
+    targetRevision: v1.2.1
+    helm:
+      releaseName: slurm-operator-crds
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: slinky
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -18,7 +18,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/SlinkyProject/slurm-client
 - Name: github.com/SlinkyProject/slurm-client
-- Version: v1.1.0-rc1.0.20260917142417-b9ce680ca667
+- Version: v1.1.0-rc1.0.20261019145711-ec6da62a54c3
 - License: Apache-2.0
 
 ### github.com/antlr4-go/antlr/v4
@@ -218,7 +218,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/grpc-ecosystem/grpc-gateway/v2
 - Name: github.com/grpc-ecosystem/grpc-gateway/v2
-- Version: v2.28.0
+- Version: v2.29.0
 - License: BSD-3-Clause
 
 ### github.com/json-iterator/go
@@ -353,8 +353,18 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/stretchr/testify
 - Name: github.com/stretchr/testify
-- Version: v1.11.1
+- Version: v1.12.1
 - License: MIT
+
+### github.com/stretchr/testify/internal/difflib
+- Name: github.com/stretchr/testify/internal/difflib
+- Version: v1.12.1
+- License: BSD-3-Clause
+
+### github.com/stretchr/testify/internal/spew
+- Name: github.com/stretchr/testify/internal/spew
+- Version: v1.12.1
+- License: ISC
 
 ### github.com/vladimirvivien/gexe
 - Name: github.com/vladimirvivien/gexe
@@ -383,67 +393,67 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.44.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.44.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace
-- Version: v1.43.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace
-- Version: v1.43.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
-- Version: v1.43.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
 - Name: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc
-- Version: v1.43.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
-- Version: v1.44.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
-- Version: v1.44.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.44.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.44.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.44.0
+- Version: v1.45.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.44.0
+- Version: v1.45.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/proto/otlp
 - Name: go.opentelemetry.io/proto/otlp
-- Version: v1.10.0
+- Version: v1.11.0
 - License: Apache-2.0
 
 ### go.uber.org/multierr
@@ -463,12 +473,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.yaml.in/yaml/v3
 - Name: go.yaml.in/yaml/v3
-- Version: v3.0.4
+- Version: v3.0.5
 - License: MIT
 
 ### golang.org/x/crypto
 - Name: golang.org/x/crypto
-- Version: v0.56.0
+- Version: v0.58.1-0.20261009181718-2f1f834330b2
 - License: BSD-3-Clause
 
 ### golang.org/x/exp/slices
@@ -478,12 +488,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/mod/semver
 - Name: golang.org/x/mod/semver
-- Version: v0.40.0
+- Version: v0.41.0
 - License: BSD-3-Clause
 
 ### golang.org/x/net
 - Name: golang.org/x/net
-- Version: v0.58.0
+- Version: v0.62.0
 - License: BSD-3-Clause
 
 ### golang.org/x/oauth2
@@ -493,22 +503,22 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/sync
 - Name: golang.org/x/sync
-- Version: v0.22.0
+- Version: v0.24.0
 - License: BSD-3-Clause
 
 ### golang.org/x/sys/unix
 - Name: golang.org/x/sys/unix
-- Version: v0.47.0
+- Version: v0.49.0
 - License: BSD-3-Clause
 
 ### golang.org/x/term
 - Name: golang.org/x/term
-- Version: v0.45.0
+- Version: v0.47.0
 - License: BSD-3-Clause
 
 ### golang.org/x/text
 - Name: golang.org/x/text
-- Version: v0.41.0
+- Version: v0.43.0
 - License: BSD-3-Clause
 
 ### golang.org/x/time/rate
@@ -518,7 +528,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/tools
 - Name: golang.org/x/tools
-- Version: v0.49.0
+- Version: v0.51.0
 - License: BSD-3-Clause
 
 ### gomodules.xyz/jsonpatch/v2
@@ -528,12 +538,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### google.golang.org/genproto/googleapis/api
 - Name: google.golang.org/genproto/googleapis/api
-- Version: v0.0.0-20260526163538-3dc84a4a5aaa
+- Version: v0.0.0-20260803160001-6ac0973c030d
 - License: Apache-2.0
 
 ### google.golang.org/genproto/googleapis/rpc
 - Name: google.golang.org/genproto/googleapis/rpc
-- Version: v0.0.0-20260526163538-3dc84a4a5aaa
+- Version: v0.0.0-20260803160001-6ac0973c030d
 - License: Apache-2.0
 
 ### google.golang.org/grpc
@@ -555,11 +565,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: gopkg.in/inf.v0
 - Version: v0.9.1
 - License: BSD-3-Clause
-
-### gopkg.in/yaml.v3
-- Name: gopkg.in/yaml.v3
-- Version: v3.0.1
-- License: MIT
 
 ### k8s.io/api
 - Name: k8s.io/api

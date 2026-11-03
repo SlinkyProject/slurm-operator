@@ -41,10 +41,20 @@ var _ = Describe("NodeSet Webhook", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should deny if SSH is enabled without sssdConfRef", func(ctx SpecContext) {
+		It("Should permit if SSH is enabled and sssdConfRef=nil", func(ctx SpecContext) {
 			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
 			nodeset := testutils.NewNodeset("test-nodeset", controller, 1)
 			nodeset.Spec.Ssh.Enabled = true
+
+			_, err := nodeSetWebhook.ValidateCreate(ctx, nodeset)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Should deny if SSH is enabled without valid sssdConfRef", func(ctx SpecContext) {
+			controller := testutils.NewController("some-controller", corev1.SecretKeySelector{}, corev1.SecretKeySelector{}, nil)
+			nodeset := testutils.NewNodeset("test-nodeset", controller, 1)
+			nodeset.Spec.Ssh.Enabled = true
+			nodeset.Spec.Ssh.SssdConfRef = &corev1.SecretKeySelector{} //nolint:staticcheck // SA1019
 
 			_, err := nodeSetWebhook.ValidateCreate(ctx, nodeset)
 			Expect(err).To(HaveOccurred())

@@ -35,7 +35,30 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[1].name
           value: docker-secret-2
-  - it: should set resourceSettings
+  - it: should set pod template resource claims
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          podSpec:
+            resourceClaims:
+              - name: gpu
+                resourceClaimName: slurm-nodeset-gpu
+            resources:
+              claims:
+                - name: gpu
+    asserts:
+      - contains:
+          path: spec.template.spec.resourceClaims
+          content:
+            name: gpu
+            resourceClaimName: slurm-nodeset-gpu
+      - equal:
+          path: spec.template.spec.resources
+          value:
+            claims:
+              - name: gpu
+  - it: should set pod template resources
     set:
       nodesets:
         slinky:
@@ -87,8 +110,16 @@ tests:
                             - x86_64
     asserts:
       - equal:
-          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]
-          value: x86_64
+          path: spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: arch
+                        operator: In
+                        values:
+                          - x86_64
   - it: should add tolerations
     set:
       nodesets:
@@ -118,18 +149,27 @@ tests:
                   matchLabels:
                     foo: bar
     asserts:
-      - equal:
-          path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels.foo
-          value: bar
+      - contains:
+          path: spec.template.spec.topologySpreadConstraints
+          content:
+            maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                foo: bar
   - it: should set pinToNode
     set:
       nodesets:
         slinky:
           enabled: true
-          pinToNode: true
+          scaleStrategy:
+            mode: StatefulSet
+            statefulset:
+              pinToNode: true
     asserts:
       - equal:
-          path: spec.pinToNode
+          path: spec.scaleStrategy.statefulset.pinToNode
           value: true
   - it: should not use priority class
     set:
@@ -301,6 +341,71 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+  - it: should omit deprecated ssh fields when ssh is enabled without them
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+    asserts:
+      - equal:
+          path: spec.ssh.enabled
+          value: true
+      - notExists:
+          path: spec.ssh.extraSshdConfig
+      - notExists:
+          path: spec.ssh.sssdConfRef
+  - it: should pass extraSshdConfig when ssh is enabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+            extraSshdConfig: |
+              UsePAM yes
+              PasswordAuthentication yes
+    asserts:
+      - equal:
+          path: spec.ssh.extraSshdConfig
+          value: |
+            UsePAM yes
+            PasswordAuthentication yes
+  - it: should reference sssd.conf when ssh is enabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: true
+      sssd:
+        conf: |
+          [sssd]
+          config_file_version = 2
+    asserts:
+      - equal:
+          path: spec.ssh.sssdConfRef
+          value:
+            name: test-release-slurm-sssd-conf
+            key: sssd.conf
+  - it: should not reference sssd when ssh is disabled
+    set:
+      nodesets:
+        slinky:
+          enabled: true
+          ssh:
+            enabled: false
+      sssd:
+        secretRef:
+          name: my-sssd-secret
+          key: sssd.conf
+    asserts:
+      - equal:
+          path: spec.ssh.enabled
+          value: false
+      - notExists:
+          path: spec.ssh.sssdConfRef
   - it: should prefer digest over tag when both are set on logfile
     set:
       nodesets:
@@ -315,3 +420,76 @@ tests:
       - equal:
           path: spec.logfile.image
           value: registry.example.com/org/logfile@sha256:abcdef0123456789
+
+  - it: preserves zero replicas in the new field
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.scaleStrategy.statefulset.replicas: 0
+    asserts:
+      - equal:
+          path: spec.scaleStrategy.statefulset.replicas
+          value: 0
+
+  - it: preserves explicit false in the new pinToNode field
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.scaleStrategy.statefulset.pinToNode: false
+    asserts:
+      - equal:
+          path: spec.scaleStrategy.statefulset.pinToNode
+          value: false
+
+  - it: lets legacy false override a true new pinToNode value
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.pinToNode: false
+      nodesets.slinky.scaleStrategy.statefulset.pinToNode: true
+    asserts:
+      - equal:
+          path: spec.pinToNode
+          value: false
+      - equal:
+          path: spec.scaleStrategy.statefulset.pinToNode
+          value: false
+
+  - it: preserves explicit zero in the new ordinalPadding field
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.scaleStrategy.statefulset.ordinalPadding: 0
+    asserts:
+      - equal:
+          path: spec.scaleStrategy.statefulset.ordinalPadding
+          value: 0
+
+  - it: lets legacy zero override nonzero new ordinalPadding
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.ordinalPadding: 0
+      nodesets.slinky.scaleStrategy.statefulset.ordinalPadding: 4
+    asserts:
+      - equal:
+          path: spec.ordinalPadding
+          value: 0
+      - equal:
+          path: spec.scaleStrategy.statefulset.ordinalPadding
+          value: 0
+
+  - it: renders DaemonSet mode without a statefulset configuration
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.scaleStrategy.mode: DaemonSet
+    asserts:
+      - isKind:
+          of: NodeSet
+      - equal:
+          path: spec.scaleStrategy.mode
+          value: DaemonSet
+
+  - it: continues to support legacy-only zero replicas
+    set:
+      nodesets.slinky.enabled: true
+      nodesets.slinky.replicas: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 0

@@ -40,7 +40,7 @@ func TestBuilder_BuildWorkerSshConfig(t *testing.T) {
 					},
 					Spec: slinkyv1beta1.NodeSetSpec{
 						Ssh: slinkyv1beta1.NodeSetSsh{
-							ExtraSshdConfig: `LoginGraceTime 600`,
+							ExtraSshdConfig: new(`LoginGraceTime 600`), //nolint:staticcheck // SA1019
 						},
 					},
 				},

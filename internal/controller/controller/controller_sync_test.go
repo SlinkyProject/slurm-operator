@@ -75,7 +75,7 @@ func TestControllerReconciler_sync(t *testing.T) {
 		{
 			name: "default",
 			fields: fields{
-				Client: fake.NewFakeClient(controller.DeepCopy()),
+				Client: refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(controller.DeepCopy()).Build(),
 				ClientMap: func() *clientmap.ClientMap {
 					sclient := clientfake.NewClientBuilder().WithInterceptorFuncs(sinterceptor.Funcs{}).Build()
 					return newClientMap(controller.Name, sclient)
@@ -126,7 +126,7 @@ func BenchmarkControllerReconciler_sync(b *testing.B) {
 						Name: "slurm",
 					},
 				}
-				kubeClient := fake.NewFakeClient(controller.DeepCopy())
+				kubeClient := refresolver.WithIndexes(fake.NewClientBuilder()).WithRuntimeObjects(controller.DeepCopy()).Build()
 				sclient := clientfake.NewClientBuilder().WithInterceptorFuncs(sinterceptor.Funcs{}).Build()
 				clientMap := newClientMap(controller.Name, sclient)
 				request := reconcile.Request{

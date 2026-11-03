@@ -21,6 +21,58 @@ current chart defaults before applying these overrides. If an older file is a
 full copy of `values.yaml`, replace it with `{}` so it does not pin defaults
 from an older checkout.
 
+## Scale testing with KWOK
+
+[KWOK] runs pods on fake nodes without starting containers, so a laptop can hold
+thousands of NodeSet pods. Create a cluster with the operator and KWOK, then add
+100 fake nodes:
+
+```sh
+./hack/kind.sh --crds --operator --kwok
+./hack/kwok-nodes.sh
+```
+
+Each fake node fits 110 pods. For more nodes, run `./hack/kwok-nodes.sh COUNT`
+with the total you need.
+
+Apply the test NodeSet, then scale it:
+
+```sh
+kubectl apply -f hack/resources/kwok-nodeset.yaml
+kubectl scale nodeset/slurm-kwok --replicas=1000
+kubectl get nodeset/slurm-kwok --watch
+```
+
+The fixture has no RestApi, so the operator skips its Slurm calls and only the
+Kubernetes side is exercised. KWOK's fast stages mark those pods Ready without
+starting slurmd.
+
+To exercise intermittent Kubernetes and slurmrestd errors, install the restapi
+mock after the KWOK fixture. It is a Go slurmrestd the operator dials on port
+6820\. Node state is kept in the slurm-client fake client and filled from the
+live slurmd pods. Requests can fail or be delayed by a fixed latency with random
+jitter. Counts and average latency are served at `GET /restapi/stats` on that
+port. The same pod serves a Kubernetes admission webhook that can deny slurmd
+pod creates.
+
+```sh
+./hack/kwok-restapi.sh --slurm=0 --kube=0
+./hack/kwok-restapi.sh --slurm=0.05 --kube=0.05 --delay=20ms --jitter=5ms
+kubectl port-forward svc/slurm-kwok-restapi 6820:6820
+curl -s localhost:6820/restapi/stats
+```
+
+Rates are fractions from 0 to 1. `--slurm` fails HTTP calls to the mock.
+`--kube` denies pod creates. `--delay` is the fixed request latency. `--jitter`
+randomly deviates from that delay in either direction, clamped at zero. Re-run
+the script to change them. Scale the NodeSet back to 0 between runs.
+
+To remove the fake nodes without deleting the cluster, run:
+
+```sh
+kubectl delete nodes --selector=app.kubernetes.io/managed-by=slurm-operator-kwok
+```
+
 ## Remote cluster
 
 ### Update an existing Slinky installation
@@ -79,3 +131,7 @@ make prereqs
 
 The prerequisites-only command requires Helm and kubectl, but does not require
 Skaffold or a local container build toolchain.
+
+<!-- Links -->
+
+[kwok]: https://kwok.sigs.k8s.io/

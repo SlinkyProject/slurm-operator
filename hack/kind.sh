@@ -12,9 +12,25 @@ DIR="$(readlink -f "$(dirname "$0")/")"
 KUBE_PROMETHEUS_STACK_CHART_REPO="https://prometheus-community.github.io/helm-charts"
 KUBE_PROMETHEUS_STACK_CHART_VERSION="88.6.2"
 
-function kind::prerequisites() {
-	go install sigs.k8s.io/kind@latest
-	go install sigs.k8s.io/cloud-provider-kind@latest
+KWOK_CHART_REPO="https://kwok.sigs.k8s.io/charts/"
+KWOK_CHART_VERSION="0.3.0"
+
+KIND_VERSION="0.33.0"
+
+function kind::require_version() {
+	if ! command -v kind >/dev/null 2>&1; then
+		echo "'kind' is required: https://kind.sigs.k8s.io/" >&2
+		return 1
+	fi
+	local have
+	if ! have="$(kind version 2>/dev/null | awk '{print $2}' | sed 's/^v//')" || [ -z "$have" ]; then
+		echo "Could not determine 'kind' version." >&2
+		return 1
+	fi
+	if [ "$have" != "$KIND_VERSION" ]; then
+		echo "'kind' $have is unsupported (need exactly $KIND_VERSION): https://kind.sigs.k8s.io/" >&2
+		return 1
+	fi
 }
 
 function sys::check() {
@@ -74,18 +90,44 @@ function sys::check() {
 	fi
 }
 
+function kind::defaults() {
+	export KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37}"
+	# CI node image pins for Kind v0.33.0. Update these with KIND_VERSION.
+	case "$KUBERNETES_VERSION" in
+	v1.35 | v1.35.*)
+		KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0}"
+		OPT_CONFIG="${OPT_CONFIG:-$DIR/kind.yaml}"
+		;;
+	v1.36 | v1.36.*)
+		KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed}"
+		OPT_CONFIG="${OPT_CONFIG:-$DIR/kind.yaml}"
+		;;
+	v1.37 | v1.37.*)
+		KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5}"
+		OPT_CONFIG="${OPT_CONFIG:-$DIR/kind.yaml}"
+		;;
+	*)
+		if [ -z "${KIND_NODE_IMAGE:-}" ] || [ -z "$OPT_CONFIG" ]; then
+			echo "Unsupported KUBERNETES_VERSION '$KUBERNETES_VERSION'; select v1.35, v1.36 or v1.37, or set KIND_NODE_IMAGE and KIND_CONFIG." >&2
+			return 1
+		fi
+		;;
+	esac
+}
+
 function kind::start() {
 	sys::check
-	kind::prerequisites
 	local cluster_name="${1:-"kind"}"
-	local kind_config="${2:-"$ROOT_DIR/hack/kind-config.yaml"}"
-	if ! kind get clusters 2>/dev/null | grep -Fxq "$cluster_name"; then
+	local kind_config="${2:-"$DIR/kind.yaml"}"
+	local clusters
+	clusters="$(kind get clusters)" || return $?
+	if ! grep -Fxq -- "$cluster_name" <<<"$clusters"; then
 		if [ "$(command -v systemd-run)" ]; then
 			CMD="systemd-run --scope --user"
 		else
 			CMD=""
 		fi
-		$CMD kind create cluster --name "$cluster_name" --config "$kind_config"
+		$CMD kind create cluster --name "$cluster_name" --config "$kind_config" --image "$KIND_NODE_IMAGE"
 	fi
 	kubectl config use-context kind-"$cluster_name"
 	kubectl cluster-info --context kind-"$cluster_name"
@@ -223,6 +265,21 @@ function keda::install() {
 	fi
 }
 
+function kwok::install() {
+	echo "[kwok] Installing the KWOK controller and fast stage configuration..."
+	helm repo add kwok "$KWOK_CHART_REPO" --force-update
+	helm upgrade --install kwok kwok/kwok \
+		--version "$KWOK_CHART_VERSION" \
+		--namespace kube-system \
+		--wait --timeout=300s
+
+	# Without stages, pods on fake nodes never reach Running.
+	helm upgrade --install kwok-stage-fast kwok/stage-fast \
+		--version "$KWOK_CHART_VERSION" \
+		--namespace kube-system \
+		--wait --timeout=300s
+}
+
 function nfs::install() {
 	local chartName=nfs-server-provisioner
 	helm repo add nfs-ganesha https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
@@ -287,12 +344,16 @@ $(basename "$0") - Manage a kind cluster for local testing/development
 	usage: $(basename "$0") [--config=KIND_CONFIG_PATH] [--existing-cluster]
 	        [--recreate|--delete]
 	        [--core|--prereqs][--extras][--mariadb][--keda][--metrics]
-	        [--nfs][--ldap][--all] [--registry=REPO]
+	        [--nfs][--ldap][--kwok][--all] [--registry=REPO]
 	        [--crds][--operator][--slurm]
-	        [-h|--help] [KIND_CLUSTER_NAME]
+	        [--print-image] [-h|--help] [KIND_CLUSTER_NAME]
 
 KIND OPTIONS:
 	--config=PATH       Use the specified Kind config when creating.
+	                    Can also be set with KIND_CONFIG.
+	--print-image       Print the selected node image and exit without creating a cluster.
+	                    KUBERNETES_VERSION selects v1.35, v1.36 or v1.37 (default).
+	                    Set KIND_NODE_IMAGE to override the node image for all nodes.
 	--existing-cluster  Use the current kubectl context instead of creating or switching to a Kind cluster.
 	--registry=REPO     Push locally built images to REPO with Skaffold before deploying.
 	                    Can also be set with SKAFFOLD_DEFAULT_REPO.
@@ -307,6 +368,7 @@ HELM OPTIONS:
 	--metrics           Install metrics-server and kube-prometheus-stack.
 	--nfs               Install the NFS provisioner and example PVCs.
 	--ldap              Install OpenLDAP.
+	--kwok              Install KWOK. Create nodes with hack/kwok-nodes.sh.
 	--core              Equivalent of: --crds --operator --slurm
 	--prereqs           Install operator prerequisites only (cert-manager).
 	--crds              Install the operator CRDs chart.
@@ -341,7 +403,8 @@ function extras::enable() {
 
 OPT_DEBUG=false
 OPT_RECREATE=false
-OPT_CONFIG="$ROOT_DIR/hack/kind.yaml"
+OPT_CONFIG="${KIND_CONFIG:-}"
+OPT_PRINT_IMAGE=false
 OPT_DELETE=false
 OPT_EXISTING_CLUSTER=false
 OPT_CORE=false
@@ -356,9 +419,10 @@ OPT_KEDA=false
 OPT_NFS=false
 OPT_LDAP=false
 OPT_METRICS=false
+OPT_KWOK=false
 
 SHORT="+h"
-LONG="debug,config:,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,mariadb,keda,metrics,nfs,ldap,core,prereqs,help"
+LONG="debug,config:,print-image,recreate,delete,existing-cluster,registry:,crds,operator,slurm,all,extras,mariadb,keda,metrics,nfs,ldap,kwok,core,prereqs,help"
 OPTS="$(getopt -a --options "$SHORT" --longoptions "$LONG" -- "$@")"
 eval set -- "${OPTS}"
 while :; do
@@ -370,6 +434,10 @@ while :; do
 	--config)
 		OPT_CONFIG="$2"
 		shift 2
+		;;
+	--print-image)
+		OPT_PRINT_IMAGE=true
+		shift
 		;;
 	--recreate)
 		OPT_RECREATE=true
@@ -424,6 +492,10 @@ while :; do
 		OPT_KEDA=true
 		shift
 		;;
+	--kwok)
+		OPT_KWOK=true
+		shift
+		;;
 	--metrics)
 		OPT_METRICS=true
 		shift
@@ -468,6 +540,15 @@ function main() {
 		set -x
 	fi
 	main::validate_options
+	if $OPT_PRINT_IMAGE; then
+		kind::defaults
+		printf '%s\n' "$KIND_NODE_IMAGE"
+		return
+	fi
+	if ! $OPT_EXISTING_CLUSTER && ! $OPT_DELETE; then
+		kind::require_version
+		kind::defaults
+	fi
 	local cluster_name="${1:-"kind"}"
 	if $OPT_DELETE || $OPT_RECREATE; then
 		kind::delete "$cluster_name"
@@ -507,6 +588,9 @@ function main() {
 	fi
 	if $OPT_LDAP; then
 		ldap::install
+	fi
+	if $OPT_KWOK; then
+		kwok::install
 	fi
 
 	if $OPT_OPERATOR_CRDS; then

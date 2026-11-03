@@ -212,7 +212,7 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 	}
 
 	if slurmConfig.DaemonSet {
-		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.scalingMode=DaemonSet'"))
+		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.scaleStrategy.mode=DaemonSet'"))
 	}
 
 	if slurmConfig.Pyxis {

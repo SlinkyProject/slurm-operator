@@ -205,3 +205,11 @@ type ExternalConfig struct {
 	// +required
 	Port int `json:"port,omitzero"`
 }
+
+type ConfigMapProjection struct {
+	corev1.LocalObjectReference `json:",inline"`
+
+	// optional specify whether the ConfigMap must be defined.
+	// +optional
+	Optional *bool `json:"optional,omitempty"`
+}

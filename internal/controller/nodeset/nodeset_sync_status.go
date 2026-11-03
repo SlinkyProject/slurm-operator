@@ -27,12 +27,14 @@ import (
 	"k8s.io/utils/set"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	slurmerrors "github.com/SlinkyProject/slurm-client/pkg/errors"
+
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
 	"github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/slurmcontrol"
 	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/defaults"
-	"github.com/SlinkyProject/slurm-operator/internal/utils"
+	"github.com/SlinkyProject/slurm-operator/internal/utils/batch"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/historycontrol"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/mathutils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
@@ -50,10 +52,6 @@ func (r *NodeSetReconciler) syncStatus(
 	hash string,
 	errs ...error,
 ) error {
-	if err := r.slurmControl.RefreshNodeCache(ctx, nodeset); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
-		errs = append(errs, err)
-	}
-
 	if err := r.syncSlurmStatus(ctx, nodeset, pods); err != nil {
 		errs = append(errs, err)
 	}
@@ -77,15 +75,14 @@ func (r *NodeSetReconciler) syncSlurmStatus(
 ) error {
 	syncSlurmStatusFn := func(i int) error {
 		pod := pods[i]
-		if !podutils.IsHealthy(pod) {
-			return nil
-		}
-		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil && !errors.Is(err, slurmcontrol.ErrNoSlurmClient) {
+		if err := r.slurmControl.UpdateNodeWithPodInfo(ctx, nodeset, pod); err != nil &&
+			!errors.Is(err, slurmcontrol.ErrNoSlurmClient) &&
+			!errors.Is(err, slurmerrors.ErrNotFound) {
 			return err
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncSlurmStatusFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncSlurmStatusFn); err != nil {
 		return err
 	}
 
@@ -209,10 +206,10 @@ func (r *NodeSetReconciler) calculateReplicaStatus(
 			}
 		}
 	}
-	if nodeset != nil && nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeStatefulset {
+	if nodeset != nil && nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeStatefulset {
 		status.Unavailable = mathutils.Clamp(status.Replicas-status.Available, 0, status.Replicas)
 		status.Desired = ptr.Deref(nodeset.Spec.Replicas, defaults.DefaultNodeSetReplicas)
-	} else if nodeset != nil && nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+	} else if nodeset != nil && nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 		desiredNodes, err := r.getDesiredNodeCountForDaemonSet(ctx, nodeset)
 		if err != nil {
 			return status, fmt.Errorf("failed to get desired node count for daemon set: %w", err)
@@ -343,7 +340,8 @@ func (r *NodeSetReconciler) applyReservationCondition(ctx context.Context, nodes
 // Add a node pin if pod is scheduled and running.
 // Clear the node pin if the node was deleted, or the pod template no longer matches the node.
 func (r *NodeSetReconciler) calculateOrdinalToNode(ctx context.Context, nodeset *slinkyv1beta1.NodeSet, pods []*corev1.Pod) (map[string]string, error) {
-	if !nodeset.Spec.PinToNode || nodeset.Spec.ScalingMode == slinkyv1beta1.ScalingModeDaemonset {
+	isPinToNode := ptr.Deref(nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode, defaults.DefaultNodeSetPinToNode)
+	if !isPinToNode || nodeset.Spec.ScaleStrategy.Mode == slinkyv1beta1.ScalingModeDaemonset {
 		return nil, nil //nolint:nilnil
 	}
 
@@ -513,7 +511,7 @@ func (r *NodeSetReconciler) updateNodeSetPodPDBLabels(
 		}
 		return nil
 	}
-	if _, err := utils.SlowStartBatch(len(pods), utils.SlowStartInitialBatchSize, syncPodPDBLabelsFn); err != nil {
+	if _, err := batch.ConcurrentStartBatchDefault(ctx, len(pods), syncPodPDBLabelsFn); err != nil {
 		return err
 	}
 

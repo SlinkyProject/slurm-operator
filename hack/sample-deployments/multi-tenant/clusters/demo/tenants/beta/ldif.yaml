@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openldap-custom-ldif
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+data:
+  00-root.ldif: |-
+    dn: dc=beta,dc=example
+    objectClass: top
+    objectClass: dcObject
+    objectClass: organization
+    dc: beta
+    o: Beta example
+  10-units.ldif: |-
+    dn: ou=users,dc=beta,dc=example
+    objectClass: organizationalUnit
+    ou: users
+
+    dn: ou=groups,dc=beta,dc=example
+    objectClass: organizationalUnit
+    ou: groups
+  20-group.ldif: |-
+    dn: cn=users,ou=groups,dc=beta,dc=example
+    objectClass: posixGroup
+    cn: users
+    gidNumber: 10000
+    memberUid: bob
+  30-user.ldif: |-
+    dn: uid=bob,ou=users,dc=beta,dc=example
+    objectClass: inetOrgPerson
+    objectClass: posixAccount
+    uid: bob
+    cn: Bob Example
+    sn: Example
+    uidNumber: 10001
+    gidNumber: 10000
+    homeDirectory: /home/bob
+    loginShell: /bin/bash

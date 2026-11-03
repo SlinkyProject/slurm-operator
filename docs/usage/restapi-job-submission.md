@@ -22,22 +22,24 @@ the Slurm RestAPI, please refer to the [official documentation][restapi-docs].
 
 ## Container Configuration
 
-In order to submit jobs to the Slurm RestAPI as a specific user, that user must
-exist in the container in which `slurmctld` is running. For the purposes of this
-demo, we will be generating the user's JWT in the login pod, so they must exist
-in the `login` container as well. The UID and GID of this user must match in
-both containers.
+To generate a JWT with `scontrol token`, the user must be resolvable in the
+container where that command runs. For this example, that is the LoginSet pod.
+The generated Slurm configuration sets `AuthInfo=use_client_ids`, so the same
+user does not also need to exist in the `slurmctld` container. The compute
+environment must still be able to resolve the submitted user's UID and GID when
+the job runs.
 
-There are several ways that a user can be made to exist within these container
-environments. In a production environment, the installation and configuration of
-an Identity Provider such as SSSD would be the recommended deployment pattern.
+There are several ways that a user can be made resolvable in the login and
+compute environments. In a production environment, the installation and
+configuration of an identity provider through SSSD is the recommended deployment
+pattern.
 
-In a development environment, the user and group may be created in the
-Dockerfile used to build the `slurmctld` and `login` container images.
+In a development environment, the user and group may instead be created in the
+Dockerfiles used to build the `login` and `slurmd` container images.
 
 For more information on building Slinky containers, please see [containers].
-Configuration files such as `sssd.conf` can be mounted into the loginset and
-controller pods' containers as described on [this page].
+Configuration files such as `sssd.conf` can be supplied through the Slurm chart
+or mounted into pod containers as described on [this page].
 
 ## Job Submission Process
 
@@ -62,7 +64,7 @@ can submit jobs via the Slurm RestAPI. Below is a simple job that executes
 `srun hostname` on a single node in the `all` partition:
 
 ```bash
-❯ curl -sS -o /tmp/curl.log -k -vvvv \
+curl -sS -o /tmp/curl.log -k -vvvv \
   -H "X-SLURM-USER-TOKEN: $SLURM_JWT" \
   -H "Content-Type: application/json" \
   -X POST "http://172.18.0.8:6820/slurm/v0.0.45/job/submit" \

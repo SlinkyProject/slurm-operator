@@ -1,3 +1,69 @@
+## v1.2.4
+
+### Fixed
+
+- GO-2026-6505 GO-2026-6505 GO-2026-6505.
+- Render GHFM alerts correctly in generated docs.
+- GO-2026-6599 GO-2026-6600 GO-2026-6603 GO-2026-6603 GO-2026-6604 GO-2026-6605
+  GO-2026-6607 GO-2026-6608 GO-2026-6609 GO-2026-6610 GO-2026-6610 GO-2026-6611
+  GO-2026-6611 GO-2026-6612 GO-2026-6612 GO-2026-6613 GO-2026-6617 GO-2026-6617.
+- Fixed cases where `doPodScale` would immediately error if `syncPodUncordon`
+  errored instead of collecting the errors and attempting the rest of the pod
+  operations.
+- Fixed operator mutation request throughput via parallel batching instead of
+  ramping parallel batching.
+- Operator no longer crashes when a NodeSet pod has no annotations.
+- Operator no longer runs out of memory on a NodeSet with very large replicas.
+- GO-2026-6809.
+- Drop the Accounting self-watch that reconciled the wrong objects.
+- Skip empty object patches that wasted CPU and memory.
+- Stop Kind setup when cluster discovery fails.
+- Slurm nodes stay unschedulable while their NodeSet pod terminates.
+- Slurmd keeps its spool directory across container restarts.
+- GO-2026-6860 GO-2026-6866.
+
+### Changed
+
+- Changed max NodeSet pod creations tp 256, from 250.
+- Changed Slurm client HTTP client timeout to 2 minute, from 5 minutes.
+- Stop caching managed fields to reduce memory use.
+- Webhook only caches metadata of pods, and do longer caches Pods (metadata
+  only), Nodes, ConfigMaps, and PVCs.
+- Look up controller and accounting references with field indexes.
+- Pod who have their metadata or status patched are now only cache (e.g. slurmd,
+  slurmctld, and login pods).
+- Stop caching PVCs, PodDisruptionBudgets, and ServiceMonitors.
+
+## v1.2.3
+
+### Fixed
+
+- GO-2026-6354 GO-2026-6355.
+- Add CAP_SYS_RESOURCE to slurmd container.
+- NodeSets no longer error-loop when their temporary MAINT reservation doesn't
+  exist yet, working around a Slurm quirk where that GET reports HTTP 422
+  instead of 404.
+- Fixed case where a NodeSet in StatefulSet mode would count an out of band pod
+  termination against the total when deciding to scale, causing spurious pod
+  recreations.
+- Updated DaemonSet node record pruning to match on labelselectors.
+- GO-2026-6348 GO-2026-6441 GO-2026-6443.
+- Add a 10 second idle connection timeout to all Slurm RESTAPI calls.
+- Match Slurm host-list parsing for job nodes and reservations.
+- A non-exec slurmd preStop handler rendered an invalid container.
+- NodeSet extraConf and partition config are now quoted, so values containing
+  YAML-significant characters no longer break the render or get silently
+  truncated.
+- Explicitly-set false/0 values in CR templates (e.g. allowPrivilegeEscalation:
+  false) are no longer dropped from the built workload.
+- Give DaemonSet-mode pods the standard daemon tolerations.
+- Skip drain/undrain requests for Slurm nodes in INVALID_REG state.
+
+### Changed
+
+- Increase e2e nodeset timeout.
+- Wait for generated workloads in e2e tests.
+
 ## v1.2.2
 
 ### Fixed

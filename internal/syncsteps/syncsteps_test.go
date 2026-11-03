@@ -13,6 +13,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/events"
 
+	eventutils "github.com/SlinkyProject/slurm-operator/internal/events"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/testutils"
 )
 
@@ -53,7 +54,7 @@ func TestSync_SingleFailure_OneEventAndWrappedError(t *testing.T) {
 	require.ErrorContains(t, err, `failed "bad" step`)
 	ev := testutils.ReadOneEvent(t, rec)
 	require.Contains(t, ev, "Warning")
-	require.Contains(t, ev, failedReason)
+	require.Contains(t, ev, string(eventutils.ReasonSyncFailed))
 	require.Contains(t, ev, `Failed "bad" step`)
 	testutils.AssertNoEvents(t, rec)
 }

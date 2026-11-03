@@ -34,8 +34,8 @@ ______________________________________________________________________
 
 **Report needed documentation**
 
-A clear and concise description of what documentation you believe it is needed
-and why.
+A clear and concise description of what documentation you believe is needed and
+why.
 
 **Describe the documentation you'd like**
 

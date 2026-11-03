@@ -72,6 +72,25 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 	}
 }
 
+func TestBuilder_BuildAccounting_Env(t *testing.T) {
+	accounting := &slinkyv1beta1.Accounting{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.AccountingSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			Slurmdbd: slinkyv1beta1.ContainerWrapper{
+				Container: corev1.Container{
+					Env: []corev1.EnvVar{{Name: "ABORT_ON_FATAL", Value: ""}, {Name: "SLURM_DEBUG_FLAGS", Value: "accrue"}},
+				},
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	got, err := b.BuildAccounting(accounting)
+	require.NoError(t, err)
+	require.Equal(t, labels.AccountingApp, got.Spec.Template.Spec.Containers[0].Name)
+	require.ElementsMatch(t, accounting.Spec.Slurmdbd.Env, got.Spec.Template.Spec.Containers[0].Env)
+}
+
 func BenchmarkBuilder_BuildAccounting(b *testing.B) {
 	type fields struct {
 		client client.Client

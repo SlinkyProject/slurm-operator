@@ -64,8 +64,8 @@ Inspect the [OCI artifacts][oci-slurm-operator] for specific details.
 ### Hardware
 
 The operator benefits from more cores and memory due to handling requests over
-the network and responding. The amount of cores and memory depends on how how
-many worker threads were configured and how busy the operator is.
+the network and responding. The amount of cores and memory depends on how many
+worker threads were configured and how busy the operator is.
 
 > [!NOTE]
 > It is impossible for us to provide a minimum system requirement for your
@@ -141,6 +141,17 @@ requirements.
 > It is impossible for us to provide a minimum system requirement for your
 > workloads. While Slurm daemons can run with 1 core and 1GB of memory,
 > production usage may find these resources insufficient.
+
+> [!WARNING]
+> It is highly recommended that `slurmctld`'s [StateSaveLocation] be located on
+> a performant storage device. If [StateSaveLocation] is located on storage with
+> poor write performance, `slurmctld` may be terminated by supervisord before it
+> finishes writing out its' state save data. This may result in state file
+> corruption, which can cause `slurmctld` to fatal on restart. If this issue is
+> encountered with regularity, update `supervisord.conf` in the `slurmctld`
+> container image with an increased `stopwaitsecs` (default 30 seconds). Within
+> the Slurm Helm Chart, `controller.podSpec.terminationGracePeriodSeconds`
+> should be increased to match the value used for `stopwaitsecs`.
 
 <!-- Links -->
 
