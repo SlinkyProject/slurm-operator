@@ -366,7 +366,7 @@ func (r *realSlurmControl) IsNodeRegistered(ctx context.Context, nodeset *slinky
 	slurmNode := &slurmapi.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
 	opts := &slurmclient.GetOptions{
-		SkipCache: liveData,
+		RefreshCache: liveData,
 	}
 	err := slurmClient.Get(ctx, key, slurmNode, opts)
 	switch {
@@ -413,7 +413,7 @@ func (r *realSlurmControl) IsNodeDrained(ctx context.Context, nodeset *slinkyv1b
 	slurmNode := &slurmapi.V0044Node{}
 	key := slurmobject.ObjectKey(nodesetutils.GetSlurmNodeName(pod))
 	opts := &slurmclient.GetOptions{
-		SkipCache: liveData,
+		RefreshCache: liveData,
 	}
 	if err := slurmClient.Get(ctx, key, slurmNode, opts); err != nil {
 		return false, err
