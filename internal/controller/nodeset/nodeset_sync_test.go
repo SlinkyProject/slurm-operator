@@ -2018,6 +2018,68 @@ func TestNodeSetReconciler_syncCordon(t *testing.T) {
 			wantReasonSub:            "annotation overrides conditions",
 			wantEvent:                true,
 		},
+		{
+			name: "operator drain reason follows propagated condition changes while cordoned",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{
+						{
+							Type:    "MaintenancePlanned",
+							Status:  corev1.ConditionTrue,
+							Reason:  "MaintenanceWindow",
+							Message: "Hardware maintenance is scheduled",
+						},
+						{
+							Type:    "DrainInProgress",
+							Status:  corev1.ConditionTrue,
+							Reason:  "AdminDrain",
+							Message: "Draining for firmware update",
+						},
+					},
+				},
+			},
+			pod: newPod(true),
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:   new(slurmNodeName),
+					State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+					Reason: new(slurmcontrol.FormatNodeReason("(MaintenanceWindow: Hardware maintenance is scheduled)")),
+				}},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{"MaintenancePlanned", "DrainInProgress"},
+			wantPodCordoned:          true,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "(MaintenanceWindow: Hardware maintenance is scheduled); (AdminDrain: Draining for firmware update)",
+		},
+		{
+			name: "externally set drain reason is preserved when node is cordoned",
+			kubeNode: &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "kube-node-1"},
+				Spec:       corev1.NodeSpec{Unschedulable: true},
+				Status: corev1.NodeStatus{
+					Conditions: []corev1.NodeCondition{{
+						Type:    "DrainInProgress",
+						Status:  corev1.ConditionTrue,
+						Reason:  "AdminDrain",
+						Message: "Draining for firmware update",
+					}},
+				},
+			},
+			pod: newPod(false),
+			slurmNodeList: &slurmapi.V0044NodeObjectList{
+				Items: []slurmapi.V0044Node{{
+					Name:   new(slurmNodeName),
+					State:  new([]slurmapi.V0044NodeState{slurmapi.V0044NodeStateIDLE, slurmapi.V0044NodeStateDRAIN}),
+					Reason: new("admin: replacing DIMM"),
+				}},
+			},
+			propagatedNodeConditions: []corev1.NodeConditionType{"DrainInProgress"},
+			wantPodCordoned:          false,
+			wantSlurmDrain:           true,
+			wantReasonSub:            "admin: replacing DIMM",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
