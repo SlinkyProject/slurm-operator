@@ -22,9 +22,10 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
-func NewNodeEventHandler(reader client.Reader) *NodeEventHandler {
+func NewNodeEventHandler(reader client.Reader, propagatedNodeConditions []corev1.NodeConditionType) *NodeEventHandler {
 	return &NodeEventHandler{
-		Reader: reader,
+		Reader:                   reader,
+		propagatedNodeConditions: propagatedNodeConditions,
 	}
 }
 
@@ -32,6 +33,10 @@ var _ handler.EventHandler = &NodeEventHandler{}
 
 type NodeEventHandler struct {
 	client.Reader
+
+	// propagatedNodeConditions are the Node condition types whose changes
+	// affect the Slurm node drain reason.
+	propagatedNodeConditions []corev1.NodeConditionType
 }
 
 // Create implements handler.EventHandler
@@ -76,12 +81,43 @@ func (h *NodeEventHandler) Update(
 		return
 	}
 
-	// Detect node cordoning/uncordoning or metadata changed.
+	// Detect node cordoning/uncordoning, metadata changed, or (while cordoned)
+	// a change to a condition that feeds the Slurm node drain reason.
 	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable ||
 		!apiequality.Semantic.DeepEqual(oldNode.Annotations, newNode.Annotations) ||
-		!apiequality.Semantic.DeepEqual(oldNode.Labels, newNode.Labels) {
+		!apiequality.Semantic.DeepEqual(oldNode.Labels, newNode.Labels) ||
+		(newNode.Spec.Unschedulable && h.propagatedConditionsChanged(oldNode, newNode)) {
 		h.enqueueNodeSetsForNode(ctx, newNode, q)
 	}
+}
+
+// propagatedConditionsChanged reports whether any propagated condition was
+// added, removed, or changed status, reason, or message. Heartbeat-only
+// updates are ignored.
+func (h *NodeEventHandler) propagatedConditionsChanged(oldNode, newNode *corev1.Node) bool {
+	for _, condType := range h.propagatedNodeConditions {
+		if nodeConditionState(oldNode, condType) != nodeConditionState(newNode, condType) {
+			return true
+		}
+	}
+	return false
+}
+
+type conditionState struct {
+	status  corev1.ConditionStatus
+	reason  string
+	message string
+}
+
+// nodeConditionState returns the drain-reason-relevant fields of the node
+// condition of the given type, or the zero value if it is absent.
+func nodeConditionState(node *corev1.Node, condType corev1.NodeConditionType) conditionState {
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == condType {
+			return conditionState{status: cond.Status, reason: cond.Reason, message: cond.Message}
+		}
+	}
+	return conditionState{}
 }
 
 func (h *NodeEventHandler) enqueueNodeSetsForNode(

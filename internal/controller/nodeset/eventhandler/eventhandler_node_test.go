@@ -51,7 +51,7 @@ func Test_NodeEventHandler_Create(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewNodeEventHandler(tt.fields.Reader)
+			h := NewNodeEventHandler(tt.fields.Reader, nil)
 			h.Create(tt.args.ctx, tt.args.evt, tt.args.q)
 			require.Equal(t, tt.want, tt.args.q.Len())
 		})
@@ -88,7 +88,7 @@ func Test_NodeEventHandler_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewNodeEventHandler(tt.fields.Reader)
+			h := NewNodeEventHandler(tt.fields.Reader, nil)
 			h.Delete(tt.args.ctx, tt.args.evt, tt.args.q)
 			require.Equal(t, tt.want, tt.args.q.Len())
 		})
@@ -125,7 +125,7 @@ func Test_NodeEventHandler_Generic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewNodeEventHandler(tt.fields.Reader)
+			h := NewNodeEventHandler(tt.fields.Reader, nil)
 			h.Generic(tt.args.ctx, tt.args.evt, tt.args.q)
 			require.Equal(t, tt.want, tt.args.q.Len())
 		})
@@ -219,9 +219,111 @@ func Test_NodeEventHandler_Update(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewNodeEventHandler(tt.fields.Reader)
+			h := NewNodeEventHandler(tt.fields.Reader, nil)
 			h.Update(tt.args.ctx, tt.args.evt, tt.args.q)
 			require.Equal(t, tt.want, tt.args.q.Len())
+		})
+	}
+}
+
+func Test_NodeEventHandler_Update_PropagatedConditions(t *testing.T) {
+	nodeset := newNodeSet("foo", "slurm", 0)
+	cl := fake.NewFakeClient()
+	propagated := []corev1.NodeConditionType{"MaintenancePlanned", "DrainInProgress"}
+
+	withConditions := func(node *corev1.Node, conds ...corev1.NodeCondition) *corev1.Node {
+		node.Status.Conditions = conds
+		return node
+	}
+	maintenance := corev1.NodeCondition{
+		Type:    "MaintenancePlanned",
+		Status:  corev1.ConditionTrue,
+		Reason:  "MaintenanceWindow",
+		Message: "Hardware maintenance is scheduled",
+	}
+	draining := corev1.NodeCondition{
+		Type:    "DrainInProgress",
+		Status:  corev1.ConditionTrue,
+		Reason:  "AdminDrain",
+		Message: "Draining for firmware update",
+	}
+	maintenanceHeartbeat := *maintenance.DeepCopy()
+	maintenanceHeartbeat.LastHeartbeatTime = metav1.Now()
+	maintenanceDone := *maintenance.DeepCopy()
+	maintenanceDone.Status = corev1.ConditionFalse
+	diskPressure := corev1.NodeCondition{
+		Type:   corev1.NodeDiskPressure,
+		Status: corev1.ConditionTrue,
+		Reason: "KubeletHasDiskPressure",
+	}
+
+	tests := []struct {
+		name       string
+		propagated []corev1.NodeConditionType
+		oldNode    *corev1.Node
+		newNode    *corev1.Node
+		want       int
+	}{
+		{
+			name:       "cordoned node gains propagated condition - should enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", true), maintenance),
+			newNode:    withConditions(newNode("test-node", true), maintenance, draining),
+			want:       1,
+		},
+		{
+			name:       "cordoned node propagated condition status changes - should enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", true), maintenance),
+			newNode:    withConditions(newNode("test-node", true), maintenanceDone),
+			want:       1,
+		},
+		{
+			name:       "cordoned node loses propagated condition - should enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", true), maintenance, draining),
+			newNode:    withConditions(newNode("test-node", true), maintenance),
+			want:       1,
+		},
+		{
+			name:       "cordoned node propagated condition heartbeat only - should not enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", true), maintenance),
+			newNode:    withConditions(newNode("test-node", true), maintenanceHeartbeat),
+			want:       0,
+		},
+		{
+			name:       "cordoned node non-propagated condition changes - should not enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", true)),
+			newNode:    withConditions(newNode("test-node", true), diskPressure),
+			want:       0,
+		},
+		{
+			name:       "schedulable node propagated condition changes - should not enqueue",
+			propagated: propagated,
+			oldNode:    withConditions(newNode("test-node", false)),
+			newNode:    withConditions(newNode("test-node", false), maintenance),
+			want:       0,
+		},
+		{
+			name:       "no propagated conditions configured - should not enqueue",
+			propagated: nil,
+			oldNode:    withConditions(newNode("test-node", true)),
+			newNode:    withConditions(newNode("test-node", true), maintenance),
+			want:       0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := indexes.NewFakeClientBuilderWithIndexes(
+				nodeset,
+				newNodeSetPod(cl, nodeset, 0, "test-node"),
+			).Build()
+			q := newQueue()
+			h := NewNodeEventHandler(reader, tt.propagated)
+			h.Update(t.Context(), event.UpdateEvent{ObjectOld: tt.oldNode, ObjectNew: tt.newNode}, q)
+			require.Equal(t, tt.want, q.Len())
 		})
 	}
 }
