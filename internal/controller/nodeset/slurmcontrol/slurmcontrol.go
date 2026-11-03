@@ -815,10 +815,7 @@ func (r *realSlurmControl) DeleteNode(ctx context.Context, nodeset *slinkyv1beta
 	slurmNode := &slurmapi.V0044Node{
 		Name: new(nodeName),
 	}
-	opts := &slurmclient.DeleteOptions{
-		SkipReadAfterDelete: true,
-	}
-	if err := slurmClient.Delete(ctx, slurmNode, opts); err != nil {
+	if err := slurmClient.Delete(ctx, slurmNode); err != nil {
 		return err
 	}
 
