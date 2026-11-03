@@ -468,7 +468,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### golang.org/x/crypto
 - Name: golang.org/x/crypto
-- Version: v0.58.0
+- Version: v0.58.1-0.20261009181718-2f1f834330b2
 - License: BSD-3-Clause
 
 ### golang.org/x/exp/slices
