@@ -307,6 +307,9 @@ Project documentation is located in the docs directory of this repository.
 
 Feature requests, code contributions, and bug reports are welcome!
 
+Chat with us in the [Slinky channel][slinky-slack] on
+[Kubernetes Slack][kubernetes-slack].
+
 Github/Gitlab submitted issues and PRs/MRs are handled on a best effort basis.
 
 The SchedMD official issue tracker is at <https://support.schedmd.com/>.
@@ -337,10 +340,12 @@ specific language governing permissions and limitations under the License.
 [installation]: ./docs/installation.md
 [k8s-lifecycle]: https://kubernetes.io/releases/#release-history
 [kubernetes]: https://kubernetes.io/
+[kubernetes-slack]: https://slack.k8s.io/
 [schedmd]: https://schedmd.com/
 [semver]: https://semver.org/
 [slinky]: https://slinky.ai/
 [slinky-docs]: https://slinky.schedmd.com/
+[slinky-slack]: https://app.slack.com/client/T09NY5SBT/C0CC9B9C1CH
 [slurm]: https://slurm.schedmd.com/overview.html
 [slurm-25.11]: https://github.com/SchedMD/slurm/releases/tag/slurm-25-11-0-1
 [slurm-accounting]: https://slurm.schedmd.com/accounting.html
