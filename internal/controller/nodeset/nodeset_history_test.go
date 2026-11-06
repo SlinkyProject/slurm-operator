@@ -23,6 +23,46 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/utils/structutils"
 )
 
+func TestDefaultNodeNamePreferenceRevision(t *testing.T) {
+	const legacyPatch = `{"spec":{"extraConf":"Weight=10",` +
+		`"logfile":{"$patch":"replace","image":"alpine","name":"","resources":{}},` +
+		`"oversubscribeNode":false,` +
+		`"slurmd":{"$patch":"replace","image":"slurmd","name":"","resources":{}},` +
+		`"template":{"$patch":"replace","metadata":{"labels":{"foo":"bar"}},"spec":{"containers":null}}}}`
+	const legacyRevisionName = "workers-84cf77f76c"
+
+	nodeset := newNodeSet("workers", "slurm", 2)
+	legacy, err := newRevision(nodeset, 1, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.Equal(t, legacyPatch, string(legacy.Data.Raw), "Pod-named revisions must retain upstream's patch shape")
+	require.Equal(t, legacyRevisionName, legacy.Name)
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(false)
+	explicitFalse, err := newRevision(nodeset, 2, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.True(t, history.EqualRevision(legacy, explicitFalse))
+	nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode = ptr.To(true)
+	pinnedLegacy, err := newRevision(nodeset, 3, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.True(t, history.EqualRevision(legacy, pinnedLegacy))
+	nodeset.Spec.PreferKubernetesNodeName = ptr.To(true)
+	nodeNamed, err := newRevision(nodeset, 4, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.False(t, history.EqualRevision(legacy, nodeNamed))
+	nodeset.Spec.PreferKubernetesNodeName = nil
+	defaultNodeNamed, err := newRevision(nodeset, 5, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.True(t, history.EqualRevision(nodeNamed, defaultNodeNamed))
+	nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode = ptr.To(false)
+	fallback, err := newRevision(nodeset, 6, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.True(t, history.EqualRevision(legacy, fallback))
+	nodeset.Spec.ScaleStrategy.StatefulSet.PinToNode = ptr.To(true)
+	nodeset.Spec.OversubscribeNode = true
+	oversubscribed, err := newRevision(nodeset, 7, ptr.To[int32](0))
+	require.NoError(t, err)
+	require.False(t, history.EqualRevision(nodeNamed, oversubscribed))
+}
+
 func TestNodeSetReconciler_truncateHistory(t *testing.T) {
 	const clusterName = "slurm"
 	type fields struct {
