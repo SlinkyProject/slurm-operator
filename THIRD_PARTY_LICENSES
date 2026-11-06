@@ -48,7 +48,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/cert-manager/cert-manager/pkg/apis/meta
 - Name: github.com/cert-manager/cert-manager/pkg/apis/meta
-- Version: v1.19.4
+- Version: v1.19.6
 - License: Apache-2.0
 
 ### github.com/cespare/xxhash/v2
@@ -93,7 +93,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/getkin/kin-openapi/openapi3
 - Name: github.com/getkin/kin-openapi/openapi3
-- Version: v0.144.0
+- Version: v0.149.0
 - License: MIT
 
 ### github.com/go-logr/logr
@@ -333,7 +333,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/santhosh-tekuri/jsonschema/v6
 - Name: github.com/santhosh-tekuri/jsonschema/v6
-- Version: v6.0.2
+- Version: v6.0.3
 - License: Apache-2.0
 
 ### github.com/sethvargo/go-envconfig
