@@ -76,6 +76,7 @@ func (b *AccountingBuilder) accountingPodTemplate(accounting *slinkyv1beta1.Acco
 	objectMeta := metadata.NewBuilder(key).
 		WithAnnotations(accounting.Annotations).
 		WithLabels(accounting.Labels).
+		WithMetadata(accounting.Spec.Template.Metadata).
 		WithLabels(labels.NewBuilder().WithAccountingLabels(accounting).Build()).
 		WithAnnotations(hashMap).
 		WithAnnotations(map[string]string{
