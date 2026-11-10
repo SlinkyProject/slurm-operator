@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -90,6 +91,82 @@ func TestBuilder_BuildAccounting(t *testing.T) {
 					got.Spec.Template.Spec.Containers[0].Ports[0].Name, common.SlurmdbdPort)
 			}
 		})
+	}
+}
+
+func TestBuilder_BuildAccounting_Env(t *testing.T) {
+	accounting := &slinkyv1beta1.Accounting{
+		ObjectMeta: metav1.ObjectMeta{Name: "slurm"},
+		Spec: slinkyv1beta1.AccountingSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			Slurmdbd: slinkyv1beta1.ContainerWrapper{
+				Container: corev1.Container{
+					Env: []corev1.EnvVar{{Name: "ABORT_ON_FATAL", Value: ""}, {Name: "SLURM_DEBUG_FLAGS", Value: "accrue"}},
+				},
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	got, err := b.BuildAccounting(accounting)
+	require.NoError(t, err)
+	require.Equal(t, labels.AccountingApp, got.Spec.Template.Spec.Containers[0].Name)
+	require.ElementsMatch(t, accounting.Spec.Slurmdbd.Env, got.Spec.Template.Spec.Containers[0].Env)
+}
+
+func TestBuilder_BuildAccounting_TemplateMetadata(t *testing.T) {
+	accounting := &slinkyv1beta1.Accounting{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "slurm",
+			Annotations: map[string]string{"example.com/inherited": "true", "example.com/test": "false"},
+			Labels:      map[string]string{"example.com/inherited": "true", "example.com/test": "false"},
+		},
+		Spec: slinkyv1beta1.AccountingSpec{
+			JwtKeyRef: &corev1.SecretKeySelector{},
+			Template: slinkyv1beta1.PodTemplate{
+				Metadata: slinkyv1beta1.Metadata{
+					Annotations: map[string]string{
+						"example.com/test":         "true",
+						"example.com/template":     "true",
+						annotationDefaultContainer: "custom",
+						annotationSlurmdbdConfHash: "custom",
+					},
+					Labels: map[string]string{
+						"example.com/test":     "true",
+						"example.com/template": "true",
+						labels.AppLabel:        "custom",
+					},
+				},
+			},
+		},
+	}
+	b := New(fake.NewFakeClient())
+	got, err := b.BuildAccounting(accounting)
+	if err != nil {
+		t.Fatalf("BuildAccounting(%q) error = %v", accounting.Name, err)
+	}
+
+	for key, want := range map[string]string{
+		"example.com/inherited": "true",
+		"example.com/test":      "true",
+		"example.com/template":  "true",
+		labels.AppLabel:         "slurmdbd",
+	} {
+		if value := got.Spec.Template.Labels[key]; value != want {
+			t.Errorf("BuildAccounting(%q) pod label %q = %q, want %q", accounting.Name, key, value, want)
+		}
+	}
+	for key, want := range map[string]string{
+		"example.com/inherited":    "true",
+		"example.com/test":         "true",
+		"example.com/template":     "true",
+		annotationDefaultContainer: "slurmdbd",
+	} {
+		if value := got.Spec.Template.Annotations[key]; value != want {
+			t.Errorf("BuildAccounting(%q) pod annotation %q = %q, want %q", accounting.Name, key, value, want)
+		}
+	}
+	if hash := got.Spec.Template.Annotations[annotationSlurmdbdConfHash]; hash == "custom" {
+		t.Errorf("BuildAccounting(%q) pod config hash = %q, want an operator-generated hash", accounting.Name, hash)
 	}
 }
 
