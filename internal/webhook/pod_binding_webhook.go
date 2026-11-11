@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,6 +20,7 @@ import (
 
 	slinkyv1beta1 "github.com/SlinkyProject/slurm-operator/api/v1beta1"
 	"github.com/SlinkyProject/slurm-operator/internal/builder/labels"
+	nodesetutils "github.com/SlinkyProject/slurm-operator/internal/controller/nodeset/utils"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 )
 
@@ -68,19 +70,38 @@ func (r *PodBindingWebhook) Default(ctx context.Context, binding *corev1.Binding
 		bindinglog.V(1).Info("ignoring pod", "pod", klog.KObj(pod))
 		return nil
 	}
+	nodeNamed := podLabels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode] == string(slinkyv1beta1.SlurmNodeNameModeKubernetesNode)
+	if nodeNamed {
+		boundPod := &corev1.Pod{}
+		if err := r.Get(ctx, podKey, boundPod); err != nil {
+			return fmt.Errorf("could not fetch worker pod for binding: %w", err)
+		}
+		if boundPod.Spec.NodeName != "" {
+			return nil
+		}
+	}
 
 	node := &corev1.Node{}
 	nodeKey := types.NamespacedName{Name: binding.Target.Name}
 	if err := r.Get(ctx, nodeKey, node); err != nil {
-		if apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) && !nodeNamed {
 			return nil
 		}
 		return err
 	}
 
 	topologySpec := node.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec]
+	slurmName := nodesetutils.GetDaemonSetPodHostname(node.Name, node.Annotations[slinkyv1beta1.AnnotationNodeHostnameOverride])
+	if nodeNamed {
+		if problems := utilvalidation.IsDNS1123Label(slurmName); len(problems) != 0 {
+			return fmt.Errorf("slurm node name %q is not a valid hostname: %v", slurmName, problems)
+		}
+	}
 	mutateFn := func(pod *metav1.PartialObjectMetadata) error {
 		metav1.SetMetaDataAnnotation(&pod.ObjectMeta, slinkyv1beta1.AnnotationNodeTopologySpec, topologySpec)
+		if nodeNamed {
+			pod.Labels[slinkyv1beta1.LabelNodeSetPodHostname] = slurmName
+		}
 		return nil
 	}
 	if err := objectutils.PatchObject(r.Client, ctx, pod, mutateFn); err != nil {

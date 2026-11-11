@@ -15,6 +15,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -61,6 +62,9 @@ func (r *NodeSetWebhook) ValidateUpdate(ctx context.Context, oldNodeSet, newNode
 	if !apiequality.Semantic.DeepEqual(newNodeSet.Spec.VolumeClaimTemplates, oldNodeSet.Spec.VolumeClaimTemplates) {
 		errs = append(errs, errors.New("cannot change volumeClaimTemplates after deployment"))
 	}
+	if ptr.Deref(oldNodeSet.Spec.PreferKubernetesNodeName, true) != ptr.Deref(newNodeSet.Spec.PreferKubernetesNodeName, true) {
+		errs = append(errs, errors.New("preferKubernetesNodeName is immutable"))
+	}
 
 	return warns, utilerrors.NewAggregate(errs)
 }
@@ -78,6 +82,10 @@ func (r *NodeSetWebhook) validateNodeSet(nodeset *slinkyv1beta1.NodeSet) (admiss
 
 	if nodeset.Spec.ControllerRef.Name == "" {
 		errs = append(errs, errors.New("controllerRef.name must not be empty"))
+	}
+
+	if _, ok := nodeset.Spec.Template.Metadata.Labels[slinkyv1beta1.LabelNodeSetSlurmNodeNameMode]; ok {
+		errs = append(errs, errors.New("the Slurm node naming mode Pod label is reserved for the operator"))
 	}
 
 	if mu := nodeset.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable; mu != nil {
