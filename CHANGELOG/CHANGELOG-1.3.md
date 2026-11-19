@@ -1,3 +1,24 @@
+## v1.3.0
+
+### Added
+
+- Slurm helm chart: expose `Controller.configFileRefs` field.
+- Controller `configFileRefs` now supports an `optional` field for projection
+  purposes.
+
+### Fixed
+
+- GO-2026-5932.
+- GO-2026-6769 GO-2026-6785 GO-2026-6795 GO-2026-6800 GO-2026-6889.
+- Respect accounting pod template metadata.
+- GO-2026-6859.
+- Correct the operator chart's minimum Slurm version to 25.11.
+
+### Changed
+
+- Allow async cache refresh after Slurm object delete.
+- Changed live data fetch to cache refresh.
+
 ## v1.3.0-rc1
 
 ### Added
