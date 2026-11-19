@@ -21,6 +21,16 @@ the migration steps.
   `PinToNode` were omitted in favor of using the `ScaleStrategy` object, which
   contains all of those fields. Old fields will take priority over
   `ScaleStrategy`.
+- Pinned, non-oversubscribed StatefulSet workers now default to Node-derived
+  Slurm names. Set `preferKubernetesNodeName=false` when creating a NodeSet to
+  retain Pod-hostname naming. The preference is immutable; changing it requires
+  draining and replacing the NodeSet. Legacy host-networked workers using
+  implicit Node names must also be drained and recreated.
+- Node-derived StatefulSet naming requires `webhook.podsBinding=true` in the
+  operator chart and a namespace included by its webhook selector. Set
+  `webhook.mutating.failurePolicy=Fail` to prevent unresolved worker identities
+  when the binding webhook is unavailable. Upgrade the CRDs, operator and
+  webhook together.
 - LoginSet and NodeSet `extraSshdConfig` are deprecated. Please migrate to
   volume mounting `sshd_config` to `/etc/ssh/sshd_config` or config shards under
   `/etc/ssh/sshd_config.d/` directory. Existing `extraSshdConfig` values are
