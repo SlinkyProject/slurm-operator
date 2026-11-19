@@ -1,6 +1,6 @@
 dependencies:
 - name: slurm-operator-crds
   repository: file://../slurm-operator-crds
-  version: 1.2.4
-digest: sha256:9e11d212fbfee6a2ac98fb5b17c545960fefef4a97e9863ae3a82586acf412d9
-generated: "2026-10-28T16:51:14.349987904Z"
+  version: 1.2.5
+digest: sha256:a02fe04aaa9cdef7067978f73b4ce76c96c4a32d43dd5868547d9a5f79cf172a
+generated: "2026-11-19T16:20:11.822428004Z"
