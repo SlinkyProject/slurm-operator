@@ -1,3 +1,14 @@
+## v1.1.6
+
+### Fixed
+
+- Allow Slurm node status sync for unhealthy pods.
+- GO-2026-5932.
+- GO-2026-6769 GO-2026-6783 GO-2026-6785 GO-2026-6789 GO-2026-6795 GO-2026-6800
+  GO-2026-6804 GO-2026-6889.
+- Respect accounting pod template metadata.
+- GO-2026-6859.
+
 ## v1.1.5
 
 ### Fixed
