@@ -98,6 +98,15 @@ func TestSlurmChart(t *testing.T) {
 			},
 		},
 		{
+			name:    "Install Slurm without controller persistence",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				Ephemeral: true,
+				Namespace: "slurm-e2e-ephemeral",
+			},
+		},
+		{
 			name:    "Install Slurm with DaemonSet scaling",
 			install: true,
 			test:    true,
@@ -142,6 +151,15 @@ func TestSlurmChart(t *testing.T) {
 				Pyxis:      true,
 				Accounting: true,
 				Namespace:  "slurm-e2e-pyxis-accounting",
+			},
+		},
+		{
+			name:    "Install Slurm and exercise HA mode",
+			install: true,
+			test:    true,
+			config: test.SlurmInstallationConfig{
+				HA:        true,
+				Namespace: "slurm-e2e-ha",
 			},
 		},
 	}

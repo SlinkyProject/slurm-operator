@@ -6,6 +6,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -114,6 +116,39 @@ func testSlurmOperator() types.Feature {
 
 // Slinky Components Installation
 
+func createSlurmHAState(namespace string) types.Feature {
+	return features.New("Create Slurm HA state PVC").
+		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			if namespace == "" || namespace == "slurm" {
+				t.Fatalf("HA fixture namespace = %q, want a dedicated test namespace", namespace)
+			}
+			crClient, err := GetControllerRuntimeClient(config)
+			if err != nil {
+				t.Fatalf("failed to get controller-runtime client: %v", err)
+			}
+			namespaceObject := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			if err := crClient.Create(ctx, namespaceObject); err != nil && !apierrors.IsAlreadyExists(err) {
+				t.Fatalf("failed to create HA namespace %s: %v", namespace, err)
+			}
+
+			storageClass := "nfs"
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{Name: "slurmctld-state", Namespace: namespace},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: &storageClass,
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("4Gi")},
+					},
+				},
+			}
+			if err := crClient.Create(ctx, pvc); err != nil {
+				t.Fatalf("failed to create HA PVC %s/%s: %v", namespace, pvc.Name, err)
+			}
+			return ctx
+		}).Feature()
+}
+
 func installSlurm(slurmConfig test.SlurmInstallationConfig) types.Feature {
 	feature := features.New("Helm install slurm").
 		Setup(func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -193,6 +228,10 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		helm.WithTimeout("10m"),
 	)
 
+	if slurmConfig.Ephemeral {
+		opts = append(opts, helm.WithArgs("--set controller.persistence.enabled=false"))
+	}
+
 	if slurmConfig.Topology {
 		topologyValuesFile := filepath.Join(test.Basepath, "test/e2e/resources/topology-values.yaml")
 		opts = append(opts, helm.WithArgs("--values "+topologyValuesFile))
@@ -220,6 +259,11 @@ func doSlurmInstall(ctx context.Context, t *testing.T, config *envconf.Config, s
 		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.login.image.repository="+test.SlurmImage.Repo+"/login-pyxis'"))
 		opts = append(opts, helm.WithArgs("--set 'loginsets.slinky.securityContext.privileged=true'"))
 		opts = append(opts, helm.WithArgs("--set 'nodesets.slinky.slurmd.image.repository="+test.SlurmImage.Repo+"/slurmd-pyxis'"))
+	}
+
+	if slurmConfig.HA {
+		opts = append(opts, helm.WithArgs("--set 'controller.ha.enabled=true'"))
+		opts = append(opts, helm.WithArgs("--set 'controller.persistence.existingClaim=slurmctld-state'"))
 	}
 
 	if test.SlurmImage.Repo != "" {
@@ -256,4 +300,18 @@ func uninstallSlurm(namespace string) types.Feature {
 			ctx = test.DoUninstallHelmChart(ctx, t, config, "slurm", namespace)
 			return test.DoDeleteNamespace(ctx, t, config, namespace)
 		}).Feature()
+}
+
+// upgradeSlurm preserves the fixture's images and other installation values.
+func upgradeSlurm(t *testing.T, config *envconf.Config, namespace, values string) {
+	t.Helper()
+	valuesFile := filepath.Join(t.TempDir(), "values.yaml")
+	require.NoError(t, os.WriteFile(valuesFile, []byte(values), 0o600))
+	err := helm.New(config.KubeconfigFile()).RunUpgrade(
+		helm.WithName("slurm"),
+		helm.WithNamespace(namespace),
+		helm.WithChart(filepath.Join(test.Basepath, "helm/slurm")),
+		helm.WithArgs("--reuse-values", "--values "+valuesFile),
+	)
+	require.NoError(t, err, "failed to upgrade Slurm in %s", namespace)
 }
