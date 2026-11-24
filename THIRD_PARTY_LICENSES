@@ -363,8 +363,18 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### github.com/stretchr/testify
 - Name: github.com/stretchr/testify
-- Version: v1.11.1
+- Version: v1.12.1
 - License: MIT
+
+### github.com/stretchr/testify/internal/difflib
+- Name: github.com/stretchr/testify/internal/difflib
+- Version: v1.12.1
+- License: BSD-3-Clause
+
+### github.com/stretchr/testify/internal/spew
+- Name: github.com/stretchr/testify/internal/spew
+- Version: v1.12.1
+- License: ISC
 
 ### github.com/vladimirvivien/gexe
 - Name: github.com/vladimirvivien/gexe
@@ -393,12 +403,12 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.45.0
+- Version: v1.47.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel
 - Name: go.opentelemetry.io/otel
-- Version: v1.45.0
+- Version: v1.47.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/exporters/otlp/otlptrace
@@ -421,34 +431,44 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Version: v1.45.0
 - License: BSD-3-Clause
 
+### go.opentelemetry.io/otel/log
+- Name: go.opentelemetry.io/otel/log
+- Version: v1.47.0
+- License: Apache-2.0
+
+### go.opentelemetry.io/otel/log
+- Name: go.opentelemetry.io/otel/log
+- Version: v1.47.0
+- License: BSD-3-Clause
+
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
-- Version: v1.45.0
+- Version: v1.47.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/metric
 - Name: go.opentelemetry.io/otel/metric
-- Version: v1.45.0
+- Version: v1.47.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.45.0
+- Version: v1.47.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/sdk
 - Name: go.opentelemetry.io/otel/sdk
-- Version: v1.45.0
+- Version: v1.47.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.45.0
+- Version: v1.47.0
 - License: Apache-2.0
 
 ### go.opentelemetry.io/otel/trace
 - Name: go.opentelemetry.io/otel/trace
-- Version: v1.45.0
+- Version: v1.47.0
 - License: BSD-3-Clause
 
 ### go.opentelemetry.io/proto/otlp
@@ -473,7 +493,7 @@ For complete license texts, please refer to the source repositories or the LICEN
 
 ### go.yaml.in/yaml/v3
 - Name: go.yaml.in/yaml/v3
-- Version: v3.0.4
+- Version: v3.0.5
 - License: MIT
 
 ### golang.org/x/crypto
@@ -565,11 +585,6 @@ For complete license texts, please refer to the source repositories or the LICEN
 - Name: gopkg.in/inf.v0
 - Version: v0.9.1
 - License: BSD-3-Clause
-
-### gopkg.in/yaml.v3
-- Name: gopkg.in/yaml.v3
-- Version: v3.0.1
-- License: MIT
 
 ### k8s.io/api
 - Name: k8s.io/api
