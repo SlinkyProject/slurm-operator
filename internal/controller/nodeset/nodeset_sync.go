@@ -564,7 +564,9 @@ func (r *NodeSetReconciler) syncPodCordon(
 			}
 		}
 
-		changed, err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, false)
+		// Override so the reason tracks node conditions and annotations; reasons
+		// not set by the operator were already preserved by the !ourReason case.
+		changed, err := r.makePodCordonAndDrain(ctx, nodeset, pod, reason, true)
 		if changed {
 			eventutils.Normal(r.eventRecorder, nodeset, pod, eventutils.ReasonNodeCordon, eventutils.ActionCordon,
 				"Cordoned Pod %s because Kubernetes node %s was cordoned", klog.KObj(pod), node.Name)
