@@ -542,6 +542,7 @@ $(LOCALBUILD):
 
 .PHONY: sphinx-build
 sphinx-build: sphinx-install $(LOCALBIN) $(LOCALBUILD)
+	git fetch -Ppft origin '+refs/heads/*:refs/remotes/origin/*'
 	source $(LOCALBIN)/sphinx-venv/bin/activate ;\
 	sphinx-multiversion docs $(LOCALBUILD) ;\
 	deactivate ;\
