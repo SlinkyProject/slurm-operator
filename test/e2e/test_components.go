@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
@@ -43,6 +42,8 @@ import (
 	"github.com/SlinkyProject/slurm-operator/internal/controller/token/slurmjwt"
 	"github.com/SlinkyProject/slurm-operator/internal/utils/objectutils"
 	"github.com/SlinkyProject/slurm-operator/test"
+	"github.com/SlinkyProject/slurm-operator/test/k8sutils"
+	"github.com/SlinkyProject/slurm-operator/test/slurm"
 )
 
 // Dependency Component Health Checks
@@ -149,33 +150,17 @@ func testSlurmController(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
-			var wants string
-
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForControllerPing(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), 80*time.Second)
 
 			return ctx
 		}).
 		Assess("slurm controller can resolve nodeset by hostname", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", "slinky-0")
+			checkHostnameResolution(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), "slinky-0")
 
 			return ctx
 		}).
 		Assess("job launch & execution succeeds (srun)", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
-			wants := "slinky-0"
-
-			cleanup_command := "kubectl"
-			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForSrunHostname(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), "0:15", "slinky-0", 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).
@@ -197,7 +182,7 @@ func testSlurmController(namespace string) types.Feature {
 			require.Eventually(t, func() bool {
 				after := &corev1.Pod{}
 				return crClient.Get(ctx, podKey, after) == nil && after.UID != before.UID &&
-					after.DeletionTimestamp == nil && podReady(after)
+					after.DeletionTimestamp == nil && k8sutils.PodReady(after)
 			}, 3*time.Minute, 2*time.Second, "controller pod was not recreated")
 
 			output, err = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podKey.Name, "-c", "slurmctld", "--", //nolint:gosec // Test-only code
@@ -211,33 +196,17 @@ func testSlurmController(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("slurmctld is responsive after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
-			var wants string
-
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForControllerPing(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), 80*time.Second)
 
 			return ctx
 		}).
 		Assess("slurm controller can resolve nodeset by hostname after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", "slinky-0")
+			checkHostnameResolution(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), "slinky-0")
 
 			return ctx
 		}).
 		Assess("job launch & execution succeeds (srun) after restart", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "srun", "--immediate=10", "-K", "-Q", "--time=0:15", "hostname"}
-			wants := "slinky-0"
-
-			cleanup_command := "kubectl"
-			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForSrunHostname(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), "0:15", "slinky-0", 80*time.Second, 5*time.Second)
 
 			return ctx
 		}).Feature()
@@ -334,7 +303,7 @@ timeout 15s "$@"
 			err = wait.For(func(ctx context.Context) (bool, error) {
 				for _, name := range []string{primary, backup} {
 					current := &corev1.Pod{}
-					if err := crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: name}, current); err != nil || !podReady(current) || current.DeletionTimestamp != nil {
+					if err := crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: name}, current); err != nil || !k8sutils.PodReady(current) || current.DeletionTimestamp != nil {
 						return false, nil //nolint:nilerr
 					}
 					for _, container := range current.Spec.Containers {
@@ -361,15 +330,7 @@ timeout 15s "$@"
 			return ctx
 		}).
 		Assess("slurmctld is responsive", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scontrol", "ping"}
-			var wants string
-
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForControllerPing(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace), 80*time.Second)
 
 			return ctx
 		}).
@@ -430,8 +391,8 @@ timeout 15s "$@"
 			jobID = strings.TrimSpace(string(output))
 			_, err = strconv.ParseUint(jobID, 10, 64)
 			require.NoError(t, err, "sbatch returned an invalid job ID: %q", jobID)
-			test.WaitForCommand(ctx, t, "kubectl", append(workerArgs, "srun", "--immediate=10", "--time=0:01", "hostname"),
-				"slinky-0", "", nil, time.Minute, 2*time.Second)
+			waitForSrunHostname(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace).InPod("slurm-worker-slinky-0"),
+				"0:01", "slinky-0", time.Minute, 2*time.Second)
 
 			controller := &slinkyv1beta1.Controller{}
 			require.NoError(t, crClient.Get(ctx, crclient.ObjectKey{Namespace: namespace, Name: "slurm"}, controller))
@@ -482,65 +443,89 @@ timeout 15s "$@"
 		}).Feature()
 }
 
-func checkHostnameResolution(ctx context.Context, t *testing.T, namespace, sourcePod, nodeName string) {
+// eventuallyWithin retries attempt every interval until it passes or timeout
+// elapses. Each attempt gets a context that ends with the wait, so a pod exec
+// that hangs cannot outlive the timeout.
+func eventuallyWithin(ctx context.Context, t *testing.T, timeout, interval time.Duration, attempt func(ctx context.Context, collect *assert.CollectT), msgAndArgs ...any) {
 	t.Helper()
 
-	const attempts = 16
-	var (
-		lastAddress string
-		lastErr     error
-		lastOutput  []byte
-	)
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		attempt(waitCtx, collect)
+	}, timeout, interval, msgAndArgs...)
+}
 
-	for attempt := range attempts {
-		nodeInfo, err := test.GetSlurmNodeInfo(ctx, namespace, nodeName)
-		if err != nil {
-			lastErr = err
-		} else {
-			lastAddress = nodeInfo["NodeAddr"]
-			if lastAddress == "" {
-				lastErr = nil
-				lastOutput = nil
-			} else {
-				args := []string{
-					"exec", "-n", namespace, sourcePod, "--",
-					"getent", "hosts", lastAddress,
-				}
-				cmd := exec.CommandContext(ctx, "kubectl", args...)
-				lastOutput, lastErr = cmd.CombinedOutput()
-				fields := strings.Fields(string(lastOutput))
-				if lastErr == nil && len(fields) > 1 && strings.HasPrefix(fields[len(fields)-1], nodeName) {
-					return
-				}
-			}
-		}
+// waitForControllerPing waits until slurmctld answers scontrol ping from the
+// client's pod.
+func waitForControllerPing(ctx context.Context, t *testing.T, slurmClient *slurm.Client, timeout time.Duration) {
+	t.Helper()
 
-		if attempt < attempts-1 {
-			select {
-			case <-ctx.Done():
-				t.Fatalf(
-					"context ended while resolving Slurm node %q from pod %q: address=%q, last command error=%v, last combined output=%q: %v",
-					nodeName,
-					sourcePod,
-					lastAddress,
-					lastErr,
-					strings.TrimSpace(string(lastOutput)),
-					ctx.Err(),
-				)
-			case <-time.After(5 * time.Second):
-			}
-		}
+	eventuallyWithin(ctx, t, timeout, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+		assert.NoError(collect, slurmClient.PingController(ctx))
+	}, "slurmctld did not answer ping from pod %s/%s", slurmClient.Namespace, slurmClient.Pod)
+}
+
+// waitForSrunHostname waits until srun, run in the client's pod, runs hostname
+// on the wanted Slurm node. Each attempt first cancels the previous one if it
+// is still queued or running.
+func waitForSrunHostname(ctx context.Context, t *testing.T, slurmClient *slurm.Client, timeLimit, want string, timeout, interval time.Duration) {
+	t.Helper()
+
+	step := slurm.Step{
+		Allocation: slurm.Allocation{
+			Name:      "e2e-srun-hostname",
+			TimeLimit: timeLimit,
+		},
+		Immediate: 10 * time.Second,
+		Command:   []string{"hostname"},
 	}
+	eventuallyWithin(ctx, t, timeout, interval, func(ctx context.Context, collect *assert.CollectT) {
+		_ = slurmClient.CancelJobsByName(ctx, step.Name) //nolint:errcheck
+		stdout, err := slurmClient.Run(ctx, step)
+		if assert.NoError(collect, err) {
+			assert.Equal(collect, want, strings.TrimSpace(stdout))
+		}
+	}, "srun hostname from pod %s/%s did not run on %s", slurmClient.Namespace, slurmClient.Pod, want)
+}
 
-	t.Fatalf(
-		"failed to resolve Slurm node %q from pod %q after %d attempts: address=%q, last command error=%v, last combined output=%q",
-		nodeName,
-		sourcePod,
-		attempts,
-		lastAddress,
-		lastErr,
-		strings.TrimSpace(string(lastOutput)),
-	)
+// waitForSlurmNodeIdle waits until scontrol, run in the client's pod, reports
+// the Slurm node as idle. Each attempt first cancels the jobs of the slurm user
+// so leftovers from earlier tests do not keep the node busy.
+func waitForSlurmNodeIdle(ctx context.Context, t *testing.T, slurmClient *slurm.Client, slurmNode string, timeout time.Duration) {
+	t.Helper()
+
+	controllerClient := slurmClient.InPod(slurm.ControllerPod)
+	eventuallyWithin(ctx, t, timeout, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+		_ = controllerClient.CancelJobsByUser(ctx, "slurm") //nolint:errcheck
+		node, err := slurmClient.Node(ctx, slurmNode)
+		if assert.NoError(collect, err) {
+			assert.True(collect, node.IsIdle(), "Slurm node %s has state %v", slurmNode, node.State)
+		}
+	}, "Slurm node %s did not become idle", slurmNode)
+}
+
+// checkHostnameResolution checks that the client's pod resolves the address
+// slurmctld has for the Slurm node to the node's hostname.
+func checkHostnameResolution(ctx context.Context, t *testing.T, slurmClient *slurm.Client, nodeName string) {
+	t.Helper()
+
+	controllerClient := slurmClient.InPod(slurm.ControllerPod)
+	eventuallyWithin(ctx, t, 80*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+		node, err := controllerClient.Node(ctx, nodeName)
+		if !assert.NoError(collect, err) || !assert.NotEmpty(collect, node.Address, "Slurm node %s has no address", nodeName) {
+			return
+		}
+		stdout, err := slurmClient.Exec(ctx, "getent", "hosts", node.Address)
+		if !assert.NoError(collect, err) {
+			return
+		}
+		fields := strings.Fields(stdout)
+		if assert.Greater(collect, len(fields), 1, "getent hosts %s printed no hostname: %q", node.Address, stdout) {
+			assert.True(collect, strings.HasPrefix(fields[len(fields)-1], nodeName),
+				"address %s resolves to %q, want a name starting with %s", node.Address, fields[len(fields)-1], nodeName)
+		}
+	}, "pod %s/%s could not resolve Slurm node %s", slurmClient.Namespace, slurmClient.Pod, nodeName)
 }
 
 // RestAPI tests
@@ -601,23 +586,15 @@ func testSlurmRestAPI(namespace string, withAccounting bool) types.Feature {
 			return ctx
 		}).
 		Assess("slurmrestd container args match expectations", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"get", "deployment", "-n", namespace, "slurm-restapi", "-o", `jsonpath="{.spec.template.spec.containers[0].args}"`}
-			var wants string
+			wants := []string{"-s", "openapi/slurmctld", "0.0.0.0:6820"}
 			if withAccounting {
-				wants = `"["0.0.0.0:6820"]"`
-			} else {
-				wants = `"["-s","openapi/slurmctld","0.0.0.0:6820"]"`
+				wants = []string{"0.0.0.0:6820"}
 			}
 
-			cmd := exec.Command(command, args...)
-			output, err := cmd.Output()
-
-			if strings.TrimSpace(string(output)) != wants {
-				require.NoError(t, err, "failed running %v %v", command, args)
-				require.Equal(t, wants, strings.TrimSpace(string(output)))
-			}
+			deployment := &appsv1.Deployment{}
+			require.NoError(t, config.Client().Resources().Get(ctx, "slurm-restapi", namespace, deployment), "failed to get REST API Deployment")
+			require.NotEmpty(t, deployment.Spec.Template.Spec.Containers, "REST API Deployment has no containers")
+			require.Equal(t, wants, deployment.Spec.Template.Spec.Containers[0].Args)
 
 			return ctx
 		}).Feature()
@@ -710,28 +687,12 @@ func testSlurmNodeSet(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("Nodeset can contact controller", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-worker-slinky-0", "--", "scontrol", "ping"}
-			var wants string
-
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 4*time.Minute, 5*time.Second)
+			waitForControllerPing(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace).InPod("slurm-worker-slinky-0"), 4*time.Minute)
 
 			return ctx
 		}).
 		Assess("NodeSet is idle", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-worker-slinky-0", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}
-			wants := "idle"
-
-			cleanup_command := "kubectl"
-			cleanup_args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"}
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			waitForSlurmNodeIdle(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace).InPod("slurm-worker-slinky-0"), "slinky-0", 80*time.Second)
 
 			return ctx
 		}).
@@ -740,6 +701,7 @@ func testSlurmNodeSet(namespace string) types.Feature {
 			require.NoError(t, err, "Failed to get new controller-runtime client")
 
 			podName := "slurm-worker-slinky-0"
+			workerClient := slurm.NewClient(config.Client().RESTConfig(), namespace).InPod(podName)
 			marker := "/var/spool/slurmd/e2e-restart-marker"
 			restartCount := func() int32 {
 				pod := &corev1.Pod{}
@@ -752,18 +714,26 @@ func testSlurmNodeSet(namespace string) types.Feature {
 				return 0
 			}
 
-			out, err := exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "touch", marker).CombinedOutput()
-			require.NoError(t, err, "failed to write spool marker: %s", out)
+			_, err = workerClient.Exec(ctx, "touch", marker)
+			require.NoError(t, err, "failed to write spool marker")
 			before := restartCount()
 
 			// Stopping PID 1 restarts the container but keeps the Pod and its emptyDir volumes.
-			_ = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "kill", "1").Run() //nolint:errcheck
+			_, _ = workerClient.Exec(ctx, "kill", "1") //nolint:errcheck
 			require.Eventually(t, func() bool { return restartCount() > before }, 2*time.Minute, 5*time.Second, "slurmd container did not restart")
 
-			test.WaitForCommand(ctx, t, "kubectl", []string{"exec", "-n", namespace, podName, "-c", "slurmd", "--", "test", "-f", marker}, "", "", nil, 2*time.Minute, 5*time.Second)
-			test.WaitForCommand(ctx, t, "kubectl", []string{"exec", "-n", namespace, podName, "-c", "slurmd", "--", "sinfo", "-N", "-n", "slinky-0", "--Format=StateLong", "-h"}, "idle", "", nil, 2*time.Minute, 5*time.Second)
+			eventuallyWithin(ctx, t, 2*time.Minute, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				_, err := workerClient.Exec(ctx, "test", "-f", marker)
+				assert.NoError(collect, err)
+			}, "spool marker %s did not survive the slurmd restart", marker)
+			eventuallyWithin(ctx, t, 2*time.Minute, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				node, err := workerClient.Node(ctx, "slinky-0")
+				if assert.NoError(collect, err) {
+					assert.True(collect, node.IsIdle(), "Slurm node slinky-0 has state %v", node.State)
+				}
+			}, "Slurm node slinky-0 did not return to idle after the slurmd restart")
 
-			_ = exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, podName, "-c", "slurmd", "--", "rm", "-f", marker).Run() //nolint:errcheck
+			_, _ = workerClient.Exec(ctx, "rm", "-f", marker) //nolint:errcheck
 
 			return ctx
 		}).
@@ -776,7 +746,7 @@ func testSlurmNodeSet(namespace string) types.Feature {
 				Namespace: namespace,
 				Name:      "slurm-worker-slinky",
 			}
-			mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+			k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
 				nodeset.Spec.Replicas = ptr.To[int32](2)
 			})
 
@@ -785,7 +755,7 @@ func testSlurmNodeSet(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("NodeSets can resolve each other's hostnames", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			checkHostnameResolution(ctx, t, namespace, "slurm-worker-slinky-0", "slinky-1")
+			checkHostnameResolution(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace).InPod("slurm-worker-slinky-0"), "slinky-1")
 
 			return ctx
 		}).
@@ -798,7 +768,7 @@ func testSlurmNodeSet(namespace string) types.Feature {
 				Namespace: namespace,
 				Name:      "slurm-worker-slinky",
 			}
-			mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+			k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
 				nodeset.Spec.Replicas = ptr.To[int32](1)
 			})
 
@@ -829,6 +799,7 @@ func testSlurmNodeSetTopologySync(namespace string) types.Feature {
 			require.NoError(t, crClient.Get(ctx, podKey, workerPod), "failed to get NodeSet Pod")
 			require.NotEmpty(t, workerPod.Spec.NodeName, "NodeSet Pod %s/%s has empty spec.nodeName", workerPod.Namespace, workerPod.Name)
 
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
 			slurmNodeName := workerPod.Labels[slinkyv1beta1.LabelNodeSetPodHostname]
 			require.NotEmpty(t, slurmNodeName, "NodeSet Pod %s/%s has no Slurm node name label", workerPod.Namespace, workerPod.Name)
 
@@ -871,7 +842,7 @@ func testSlurmNodeSetTopologySync(namespace string) types.Feature {
 				}
 			})
 
-			waitForNodeSetTopology(ctx, t, crClient, podKey, namespace, slurmNodeName, ptr.Deref(originalNodeTopology, ""))
+			waitForNodeSetTopology(ctx, t, crClient, podKey, slurmClient, slurmNodeName, ptr.Deref(originalNodeTopology, ""))
 
 			require.NoError(
 				t,
@@ -888,7 +859,7 @@ func testSlurmNodeSetTopologySync(namespace string) types.Feature {
 					current.Status.ObservedGeneration == current.Generation
 			}, time.Minute, time.Second, "timed out waiting for NodeSet to observe syncTopology=false")
 
-			originalPodTopology, originalSlurmTopology, err := readNodeSetTopologies(ctx, crClient, podKey, namespace, slurmNodeName)
+			originalPodTopology, originalSlurmTopology, err := readNodeSetTopologies(ctx, crClient, podKey, slurmClient, slurmNodeName)
 			require.NoError(t, err, "failed to read topology before changing the Kubernetes Node annotation")
 
 			require.NoError(
@@ -901,7 +872,7 @@ func testSlurmNodeSetTopologySync(namespace string) types.Feature {
 				t,
 				crClient,
 				podKey,
-				namespace,
+				slurmClient,
 				slurmNodeName,
 				originalPodTopology,
 				originalSlurmTopology,
@@ -912,29 +883,13 @@ func testSlurmNodeSetTopologySync(namespace string) types.Feature {
 				updateNodeSetSyncTopology(ctx, crClient, nodesetKey, ptr.To(true)),
 				"failed to enable NodeSet topology synchronization",
 			)
-			waitForNodeSetTopology(ctx, t, crClient, podKey, namespace, slurmNodeName, targetTopology)
+			waitForNodeSetTopology(ctx, t, crClient, podKey, slurmClient, slurmNodeName, targetTopology)
 
 			require.NoError(t, restore(ctx), "failed to restore topology synchronization test resources")
 			restored = true
 
 			return ctx
 		}).Feature()
-}
-
-func nodeSetPods(ctx context.Context, crClient crclient.Client, nodeset *slinkyv1beta1.NodeSet) ([]corev1.Pod, error) {
-	podList := &corev1.PodList{}
-	if err := crClient.List(ctx, podList, crclient.InNamespace(nodeset.Namespace)); err != nil {
-		return nil, err
-	}
-
-	pods := make([]corev1.Pod, 0, len(podList.Items))
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-		if metav1.IsControlledBy(pod, nodeset) {
-			pods = append(pods, *pod)
-		}
-	}
-	return pods, nil
 }
 
 // waitForDaemonSetReplicas waits for a DaemonSet-mode NodeSet and all of its
@@ -964,7 +919,7 @@ func waitForDaemonSetReplicas(
 			return
 		}
 
-		currentPods, err := nodeSetPods(ctx, crClient, current)
+		currentPods, err := k8sutils.NodeSetPods(ctx, crClient, current)
 		if !assert.NoError(collect, err, "failed to list NodeSet pods") {
 			return
 		}
@@ -987,7 +942,7 @@ func waitForDaemonSetReplicas(
 		assert.Len(collect, currentPods, int(desired))
 
 		for i := range currentPods {
-			assert.True(collect, podReady(&currentPods[i]), "pod %s is not ready", currentPods[i].Name)
+			assert.True(collect, k8sutils.PodReady(&currentPods[i]), "pod %s is not ready", currentPods[i].Name)
 		}
 	}, 2*time.Minute, 2*time.Second,
 		"DaemonSet-mode NodeSet %s/%s did not converge",
@@ -1044,31 +999,12 @@ func testSlurmDaemonSet(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("DaemonSet worker participates in the Slurm cluster", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-			test.WaitForCommand(
-				ctx,
-				t,
-				"kubectl",
-				[]string{"exec", "-n", namespace, workerPod, "--", "scontrol", "ping"},
-				"",
-				"",
-				nil,
-				80*time.Second,
-				5*time.Second,
-			)
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
+			workerClient := slurmClient.InPod(workerPod)
 
-			test.WaitForCommand(
-				ctx,
-				t,
-				"kubectl",
-				[]string{"exec", "-n", namespace, workerPod, "--", "sinfo", "-N", "-n", workerHostname, "--Format=StateLong", "-h"},
-				"idle",
-				"kubectl",
-				[]string{"exec", "-n", namespace, "slurm-controller-0", "--", "scancel", "-u", "slurm"},
-				80*time.Second,
-				5*time.Second,
-			)
-
-			checkHostnameResolution(ctx, t, namespace, "slurm-controller-0", workerHostname)
+			waitForControllerPing(ctx, t, workerClient, 80*time.Second)
+			waitForSlurmNodeIdle(ctx, t, workerClient, workerHostname, 80*time.Second)
+			checkHostnameResolution(ctx, t, slurmClient, workerHostname)
 			return ctx
 		}).
 		Assess("DaemonSet scales down when the NodeSet selects one Kubernetes node", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
@@ -1080,15 +1016,14 @@ func testSlurmDaemonSet(namespace string) types.Feature {
 			hostnameLabel := selectedKubeNode.Labels[corev1.LabelHostname]
 			require.NotEmpty(t, hostnameLabel, "selected Kubernetes node %s has no %s label", selectedNode, corev1.LabelHostname)
 
-			nodeset := &slinkyv1beta1.NodeSet{}
-			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
 			nodeSelector := make(map[string]string, len(originalNodeSelector)+1)
 			for key, value := range originalNodeSelector {
 				nodeSelector[key] = value
 			}
 			nodeSelector[corev1.LabelHostname] = hostnameLabel
-			nodeset.Spec.Template.PodSpecWrapper.NodeSelector = nodeSelector
-			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restrict DaemonSet NodeSet to one Kubernetes node")
+			k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = nodeSelector
+			})
 
 			_, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, 1)
 			require.Equal(t, selectedNode, pods[0].Spec.NodeName)
@@ -1098,10 +1033,9 @@ func testSlurmDaemonSet(namespace string) types.Feature {
 			crClient, err := GetControllerRuntimeClient(config)
 			require.NoError(t, err, "failed to get controller-runtime client")
 
-			nodeset := &slinkyv1beta1.NodeSet{}
-			require.NoError(t, crClient.Get(ctx, nodesetKey, nodeset), "failed to get NodeSet")
-			nodeset.Spec.Template.PodSpecWrapper.NodeSelector = originalNodeSelector
-			require.NoError(t, crClient.Update(ctx, nodeset), "failed to restore DaemonSet NodeSet node selector")
+			k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+				nodeset.Spec.Template.PodSpecWrapper.NodeSelector = originalNodeSelector
+			})
 
 			_, pods := waitForDaemonSetReplicas(crClient, ctx, t, nodesetKey, initialDesired)
 			seenNodes := make(map[string]struct{}, len(pods))
@@ -1157,7 +1091,7 @@ func checkNodeSetTopologyUnchanged(
 	t *testing.T,
 	crClient crclient.Client,
 	podKey crclient.ObjectKey,
-	namespace string,
+	slurmClient *slurm.Client,
 	slurmNodeName string,
 	wantPodTopology string,
 	wantSlurmTopology string,
@@ -1167,7 +1101,7 @@ func checkNodeSetTopologyUnchanged(
 	deadline := time.Now().Add(topologySyncDisabledObservation)
 	for {
 		readCtx, cancel := context.WithTimeout(ctx, topologyReadTimeout)
-		podTopology, slurmTopology, err := readNodeSetTopologies(readCtx, crClient, podKey, namespace, slurmNodeName)
+		podTopology, slurmTopology, err := readNodeSetTopologies(readCtx, crClient, podKey, slurmClient, slurmNodeName)
 		cancel()
 
 		if ctx.Err() != nil {
@@ -1193,18 +1127,18 @@ func readNodeSetTopologies(
 	ctx context.Context,
 	crClient crclient.Client,
 	podKey crclient.ObjectKey,
-	namespace string,
+	slurmClient *slurm.Client,
 	slurmNodeName string,
 ) (string, string, error) {
 	pod := &corev1.Pod{}
 	if err := crClient.Get(ctx, podKey, pod); err != nil {
 		return "", "", fmt.Errorf("get NodeSet Pod %s: %w", podKey, err)
 	}
-	nodeInfo, err := test.GetSlurmNodeInfo(ctx, namespace, slurmNodeName)
+	node, err := slurmClient.Node(ctx, slurmNodeName)
 	if err != nil {
 		return "", "", fmt.Errorf("get Slurm node %s: %w", slurmNodeName, err)
 	}
-	return pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], nodeInfo["Topology"], nil
+	return pod.Annotations[slinkyv1beta1.AnnotationNodeTopologySpec], node.Topology, nil
 }
 
 func waitForNodeSetTopology(
@@ -1212,7 +1146,7 @@ func waitForNodeSetTopology(
 	t *testing.T,
 	crClient crclient.Client,
 	podKey crclient.ObjectKey,
-	namespace string,
+	slurmClient *slurm.Client,
 	slurmNodeName string,
 	want string,
 ) {
@@ -1225,7 +1159,7 @@ func waitForNodeSetTopology(
 	)
 	err := wait.For(
 		func(waitCtx context.Context) (bool, error) {
-			podTopology, slurmTopology, lastErr = readNodeSetTopologies(waitCtx, crClient, podKey, namespace, slurmNodeName)
+			podTopology, slurmTopology, lastErr = readNodeSetTopologies(waitCtx, crClient, podKey, slurmClient, slurmNodeName)
 			return lastErr == nil && podTopology == want && slurmTopology == want, nil
 		},
 		wait.WithContext(ctx),
@@ -1308,7 +1242,7 @@ func testSlurmJWTKeyRotation(namespace string) types.Feature {
 				if err := crClient.Get(ctx, controllerPodKey, current); err != nil {
 					return false
 				}
-				return current.UID != oldControllerPod.UID && podReady(current)
+				return current.UID != oldControllerPod.UID && k8sutils.PodReady(current)
 			}, 2*time.Minute, 2*time.Second, "timed out waiting for slurmctld to adopt the rotated JWT key")
 
 			operatorClient := newSlurmRESTClient(t, config, namespace, jwtSecret.Data[jwtKeyRef.Key])
@@ -1321,15 +1255,6 @@ func testSlurmJWTKeyRotation(namespace string) types.Feature {
 
 			return ctx
 		}).Feature()
-}
-
-func podReady(pod *corev1.Pod) bool {
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady {
-			return condition.Status == corev1.ConditionTrue
-		}
-	}
-	return false
 }
 
 func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
@@ -1369,7 +1294,7 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 
 			t.Cleanup(func() {
 				cleanupCtx := context.Background()
-				setNodeUnschedulable(cleanupCtx, t, crClient, targetNodeName, false)
+				k8sutils.SetNodeUnschedulable(cleanupCtx, t, crClient, targetNodeName, false)
 				restoreNodeSetStatefulSet(cleanupCtx, t, crClient, nodesetKey, originalScalingMode, originalReplicas, originalSelector)
 			})
 
@@ -1377,7 +1302,7 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 			daemonPod := waitForNodeSetPodOnNode(ctx, t, crClient, namespace, nodesetKey.Name, targetNodeName, "", slinkyv1beta1.ScalingModeDaemonset)
 			require.True(
 				t,
-				hasUnschedulableToleration(daemonPod),
+				k8sutils.HasUnschedulableToleration(daemonPod),
 				"DaemonSet NodeSet pod %s/%s missing %s=NoSchedule toleration; got tolerations=%v",
 				daemonPod.Namespace,
 				daemonPod.Name,
@@ -1385,13 +1310,13 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 				daemonPod.Spec.Tolerations,
 			)
 
-			setNodeUnschedulable(ctx, t, crClient, targetNodeName, true)
+			k8sutils.SetNodeUnschedulable(ctx, t, crClient, targetNodeName, true)
 			require.NoError(t, crClient.Delete(ctx, daemonPod), "failed to delete DaemonSet NodeSet pod %s/%s", daemonPod.Namespace, daemonPod.Name)
 
 			replacement := waitForNodeSetPodOnNode(ctx, t, crClient, namespace, nodesetKey.Name, targetNodeName, daemonPod.UID, slinkyv1beta1.ScalingModeDaemonset)
 			require.True(
 				t,
-				hasUnschedulableToleration(replacement),
+				k8sutils.HasUnschedulableToleration(replacement),
 				"replacement DaemonSet NodeSet pod %s/%s missing %s=NoSchedule toleration; got tolerations=%v",
 				replacement.Namespace,
 				replacement.Name,
@@ -1399,14 +1324,14 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 				replacement.Spec.Tolerations,
 			)
 
-			setNodeUnschedulable(ctx, t, crClient, targetNodeName, false)
+			k8sutils.SetNodeUnschedulable(ctx, t, crClient, targetNodeName, false)
 			restoreNodeSetStatefulSet(ctx, t, crClient, nodesetKey, originalScalingMode, originalReplicas, originalSelector)
 			// Replica counts can still describe the DaemonSet pod. Wait for the
 			// named StatefulSet pod before the next feature uses it.
 			err = wait.For(
 				conditions.New(config.Client().Resources()).ResourceMatch(workerPod, func(object k8s.Object) bool {
 					pod := object.(*corev1.Pod)
-					return pod.DeletionTimestamp.IsZero() && podReady(pod)
+					return pod.DeletionTimestamp.IsZero() && k8sutils.PodReady(pod)
 				}),
 				wait.WithContext(ctx),
 				wait.WithTimeout(2*time.Minute),
@@ -1422,7 +1347,7 @@ func testSlurmNodeSetDaemonCordon(namespace string) types.Feature {
 func pinNodeSetToDaemonNode(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, nodeName string) {
 	t.Helper()
 
-	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+	k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
 		nodeset.Spec.ScaleStrategy.Mode = slinkyv1beta1.ScalingModeDaemonset
 		selector := maps.Clone(nodeset.Spec.Template.PodSpecWrapper.NodeSelector)
 		if selector == nil {
@@ -1436,46 +1361,11 @@ func pinNodeSetToDaemonNode(ctx context.Context, t *testing.T, crClient crclient
 func restoreNodeSetStatefulSet(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, scalingMode slinkyv1beta1.ScalingModeType, replicas int32, nodeSelector map[string]string) {
 	t.Helper()
 
-	mutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
+	k8sutils.MutateNodeSet(ctx, t, crClient, nodesetKey, func(nodeset *slinkyv1beta1.NodeSet) {
 		nodeset.Spec.ScaleStrategy.Mode = scalingMode
 		nodeset.Spec.Replicas = &replicas
 		nodeset.Spec.Template.PodSpecWrapper.NodeSelector = maps.Clone(nodeSelector)
 	})
-}
-
-func mutateNodeSet(ctx context.Context, t *testing.T, crClient crclient.Client, nodesetKey crclient.ObjectKey, mutate func(*slinkyv1beta1.NodeSet)) {
-	t.Helper()
-
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		nodeset := &slinkyv1beta1.NodeSet{}
-		if err := crClient.Get(ctx, nodesetKey, nodeset); err != nil {
-			return err
-		}
-		mutate(nodeset)
-		return crClient.Update(ctx, nodeset)
-	})
-	require.NoError(t, err, "failed to update NodeSet %s/%s", nodesetKey.Namespace, nodesetKey.Name)
-}
-
-func setNodeUnschedulable(ctx context.Context, t *testing.T, crClient crclient.Client, nodeName string, unschedulable bool) {
-	t.Helper()
-
-	require.Eventually(t, func() bool {
-		node := &corev1.Node{}
-		if err := crClient.Get(ctx, crclient.ObjectKey{Name: nodeName}, node); err != nil {
-			t.Logf("failed to get Node %s: %v", nodeName, err)
-			return false
-		}
-		if node.Spec.Unschedulable == unschedulable {
-			return true
-		}
-		node.Spec.Unschedulable = unschedulable
-		if err := crClient.Update(ctx, node); err != nil {
-			t.Logf("failed to update Node %s unschedulable=%t: %v", nodeName, unschedulable, err)
-			return false
-		}
-		return true
-	}, 30*time.Second, 500*time.Millisecond, "timed out setting Node %s unschedulable=%t", nodeName, unschedulable)
 }
 
 func waitForNodeSetPodOnNode(
@@ -1518,7 +1408,7 @@ func waitForNodeSetPodOnNode(
 			if pod.Spec.NodeName != nodeName {
 				continue
 			}
-			if !podReady(pod) {
+			if !k8sutils.PodReady(pod) {
 				continue
 			}
 			found = pod.DeepCopy()
@@ -1530,15 +1420,6 @@ func waitForNodeSetPodOnNode(
 		scalingMode, namespace, nodesetName, nodeName, excludeUID,
 	)
 	return found
-}
-
-func hasUnschedulableToleration(pod *corev1.Pod) bool {
-	for _, toleration := range pod.Spec.Tolerations {
-		if toleration.Key == corev1.TaintNodeUnschedulable && toleration.Effect == corev1.TaintEffectNoSchedule {
-			return true
-		}
-	}
-	return false
 }
 
 // Accounting tests
@@ -1598,80 +1479,56 @@ func testSlurmAccounting(namespace string) types.Feature {
 			return ctx
 		}).
 		Assess("Controller can contact accounting", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "ping"}
-			var wants string
-
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 80*time.Second, 5*time.Second)
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
+			eventuallyWithin(ctx, t, 80*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				assert.NoError(collect, slurmClient.PingAccounting(ctx))
+			}, "slurmdbd did not answer sacctmgr ping")
 
 			return ctx
 		}).
 		Assess("Sacctmgr has cluster entry", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "cluster", "format=cluster%30", "-n"}
-
-			cmd := exec.Command(command, args...)
-			output, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr show cluster returned non-zero error code")
+			clusters, err := slurm.NewClient(config.Client().RESTConfig(), namespace).Clusters(ctx)
+			require.NoError(t, err, "failed to list clusters in slurmdbd")
 			expectedClusterName := namespace + "_slurm"
-			require.Equal(t, expectedClusterName, strings.TrimSpace(string(output)), "clustername in slurmdbd does not match expected %s", expectedClusterName)
+			require.Equal(t, []string{expectedClusterName}, clusters, "clustername in slurmdbd does not match expected %s", expectedClusterName)
 
 			return ctx
 		}).
 		Assess("Sacctmgr add account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "add", "account", "name=test", "-i"}
-			var wants string
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
-
-			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
-			wants = "test"
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
+			eventuallyWithin(ctx, t, 40*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				assert.NoError(collect, slurmClient.AddAccount(ctx, "test"))
+			}, "failed to add account test")
+			eventuallyWithin(ctx, t, 40*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				found, err := slurmClient.HasAccount(ctx, "test")
+				if assert.NoError(collect, err) {
+					assert.True(collect, found, "account test not found")
+				}
+			}, "account test was not added to slurmdbd")
 
 			return ctx
 		}).
 		Assess("Sacctmgr add user", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
-
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "add", "user", "account=test", "name=testuser", "-i"}
-
-			var wants string
-			var cleanup_command string
-			var cleanup_args []string
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
-
-			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "user", "name=testuser", "-n", "format=user"}
-			wants = "testuser"
-
-			test.WaitForCommand(ctx, t, command, args, wants, cleanup_command, cleanup_args, 40*time.Second, 5*time.Second)
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
+			eventuallyWithin(ctx, t, 40*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				assert.NoError(collect, slurmClient.AddUser(ctx, "testuser", "test"))
+			}, "failed to add user testuser")
+			eventuallyWithin(ctx, t, 40*time.Second, 5*time.Second, func(ctx context.Context, collect *assert.CollectT) {
+				found, err := slurmClient.HasUser(ctx, "testuser")
+				if assert.NoError(collect, err) {
+					assert.True(collect, found, "user testuser not found")
+				}
+			}, "user testuser was not added to slurmdbd")
 
 			return ctx
 		}).
 		Assess("Sacctmgr delete account", func(ctx context.Context, t *testing.T, config *envconf.Config) context.Context {
+			slurmClient := slurm.NewClient(config.Client().RESTConfig(), namespace)
+			require.NoError(t, slurmClient.DeleteAccount(ctx, "test"), "failed to delete account test")
 
-			command := "kubectl"
-			args := []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "delete", "account", "test", "-i"}
-
-			cmd := exec.Command(command, args...)
-			_, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr add account returned non-zero error code")
-
-			args = []string{"exec", "-n", namespace, "slurm-controller-0", "--", "sacctmgr", "show", "account", "name=test", "-n", "format=account"}
-			cmd = exec.Command(command, args...)
-			output, err := cmd.Output()
-			require.NoError(t, err, "sacctmgr show account returned non-zero error code")
-			require.NotEqual(t, "test", strings.TrimSpace(string(output)), "account test was not deleted from slurmdbd")
+			found, err := slurmClient.HasAccount(ctx, "test")
+			require.NoError(t, err, "failed to look up account test")
+			require.False(t, found, "account test was not deleted from slurmdbd")
 
 			return ctx
 		}).Feature()

@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,89 +32,6 @@ func GetBasePath() string {
 	path, _ := strings.CutSuffix(fullpath, "test")
 
 	return path
-}
-
-// WaitForCommand executes the provided command until it succeeds with the expected output.
-func WaitForCommand(ctx context.Context, t *testing.T, command string, args []string, wants string, cleanupCommand string, cleanupArgs []string, timeout time.Duration, retryDelay time.Duration) {
-	t.Helper()
-
-	var output []byte
-	var commandErr error
-	attempts := 0
-	started := time.Now()
-	err := wait.For(func(waitCtx context.Context) (bool, error) {
-		attempts++
-		if cleanupCommand != "" && len(cleanupArgs) > 0 {
-			cleanupCmd := exec.CommandContext(waitCtx, cleanupCommand, cleanupArgs...)
-
-			_, _ = cleanupCmd.CombinedOutput() //nolint:errcheck
-		}
-
-		cmd := exec.CommandContext(waitCtx, command, args...)
-		output, commandErr = cmd.CombinedOutput()
-		return commandErr == nil && (wants == "" || strings.TrimSpace(string(output)) == wants), nil
-	},
-		wait.WithContext(ctx),
-		wait.WithTimeout(timeout),
-		wait.WithInterval(retryDelay),
-		wait.WithImmediate(),
-	)
-
-	if err != nil {
-		expected := fmt.Sprintf("output %q", wants)
-		if wants == "" {
-			expected = "a successful exit"
-		}
-		t.Fatalf(
-			"command did not reach %s after %s (%d attempts): %s %s\nwait error: %v\nlast command error: %v\nlast combined output: %q",
-			expected,
-			time.Since(started).Round(time.Millisecond),
-			attempts,
-			command,
-			strings.Join(args, " "),
-			err,
-			commandErr,
-			strings.TrimSpace(string(output)),
-		)
-	}
-}
-
-// GetSlurmNodeInfo uses scontrol to get details on a Slurm node
-func GetSlurmNodeInfo(ctx context.Context, namespace, nodeName string) (map[string]string, error) {
-	command := "kubectl"
-	args := []string{
-		"exec", "-n", namespace, "slurm-controller-0", "--",
-		"scontrol", "show", "node", nodeName,
-	}
-
-	cmd := exec.CommandContext(ctx, command, args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed executing %s %s: %w; combined output: %q", command, strings.Join(args, " "), err, strings.TrimSpace(string(output)))
-	}
-
-	out_map := StringToMap(string(output))
-	return out_map, nil
-}
-
-// StringToMap converts the provided string to a map.
-// Assumes that key-value pairs are separated by spaces,
-// and that keys and values are separated by an equals sign
-func StringToMap(input string) map[string]string {
-	out_array := strings.Split(string(input), " ")
-	out_map := make(map[string]string)
-
-	for _, val := range out_array {
-		object := strings.Split(val, "=")
-		if len(object) == 2 {
-			key := object[0]
-			value := object[1]
-
-			out_map[strings.TrimSpace(key)] = strings.TrimSpace(value)
-		}
-	}
-
-	return out_map
 }
 
 // CheckDeploymentStatus waits for the specified deployment to have the desired number of ReadyReplicas, then returns

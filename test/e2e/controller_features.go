@@ -19,7 +19,8 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/pkg/types"
 
-	"github.com/SlinkyProject/slurm-operator/test"
+	"github.com/SlinkyProject/slurm-operator/test/k8sutils"
+	"github.com/SlinkyProject/slurm-operator/test/slurm"
 )
 
 func testSlurmControllerReconfigure(namespace string) types.Feature {
@@ -33,7 +34,7 @@ func testSlurmControllerReconfigure(namespace string) types.Feature {
 			podKey := crclient.ObjectKey{Namespace: namespace, Name: "slurm-controller-0"}
 			before := &corev1.Pod{}
 			require.Eventually(t, func() bool {
-				if err := crClient.Get(ctx, podKey, before); err != nil || !podReady(before) || before.DeletionTimestamp != nil {
+				if err := crClient.Get(ctx, podKey, before); err != nil || !k8sutils.PodReady(before) || before.DeletionTimestamp != nil {
 					return false
 				}
 				// Wait for the mode switch and its initial configuration to finish.
@@ -51,7 +52,7 @@ func testSlurmControllerReconfigure(namespace string) types.Feature {
 				if !assert.NoError(collect, crClient.Get(ctx, podKey, after)) {
 					return
 				}
-				assert.True(collect, podReady(after) && after.DeletionTimestamp == nil)
+				assert.True(collect, k8sutils.PodReady(after) && after.DeletionTimestamp == nil)
 				assert.True(collect, controllerConfigMatches(ctx, namespace, "debug", "after"), "effective Slurm configuration did not update")
 				if inplace {
 					assert.Equal(collect, before.UID, after.UID, "inplace reconfigure replaced the pod")
@@ -90,9 +91,8 @@ func testSlurmControllerEphemeral(namespace string) types.Feature {
 				}
 			}
 			require.True(t, found, "controller has no state volume")
-			args := []string{"exec", "-n", namespace, pod.Name, "-c", "slurmctld", "--",
-				"srun", "--immediate=10", "--time=0:01", "hostname"}
-			test.WaitForCommand(ctx, t, "kubectl", args, "slinky-0", "", nil, time.Minute, 2*time.Second)
+			waitForSrunHostname(ctx, t, slurm.NewClient(config.Client().RESTConfig(), namespace).InPod(pod.Name),
+				"0:01", "slinky-0", time.Minute, 2*time.Second)
 			return ctx
 		}).Feature()
 }
