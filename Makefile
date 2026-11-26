@@ -564,7 +564,7 @@ test: envtest ## Run tests.
 	$(eval ENVTEST_ASSETS := $(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path))
 	chmod -R -f u+w "$(ENVTEST_ASSETS)"
 	KUBEBUILDER_ASSETS="$(ENVTEST_ASSETS)" \
-	go test `go list ./... | grep -v "/api" | grep -v "/e2e" | grep -v '/test'` -v -coverprofile cover.out
+	go test `go list ./... | grep -v "/api" | grep -v "/e2e" | grep -v '/testutils'` -v -coverprofile cover.out
 	go tool cover -func cover.out
 	go tool cover -html cover.out -o cover.html
 	@percentage=$$(go tool cover -func=cover.out | grep ^total | awk '{print $$3}' | tr -d '%'); \
