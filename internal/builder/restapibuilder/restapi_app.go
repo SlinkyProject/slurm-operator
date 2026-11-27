@@ -212,7 +212,7 @@ func (b *RestapiBuilder) slurmrestdContainer(merge corev1.Container, hasAccounti
 	out := b.CommonBuilder.BuildContainer(opts)
 
 	// Usage: slurmrestd [OPTIONS] [host:port]...
-	out.Args = append(out.Args, fmt.Sprintf("0.0.0.0:%d", SlurmrestdPort))
+	out.Args = append(out.Args, fmt.Sprintf(":%d", SlurmrestdPort))
 
 	return out
 }
